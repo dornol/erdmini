@@ -1,4 +1,6 @@
-import type { Column, ERDSchema, ForeignKey, Table } from '$lib/types/erd';
+import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table } from '$lib/types/erd';
+
+const LS_KEY = 'erdmini_schema';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -14,23 +16,47 @@ function getNextTableName(tables: Table[]): string {
   return `table_${i}`;
 }
 
-class ERDStore {
-  schema = $state<ERDSchema>({
+function defaultSchema(): ERDSchema {
+  return {
     version: '1',
     tables: [],
+    domains: [],
     createdAt: now(),
     updatedAt: now(),
-  });
+  };
+}
 
+function loadFromStorage(): ERDSchema {
+  if (typeof window === 'undefined') return defaultSchema();
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (!raw) return defaultSchema();
+    const parsed = JSON.parse(raw) as ERDSchema;
+    // Migrate older schemas that lack domains
+    if (!parsed.domains) parsed.domains = [];
+    return parsed;
+  } catch {
+    return defaultSchema();
+  }
+}
+
+class ERDStore {
+  schema = $state<ERDSchema>(loadFromStorage());
   selectedTableId = $state<string | null>(null);
 
   get selectedTable(): Table | undefined {
     return this.schema.tables.find((t) => t.id === this.selectedTableId);
   }
 
+  saveToStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(LS_KEY, JSON.stringify($state.snapshot(this.schema)));
+    } catch {}
+  }
+
   addTable(viewportWidth = 800, viewportHeight = 600) {
     const { x, y, scale } = canvasState;
-    // Convert viewport center to world coordinates
     const worldX = (viewportWidth / 2 - x) / scale;
     const worldY = (viewportHeight / 2 - y) / scale;
 
@@ -59,7 +85,13 @@ class ERDStore {
   }
 
   deleteTable(id: string) {
-    this.schema.tables = this.schema.tables.filter((t) => t.id !== id);
+    // Also remove FK references to this table from other tables
+    this.schema.tables = this.schema.tables
+      .filter((t) => t.id !== id)
+      .map((t) => ({
+        ...t,
+        foreignKeys: t.foreignKeys.filter((fk) => fk.referencedTableId !== id),
+      }));
     this.schema.updatedAt = now();
     if (this.selectedTableId === id) {
       this.selectedTableId = null;
@@ -84,6 +116,14 @@ class ERDStore {
     const table = this.schema.tables.find((t) => t.id === id);
     if (!table) return;
     table.position = { x, y };
+  }
+
+  applyLayout(positions: Map<string, { x: number; y: number }>) {
+    for (const table of this.schema.tables) {
+      const pos = positions.get(table.id);
+      if (pos) table.position = { x: Math.round(pos.x), y: Math.round(pos.y) };
+    }
+    this.schema.updatedAt = now();
   }
 
   addColumn(tableId: string) {
@@ -117,6 +157,8 @@ class ERDStore {
     const table = this.schema.tables.find((t) => t.id === tableId);
     if (!table) return;
     table.columns = table.columns.filter((c) => c.id !== columnId);
+    // Remove FKs that reference this column
+    table.foreignKeys = table.foreignKeys.filter((fk) => fk.columnId !== columnId);
     this.schema.updatedAt = now();
   }
 
@@ -171,7 +213,27 @@ class ERDStore {
     this.schema.updatedAt = now();
   }
 
+  // Domain CRUD
+  addDomain(fields: Omit<ColumnDomain, 'id'>) {
+    const domain: ColumnDomain = { id: generateId(), ...fields };
+    this.schema.domains = [...this.schema.domains, domain];
+    this.schema.updatedAt = now();
+  }
+
+  updateDomain(id: string, patch: Partial<Omit<ColumnDomain, 'id'>>) {
+    this.schema.domains = this.schema.domains.map((d) =>
+      d.id === id ? { ...d, ...patch } : d
+    );
+    this.schema.updatedAt = now();
+  }
+
+  deleteDomain(id: string) {
+    this.schema.domains = this.schema.domains.filter((d) => d.id !== id);
+    this.schema.updatedAt = now();
+  }
+
   loadSchema(schema: ERDSchema) {
+    if (!schema.domains) schema.domains = [];
     this.schema = schema;
     this.selectedTableId = null;
   }

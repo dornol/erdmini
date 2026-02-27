@@ -16,6 +16,7 @@
     fromRight: boolean;
     toLeft: boolean;
     isUnique: boolean;
+    isNullable: boolean;
   }
 
   function getColIndex(table: Table, columnId: string): number {
@@ -53,8 +54,9 @@
 
         const srcCol = table.columns[srcColIdx];
         const isUnique = srcCol?.unique ?? false;
+        const isNullable = srcCol?.nullable ?? false;
 
-        result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique });
+        result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable });
       }
     }
     return result;
@@ -148,13 +150,13 @@
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
     />
 
-    <!-- Visible bezier line -->
+    <!-- Visible bezier line (dashed if nullable FK column) -->
     <path
       d={bezierPath(line)}
       fill="none"
       stroke={color}
       stroke-width={isHovered ? 2 : 1.5}
-      stroke-dasharray={isHovered ? 'none' : 'none'}
+      stroke-dasharray={line.isNullable ? '6 3' : 'none'}
     />
 
     <!-- Source side: one tick -->

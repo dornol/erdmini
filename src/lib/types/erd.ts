@@ -25,6 +25,20 @@ export interface Column {
   unique: boolean;
   autoIncrement: boolean;
   defaultValue?: string;
+  comment?: string;
+}
+
+export interface ColumnDomain {
+  id: string;
+  name: string;
+  type: ColumnType;
+  length?: number;
+  nullable: boolean;
+  primaryKey: boolean;
+  unique: boolean;
+  autoIncrement: boolean;
+  defaultValue?: string;
+  comment?: string;
 }
 
 export type ReferentialAction = 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
@@ -52,6 +66,7 @@ export interface Table {
 export interface ERDSchema {
   version: string;
   tables: Table[];
+  domains: ColumnDomain[];
   createdAt: string;
   updatedAt: string;
 }

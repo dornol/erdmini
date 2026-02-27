@@ -6,6 +6,14 @@
   import TableEditor from '$lib/components/TableEditor.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import { erdStore } from '$lib/store/erd.svelte';
+
+  // Auto-save to localStorage whenever schema changes (updatedAt tracks all mutations)
+  $effect(() => {
+    // Read updatedAt to establish reactive dependency on any schema mutation
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    erdStore.schema.updatedAt;
+    erdStore.saveToStorage();
+  });
 </script>
 
 <div class="app">

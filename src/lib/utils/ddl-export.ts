@@ -35,6 +35,9 @@ function columnSql(col: Column, dialect: Dialect): string {
   if (col.defaultValue !== undefined && col.defaultValue !== '') {
     parts.push(`DEFAULT ${col.defaultValue}`);
   }
+  if (col.comment && dialect === 'mysql') {
+    parts.push(`COMMENT '${col.comment.replace(/'/g, "''")}'`);
+  }
   return parts.join(' ');
 }
 
@@ -56,8 +59,33 @@ function createTableSql(table: Table, dialect: Dialect): string {
     lines.push(`  UNIQUE (${q(col.name, dialect)})`);
   }
 
-  const trailer = dialect === 'mysql' ? ') ENGINE=InnoDB;' : ');';
+  let trailer: string;
+  if (dialect === 'mysql') {
+    const comment = table.comment
+      ? ` COMMENT='${table.comment.replace(/'/g, "''")}'`
+      : '';
+    trailer = `) ENGINE=InnoDB${comment};`;
+  } else {
+    trailer = ');';
+  }
+
   return `CREATE TABLE ${tq} (\n${lines.join(',\n')}\n${trailer}`;
+}
+
+function postgresComments(table: Table): string[] {
+  const stmts: string[] = [];
+  const tq = `"${table.name}"`;
+  if (table.comment) {
+    stmts.push(`COMMENT ON TABLE ${tq} IS '${table.comment.replace(/'/g, "''")}';`);
+  }
+  for (const col of table.columns) {
+    if (col.comment) {
+      stmts.push(
+        `COMMENT ON COLUMN ${tq}."${col.name}" IS '${col.comment.replace(/'/g, "''")}';`,
+      );
+    }
+  }
+  return stmts;
 }
 
 function alterTableFkSql(
@@ -90,6 +118,13 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect): string {
   // CREATE TABLE statements
   for (const table of schema.tables) {
     sections.push(createTableSql(table, dialect));
+  }
+
+  // PostgreSQL COMMENT ON statements
+  if (dialect === 'postgresql') {
+    for (const table of schema.tables) {
+      sections.push(...postgresComments(table));
+    }
   }
 
   // ALTER TABLE FK statements

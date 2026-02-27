@@ -1,15 +1,18 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
-  import { COLUMN_TYPES, REFERENTIAL_ACTIONS } from '$lib/types/erd';
-  import type { Column, ReferentialAction } from '$lib/types/erd';
+  import { COLUMN_TYPES } from '$lib/types/erd';
+  import type { Column } from '$lib/types/erd';
+  import FkModal from './FkModal.svelte';
 
   let selectedTable = $derived(erdStore.selectedTable);
 
   let tableNameInput = $state('');
+  let tableCommentInput = $state('');
 
   $effect(() => {
     if (selectedTable) {
       tableNameInput = selectedTable.name;
+      tableCommentInput = selectedTable.comment ?? '';
     }
   });
 
@@ -23,48 +26,35 @@
     if (e.key === 'Enter') (e.target as HTMLElement).blur();
   }
 
+  function onTableCommentBlur() {
+    if (selectedTable) {
+      erdStore.updateTableComment(selectedTable.id, tableCommentInput);
+    }
+  }
+
   function onColumnChange(col: Column, field: keyof Column, value: unknown) {
     if (!selectedTable) return;
     erdStore.updateColumn(selectedTable.id, col.id, { [field]: value } as Partial<Column>);
   }
 
-  // FK state
-  let showAddFk = $state(false);
-  let fkColumnId = $state('');
-  let fkRefTableId = $state('');
-  let fkRefColumnId = $state('');
-  let fkOnDelete = $state<ReferentialAction>('RESTRICT');
-  let fkOnUpdate = $state<ReferentialAction>('RESTRICT');
-
-  let otherTables = $derived(
-    erdStore.schema.tables.filter((t) => t.id !== selectedTable?.id),
-  );
-
-  let refTableColumns = $derived(
-    erdStore.schema.tables.find((t) => t.id === fkRefTableId)?.columns ?? [],
-  );
-
-  function resetFkForm() {
-    showAddFk = false;
-    fkColumnId = '';
-    fkRefTableId = '';
-    fkRefColumnId = '';
-    fkOnDelete = 'RESTRICT';
-    fkOnUpdate = 'RESTRICT';
+  // Domain apply
+  function applyDomain(colId: string, domainId: string) {
+    if (!selectedTable) return;
+    const domain = erdStore.schema.domains.find((d) => d.id === domainId);
+    if (!domain) return;
+    erdStore.updateColumn(selectedTable.id, colId, {
+      type: domain.type,
+      length: domain.length,
+      nullable: domain.nullable,
+      primaryKey: domain.primaryKey,
+      unique: domain.unique,
+      autoIncrement: domain.autoIncrement,
+      defaultValue: domain.defaultValue,
+    });
   }
 
-  function submitFk() {
-    if (!selectedTable || !fkColumnId || !fkRefTableId || !fkRefColumnId) return;
-    erdStore.addForeignKey(
-      selectedTable.id,
-      fkColumnId,
-      fkRefTableId,
-      fkRefColumnId,
-      fkOnDelete,
-      fkOnUpdate,
-    );
-    resetFkForm();
-  }
+  // FK modal
+  let showFkModal = $state(false);
 
   function getFkLabel(fk: { columnId: string; referencedTableId: string; referencedColumnId: string; onDelete: string }) {
     const col = selectedTable?.columns.find((c) => c.id === fk.columnId);
@@ -77,6 +67,8 @@
       onDelete: fk.onDelete,
     };
   }
+
+  let hasDomains = $derived(erdStore.schema.domains.length > 0);
 </script>
 
 {#if selectedTable}
@@ -85,7 +77,7 @@
       <span class="editor-title">테이블 편집</span>
     </div>
 
-    <!-- Table name -->
+    <!-- Table name & comment -->
     <div class="section">
       <label class="field-label" for="tbl-name">테이블명</label>
       <input
@@ -94,6 +86,14 @@
         bind:value={tableNameInput}
         onblur={onTableNameBlur}
         onkeydown={onTableNameKeyDown}
+      />
+      <label class="field-label" for="tbl-comment" style="margin-top:8px">코멘트</label>
+      <input
+        id="tbl-comment"
+        class="text-input"
+        bind:value={tableCommentInput}
+        onblur={onTableCommentBlur}
+        placeholder="(선택)"
       />
     </div>
 
@@ -117,16 +117,34 @@
               placeholder="이름"
             />
 
-            <!-- Type -->
-            <select
-              class="col-select col-type"
-              value={col.type}
-              onchange={(e) => onColumnChange(col, 'type', (e.target as HTMLSelectElement).value)}
-            >
-              {#each COLUMN_TYPES as t}
-                <option value={t}>{t}</option>
-              {/each}
-            </select>
+            <!-- Type + Domain apply -->
+            <div class="col-type-row">
+              <select
+                class="col-select col-type"
+                value={col.type}
+                onchange={(e) => onColumnChange(col, 'type', (e.target as HTMLSelectElement).value)}
+              >
+                {#each COLUMN_TYPES as t}
+                  <option value={t}>{t}</option>
+                {/each}
+              </select>
+              {#if hasDomains}
+                <select
+                  class="col-select domain-select"
+                  title="도메인 적용"
+                  value=""
+                  onchange={(e) => {
+                    const v = (e.target as HTMLSelectElement).value;
+                    if (v) { applyDomain(col.id, v); (e.target as HTMLSelectElement).value = ''; }
+                  }}
+                >
+                  <option value="">도메인▼</option>
+                  {#each erdStore.schema.domains as domain}
+                    <option value={domain.id}>{domain.name}</option>
+                  {/each}
+                </select>
+              {/if}
+            </div>
 
             <!-- Flags -->
             <div class="col-flags">
@@ -164,7 +182,15 @@
               </label>
             </div>
 
-            <!-- Move up/down -->
+            <!-- Column comment -->
+            <input
+              class="col-input col-comment"
+              value={col.comment ?? ''}
+              oninput={(e) => onColumnChange(col, 'comment', (e.target as HTMLInputElement).value || undefined)}
+              placeholder="코멘트 (선택)"
+            />
+
+            <!-- Move up/down/delete -->
             <div class="col-actions">
               <button
                 class="icon-btn"
@@ -193,12 +219,9 @@
     <div class="section fk-section">
       <div class="section-header">
         <span class="field-label">Foreign Keys</span>
-        {#if !showAddFk}
-          <button class="add-col-btn" onclick={() => (showAddFk = true)}>+ FK 추가</button>
-        {/if}
+        <button class="add-col-btn" onclick={() => (showFkModal = true)}>+ FK 추가</button>
       </div>
 
-      <!-- Existing FKs -->
       {#each selectedTable.foreignKeys as fk (fk.id)}
         {@const label = getFkLabel(fk)}
         <div class="fk-row">
@@ -213,69 +236,18 @@
           >✕</button>
         </div>
       {:else}
-        {#if !showAddFk}
-          <p class="no-cols">FK가 없습니다.</p>
-        {/if}
+        <p class="no-cols">FK가 없습니다.</p>
       {/each}
-
-      <!-- Add FK form -->
-      {#if showAddFk}
-        <div class="fk-form">
-          <div class="fk-form-row">
-            <label class="fk-form-label" for="fk-col">컬럼</label>
-            <select id="fk-col" class="col-select" bind:value={fkColumnId}>
-              <option value="">선택...</option>
-              {#each selectedTable.columns as col}
-                <option value={col.id}>{col.name}</option>
-              {/each}
-            </select>
-          </div>
-          <div class="fk-form-row">
-            <label class="fk-form-label" for="fk-ref-table">참조 테이블</label>
-            <select id="fk-ref-table" class="col-select" bind:value={fkRefTableId}>
-              <option value="">선택...</option>
-              {#each otherTables as t}
-                <option value={t.id}>{t.name}</option>
-              {/each}
-            </select>
-          </div>
-          <div class="fk-form-row">
-            <label class="fk-form-label" for="fk-ref-col">참조 컬럼</label>
-            <select id="fk-ref-col" class="col-select" bind:value={fkRefColumnId} disabled={!fkRefTableId}>
-              <option value="">선택...</option>
-              {#each refTableColumns as col}
-                <option value={col.id}>{col.name}</option>
-              {/each}
-            </select>
-          </div>
-          <div class="fk-form-row">
-            <label class="fk-form-label" for="fk-on-delete">ON DELETE</label>
-            <select id="fk-on-delete" class="col-select" bind:value={fkOnDelete}>
-              {#each REFERENTIAL_ACTIONS as a}
-                <option value={a}>{a}</option>
-              {/each}
-            </select>
-          </div>
-          <div class="fk-form-row">
-            <label class="fk-form-label" for="fk-on-update">ON UPDATE</label>
-            <select id="fk-on-update" class="col-select" bind:value={fkOnUpdate}>
-              {#each REFERENTIAL_ACTIONS as a}
-                <option value={a}>{a}</option>
-              {/each}
-            </select>
-          </div>
-          <div class="fk-form-actions">
-            <button class="add-col-btn" onclick={submitFk}>추가</button>
-            <button class="icon-btn" onclick={resetFkForm}>취소</button>
-          </div>
-        </div>
-      {/if}
     </div>
   </aside>
 {:else}
   <aside class="editor editor-empty">
     <p>테이블을 선택하세요</p>
   </aside>
+{/if}
+
+{#if showFkModal && selectedTable}
+  <FkModal tableId={selectedTable.id} onclose={() => (showFkModal = false)} />
 {/if}
 
 <style>
@@ -334,7 +306,7 @@
     flex-direction: column;
     gap: 4px;
     overflow-y: auto;
-    max-height: 260px;
+    max-height: 200px;
   }
 
   .field-label {
@@ -394,6 +366,11 @@
     border-radius: 6px;
   }
 
+  .col-type-row {
+    display: flex;
+    gap: 4px;
+  }
+
   .col-input, .col-select {
     border: 1px solid #e2e8f0;
     border-radius: 4px;
@@ -408,6 +385,24 @@
 
   .col-input:focus, .col-select:focus {
     border-color: #3b82f6;
+  }
+
+  .col-type {
+    flex: 1;
+  }
+
+  .domain-select {
+    width: auto;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #64748b;
+    padding: 4px 5px;
+  }
+
+  .col-comment {
+    font-size: 11px;
+    color: #64748b;
+    font-style: italic;
   }
 
   .col-flags {
@@ -501,36 +496,5 @@
     color: #64748b;
     font-size: 10px;
     flex-shrink: 0;
-  }
-
-  /* FK form */
-  .fk-form {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .fk-form-row {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .fk-form-label {
-    font-size: 10px;
-    color: #64748b;
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-
-  .fk-form-actions {
-    display: flex;
-    gap: 6px;
-    justify-content: flex-end;
-    margin-top: 4px;
   }
 </style>
