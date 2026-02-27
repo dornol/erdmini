@@ -32,17 +32,28 @@
     }
   }
 
+  // Fields managed by a domain — manual edits to these auto-unlink the domain
+  const DOMAIN_FIELDS: (keyof Column)[] = [
+    'type', 'length', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue',
+  ];
+
   function onColumnChange(col: Column, field: keyof Column, value: unknown) {
     if (!selectedTable) return;
-    erdStore.updateColumn(selectedTable.id, col.id, { [field]: value } as Partial<Column>);
+    const patch: Partial<Column> = { [field]: value };
+    // Unlink domain if user manually overrides a domain-managed field
+    if (col.domainId && DOMAIN_FIELDS.includes(field)) {
+      patch.domainId = undefined;
+    }
+    erdStore.updateColumn(selectedTable.id, col.id, patch);
   }
 
-  // Domain apply
+  // Domain apply — stores the domainId so future domain updates propagate
   function applyDomain(colId: string, domainId: string) {
     if (!selectedTable) return;
     const domain = erdStore.schema.domains.find((d) => d.id === domainId);
     if (!domain) return;
     erdStore.updateColumn(selectedTable.id, colId, {
+      domainId,
       type: domain.type,
       length: domain.length,
       nullable: domain.nullable,
@@ -117,7 +128,7 @@
               placeholder="이름"
             />
 
-            <!-- Type + Domain apply -->
+            <!-- Type + Domain apply/badge -->
             <div class="col-type-row">
               <select
                 class="col-select col-type"
@@ -129,20 +140,32 @@
                 {/each}
               </select>
               {#if hasDomains}
-                <select
-                  class="col-select domain-select"
-                  title="도메인 적용"
-                  value=""
-                  onchange={(e) => {
-                    const v = (e.target as HTMLSelectElement).value;
-                    if (v) { applyDomain(col.id, v); (e.target as HTMLSelectElement).value = ''; }
-                  }}
-                >
-                  <option value="">도메인▼</option>
-                  {#each erdStore.schema.domains as domain}
-                    <option value={domain.id}>{domain.name}</option>
-                  {/each}
-                </select>
+                {#if col.domainId}
+                  {@const linkedDomain = erdStore.schema.domains.find((d) => d.id === col.domainId)}
+                  <div class="domain-badge" title="도메인 연결됨 — 클릭하여 해제">
+                    <span class="domain-badge-name">{linkedDomain?.name ?? '?'}</span>
+                    <button
+                      class="domain-unlink"
+                      aria-label="도메인 연결 해제"
+                      onclick={() => onColumnChange(col, 'domainId', undefined)}
+                    >✕</button>
+                  </div>
+                {:else}
+                  <select
+                    class="col-select domain-select"
+                    title="도메인 적용"
+                    value=""
+                    onchange={(e) => {
+                      const v = (e.target as HTMLSelectElement).value;
+                      if (v) { applyDomain(col.id, v); (e.target as HTMLSelectElement).value = ''; }
+                    }}
+                  >
+                    <option value="">도메인▼</option>
+                    {#each erdStore.schema.domains as domain}
+                      <option value={domain.id}>{domain.name}</option>
+                    {/each}
+                  </select>
+                {/if}
               {/if}
             </div>
 
@@ -397,6 +420,42 @@
     font-size: 11px;
     color: #64748b;
     padding: 4px 5px;
+  }
+
+  .domain-badge {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+    max-width: 90px;
+  }
+
+  .domain-badge-name {
+    font-size: 10px;
+    color: #1d4ed8;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .domain-unlink {
+    background: none;
+    border: none;
+    font-size: 9px;
+    color: #93c5fd;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .domain-unlink:hover {
+    color: #ef4444;
   }
 
   .col-comment {

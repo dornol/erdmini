@@ -224,11 +224,36 @@ class ERDStore {
     this.schema.domains = this.schema.domains.map((d) =>
       d.id === id ? { ...d, ...patch } : d
     );
+    // Propagate changes to all columns linked to this domain
+    const updated = this.schema.domains.find((d) => d.id === id);
+    if (updated) {
+      for (const table of this.schema.tables) {
+        table.columns = table.columns.map((c) => {
+          if (c.domainId !== id) return c;
+          return {
+            ...c,
+            type: updated.type,
+            length: updated.length,
+            nullable: updated.nullable,
+            primaryKey: updated.primaryKey,
+            unique: updated.unique,
+            autoIncrement: updated.autoIncrement,
+            defaultValue: updated.defaultValue,
+          };
+        });
+      }
+    }
     this.schema.updatedAt = now();
   }
 
   deleteDomain(id: string) {
     this.schema.domains = this.schema.domains.filter((d) => d.id !== id);
+    // Unlink columns that referenced this domain (keep their current settings)
+    for (const table of this.schema.tables) {
+      table.columns = table.columns.map((c) =>
+        c.domainId === id ? { ...c, domainId: undefined } : c
+      );
+    }
     this.schema.updatedAt = now();
   }
 

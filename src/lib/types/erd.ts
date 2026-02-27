@@ -18,6 +18,7 @@ export const COLUMN_TYPES: ColumnType[] = [
 export interface Column {
   id: string;
   name: string;
+  domainId?: string;
   type: ColumnType;
   length?: number;
   nullable: boolean;
