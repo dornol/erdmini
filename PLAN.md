@@ -154,9 +154,24 @@ interface Table {
   comment?: string;
 }
 
+// Phase 3: 컬럼 도메인 (재사용 가능한 컬럼 타입 프리셋)
+interface ColumnDomain {
+  id: string;
+  name: string;          // 예: 'PK_BIGINT', 'CREATED_AT', 'USER_ID'
+  type: ColumnType;
+  length?: number;
+  nullable: boolean;
+  primaryKey: boolean;
+  unique: boolean;
+  autoIncrement: boolean;
+  defaultValue?: string;
+  comment?: string;
+}
+
 interface ERDSchema {
   version: string;
   tables: Table[];
+  domains: ColumnDomain[];  // Phase 3 추가
   createdAt: string;
   updatedAt: string;
 }
@@ -229,25 +244,36 @@ ALTER TABLE `orders`
 
 ## 7. 구현 우선순위
 
-### Phase 1 - 기본 편집기
-- [ ] 캔버스 렌더링 (테이블 카드)
-- [ ] 테이블 추가 / 삭제
-- [ ] 컬럼 추가 / 수정 / 삭제
-- [ ] 테이블 드래그 이동
-- [ ] 캔버스 줌 / 패닝
+### ✅ Phase 1 - 기본 편집기 (완료)
+- [x] 캔버스 렌더링 (테이블 카드, HTML+CSS transform)
+- [x] 테이블 추가 / 삭제
+- [x] 컬럼 추가 / 수정 / 삭제 (이름, 타입, PK/NN/UQ/AI)
+- [x] 테이블 드래그 이동
+- [x] 캔버스 줌 / 패닝
 
-### Phase 2 - 관계 및 DDL
-- [ ] FK 관계 설정 UI
-- [ ] 관계선 렌더링
-- [ ] DDL Export (MySQL / PostgreSQL)
-- [ ] DDL Import (파싱)
+### ✅ Phase 2 - 관계 및 DDL (완료)
+- [x] FK 관계 설정 UI (TableEditor 내 FK 섹션)
+- [x] 관계선 렌더링 (SVG bezier + crow's foot 표기)
+- [x] DDL Export (MySQL / PostgreSQL)
+- [x] DDL Import (정규식 파싱, 스키마 prefix 제거, ALTER TABLE FK 처리)
 
-### Phase 3 - 저장 및 편의 기능
-- [ ] JSON 저장 / 불러오기
-- [ ] LocalStorage 자동 저장
-- [ ] 다중 선택 / 일괄 이동
-- [ ] 실행취소(Undo) / 다시실행(Redo)
-- [ ] 테이블 자동 정렬
+### Phase 3 - 편의 기능 및 UX 개선
+- [ ] **JSON Export / Import** — ERD 스키마 전체를 `.erd.json` 파일로 저장/불러오기 (Toolbar에 버튼 추가)
+- [ ] **테이블 자동 배치 (Auto Arrange)** — 버튼 클릭 시 레이아웃 자동 정렬. 형태 선택 가능:
+  - Grid (격자형): 테이블을 균등 격자로 배치
+  - Hierarchical (계층형): FK 참조 방향 기준 상→하 트리 배치
+  - Radial (방사형): 중심 테이블 기준 원형 배치
+- [ ] **FK 추가 UI 개선** — TableEditor의 인라인 폼을 레이어 팝업(모달)으로 교체. 더 넓은 화면에서 편집 가능하도록
+- [ ] **관계선 nullable 표시** — FK 컬럼의 nullable 여부를 선 스타일로 구분
+  - nullable: 점선(`stroke-dasharray`)
+  - not null: 실선
+- [ ] **컬럼 / 테이블 코멘트** — Column.comment, Table.comment 편집 UI 추가. DDL export 시 `COMMENT` 절 포함
+- [ ] **컬럼 도메인(Domain) 정의** — 재사용 가능한 컬럼 타입 프리셋 정의 기능
+  - 도메인: 이름 + 타입 + 기본 제약조건 조합 (예: `PK_BIGINT`, `CREATED_AT`, `USER_ID`)
+  - 컬럼 추가 시 도메인 선택 → 자동 채우기
+  - 도메인 정의는 ERDSchema에 포함되어 JSON export/import 시 함께 저장
+- [ ] **Dockerfile 추가** — 빌드 및 배포용 Dockerfile (Node 빌더 + nginx 서빙 멀티스테이지)
+- [ ] LocalStorage 자동 저장 (탭 닫아도 ERD 유지)
 
 ### Phase 4 - API 서버 연동 (별도 프로젝트)
 - [ ] 스토리지 레이어 추상화 (LocalStorage → API 교체 가능하도록)
