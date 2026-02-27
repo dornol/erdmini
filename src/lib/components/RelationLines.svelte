@@ -1,0 +1,163 @@
+<script lang="ts">
+  import { erdStore } from '$lib/store/erd.svelte';
+  import type { ForeignKey, Table } from '$lib/types/erd';
+
+  const TABLE_WIDTH = 200;
+  const HEADER_HEIGHT = 37;
+  const ROW_HEIGHT = 26;
+
+  interface FKLine {
+    fk: ForeignKey;
+    tableId: string;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    fromRight: boolean;
+    toRight: boolean;
+    isUnique: boolean;
+  }
+
+  function getColIndex(table: Table, columnId: string): number {
+    return table.columns.findIndex((c) => c.id === columnId);
+  }
+
+  function colY(table: Table, colIdx: number): number {
+    return table.position.y + HEADER_HEIGHT + colIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+  }
+
+  let lines = $derived.by((): FKLine[] => {
+    const result: FKLine[] = [];
+    for (const table of erdStore.schema.tables) {
+      for (const fk of table.foreignKeys) {
+        const refTable = erdStore.schema.tables.find((t) => t.id === fk.referencedTableId);
+        if (!refTable) continue;
+
+        const srcColIdx = getColIndex(table, fk.columnId);
+        const refColIdx = getColIndex(refTable, fk.referencedColumnId);
+        if (srcColIdx < 0 || refColIdx < 0) continue;
+
+        const srcCenterX = table.position.x + TABLE_WIDTH / 2;
+        const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
+
+        // Determine exit/entry sides
+        const fromRight = srcCenterX <= refCenterX;
+        const toRight = !fromRight;
+
+        const x1 = fromRight ? table.position.x + TABLE_WIDTH : table.position.x;
+        const y1 = colY(table, srcColIdx);
+        const x2 = toRight ? refTable.position.x + TABLE_WIDTH : refTable.position.x;
+        const y2 = colY(refTable, refColIdx);
+
+        const srcCol = table.columns[srcColIdx];
+        const isUnique = srcCol?.unique ?? false;
+
+        result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toRight, isUnique });
+      }
+    }
+    return result;
+  });
+
+  function bezierPath(line: FKLine): string {
+    const { x1, y1, x2, y2 } = line;
+    const cx1 = x1 + (line.fromRight ? 60 : -60);
+    const cx2 = x2 + (line.toRight ? 60 : -60);
+    return `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
+  }
+
+  // Crow's foot marker at the "many" end (target side)
+  // dir: +1 means line arrives from left (toRight=false i.e. target left side), -1 means right
+  function crowsFoot(line: FKLine): string {
+    const { x2, y2, toRight } = line;
+    const dir = toRight ? 1 : -1; // direction pointing away from table
+    const len = 10;
+    const spread = 8;
+    // Three lines: straight, fan up, fan down
+    const tip = x2 + dir * len;
+    return [
+      `M ${x2} ${y2} L ${tip} ${y2}`,
+      `M ${x2} ${y2} L ${tip} ${y2 - spread}`,
+      `M ${x2} ${y2} L ${tip} ${y2 + spread}`,
+    ].join(' ');
+  }
+
+  // One tick for "one" end (source side)
+  function oneTick(line: FKLine): string {
+    const { x1, y1, fromRight } = line;
+    const dir = fromRight ? -1 : 1; // pointing away from table
+    const tickX = x1 + dir * 8;
+    return `M ${tickX} ${y1 - 6} L ${tickX} ${y1 + 6}`;
+  }
+
+  // One tick for 1:1 (unique) — also show on target side
+  function oneTickTarget(line: FKLine): string {
+    const { x2, y2, toRight } = line;
+    const dir = toRight ? 1 : -1;
+    const tickX = x2 + dir * 8;
+    return `M ${tickX} ${y2 - 6} L ${tickX} ${y2 + 6}`;
+  }
+
+  let hoveredId = $state<string | null>(null);
+
+  function handleLineClick(line: FKLine) {
+    const colName = erdStore.schema.tables
+      .find((t) => t.id === line.tableId)
+      ?.columns.find((c) => c.id === line.fk.columnId)?.name ?? line.fk.columnId;
+    const refTable = erdStore.schema.tables.find((t) => t.id === line.fk.referencedTableId);
+    const refCol = refTable?.columns.find((c) => c.id === line.fk.referencedColumnId);
+    const msg = `FK "${colName}" → "${refTable?.name ?? '?'}.${refCol?.name ?? '?'}" 을(를) 삭제하시겠습니까?`;
+    if (window.confirm(msg)) {
+      erdStore.deleteForeignKey(line.tableId, line.fk.id);
+    }
+  }
+</script>
+
+<svg
+  style="position:absolute; top:0; left:0; overflow:visible; pointer-events:none; width:0; height:0"
+>
+  <defs>
+    <marker id="circle-start" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+      <circle cx="3" cy="3" r="2" fill="#94a3b8" />
+    </marker>
+  </defs>
+
+  {#each lines as line (line.fk.id)}
+    {@const isHovered = hoveredId === line.fk.id}
+    {@const color = isHovered ? '#3b82f6' : '#94a3b8'}
+
+    <!-- Invisible wide hit area -->
+    <path
+      d={bezierPath(line)}
+      fill="none"
+      stroke="transparent"
+      stroke-width="12"
+      role="button"
+      tabindex="0"
+      aria-label="FK 관계선 삭제"
+      style="pointer-events:stroke; cursor:pointer"
+      onmouseenter={() => (hoveredId = line.fk.id)}
+      onmouseleave={() => (hoveredId = null)}
+      onclick={() => handleLineClick(line)}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
+    />
+
+    <!-- Visible bezier line -->
+    <path
+      d={bezierPath(line)}
+      fill="none"
+      stroke={color}
+      stroke-width={isHovered ? 2 : 1.5}
+      stroke-dasharray={isHovered ? 'none' : 'none'}
+    />
+
+    <!-- Source side: one tick -->
+    <path d={oneTick(line)} stroke={color} stroke-width="1.5" fill="none" />
+
+    <!-- Target side: crow's foot (N) or one tick (1:1 unique) -->
+    {#if line.isUnique}
+      <path d={oneTickTarget(line)} stroke={color} stroke-width="1.5" fill="none" />
+    {:else}
+      <path d={crowsFoot(line)} stroke={color} stroke-width="1.5" fill="none" />
+    {/if}
+  {/each}
+</svg>
