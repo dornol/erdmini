@@ -14,7 +14,7 @@
     x2: number;
     y2: number;
     fromRight: boolean;
-    toRight: boolean;
+    toLeft: boolean;
     isUnique: boolean;
   }
 
@@ -41,18 +41,20 @@
         const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
 
         // Determine exit/entry sides
+        // fromRight: source exits from right edge (target is to the right)
+        // toLeft: target receives on left edge (source is to the left)
         const fromRight = srcCenterX <= refCenterX;
-        const toRight = !fromRight;
+        const toLeft = fromRight; // target's entry side is left when source is left
 
         const x1 = fromRight ? table.position.x + TABLE_WIDTH : table.position.x;
         const y1 = colY(table, srcColIdx);
-        const x2 = toRight ? refTable.position.x + TABLE_WIDTH : refTable.position.x;
+        const x2 = toLeft ? refTable.position.x : refTable.position.x + TABLE_WIDTH;
         const y2 = colY(refTable, refColIdx);
 
         const srcCol = table.columns[srcColIdx];
         const isUnique = srcCol?.unique ?? false;
 
-        result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toRight, isUnique });
+        result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique });
       }
     }
     return result;
@@ -60,19 +62,20 @@
 
   function bezierPath(line: FKLine): string {
     const { x1, y1, x2, y2 } = line;
+    // Control point offsets: exit direction from source, entry direction to target
     const cx1 = x1 + (line.fromRight ? 60 : -60);
-    const cx2 = x2 + (line.toRight ? 60 : -60);
+    const cx2 = x2 + (line.toLeft ? -60 : 60);
     return `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
   }
 
   // Crow's foot marker at the "many" end (target side)
-  // dir: +1 means line arrives from left (toRight=false i.e. target left side), -1 means right
+  // Points outward from the target table edge
   function crowsFoot(line: FKLine): string {
-    const { x2, y2, toRight } = line;
-    const dir = toRight ? 1 : -1; // direction pointing away from table
+    const { x2, y2, toLeft } = line;
+    // dir points away from the table (outward from the edge)
+    const dir = toLeft ? -1 : 1;
     const len = 10;
     const spread = 8;
-    // Three lines: straight, fan up, fan down
     const tip = x2 + dir * len;
     return [
       `M ${x2} ${y2} L ${tip} ${y2}`,
@@ -81,18 +84,19 @@
     ].join(' ');
   }
 
-  // One tick for "one" end (source side)
+  // One tick at the source side (the "one" end)
   function oneTick(line: FKLine): string {
     const { x1, y1, fromRight } = line;
-    const dir = fromRight ? -1 : 1; // pointing away from table
+    // dir points away from the table edge
+    const dir = fromRight ? 1 : -1;
     const tickX = x1 + dir * 8;
     return `M ${tickX} ${y1 - 6} L ${tickX} ${y1 + 6}`;
   }
 
-  // One tick for 1:1 (unique) — also show on target side
+  // One tick at the target side (for 1:1 unique FK)
   function oneTickTarget(line: FKLine): string {
-    const { x2, y2, toRight } = line;
-    const dir = toRight ? 1 : -1;
+    const { x2, y2, toLeft } = line;
+    const dir = toLeft ? -1 : 1;
     const tickX = x2 + dir * 8;
     return `M ${tickX} ${y2 - 6} L ${tickX} ${y2 + 6}`;
   }
@@ -113,7 +117,10 @@
 </script>
 
 <svg
-  style="position:absolute; top:0; left:0; overflow:visible; pointer-events:none; width:0; height:0"
+  width="1"
+  height="1"
+  overflow="visible"
+  style="position:absolute; top:0; left:0; pointer-events:none"
 >
   <defs>
     <marker id="circle-start" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
