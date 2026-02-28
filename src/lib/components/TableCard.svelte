@@ -135,9 +135,15 @@
       {@const fk = table.foreignKeys.find((f) => f.columnId === col.id)}
       {@const refTable = fk ? erdStore.schema.tables.find((t) => t.id === fk.referencedTableId) : undefined}
       {@const refCol = refTable ? refTable.columns.find((c) => c.id === fk!.referencedColumnId) : undefined}
+      {@const hfk = erdStore.hoveredFkInfo}
+      {@const isFkHighlighted = hfk !== null && (
+        (hfk.sourceTableId === table.id && hfk.sourceColumnId === col.id) ||
+        (hfk.refTableId === table.id && hfk.refColumnId === col.id)
+      )}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="column-row"
+        class:fk-highlighted={isFkHighlighted}
         ondblclick={(e) => onColumnDblClick(e, col.id)}
         onmouseenter={() => (erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id })}
         onmouseleave={() => (erdStore.hoveredColumnInfo = null)}
@@ -323,6 +329,10 @@
 
   .column-row:hover {
     background: #f1f5f9;
+  }
+
+  .column-row.fk-highlighted {
+    background: #dbeafe;
   }
 
   /* Key badge (PK / FK) */

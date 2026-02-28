@@ -42,11 +42,8 @@
         const srcCenterX = table.position.x + TABLE_WIDTH / 2;
         const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
 
-        // Determine exit/entry sides
-        // fromRight: source exits from right edge (target is to the right)
-        // toLeft: target receives on left edge (source is to the left)
         const fromRight = srcCenterX <= refCenterX;
-        const toLeft = fromRight; // target's entry side is left when source is left
+        const toLeft = fromRight;
 
         const x1 = fromRight ? table.position.x + TABLE_WIDTH : table.position.x;
         const y1 = colY(table, srcColIdx);
@@ -65,9 +62,10 @@
 
   function bezierPath(line: FKLine): string {
     const { x1, y1, x2, y2 } = line;
-    // Control point offsets: exit direction from source, entry direction to target
-    const cx1 = x1 + (line.fromRight ? 60 : -60);
-    const cx2 = x2 + (line.toLeft ? -60 : 60);
+    const dx = Math.abs(x2 - x1);
+    const offset = Math.max(40, Math.min(150, dx * 0.4));
+    const cx1 = x1 + (line.fromRight ? offset : -offset);
+    const cx2 = x2 + (line.toLeft ? -offset : offset);
     return `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
   }
 
@@ -105,6 +103,21 @@
   }
 
   let hoveredId = $state<string | null>(null);
+
+  function onLineEnter(line: FKLine) {
+    hoveredId = line.fk.id;
+    erdStore.hoveredFkInfo = {
+      sourceTableId: line.tableId,
+      sourceColumnId: line.fk.columnId,
+      refTableId: line.fk.referencedTableId,
+      refColumnId: line.fk.referencedColumnId,
+    };
+  }
+
+  function onLineLeave() {
+    hoveredId = null;
+    erdStore.hoveredFkInfo = null;
+  }
 
   async function handleLineClick(line: FKLine) {
     const colName = erdStore.schema.tables
@@ -148,13 +161,13 @@
       d={bezierPath(line)}
       fill="none"
       stroke="transparent"
-      stroke-width="12"
+      stroke-width="14"
       role="button"
       tabindex="0"
       aria-label="FK 관계선 삭제"
       style="pointer-events:stroke; cursor:pointer"
-      onmouseenter={() => (hoveredId = line.fk.id)}
-      onmouseleave={() => (hoveredId = null)}
+      onmouseenter={() => onLineEnter(line)}
+      onmouseleave={onLineLeave}
       onclick={() => handleLineClick(line)}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
     />
@@ -164,18 +177,18 @@
       d={bezierPath(line)}
       fill="none"
       stroke={color}
-      stroke-width={isHovered ? 2 : 1.5}
+      stroke-width={isHovered ? 3 : 2}
       stroke-dasharray={line.isNullable ? '6 3' : 'none'}
     />
 
     <!-- Source side: one tick -->
-    <path d={oneTick(line)} stroke={color} stroke-width="1.5" fill="none" />
+    <path d={oneTick(line)} stroke={color} stroke-width="2" fill="none" />
 
     <!-- Target side: crow's foot (N) or one tick (1:1 unique) -->
     {#if line.isUnique}
-      <path d={oneTickTarget(line)} stroke={color} stroke-width="1.5" fill="none" />
+      <path d={oneTickTarget(line)} stroke={color} stroke-width="2" fill="none" />
     {:else}
-      <path d={crowsFoot(line)} stroke={color} stroke-width="1.5" fill="none" />
+      <path d={crowsFoot(line)} stroke={color} stroke-width="2" fill="none" />
     {/if}
   {/each}
 </svg>
