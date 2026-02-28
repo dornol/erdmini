@@ -3,6 +3,7 @@
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
+  import SearchableSelect from './SearchableSelect.svelte';
 
   interface Props {
     tableId: string;
@@ -90,16 +91,12 @@
         <div class="field-row-2col">
           <div class="field-row">
             <label for="ce-type" class="field-label">{m.column_type()}</label>
-            <select
-              id="ce-type"
-              class="field-input"
+            <SearchableSelect
+              options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
               value={col.type}
-              onchange={(e) => onChange('type', (e.target as HTMLSelectElement).value)}
-            >
-              {#each COLUMN_TYPES as t}
-                <option value={t}>{t}</option>
-              {/each}
-            </select>
+              onchange={(v) => onChange('type', v)}
+              size="md"
+            />
           </div>
           {#if hasLength}
             <div class="field-row">

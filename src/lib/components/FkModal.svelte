@@ -3,6 +3,7 @@
   import { REFERENTIAL_ACTIONS } from '$lib/types/erd';
   import type { ReferentialAction } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
+  import SearchableSelect from './SearchableSelect.svelte';
 
   interface Props {
     tableId: string;
@@ -76,12 +77,13 @@
     <div class="modal-body">
       <div class="form-row">
         <label for="fkm-ref-table">{m.fk_ref_table()}</label>
-        <select id="fkm-ref-table" bind:value={fkRefTableId}>
-          <option value="">{m.select_placeholder()}</option>
-          {#each otherTables as t}
-            <option value={t.id}>{t.name}</option>
-          {/each}
-        </select>
+        <SearchableSelect
+          options={otherTables.map((t) => ({ value: t.id, label: t.name }))}
+          value={fkRefTableId}
+          onchange={(v) => (fkRefTableId = v)}
+          placeholder={m.select_placeholder()}
+          size="md"
+        />
       </div>
 
       <!-- Column pairs -->
@@ -92,26 +94,26 @@
         </div>
         {#each columnPairs as pair, idx}
           <div class="pair-row">
-            <select
-              class="pair-select"
-              bind:value={pair.srcColId}
-            >
-              <option value="">{m.fk_source_column()}</option>
-              {#each selectedTable?.columns ?? [] as col}
-                <option value={col.id}>{col.name}</option>
-              {/each}
-            </select>
+            <div class="pair-select">
+              <SearchableSelect
+                options={(selectedTable?.columns ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                value={pair.srcColId}
+                onchange={(v) => (pair.srcColId = v)}
+                placeholder={m.fk_source_column()}
+                size="md"
+              />
+            </div>
             <span class="pair-arrow">→</span>
-            <select
-              class="pair-select"
-              bind:value={pair.refColId}
-              disabled={!fkRefTableId}
-            >
-              <option value="">{m.fk_ref_column()}</option>
-              {#each refTableColumns as col}
-                <option value={col.id}>{col.name}</option>
-              {/each}
-            </select>
+            <div class="pair-select">
+              <SearchableSelect
+                options={refTableColumns.map((c) => ({ value: c.id, label: c.name }))}
+                value={pair.refColId}
+                onchange={(v) => (pair.refColId = v)}
+                placeholder={m.fk_ref_column()}
+                disabled={!fkRefTableId}
+                size="md"
+              />
+            </div>
             {#if columnPairs.length > 1}
               <button class="btn-remove-pair" onclick={() => removePair(idx)}>✕</button>
             {/if}
@@ -121,20 +123,22 @@
 
       <div class="form-row-2col">
         <div class="form-row">
-          <label for="fkm-on-delete">ON DELETE</label>
-          <select id="fkm-on-delete" bind:value={fkOnDelete}>
-            {#each REFERENTIAL_ACTIONS as a}
-              <option value={a}>{a}</option>
-            {/each}
-          </select>
+          <span class="form-label">ON DELETE</span>
+          <SearchableSelect
+            options={REFERENTIAL_ACTIONS.map((a) => ({ value: a, label: a }))}
+            value={fkOnDelete}
+            onchange={(v) => (fkOnDelete = v as ReferentialAction)}
+            size="md"
+          />
         </div>
         <div class="form-row">
-          <label for="fkm-on-update">ON UPDATE</label>
-          <select id="fkm-on-update" bind:value={fkOnUpdate}>
-            {#each REFERENTIAL_ACTIONS as a}
-              <option value={a}>{a}</option>
-            {/each}
-          </select>
+          <span class="form-label">ON UPDATE</span>
+          <SearchableSelect
+            options={REFERENTIAL_ACTIONS.map((a) => ({ value: a, label: a }))}
+            value={fkOnUpdate}
+            onchange={(v) => (fkOnUpdate = v as ReferentialAction)}
+            size="md"
+          />
         </div>
       </div>
     </div>
@@ -222,7 +226,8 @@
     gap: 12px;
   }
 
-  .form-row label {
+  .form-row label,
+  .form-label {
     font-size: 11px;
     font-weight: 600;
     color: #64748b;
@@ -230,25 +235,6 @@
     letter-spacing: 0.05em;
   }
 
-  .form-row select {
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    padding: 7px 10px;
-    font-size: 13px;
-    color: #1e293b;
-    background: white;
-    outline: none;
-    width: 100%;
-  }
-
-  .form-row select:focus {
-    border-color: #3b82f6;
-  }
-
-  .form-row select:disabled {
-    background: #f8fafc;
-    color: #94a3b8;
-  }
 
   /* Column pairs section */
   .pairs-section {
@@ -294,22 +280,7 @@
 
   .pair-select {
     flex: 1;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    padding: 7px 10px;
-    font-size: 13px;
-    color: #1e293b;
-    background: white;
-    outline: none;
-  }
-
-  .pair-select:focus {
-    border-color: #3b82f6;
-  }
-
-  .pair-select:disabled {
-    background: #f8fafc;
-    color: #94a3b8;
+    min-width: 0;
   }
 
   .pair-arrow {

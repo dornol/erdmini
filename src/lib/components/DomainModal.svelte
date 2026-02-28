@@ -4,6 +4,7 @@
   import type { ColumnDomain, ColumnType } from '$lib/types/erd';
   import { exportDomainsToXlsx, exportDomainTemplate, importDomainsFromXlsx } from '$lib/utils/domain-xlsx';
   import * as m from '$lib/paraglide/messages';
+  import SearchableSelect from './SearchableSelect.svelte';
 
   interface Props {
     onclose: () => void;
@@ -305,12 +306,13 @@
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <tr class="editing-row" onkeydown={handleRowKeydown}>
                   <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
-                  <td>
-                    <select class="cell-select" bind:value={formType}>
-                      {#each COLUMN_TYPES as t}
-                        <option value={t}>{t}</option>
-                      {/each}
-                    </select>
+                  <td class="td-type-cell">
+                    <SearchableSelect
+                      options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
+                      value={formType}
+                      onchange={(v) => (formType = v as ColumnType)}
+                      size="sm"
+                    />
                   </td>
                   <td>
                     {#if hasLength}
@@ -363,12 +365,13 @@
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <tr class="editing-row add-row" onkeydown={handleRowKeydown}>
                 <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
-                <td>
-                  <select class="cell-select" bind:value={formType}>
-                    {#each COLUMN_TYPES as t}
-                      <option value={t}>{t}</option>
-                    {/each}
-                  </select>
+                <td class="td-type-cell">
+                  <SearchableSelect
+                    options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
+                    value={formType}
+                    onchange={(v) => (formType = v as ColumnType)}
+                    size="sm"
+                  />
                 </td>
                 <td>
                   {#if hasLength}
@@ -670,19 +673,8 @@
     width: 70px;
   }
 
-  .cell-select {
-    border: 1px solid #cbd5e1;
-    border-radius: 3px;
-    padding: 3px 4px;
-    font-size: 12px;
-    color: #1e293b;
-    outline: none;
-    background: white;
-    cursor: pointer;
-  }
-
-  .cell-select:focus {
-    border-color: #3b82f6;
+  .td-type-cell {
+    min-width: 110px;
   }
 
   .badge {

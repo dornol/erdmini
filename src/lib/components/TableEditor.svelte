@@ -4,6 +4,7 @@
   import type { Column } from '$lib/types/erd';
   import FkModal from './FkModal.svelte';
   import * as m from '$lib/paraglide/messages';
+  import SearchableSelect from './SearchableSelect.svelte';
 
   let selectedTable = $derived(erdStore.selectedTable);
 
@@ -183,15 +184,14 @@
 
             <!-- Type + Domain apply/badge -->
             <div class="col-type-row">
-              <select
-                class="col-select col-type"
-                value={col.type}
-                onchange={(e) => onColumnChange(col, 'type', (e.target as HTMLSelectElement).value)}
-              >
-                {#each COLUMN_TYPES as t}
-                  <option value={t}>{t}</option>
-                {/each}
-              </select>
+              <div class="col-type">
+                <SearchableSelect
+                  options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
+                  value={col.type}
+                  onchange={(v) => onColumnChange(col, 'type', v)}
+                  size="sm"
+                />
+              </div>
               {#if hasDomains}
                 {#if col.domainId}
                   {@const linkedDomain = erdStore.schema.domains.find((d) => d.id === col.domainId)}
@@ -204,20 +204,15 @@
                     >✕</button>
                   </div>
                 {:else}
-                  <select
-                    class="col-select domain-select"
-                    title={m.domain_apply()}
-                    value=""
-                    onchange={(e) => {
-                      const v = (e.target as HTMLSelectElement).value;
-                      if (v) { applyDomain(col.id, v); (e.target as HTMLSelectElement).value = ''; }
-                    }}
-                  >
-                    <option value="">{m.domain_select_placeholder()}</option>
-                    {#each erdStore.schema.domains as domain}
-                      <option value={domain.id}>{domain.name}</option>
-                    {/each}
-                  </select>
+                  <div class="domain-select" title={m.domain_apply()}>
+                    <SearchableSelect
+                      options={erdStore.schema.domains.map((d) => ({ value: d.id, label: d.name }))}
+                      value=""
+                      onchange={(v) => { if (v) applyDomain(col.id, v); }}
+                      placeholder={m.domain_select_placeholder()}
+                      size="sm"
+                    />
+                  </div>
                 {/if}
               {/if}
             </div>
@@ -476,7 +471,7 @@
     gap: 4px;
   }
 
-  .col-input, .col-select {
+  .col-input {
     border: 1px solid #e2e8f0;
     border-radius: 4px;
     padding: 4px 7px;
@@ -488,20 +483,18 @@
     box-sizing: border-box;
   }
 
-  .col-input:focus, .col-select:focus {
+  .col-input:focus {
     border-color: #3b82f6;
   }
 
   .col-type {
     flex: 1;
+    min-width: 0;
   }
 
   .domain-select {
-    width: auto;
+    width: 80px;
     flex-shrink: 0;
-    font-size: 11px;
-    color: #64748b;
-    padding: 4px 5px;
   }
 
   .domain-badge {

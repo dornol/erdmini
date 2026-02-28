@@ -6,6 +6,7 @@
   import { exportDDL } from '$lib/utils/ddl-export';
   import { importDDL } from '$lib/utils/ddl-import';
   import * as m from '$lib/paraglide/messages';
+  import SearchableSelect from './SearchableSelect.svelte';
 
   let {
     mode = 'export',
@@ -204,11 +205,14 @@
       {#if activeTab === 'export'}
         <div class="export-controls">
           <span class="label">Dialect:</span>
-          <select class="dialect-select" bind:value={exportDialect}>
-            {#each DIALECT_OPTIONS as opt}
-              <option value={opt.value}>{opt.label}</option>
-            {/each}
-          </select>
+          <div class="dialect-select-wrap">
+            <SearchableSelect
+              options={DIALECT_OPTIONS}
+              value={exportDialect}
+              onchange={(v) => (exportDialect = v as Dialect)}
+              size="md"
+            />
+          </div>
           <div class="spacer"></div>
           <button class="btn-secondary" onclick={copyToClipboard}>
             {copyLabel === 'copy' ? m.ddl_copy() : m.ddl_copied()}
@@ -219,11 +223,14 @@
       {:else}
         <div class="import-controls">
           <span class="label">Dialect:</span>
-          <select class="dialect-select" bind:value={importDialect}>
-            {#each DIALECT_OPTIONS as opt}
-              <option value={opt.value}>{opt.label}</option>
-            {/each}
-          </select>
+          <div class="dialect-select-wrap">
+            <SearchableSelect
+              options={DIALECT_OPTIONS}
+              value={importDialect}
+              onchange={(v) => (importDialect = v as Dialect)}
+              size="md"
+            />
+          </div>
           <button class="btn-secondary" onclick={openFile}>{m.action_open_file()}</button>
           <div class="spacer"></div>
           <button class="btn-primary" onclick={doImport} disabled={importing}>
@@ -346,19 +353,9 @@
     font-weight: 600;
   }
 
-  .dialect-select {
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 5px 8px;
-    font-size: 13px;
-    color: #1e293b;
-    background: white;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .dialect-select:focus {
-    border-color: #93c5fd;
+  .dialect-select-wrap {
+    width: 140px;
+    flex-shrink: 0;
   }
 
   .spacer {
