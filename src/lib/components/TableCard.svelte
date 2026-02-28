@@ -72,7 +72,7 @@
 <div
   class="table-card"
   class:selected={isSelected}
-  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {isDragging ? 'grabbing' : 'grab'}"
+  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {isDragging ? 'grabbing' : 'grab'}; z-index: {isSelected ? 10 : 1}"
   onmousedown={onMouseDown}
 >
   <!-- Header -->

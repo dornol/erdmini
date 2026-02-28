@@ -8,17 +8,22 @@
 
   let tableNameInput = $state('');
   let tableCommentInput = $state('');
+  // Plain variable (not $state) — holds the ID of the table being edited.
+  // Canvas mousedown sets selectedTableId=null BEFORE blur fires, so we can't
+  // rely on selectedTable in blur handlers. capturedTableId persists through that gap.
+  let capturedTableId: string | null = null;
 
   $effect(() => {
     if (selectedTable) {
       tableNameInput = selectedTable.name;
       tableCommentInput = selectedTable.comment ?? '';
+      capturedTableId = selectedTable.id;
     }
   });
 
   function onTableNameBlur() {
-    if (selectedTable && tableNameInput.trim()) {
-      erdStore.updateTableName(selectedTable.id, tableNameInput.trim());
+    if (capturedTableId && tableNameInput.trim()) {
+      erdStore.updateTableName(capturedTableId, tableNameInput.trim());
     }
   }
 
@@ -27,8 +32,8 @@
   }
 
   function onTableCommentBlur() {
-    if (selectedTable) {
-      erdStore.updateTableComment(selectedTable.id, tableCommentInput);
+    if (capturedTableId) {
+      erdStore.updateTableComment(capturedTableId, tableCommentInput);
     }
   }
 
