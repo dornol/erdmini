@@ -73,6 +73,8 @@
   }
 
   let layoutOpen = $state(false);
+  let importOpen = $state(false);
+  let exportOpen = $state(false);
 
   const LAYOUT_LABELS: Record<LayoutType, () => string> = {
     grid: () => m.layout_grid(),
@@ -197,23 +199,69 @@
       {/if}
     </div>
 
-    <button class="btn-secondary" onclick={() => (modalMode = 'import')}>
-      Import DDL
-    </button>
-    <button class="btn-secondary" onclick={() => (modalMode = 'export')}>
-      Export DDL
-    </button>
-    <button class="btn-secondary" onclick={importJson}>
-      {m.toolbar_json_import()}
-    </button>
-    <button class="btn-secondary" onclick={exportJson}>
-      {m.toolbar_json_export()}
-    </button>
+    <span class="separator"></span>
+
+    <!-- Import dropdown -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-secondary"
+        onclick={() => (importOpen = !importOpen)}
+        aria-expanded={importOpen}
+        aria-haspopup="menu"
+      >
+        {m.toolbar_import()} ▾
+      </button>
+      {#if importOpen}
+        <div
+          class="dropdown-menu"
+          role="menu"
+          tabindex="-1"
+          onmouseleave={() => (importOpen = false)}
+        >
+          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'import'; importOpen = false; }}>
+            DDL
+          </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { importJson(); importOpen = false; }}>
+            JSON
+          </button>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Export dropdown -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-secondary"
+        onclick={() => (exportOpen = !exportOpen)}
+        aria-expanded={exportOpen}
+        aria-haspopup="menu"
+      >
+        {m.toolbar_export()} ▾
+      </button>
+      {#if exportOpen}
+        <div
+          class="dropdown-menu"
+          role="menu"
+          tabindex="-1"
+          onmouseleave={() => (exportOpen = false)}
+        >
+          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'export'; exportOpen = false; }}>
+            DDL
+          </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportJson(); exportOpen = false; }}>
+            JSON
+          </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportImage(); exportOpen = false; }}>
+            {m.toolbar_image_export()}
+          </button>
+        </div>
+      {/if}
+    </div>
+
+    <span class="separator"></span>
+
     <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
       {m.toolbar_domains()}
-    </button>
-    <button class="btn-secondary" onclick={exportImage}>
-      {m.toolbar_image_export()}
     </button>
 
     <!-- Language toggle -->
@@ -326,6 +374,14 @@
     background: #3b82f6;
     color: white;
     border-color: #3b82f6;
+  }
+
+  .separator {
+    width: 1px;
+    height: 20px;
+    background: #475569;
+    flex-shrink: 0;
+    margin: 0 2px;
   }
 
   .dropdown-wrap {
