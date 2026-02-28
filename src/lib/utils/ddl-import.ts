@@ -64,17 +64,16 @@ function getUniqueName(name: string, existing: string[]): string {
 }
 
 interface ParsedFK {
-  columnName: string;
+  columnNames: string[];
   refTableName: string;
-  refColumnName: string;
+  refColumnNames: string[];
   onDelete: ReferentialAction;
   onUpdate: ReferentialAction;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractFKFromRefDef(refDef: any, fkColumns: any[]): ParsedFK[] {
-  if (!refDef) return [];
-  const results: ParsedFK[] = [];
+function extractFKFromRefDef(refDef: any, fkColumns: any[]): ParsedFK | null {
+  if (!refDef) return null;
   const refTable = refDef.table?.[0]?.table ?? '';
   const refCols = refDef.definition ?? [];
   let onDelete: ReferentialAction = 'RESTRICT';
@@ -86,16 +85,13 @@ function extractFKFromRefDef(refDef: any, fkColumns: any[]): ParsedFK[] {
       if (act.type === 'on update') onUpdate = parseRefAction(val);
     }
   }
+  const columnNames: string[] = [];
+  const refColumnNames: string[] = [];
   for (let i = 0; i < fkColumns.length; i++) {
-    results.push({
-      columnName: extractColumnName(fkColumns[i]?.column ?? fkColumns[i]),
-      refTableName: refTable,
-      refColumnName: extractColumnName(refCols[i]?.column ?? refCols[i]),
-      onDelete,
-      onUpdate,
-    });
+    columnNames.push(extractColumnName(fkColumns[i]?.column ?? fkColumns[i]));
+    refColumnNames.push(extractColumnName(refCols[i]?.column ?? refCols[i]));
   }
-  return results;
+  return { columnNames, refTableName: refTable, refColumnNames, onDelete, onUpdate };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,7 +99,7 @@ async function getParser(dialect: Dialect): Promise<any> {
   switch (dialect) {
     case 'mysql': {
       const mod = await import('node-sql-parser/build/mysql');
-      return new mod.Parser();
+      return new mod.Parser();//
     }
     case 'mariadb': {
       const mod = await import('node-sql-parser/build/mariadb');
@@ -162,10 +158,12 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
         for (const expr of stmt.expr) {
           if (expr.action === 'add' && expr.create_definitions?.constraint_type === 'FOREIGN KEY') {
             const fkDefs = expr.create_definitions.definition ?? [];
-            const fks = extractFKFromRefDef(expr.create_definitions.reference_definition, fkDefs);
-            const existing = alterFKMap.get(tName) ?? [];
-            existing.push(...fks);
-            alterFKMap.set(tName, existing);
+            const fk = extractFKFromRefDef(expr.create_definitions.reference_definition, fkDefs);
+            if (fk) {
+              const existing = alterFKMap.get(tName) ?? [];
+              existing.push(fk);
+              alterFKMap.set(tName, existing);
+            }
           }
         }
       }
@@ -259,8 +257,8 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
             }
           } else if (ct === 'FOREIGN KEY') {
             const fkCols = def.definition ?? [];
-            const fks = extractFKFromRefDef(def.reference_definition, fkCols);
-            foreignKeys.push(...fks);
+            const fk = extractFKFromRefDef(def.reference_definition, fkCols);
+            if (fk) foreignKeys.push(fk);
           }
         }
       }
@@ -332,20 +330,33 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
     delete (table as Table & { _parsedFKs?: ParsedFK[] })._parsedFKs;
 
     for (const fkDef of parsedFKs) {
-      const srcCol = table.columns.find((c) => c.name === fkDef.columnName);
       const refTable = tables.find((t) => t.name === fkDef.refTableName);
-      const refCol = refTable?.columns.find((c) => c.name === fkDef.refColumnName);
-      if (!srcCol || !refTable || !refCol) {
-        errors.push(
-          `FK 해결 실패: ${table.name}.${fkDef.columnName} → ${fkDef.refTableName}.${fkDef.refColumnName}`,
-        );
+      if (!refTable) {
+        errors.push(`FK 해결 실패: ${table.name}.(${fkDef.columnNames.join(', ')}) → ${fkDef.refTableName}`);
         continue;
       }
+      const columnIds: string[] = [];
+      const referencedColumnIds: string[] = [];
+      let valid = true;
+      for (let i = 0; i < fkDef.columnNames.length; i++) {
+        const srcCol = table.columns.find((c) => c.name === fkDef.columnNames[i]);
+        const refCol = refTable.columns.find((c) => c.name === fkDef.refColumnNames[i]);
+        if (!srcCol || !refCol) {
+          errors.push(
+            `FK 해결 실패: ${table.name}.${fkDef.columnNames[i]} → ${fkDef.refTableName}.${fkDef.refColumnNames[i]}`,
+          );
+          valid = false;
+          break;
+        }
+        columnIds.push(srcCol.id);
+        referencedColumnIds.push(refCol.id);
+      }
+      if (!valid) continue;
       const fk: ForeignKey = {
         id: generateId(),
-        columnId: srcCol.id,
+        columnIds,
         referencedTableId: refTable.id,
-        referencedColumnId: refCol.id,
+        referencedColumnIds,
         onDelete: fkDef.onDelete,
         onUpdate: fkDef.onUpdate,
       };

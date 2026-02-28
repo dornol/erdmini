@@ -48,9 +48,9 @@ export const REFERENTIAL_ACTIONS: ReferentialAction[] = ['CASCADE', 'SET NULL', 
 
 export interface ForeignKey {
   id: string;
-  columnId: string;
+  columnIds: string[];
   referencedTableId: string;
-  referencedColumnId: string;
+  referencedColumnIds: string[];
   onDelete: ReferentialAction;
   onUpdate: ReferentialAction;
 }

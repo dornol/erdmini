@@ -45,39 +45,41 @@
         const refTable = erdStore.schema.tables.find((t) => t.id === fk.referencedTableId);
         if (!refTable) continue;
 
-        const srcColIdx = getColIndex(table, fk.columnId);
-        const refColIdx = getColIndex(refTable, fk.referencedColumnId);
-        if (srcColIdx < 0 || refColIdx < 0) continue;
+        // Generate one line per column pair in composite FK
+        for (let i = 0; i < fk.columnIds.length; i++) {
+          const srcColIdx = getColIndex(table, fk.columnIds[i]);
+          const refColIdx = getColIndex(refTable, fk.referencedColumnIds[i]);
+          if (srcColIdx < 0 || refColIdx < 0) continue;
 
-        const srcCenterX = table.position.x + TABLE_WIDTH / 2;
-        const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
+          const srcCenterX = table.position.x + TABLE_WIDTH / 2;
+          const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
 
-        // Detect horizontal overlap (vertically stacked tables)
-        const overlapAmount = Math.min(table.position.x + TABLE_WIDTH, refTable.position.x + TABLE_WIDTH)
-          - Math.max(table.position.x, refTable.position.x);
-        const overlapsX = overlapAmount > TABLE_WIDTH * 0.3;
+          // Detect horizontal overlap (vertically stacked tables)
+          const overlapAmount = Math.min(table.position.x + TABLE_WIDTH, refTable.position.x + TABLE_WIDTH)
+            - Math.max(table.position.x, refTable.position.x);
+          const overlapsX = overlapAmount > TABLE_WIDTH * 0.3;
 
-        let fromRight: boolean;
-        let toLeft: boolean;
-        if (overlapsX) {
-          // Both exit from the same side — smooth C-curve instead of U-turn
-          fromRight = true;
-          toLeft = false;
-        } else {
-          fromRight = srcCenterX <= refCenterX;
-          toLeft = fromRight;
+          let fromRight: boolean;
+          let toLeft: boolean;
+          if (overlapsX) {
+            fromRight = true;
+            toLeft = false;
+          } else {
+            fromRight = srcCenterX <= refCenterX;
+            toLeft = fromRight;
+          }
+
+          const x1 = fromRight ? table.position.x + TABLE_WIDTH : table.position.x;
+          const y1 = colY(table, srcColIdx);
+          const x2 = toLeft ? refTable.position.x : refTable.position.x + TABLE_WIDTH;
+          const y2 = colY(refTable, refColIdx);
+
+          const srcCol = table.columns[srcColIdx];
+          const isUnique = srcCol?.unique ?? false;
+          const isNullable = srcCol?.nullable ?? false;
+
+          result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable });
         }
-
-        const x1 = fromRight ? table.position.x + TABLE_WIDTH : table.position.x;
-        const y1 = colY(table, srcColIdx);
-        const x2 = toLeft ? refTable.position.x : refTable.position.x + TABLE_WIDTH;
-        const y2 = colY(refTable, refColIdx);
-
-        const srcCol = table.columns[srcColIdx];
-        const isUnique = srcCol?.unique ?? false;
-        const isNullable = srcCol?.nullable ?? false;
-
-        result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable });
       }
     }
     return result;
@@ -151,9 +153,9 @@
     hoveredId = line.fk.id;
     erdStore.hoveredFkInfo = [{
       sourceTableId: line.tableId,
-      sourceColumnId: line.fk.columnId,
+      sourceColumnIds: line.fk.columnIds,
       refTableId: line.fk.referencedTableId,
-      refColumnId: line.fk.referencedColumnId,
+      refColumnIds: line.fk.referencedColumnIds,
     }];
   }
 
@@ -163,12 +165,11 @@
   }
 
   async function handleLineClick(line: FKLine) {
-    const colName = erdStore.schema.tables
-      .find((t) => t.id === line.tableId)
-      ?.columns.find((c) => c.id === line.fk.columnId)?.name ?? line.fk.columnId;
+    const srcTable = erdStore.schema.tables.find((t) => t.id === line.tableId);
     const refTable = erdStore.schema.tables.find((t) => t.id === line.fk.referencedTableId);
-    const refCol = refTable?.columns.find((c) => c.id === line.fk.referencedColumnId);
-    const msg = `FK "${colName}" → "${refTable?.name ?? '?'}.${refCol?.name ?? '?'}" 을(를) 삭제하시겠습니까?`;
+    const srcColNames = line.fk.columnIds.map((id) => srcTable?.columns.find((c) => c.id === id)?.name ?? '?');
+    const refColNames = line.fk.referencedColumnIds.map((id) => refTable?.columns.find((c) => c.id === id)?.name ?? '?');
+    const msg = `FK (${srcColNames.join(', ')}) → ${refTable?.name ?? '?'}.(${refColNames.join(', ')}) 을(를) 삭제하시겠습니까?`;
     const ok = await dialogStore.confirm(msg, {
       title: 'FK 삭제',
       confirmText: '삭제',
@@ -184,11 +185,11 @@
   overflow="visible"
   style="position:absolute; top:0; left:0; pointer-events:none"
 >
-  {#each lines as line (line.fk.id)}
+  {#each lines as line, idx (line.fk.id + '-' + idx)}
     {@const hc = erdStore.hoveredColumnInfo}
     {@const isColumnHovered = hc !== null && (
-      (hc.tableId === line.tableId && hc.columnId === line.fk.columnId) ||
-      (hc.tableId === line.fk.referencedTableId && hc.columnId === line.fk.referencedColumnId)
+      (hc.tableId === line.tableId && line.fk.columnIds.includes(hc.columnId)) ||
+      (hc.tableId === line.fk.referencedTableId && line.fk.referencedColumnIds.includes(hc.columnId))
     )}
     {@const isHovered = hoveredId === line.fk.id || isColumnHovered}
     {@const color = isHovered ? lineColors.hover : lineColors.normal}

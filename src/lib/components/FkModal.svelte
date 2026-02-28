@@ -14,19 +14,36 @@
   let selectedTable = $derived(erdStore.schema.tables.find((t) => t.id === tableId));
   let otherTables = $derived(erdStore.schema.tables.filter((t) => t.id !== tableId));
 
-  let fkColumnId = $state('');
   let fkRefTableId = $state('');
-  let fkRefColumnId = $state('');
   let fkOnDelete = $state<ReferentialAction>('RESTRICT');
   let fkOnUpdate = $state<ReferentialAction>('RESTRICT');
+
+  // Composite FK: list of column pairs
+  let columnPairs = $state<{ srcColId: string; refColId: string }[]>([{ srcColId: '', refColId: '' }]);
 
   let refTableColumns = $derived(
     erdStore.schema.tables.find((t) => t.id === fkRefTableId)?.columns ?? [],
   );
 
+  function addPair() {
+    columnPairs = [...columnPairs, { srcColId: '', refColId: '' }];
+  }
+
+  function removePair(idx: number) {
+    columnPairs = columnPairs.filter((_, i) => i !== idx);
+  }
+
+  let canSubmit = $derived(
+    fkRefTableId !== '' &&
+    columnPairs.length > 0 &&
+    columnPairs.every((p) => p.srcColId !== '' && p.refColId !== ''),
+  );
+
   function submit() {
-    if (!fkColumnId || !fkRefTableId || !fkRefColumnId) return;
-    erdStore.addForeignKey(tableId, fkColumnId, fkRefTableId, fkRefColumnId, fkOnDelete, fkOnUpdate);
+    if (!canSubmit) return;
+    const columnIds = columnPairs.map((p) => p.srcColId);
+    const referencedColumnIds = columnPairs.map((p) => p.refColId);
+    erdStore.addForeignKey(tableId, columnIds, fkRefTableId, referencedColumnIds, fkOnDelete, fkOnUpdate);
     onclose();
   }
 
@@ -58,16 +75,6 @@
 
     <div class="modal-body">
       <div class="form-row">
-        <label for="fkm-col">{m.fk_column_label()}</label>
-        <select id="fkm-col" bind:value={fkColumnId}>
-          <option value="">{m.select_placeholder()}</option>
-          {#each selectedTable?.columns ?? [] as col}
-            <option value={col.id}>{col.name}</option>
-          {/each}
-        </select>
-      </div>
-
-      <div class="form-row">
         <label for="fkm-ref-table">{m.fk_ref_table()}</label>
         <select id="fkm-ref-table" bind:value={fkRefTableId}>
           <option value="">{m.select_placeholder()}</option>
@@ -77,14 +84,39 @@
         </select>
       </div>
 
-      <div class="form-row">
-        <label for="fkm-ref-col">{m.fk_ref_column()}</label>
-        <select id="fkm-ref-col" bind:value={fkRefColumnId} disabled={!fkRefTableId}>
-          <option value="">{m.select_placeholder()}</option>
-          {#each refTableColumns as col}
-            <option value={col.id}>{col.name}</option>
-          {/each}
-        </select>
+      <!-- Column pairs -->
+      <div class="pairs-section">
+        <div class="pairs-header">
+          <span class="pairs-label">{m.fk_column_label()} / {m.fk_ref_column()}</span>
+          <button class="btn-add-pair" onclick={addPair}>{m.fk_add_pair()}</button>
+        </div>
+        {#each columnPairs as pair, idx}
+          <div class="pair-row">
+            <select
+              class="pair-select"
+              bind:value={pair.srcColId}
+            >
+              <option value="">{m.fk_source_column()}</option>
+              {#each selectedTable?.columns ?? [] as col}
+                <option value={col.id}>{col.name}</option>
+              {/each}
+            </select>
+            <span class="pair-arrow">→</span>
+            <select
+              class="pair-select"
+              bind:value={pair.refColId}
+              disabled={!fkRefTableId}
+            >
+              <option value="">{m.fk_ref_column()}</option>
+              {#each refTableColumns as col}
+                <option value={col.id}>{col.name}</option>
+              {/each}
+            </select>
+            {#if columnPairs.length > 1}
+              <button class="btn-remove-pair" onclick={() => removePair(idx)}>✕</button>
+            {/if}
+          </div>
+        {/each}
       </div>
 
       <div class="form-row-2col">
@@ -112,7 +144,7 @@
       <button
         class="btn-submit"
         onclick={submit}
-        disabled={!fkColumnId || !fkRefTableId || !fkRefColumnId}
+        disabled={!canSubmit}
       >
         {m.action_add_submit()}
       </button>
@@ -135,7 +167,7 @@
     background: white;
     border-radius: 10px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    width: 420px;
+    width: 480px;
     max-width: 90vw;
     display: flex;
     flex-direction: column;
@@ -216,6 +248,91 @@
   .form-row select:disabled {
     background: #f8fafc;
     color: #94a3b8;
+  }
+
+  /* Column pairs section */
+  .pairs-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pairs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .pairs-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-add-pair {
+    font-size: 11px;
+    color: #3b82f6;
+    background: none;
+    border: 1px solid #3b82f6;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-add-pair:hover {
+    background: #eff6ff;
+  }
+
+  .pair-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pair-select {
+    flex: 1;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: #1e293b;
+    background: white;
+    outline: none;
+  }
+
+  .pair-select:focus {
+    border-color: #3b82f6;
+  }
+
+  .pair-select:disabled {
+    background: #f8fafc;
+    color: #94a3b8;
+  }
+
+  .pair-arrow {
+    color: #94a3b8;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .btn-remove-pair {
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    color: #94a3b8;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .btn-remove-pair:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    border-color: #fca5a5;
   }
 
   .modal-footer {

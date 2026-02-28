@@ -67,6 +67,8 @@
   "fk_ref_table": "Referenced table",
   "fk_ref_column": "Referenced column",
   "fk_column_label": "Column",
+  "fk_add_pair": "+ Add column pair",
+  "fk_source_column": "Source column",
   "domain_modal_title": "Column Domains",
   "domain_actions": "Actions",
   "domain_empty": "No domains.",

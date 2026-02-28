@@ -26,6 +26,21 @@ function defaultSchema(): ERDSchema {
   };
 }
 
+function migrateFK(schema: ERDSchema) {
+  for (const table of schema.tables) {
+    for (const fk of table.foreignKeys) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = fk as any;
+      if (raw.columnId && !fk.columnIds) {
+        fk.columnIds = [raw.columnId];
+        fk.referencedColumnIds = [raw.referencedColumnId];
+        delete raw.columnId;
+        delete raw.referencedColumnId;
+      }
+    }
+  }
+}
+
 function loadFromStorage(): ERDSchema {
   if (typeof window === 'undefined') return defaultSchema();
   try {
@@ -34,6 +49,8 @@ function loadFromStorage(): ERDSchema {
     const parsed = JSON.parse(raw) as ERDSchema;
     // Migrate older schemas that lack domains
     if (!parsed.domains) parsed.domains = [];
+    // Migrate legacy single-column FK format
+    migrateFK(parsed);
     return parsed;
   } catch {
     return defaultSchema();
@@ -50,7 +67,7 @@ class ERDStore {
   selectedTableIds = $state<Set<string>>(new Set());
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
   hoveredColumnInfo = $state<{ tableId: string; columnId: string } | null>(null);
-  hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnId: string; refTableId: string; refColumnId: string }[]>([]);
+  hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
 
   // Undo/Redo
   private _undoStack: HistoryEntry[] = [];
@@ -239,7 +256,7 @@ class ERDStore {
     if (!table) return;
     table.columns = table.columns.filter((c) => c.id !== columnId);
     // Remove FKs that reference this column
-    table.foreignKeys = table.foreignKeys.filter((fk) => fk.columnId !== columnId);
+    table.foreignKeys = table.foreignKeys.filter((fk) => !fk.columnIds.includes(columnId));
     this.schema.updatedAt = now();
   }
 
@@ -279,9 +296,9 @@ class ERDStore {
 
   addForeignKey(
     tableId: string,
-    columnId: string,
+    columnIds: string[],
     referencedTableId: string,
-    referencedColumnId: string,
+    referencedColumnIds: string[],
     onDelete: ForeignKey['onDelete'] = 'RESTRICT',
     onUpdate: ForeignKey['onUpdate'] = 'RESTRICT',
   ) {
@@ -289,9 +306,9 @@ class ERDStore {
     if (!table) return;
     const fk: ForeignKey = {
       id: generateId(),
-      columnId,
+      columnIds,
       referencedTableId,
-      referencedColumnId,
+      referencedColumnIds,
       onDelete,
       onUpdate,
     };
@@ -371,6 +388,7 @@ class ERDStore {
 
   loadSchema(schema: ERDSchema) {
     if (!schema.domains) schema.domains = [];
+    migrateFK(schema);
     this.schema = schema;
     this.schema.updatedAt = new Date().toISOString();
     this.selectedTableId = null;

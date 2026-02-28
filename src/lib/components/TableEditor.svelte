@@ -73,14 +73,14 @@
   // FK modal
   let showFkModal = $state(false);
 
-  function getFkLabel(fk: { columnId: string; referencedTableId: string; referencedColumnId: string; onDelete: string }) {
-    const col = selectedTable?.columns.find((c) => c.id === fk.columnId);
+  function getFkLabel(fk: { columnIds: string[]; referencedTableId: string; referencedColumnIds: string[]; onDelete: string }) {
+    const colNames = fk.columnIds.map((id) => selectedTable?.columns.find((c) => c.id === id)?.name ?? '?');
     const refTable = erdStore.schema.tables.find((t) => t.id === fk.referencedTableId);
-    const refCol = refTable?.columns.find((c) => c.id === fk!.referencedColumnId);
+    const refColNames = fk.referencedColumnIds.map((id) => refTable?.columns.find((c) => c.id === id)?.name ?? '?');
     return {
-      colName: col?.name ?? '?',
+      colName: colNames.length === 1 ? colNames[0] : `(${colNames.join(', ')})`,
       refTableName: refTable?.name ?? '?',
-      refColName: refCol?.name ?? '?',
+      refColName: refColNames.length === 1 ? refColNames[0] : `(${refColNames.join(', ')})`,
       onDelete: fk.onDelete,
     };
   }

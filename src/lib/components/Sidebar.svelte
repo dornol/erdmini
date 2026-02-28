@@ -66,18 +66,22 @@
     const fkCount = table.foreignKeys.length;
     const pkCols = table.columns.filter((c) => c.primaryKey).map((c) => c.name);
     const fkDetails = table.foreignKeys.map(fk => {
-      const srcCol = table.columns.find(c => c.id === fk.columnId)?.name ?? '?';
+      const srcCols = fk.columnIds.map(id => table.columns.find(c => c.id === id)?.name ?? '?');
       const refTable = erdStore.schema.tables.find(t => t.id === fk.referencedTableId);
-      const refCol = refTable?.columns.find(c => c.id === fk.referencedColumnId)?.name ?? '?';
-      return `${srcCol} → ${refTable?.name ?? '?'}.${refCol}`;
+      const refCols = fk.referencedColumnIds.map(id => refTable?.columns.find(c => c.id === id)?.name ?? '?');
+      const srcLabel = srcCols.length === 1 ? srcCols[0] : `(${srcCols.join(', ')})`;
+      const refLabel = refCols.length === 1 ? refCols[0] : `(${refCols.join(', ')})`;
+      return `${srcLabel} → ${refTable?.name ?? '?'}.${refLabel}`;
     });
     const refs = erdStore.schema.tables.flatMap(t =>
       t.foreignKeys
         .filter(fk => fk.referencedTableId === table.id)
         .map(fk => {
-          const srcCol = t.columns.find(c => c.id === fk.columnId)?.name ?? '?';
-          const refCol = table.columns.find(c => c.id === fk.referencedColumnId)?.name ?? '?';
-          return `${t.name}.${srcCol} → ${refCol}`;
+          const srcCols = fk.columnIds.map(id => t.columns.find(c => c.id === id)?.name ?? '?');
+          const refCols = fk.referencedColumnIds.map(id => table.columns.find(c => c.id === id)?.name ?? '?');
+          const srcLabel = srcCols.length === 1 ? srcCols[0] : `(${srcCols.join(', ')})`;
+          const refLabel = refCols.length === 1 ? refCols[0] : `(${refCols.join(', ')})`;
+          return `${t.name}.${srcLabel} → ${refLabel}`;
         })
     );
     return { colCount, fkCount, fkDetails, pkCols, refCount: refs.length, refDetails: refs };

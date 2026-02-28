@@ -67,6 +67,8 @@
   "fk_ref_table": "참조 테이블",
   "fk_ref_column": "참조 컬럼",
   "fk_column_label": "컬럼",
+  "fk_add_pair": "+ 컬럼 쌍 추가",
+  "fk_source_column": "소스 컬럼",
   "domain_modal_title": "컬럼 도메인 관리",
   "domain_actions": "액션",
   "domain_empty": "도메인이 없습니다.",

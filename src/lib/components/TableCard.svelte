@@ -15,7 +15,7 @@
   let isHovered = $state(false);
 
   // Set of column IDs that are FK source columns
-  let fkSourceIds = $derived(new Set(table.foreignKeys.map((fk) => fk.columnId)));
+  let fkSourceIds = $derived(new Set(table.foreignKeys.flatMap((fk) => fk.columnIds)));
 
   function onHeaderDblClick() {
     isEditing = true;
@@ -135,12 +135,13 @@
   <!-- Columns -->
   <div class="column-list">
     {#each table.columns as col (col.id)}
-      {@const fk = table.foreignKeys.find((f) => f.columnId === col.id)}
+      {@const fk = table.foreignKeys.find((f) => f.columnIds.includes(col.id))}
+      {@const fkPairIdx = fk ? fk.columnIds.indexOf(col.id) : -1}
       {@const refTable = fk ? erdStore.schema.tables.find((t) => t.id === fk.referencedTableId) : undefined}
-      {@const refCol = refTable ? refTable.columns.find((c) => c.id === fk!.referencedColumnId) : undefined}
+      {@const refCol = (refTable && fk && fkPairIdx >= 0) ? refTable.columns.find((c) => c.id === fk.referencedColumnIds[fkPairIdx]) : undefined}
       {@const isFkHighlighted = erdStore.hoveredFkInfo.some((hfk) =>
-        (hfk.sourceTableId === table.id && hfk.sourceColumnId === col.id) ||
-        (hfk.refTableId === table.id && hfk.refColumnId === col.id)
+        (hfk.sourceTableId === table.id && hfk.sourceColumnIds.includes(col.id)) ||
+        (hfk.refTableId === table.id && hfk.refColumnIds.includes(col.id))
       )}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
@@ -151,15 +152,15 @@
           erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id };
           if (fk) {
             erdStore.hoveredFkInfo = [{
-              sourceTableId: table.id, sourceColumnId: col.id,
-              refTableId: fk.referencedTableId, refColumnId: fk.referencedColumnId,
+              sourceTableId: table.id, sourceColumnIds: fk.columnIds,
+              refTableId: fk.referencedTableId, refColumnIds: fk.referencedColumnIds,
             }];
           } else if (col.primaryKey) {
             erdStore.hoveredFkInfo = erdStore.schema.tables.flatMap((t) =>
-              t.foreignKeys.filter((f) => f.referencedTableId === table.id && f.referencedColumnId === col.id)
+              t.foreignKeys.filter((f) => f.referencedTableId === table.id && f.referencedColumnIds.includes(col.id))
                 .map((f) => ({
-                  sourceTableId: t.id, sourceColumnId: f.columnId,
-                  refTableId: table.id, refColumnId: col.id,
+                  sourceTableId: t.id, sourceColumnIds: f.columnIds,
+                  refTableId: table.id, refColumnIds: f.referencedColumnIds,
                 }))
             );
           }

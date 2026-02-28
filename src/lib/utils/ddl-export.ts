@@ -139,17 +139,21 @@ function alterTableFkSql(
 ): string[] {
   const result: string[] = [];
   for (const fk of table.foreignKeys) {
-    const srcCol = table.columns.find((c) => c.id === fk.columnId);
     const refTable = allTables.find((t) => t.id === fk.referencedTableId);
-    const refCol = refTable?.columns.find((c) => c.id === fk.referencedColumnId);
-    if (!srcCol || !refTable || !refCol) continue;
+    if (!refTable) continue;
 
-    const constraintName = `fk_${table.name}_${srcCol.name}`;
+    const srcCols = fk.columnIds.map((id) => table.columns.find((c) => c.id === id));
+    const refCols = fk.referencedColumnIds.map((id) => refTable.columns.find((c) => c.id === id));
+    if (srcCols.some((c) => !c) || refCols.some((c) => !c)) continue;
+
+    const constraintName = `fk_${table.name}_${srcCols.map((c) => c!.name).join('_')}`;
     const tq = q(table.name, dialect);
+    const srcColSql = srcCols.map((c) => q(c!.name, dialect)).join(', ');
+    const refColSql = refCols.map((c) => q(c!.name, dialect)).join(', ');
     const sql =
       `ALTER TABLE ${tq}\n` +
       `  ADD CONSTRAINT ${q(constraintName, dialect)}\n` +
-      `  FOREIGN KEY (${q(srcCol.name, dialect)}) REFERENCES ${q(refTable.name, dialect)} (${q(refCol.name, dialect)})\n` +
+      `  FOREIGN KEY (${srcColSql}) REFERENCES ${q(refTable.name, dialect)} (${refColSql})\n` +
       `  ON DELETE ${fk.onDelete} ON UPDATE ${fk.onUpdate};`;
     result.push(sql);
   }
