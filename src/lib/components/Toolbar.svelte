@@ -1,7 +1,7 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
-  import { languageStore } from '$lib/store/language.svelte';
+  import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
   import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType } from '$lib/utils/auto-layout';
@@ -198,6 +198,7 @@
   let importOpen = $state(false);
   let exportOpen = $state(false);
   let themeOpen = $state(false);
+  let langOpen = $state(false);
   let shortcutsOpen = $state(false);
 
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -432,10 +433,36 @@
       {/if}
     </div>
 
-    <!-- Language toggle -->
-    <button class="btn-lang" onclick={() => languageStore.toggle()}>
-      {languageStore.current === 'ko' ? 'EN' : 'KO'}
-    </button>
+    <!-- Language dropdown -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-lang"
+        onclick={() => (langOpen = !langOpen)}
+        aria-expanded={langOpen}
+        aria-haspopup="menu"
+      >
+        {languageStore.current.toUpperCase()} ▾
+      </button>
+      {#if langOpen}
+        <div
+          class="dropdown-menu dropdown-right"
+          role="menu"
+          tabindex="-1"
+          onmouseleave={() => (langOpen = false)}
+        >
+          {#each Object.entries(LOCALE_LABELS) as [locale, label]}
+            <button
+              class="dropdown-item"
+              class:active={languageStore.current === locale}
+              role="menuitem"
+              onclick={() => { languageStore.set(locale as Locale); langOpen = false; }}
+            >
+              {label}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
 
     <!-- Shortcuts help -->
     <div class="dropdown-wrap">
