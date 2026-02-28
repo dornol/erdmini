@@ -7,12 +7,14 @@
   import TableEditor from '$lib/components/TableEditor.svelte';
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
+  import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { erdStore } from '$lib/store/erd.svelte';
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import * as m from '$lib/paraglide/messages';
 
   let sidebarCollapsed = $state(false);
+  let commandPaletteOpen = $state(false);
   let viewportWidth = $state(768);
   let forceDesktop = $state(false);
   let isMobile = $derived(viewportWidth < 768);
@@ -140,11 +142,19 @@
 
   // Keyboard shortcuts
   async function handleKeydown(e: KeyboardEvent) {
+    const key = e.key.toLowerCase();
+
+    // Cmd+K: toggle command palette (works even when editing)
+    if ((e.ctrlKey || e.metaKey) && key === 'k') {
+      e.preventDefault();
+      commandPaletteOpen = !commandPaletteOpen;
+      return;
+    }
+
     const tag = (e.target as HTMLElement)?.tagName;
     const isEditing = tag === 'INPUT' || tag === 'TEXTAREA';
 
     // Undo/Redo
-    const key = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && (key === 'z' || key === 'y')) {
       if (isEditing) return;
       e.preventDefault();
@@ -272,6 +282,10 @@
         anchorY={erdStore.editingColumnInfo.anchorY}
         onclose={() => (erdStore.editingColumnInfo = null)}
       />
+    {/if}
+
+    {#if commandPaletteOpen}
+      <CommandPalette onclose={() => (commandPaletteOpen = false)} />
     {/if}
 
     <DialogModal />

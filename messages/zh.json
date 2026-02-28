@@ -141,5 +141,11 @@
   "storage_full_warning": "存储空间不足，请导出 JSON 备份数据。",
   "storage_full_export": "导出 JSON",
   "domain_delete_confirm": "确定删除域 \"{name}\" 吗？{count} 个列的关联将被解除。",
-  "column_delete_fk_confirm": "删除此列将同时移除 {count} 个相关外键。是否继续？"
+  "column_delete_fk_confirm": "删除此列将同时移除 {count} 个相关外键。是否继续？",
+  "cmd_palette_placeholder": "搜索表或列...",
+  "cmd_palette_no_results": "未找到结果。",
+  "cmd_palette_tables": "表",
+  "cmd_palette_columns": "列",
+  "cmd_palette_hint": "↑↓ 移动  Enter 选择  Esc 关闭",
+  "cmd_palette_open": "搜索面板"
 }
