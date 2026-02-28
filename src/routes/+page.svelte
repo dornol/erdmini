@@ -24,13 +24,14 @@
 
   // Undo/Redo keyboard shortcuts
   function handleKeydown(e: KeyboardEvent) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    const key = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && (key === 'z' || key === 'y')) {
       // Don't intercept if user is typing in an input/textarea
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
       e.preventDefault();
-      if (e.shiftKey) {
+      if (key === 'y' || (key === 'z' && e.shiftKey)) {
         erdStore.redo();
       } else {
         erdStore.undo();
