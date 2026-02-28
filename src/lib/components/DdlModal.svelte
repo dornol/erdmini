@@ -1,7 +1,8 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
-  import { exportDDL, type Dialect } from '$lib/utils/ddl-export';
+  import type { Dialect } from '$lib/types/erd';
+  import { exportDDL } from '$lib/utils/ddl-export';
   import { importDDL } from '$lib/utils/ddl-import';
 
   let {
@@ -14,15 +15,24 @@
 
   let activeTab = $state<'import' | 'export'>(untrack(() => mode));
 
+  const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
+    { value: 'mysql', label: 'MySQL' },
+    { value: 'postgresql', label: 'PostgreSQL' },
+    { value: 'mariadb', label: 'MariaDB' },
+    { value: 'mssql', label: 'MSSQL' },
+  ];
+
   // Export state
-  let dialect = $state<Dialect>('mysql');
-  let exportText = $derived(exportDDL(erdStore.schema, dialect));
+  let exportDialect = $state<Dialect>('mysql');
+  let exportText = $derived(exportDDL(erdStore.schema, exportDialect));
   let copyLabel = $state('복사');
 
   // Import state
+  let importDialect = $state<Dialect>('mysql');
   let importText = $state('');
   let importErrors = $state<string[]>([]);
   let importSuccess = $state<string | null>(null);
+  let importing = $state(false);
 
   async function copyToClipboard() {
     await navigator.clipboard.writeText(exportText);
@@ -35,7 +45,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `erdmini_${dialect}.sql`;
+    a.download = `erdmini_${exportDialect}.sql`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -56,26 +66,32 @@
     input.click();
   }
 
-  function doImport() {
+  async function doImport() {
     importErrors = [];
     importSuccess = null;
-    const result = importDDL(importText);
-    if (result.errors.length > 0) {
-      importErrors = result.errors;
-    }
-    if (result.tables.length > 0) {
-      // Merge into existing schema — add tables, keep existing
-      const existingNames = new Set(erdStore.schema.tables.map((t) => t.name));
-      const offsetX = erdStore.schema.tables.length * 30;
-      for (const t of result.tables) {
-        if (existingNames.has(t.name)) {
-          // suffix already handled in import, but shift position
-          t.position.x += offsetX;
-        }
-        erdStore.schema.tables = [...erdStore.schema.tables, t];
+    importing = true;
+
+    try {
+      const result = await importDDL(importText, importDialect);
+      if (result.errors.length > 0) {
+        importErrors = result.errors;
       }
-      erdStore.schema.updatedAt = new Date().toISOString();
-      importSuccess = `${result.tables.length}개 테이블을 가져왔습니다.`;
+      if (result.tables.length > 0) {
+        const existingNames = new Set(erdStore.schema.tables.map((t) => t.name));
+        const offsetX = erdStore.schema.tables.length * 30;
+        for (const t of result.tables) {
+          if (existingNames.has(t.name)) {
+            t.position.x += offsetX;
+          }
+          erdStore.schema.tables = [...erdStore.schema.tables, t];
+        }
+        erdStore.schema.updatedAt = new Date().toISOString();
+        importSuccess = `${result.tables.length}개 테이블을 가져왔습니다.`;
+      }
+    } catch (e) {
+      importErrors = [`Import 오류: ${e instanceof Error ? e.message : e}`];
+    } finally {
+      importing = false;
     }
   }
 
@@ -107,14 +123,11 @@
       {#if activeTab === 'export'}
         <div class="export-controls">
           <span class="label">Dialect:</span>
-          <label class="radio-label">
-            <input type="radio" bind:group={dialect} value="mysql" />
-            MySQL
-          </label>
-          <label class="radio-label">
-            <input type="radio" bind:group={dialect} value="postgresql" />
-            PostgreSQL
-          </label>
+          <select class="dialect-select" bind:value={exportDialect}>
+            {#each DIALECT_OPTIONS as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
           <div class="spacer"></div>
           <button class="btn-secondary" onclick={copyToClipboard}>{copyLabel}</button>
           <button class="btn-secondary" onclick={downloadSql}>다운로드 .sql</button>
@@ -122,9 +135,17 @@
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>
       {:else}
         <div class="import-controls">
+          <span class="label">Dialect:</span>
+          <select class="dialect-select" bind:value={importDialect}>
+            {#each DIALECT_OPTIONS as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
           <button class="btn-secondary" onclick={openFile}>파일 열기</button>
           <div class="spacer"></div>
-          <button class="btn-primary" onclick={doImport}>가져오기</button>
+          <button class="btn-primary" onclick={doImport} disabled={importing}>
+            {importing ? '가져오는 중...' : '가져오기'}
+          </button>
         </div>
         <textarea
           class="code-area"
@@ -242,13 +263,19 @@
     font-weight: 600;
   }
 
-  .radio-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  .dialect-select {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 5px 8px;
     font-size: 13px;
     color: #1e293b;
+    background: white;
+    outline: none;
     cursor: pointer;
+  }
+
+  .dialect-select:focus {
+    border-color: #93c5fd;
   }
 
   .spacer {
@@ -289,6 +316,11 @@
 
   .btn-primary:hover {
     background: #2563eb;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .btn-secondary {

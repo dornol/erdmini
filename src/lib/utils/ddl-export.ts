@@ -1,43 +1,70 @@
-import type { Column, ERDSchema, Table } from '$lib/types/erd';
-
-export type Dialect = 'mysql' | 'postgresql';
+import type { Column, Dialect, ERDSchema, Table } from '$lib/types/erd';
 
 function q(name: string, dialect: Dialect): string {
-  return dialect === 'mysql' ? `\`${name}\`` : `"${name}"`;
+  if (dialect === 'mssql') return `[${name}]`;
+  if (dialect === 'mysql' || dialect === 'mariadb') return `\`${name}\``;
+  return `"${name}"`; // postgresql
 }
 
 function columnTypeSql(col: Column, dialect: Dialect): string {
   const len = col.length ? `(${col.length})` : '';
-  if (dialect === 'mysql') {
-    if (col.autoIncrement && col.type === 'BIGINT') return 'BIGINT';
-    if (col.autoIncrement && col.type === 'INT') return 'INT';
+
+  if (dialect === 'mysql' || dialect === 'mariadb') {
+    if (col.autoIncrement && (col.type === 'BIGINT' || col.type === 'INT')) return col.type;
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${col.type}${len || '(255)'}`;
     if (col.type === 'DECIMAL') return `DECIMAL${len || '(10,2)'}`;
+    if (col.type === 'UUID') return 'CHAR(36)';
     return col.type;
-  } else {
-    // PostgreSQL
-    if (col.autoIncrement) {
-      return col.type === 'BIGINT' ? 'BIGSERIAL' : 'SERIAL';
-    }
+  }
+
+  if (dialect === 'postgresql') {
+    if (col.autoIncrement) return col.type === 'BIGINT' ? 'BIGSERIAL' : 'SERIAL';
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${col.type}${len || '(255)'}`;
     if (col.type === 'DATETIME') return 'TIMESTAMP';
-    if (col.type === 'BOOLEAN') return 'BOOLEAN';
     if (col.type === 'DECIMAL') return `DECIMAL${len || '(10,2)'}`;
     return col.type;
   }
+
+  // MSSQL
+  if (col.type === 'BOOLEAN') return 'BIT';
+  if (col.type === 'TEXT') return 'NVARCHAR(MAX)';
+  if (col.type === 'VARCHAR') return `NVARCHAR${len || '(255)'}`;
+  if (col.type === 'CHAR') return `NCHAR${len || '(255)'}`;
+  if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return 'DATETIME2';
+  if (col.type === 'DECIMAL') return `DECIMAL${len || '(10,2)'}`;
+  if (col.type === 'DOUBLE') return 'FLOAT';
+  if (col.type === 'JSON') return 'NVARCHAR(MAX)';
+  if (col.type === 'UUID') return 'UNIQUEIDENTIFIER';
+  return col.type;
 }
 
 function columnSql(col: Column, dialect: Dialect): string {
   const parts: string[] = [];
   parts.push(`  ${q(col.name, dialect)} ${columnTypeSql(col, dialect)}`);
-  if (!col.nullable) parts.push('NOT NULL');
-  if (col.autoIncrement && dialect === 'mysql') parts.push('AUTO_INCREMENT');
-  if (col.defaultValue !== undefined && col.defaultValue !== '') {
-    parts.push(`DEFAULT ${col.defaultValue}`);
+
+  // MSSQL: IDENTITY instead of AUTO_INCREMENT
+  if (col.autoIncrement && dialect === 'mssql') {
+    parts.push('IDENTITY(1,1)');
   }
-  if (col.comment && dialect === 'mysql') {
+
+  if (!col.nullable) parts.push('NOT NULL');
+
+  if (col.autoIncrement && (dialect === 'mysql' || dialect === 'mariadb')) {
+    parts.push('AUTO_INCREMENT');
+  }
+
+  if (col.defaultValue !== undefined && col.defaultValue !== '') {
+    if (dialect === 'mssql') {
+      parts.push(`DEFAULT (${col.defaultValue})`);
+    } else {
+      parts.push(`DEFAULT ${col.defaultValue}`);
+    }
+  }
+
+  if (col.comment && (dialect === 'mysql' || dialect === 'mariadb')) {
     parts.push(`COMMENT '${col.comment.replace(/'/g, "''")}'`);
   }
+
   return parts.join(' ');
 }
 
@@ -60,7 +87,7 @@ function createTableSql(table: Table, dialect: Dialect): string {
   }
 
   let trailer: string;
-  if (dialect === 'mysql') {
+  if (dialect === 'mysql' || dialect === 'mariadb') {
     const comment = table.comment
       ? ` COMMENT='${table.comment.replace(/'/g, "''")}'`
       : '';
@@ -82,6 +109,23 @@ function postgresComments(table: Table): string[] {
     if (col.comment) {
       stmts.push(
         `COMMENT ON COLUMN ${tq}."${col.name}" IS '${col.comment.replace(/'/g, "''")}';`,
+      );
+    }
+  }
+  return stmts;
+}
+
+function mssqlComments(table: Table): string[] {
+  const stmts: string[] = [];
+  if (table.comment) {
+    stmts.push(
+      `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${table.comment.replace(/'/g, "''")}', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'${table.name}';`,
+    );
+  }
+  for (const col of table.columns) {
+    if (col.comment) {
+      stmts.push(
+        `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${col.comment.replace(/'/g, "''")}', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'${table.name}', @level2type=N'COLUMN', @level2name=N'${col.name}';`,
       );
     }
   }
@@ -124,6 +168,13 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect): string {
   if (dialect === 'postgresql') {
     for (const table of schema.tables) {
       sections.push(...postgresComments(table));
+    }
+  }
+
+  // MSSQL extended properties for comments
+  if (dialect === 'mssql') {
+    for (const table of schema.tables) {
+      sections.push(...mssqlComments(table));
     }
   }
 

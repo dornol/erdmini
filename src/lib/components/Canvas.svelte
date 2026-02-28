@@ -1,5 +1,6 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
+  import Minimap from './Minimap.svelte';
 
   let { children } = $props();
 
@@ -75,6 +76,10 @@
   >
     {@render children()}
   </div>
+
+  {#if erdStore.schema.tables.length > 0}
+    <Minimap />
+  {/if}
 
   <!-- Zoom indicator -->
   <div class="zoom-indicator">

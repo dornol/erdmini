@@ -85,6 +85,38 @@
   }
 
   let hasDomains = $derived(erdStore.schema.domains.length > 0);
+
+  // Column drag reorder
+  let dragColId = $state<string | null>(null);
+  let dragOverIdx = $state<number | null>(null);
+
+  function onDragStart(e: DragEvent, colId: string) {
+    dragColId = colId;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', colId);
+    }
+  }
+
+  function onDragOver(e: DragEvent, idx: number) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    dragOverIdx = idx;
+  }
+
+  function onDrop(e: DragEvent, toIdx: number) {
+    e.preventDefault();
+    if (dragColId && selectedTable) {
+      erdStore.moveColumnToIndex(selectedTable.id, dragColId, toIdx);
+    }
+    dragColId = null;
+    dragOverIdx = null;
+  }
+
+  function onDragEnd() {
+    dragColId = null;
+    dragOverIdx = null;
+  }
 </script>
 
 {#if selectedTable}
@@ -124,15 +156,29 @@
       </div>
 
       <div class="columns-list">
-        {#each selectedTable.columns as col (col.id)}
-          <div class="col-row">
-            <!-- Name -->
-            <input
+        {#each selectedTable.columns as col, idx (col.id)}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="col-row"
+            class:drag-over={dragOverIdx === idx}
+            class:dragging={dragColId === col.id}
+            draggable="true"
+            role="listitem"
+            ondragstart={(e) => onDragStart(e, col.id)}
+            ondragover={(e) => onDragOver(e, idx)}
+            ondrop={(e) => onDrop(e, idx)}
+            ondragend={onDragEnd}
+          >
+            <!-- Drag handle + Name -->
+            <div class="col-name-row">
+              <span class="drag-handle" title="드래그하여 순서 변경">⠿</span>
+              <input
               class="col-input col-name"
               value={col.name}
               oninput={(e) => onColumnChange(col, 'name', (e.target as HTMLInputElement).value)}
               placeholder="이름"
             />
+            </div>
 
             <!-- Type + Domain apply/badge -->
             <div class="col-type-row">
@@ -393,6 +439,35 @@
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
+    transition: opacity 0.15s, border-color 0.15s;
+  }
+
+  .col-row.dragging {
+    opacity: 0.4;
+  }
+
+  .col-row.drag-over {
+    border-color: #3b82f6;
+    border-top: 2px solid #3b82f6;
+  }
+
+  .col-name-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .drag-handle {
+    cursor: grab;
+    color: #94a3b8;
+    font-size: 14px;
+    line-height: 1;
+    user-select: none;
+    flex-shrink: 0;
+  }
+
+  .drag-handle:hover {
+    color: #475569;
   }
 
   .col-type-row {

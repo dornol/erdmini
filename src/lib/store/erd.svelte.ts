@@ -40,11 +40,51 @@ function loadFromStorage(): ERDSchema {
   }
 }
 
+const MAX_HISTORY = 50;
+
 class ERDStore {
   schema = $state<ERDSchema>(loadFromStorage());
   selectedTableId = $state<string | null>(null);
   selectedTableIds = $state<Set<string>>(new Set());
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
+
+  // Undo/Redo
+  private _undoStack: string[] = [];
+  private _redoStack: string[] = [];
+  private _skipSnapshot = false;
+
+  get canUndo(): boolean { return this._undoStack.length > 0; }
+  get canRedo(): boolean { return this._redoStack.length > 0; }
+
+  pushSnapshot() {
+    if (this._skipSnapshot) return;
+    const snap = JSON.stringify($state.snapshot(this.schema));
+    // Avoid duplicate snapshots
+    if (this._undoStack.length > 0 && this._undoStack[this._undoStack.length - 1] === snap) return;
+    this._undoStack.push(snap);
+    if (this._undoStack.length > MAX_HISTORY) this._undoStack.shift();
+    this._redoStack = [];
+  }
+
+  undo() {
+    if (this._undoStack.length === 0) return;
+    const current = JSON.stringify($state.snapshot(this.schema));
+    this._redoStack.push(current);
+    const prev = this._undoStack.pop()!;
+    this._skipSnapshot = true;
+    this.schema = JSON.parse(prev);
+    this._skipSnapshot = false;
+  }
+
+  redo() {
+    if (this._redoStack.length === 0) return;
+    const current = JSON.stringify($state.snapshot(this.schema));
+    this._undoStack.push(current);
+    const next = this._redoStack.pop()!;
+    this._skipSnapshot = true;
+    this.schema = JSON.parse(next);
+    this._skipSnapshot = false;
+  }
 
   get selectedTable(): Table | undefined {
     return this.schema.tables.find((t) => t.id === this.selectedTableId);
@@ -199,6 +239,18 @@ class ERDStore {
     this.schema.updatedAt = now();
   }
 
+  moveColumnToIndex(tableId: string, columnId: string, toIndex: number) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    const fromIdx = table.columns.findIndex((c) => c.id === columnId);
+    if (fromIdx < 0 || fromIdx === toIndex) return;
+    const cols = [...table.columns];
+    const [item] = cols.splice(fromIdx, 1);
+    cols.splice(toIndex, 0, item);
+    table.columns = cols;
+    this.schema.updatedAt = now();
+  }
+
   addForeignKey(
     tableId: string,
     columnId: string,
@@ -270,6 +322,25 @@ class ERDStore {
       );
     }
     this.schema.updatedAt = now();
+  }
+
+  duplicateTable(id: string) {
+    const src = this.schema.tables.find((t) => t.id === id);
+    if (!src) return;
+    const newId = generateId();
+    const newName = `${src.name}_copy`;
+    const newTable: Table = {
+      id: newId,
+      name: newName,
+      columns: src.columns.map((c) => ({ ...c, id: generateId() })),
+      foreignKeys: [],
+      position: { x: src.position.x + 30, y: src.position.y + 30 },
+      comment: src.comment,
+    };
+    this.schema.tables = [...this.schema.tables, newTable];
+    this.schema.updatedAt = now();
+    this.selectedTableId = newId;
+    this.selectedTableIds = new Set([newId]);
   }
 
   loadSchema(schema: ERDSchema) {

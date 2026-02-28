@@ -74,6 +74,58 @@
     hierarchical: '계층',
     radial: '방사형',
   };
+
+  // Image export
+  async function exportImage() {
+    const worldEl = document.querySelector('.canvas-world') as HTMLElement | null;
+    if (!worldEl) return;
+
+    const html2canvas = (await import('html2canvas')).default;
+
+    // Compute bounds of all tables
+    const tables = erdStore.schema.tables;
+    if (tables.length === 0) return;
+
+    const TABLE_W = 200;
+    const HEADER_H = 37;
+    const ROW_H = 26;
+    const PAD = 40;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const t of tables) {
+      const h = HEADER_H + t.columns.length * ROW_H;
+      minX = Math.min(minX, t.position.x);
+      minY = Math.min(minY, t.position.y);
+      maxX = Math.max(maxX, t.position.x + TABLE_W);
+      maxY = Math.max(maxY, t.position.y + h);
+    }
+
+    const w = maxX - minX + PAD * 2;
+    const h = maxY - minY + PAD * 2;
+
+    // Temporarily reset transform for capture
+    const origTransform = worldEl.style.transform;
+    worldEl.style.transform = `translate(${-minX + PAD}px, ${-minY + PAD}px) scale(1)`;
+
+    try {
+      const canvas = await html2canvas(worldEl, {
+        width: w,
+        height: h,
+        x: 0,
+        y: 0,
+        backgroundColor: '#f8fafc',
+        scale: 2,
+      });
+
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'erdmini_diagram.png';
+      a.click();
+    } finally {
+      worldEl.style.transform = origTransform;
+    }
+  }
 </script>
 
 <header class="toolbar">
@@ -131,6 +183,9 @@
     </button>
     <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
       도메인
+    </button>
+    <button class="btn-secondary" onclick={exportImage}>
+      이미지 저장
     </button>
   </div>
 

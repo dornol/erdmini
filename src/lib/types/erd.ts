@@ -71,3 +71,5 @@ export interface ERDSchema {
   createdAt: string;
   updatedAt: string;
 }
+
+export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql';

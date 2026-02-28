@@ -8,19 +8,45 @@
   import Toolbar from '$lib/components/Toolbar.svelte';
   import { erdStore } from '$lib/store/erd.svelte';
 
-  // Auto-save to localStorage whenever schema changes (updatedAt tracks all mutations)
+  let sidebarCollapsed = $state(false);
+
+  // Auto-save to localStorage and push undo snapshot whenever schema changes
+  let prevUpdatedAt = $state(erdStore.schema.updatedAt);
   $effect(() => {
-    // Read updatedAt to establish reactive dependency on any schema mutation
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    erdStore.schema.updatedAt;
+    const cur = erdStore.schema.updatedAt;
+    if (cur !== prevUpdatedAt) {
+      erdStore.pushSnapshot();
+      prevUpdatedAt = cur;
+    }
     erdStore.saveToStorage();
+  });
+
+  // Undo/Redo keyboard shortcuts
+  function handleKeydown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      // Don't intercept if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      e.preventDefault();
+      if (e.shiftKey) {
+        erdStore.redo();
+      } else {
+        erdStore.undo();
+      }
+    }
+  }
+
+  $effect(() => {
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
   });
 </script>
 
 <div class="app">
   <Toolbar />
   <div class="main">
-    <Sidebar />
+    <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} />
     <Canvas>
       <RelationLines />
       {#each erdStore.schema.tables as table (table.id)}
