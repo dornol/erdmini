@@ -8,6 +8,7 @@
   let query = $state('');
   let highlightIdx = $state(0);
   let inputEl = $state<HTMLInputElement | null>(null);
+  let resultsEl = $state<HTMLDivElement | null>(null);
 
   type ResultItem =
     | { kind: 'table'; tableId: string; tableName: string }
@@ -42,6 +43,14 @@
   $effect(() => {
     query;
     highlightIdx = 0;
+  });
+
+  // Scroll highlighted item into view
+  $effect(() => {
+    if (resultsEl) {
+      const item = resultsEl.querySelector('.cmd-item.highlighted') as HTMLElement | null;
+      item?.scrollIntoView({ block: 'nearest' });
+    }
   });
 
   // Auto-focus input on mount
@@ -113,7 +122,7 @@
       />
     </div>
 
-    <div class="cmd-results">
+    <div class="cmd-results" bind:this={resultsEl}>
       {#if filtered().all.length === 0}
         <div class="cmd-empty">{m.cmd_palette_no_results()}</div>
       {:else}
