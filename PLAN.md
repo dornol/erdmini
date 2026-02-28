@@ -1,4 +1,4 @@
-# erdmini - ERD 웹 애플리케이션 기획서
+# erdmini — ERD 웹 애플리케이션 기획서
 
 ## 1. 프로젝트 개요
 
@@ -6,7 +6,7 @@
 
 **목표:** 설치 없이 브라우저에서 바로 쓸 수 있는 ERD 에디터. 추후 API 서버 연동, 팀 협업, OIDC 인증으로 확장.
 
-**기술 스택:** SvelteKit, TypeScript, Tailwind CSS v4
+**기술 스택:** SvelteKit 2, Svelte 5 Runes, TypeScript, Tailwind CSS v4, d3-force
 
 ### 전체 시스템 아키텍처 (로드맵 포함)
 
@@ -33,101 +33,103 @@
 
 ---
 
-## 2. 핵심 기능
+## 2. 구현 우선순위 및 진행 상황
 
-### 2.1 ERD 편집 (Canvas)
-- 테이블(엔티티) 추가 / 수정 / 삭제
-- 컬럼 추가 / 수정 / 삭제 (이름, 타입, 제약조건)
-- 테이블 간 관계선 그리기 (FK 연결)
-- 테이블 드래그로 위치 이동
-- 캔버스 줌 인/아웃, 패닝(pan)
-- 다중 선택 및 일괄 이동
+### ✅ Phase 1 — 기본 편집기 (완료)
 
-### 2.2 DDL Export
-- 현재 ERD를 SQL DDL 문으로 변환 (CREATE TABLE)
-- 지원 방언(dialect): MySQL, PostgreSQL
-- 클립보드 복사 또는 `.sql` 파일 다운로드
+- [x] 캔버스 렌더링 (HTML+CSS `transform` 기반, 줌/패닝)
+- [x] 테이블 추가 / 삭제
+- [x] 컬럼 추가 / 수정 / 삭제 (이름, 타입, PK/NN/UQ/AI)
+- [x] 테이블 드래그 이동
+- [x] 캔버스 줌 인/아웃 (마우스 휠, 커서 기준) / 패닝
+- [x] LocalStorage 자동 저장 (탭 닫아도 ERD 유지)
 
-### 2.3 DDL Import
-- SQL DDL 텍스트를 붙여넣거나 `.sql` 파일 업로드
-- 파싱 후 ERD 캔버스에 자동 배치
-- 지원 방언: MySQL, PostgreSQL
+### ✅ Phase 2 — 관계 및 DDL (완료)
 
-### 2.4 프로젝트 저장/불러오기
-- ERD 상태를 JSON으로 로컬 파일 저장 / 불러오기
-- 브라우저 LocalStorage 자동 저장 (세션 유지)
-- (미래) API 서버에 프로젝트 저장 / 불러오기
+- [x] FK 관계 설정 UI (TableEditor FK 섹션)
+- [x] 관계선 렌더링 (SVG bezier + crow's foot 표기)
+- [x] FK 라인 클릭으로 삭제
+- [x] DDL Export — MySQL / PostgreSQL (`CREATE TABLE`, `ALTER TABLE … FOREIGN KEY`)
+- [x] DDL Import — 정규식 파싱, 스키마 prefix 제거, `ALTER TABLE FK` 처리
 
----
+### ✅ Phase 3 — 편의 기능 및 UX 개선 (완료)
 
-## 3. 화면 구성 (레이아웃)
+#### 데이터 / 저장
+- [x] JSON Export / Import — ERD 스키마 전체를 `.erd.json` 파일로 저장/불러오기
+- [x] DDL Import 시 `COMMENT` 절 파싱 → Table/Column comment 자동 반영
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Toolbar  [New Table] [Import DDL] [Export DDL] [Save]  │
-├──────────┬──────────────────────────────────────────────┤
-│          │                                              │
-│ Sidebar  │              Canvas (ERD 편집 영역)           │
-│          │                                              │
-│ - 테이블  │   ┌─────────┐        ┌─────────┐            │
-│   목록    │   │  users  │───────▶│ orders  │            │
-│          │   ├─────────┤        ├─────────┤            │
-│          │   │ id (PK) │        │ id (PK) │            │
-│          │   │ name    │        │ user_id │            │
-│          │   │ email   │        │ amount  │            │
-│          │   └─────────┘        └─────────┘            │
-│          │                                              │
-├──────────┴──────────────────────────────────────────────┤
-│  Status bar: 테이블 수 / 컬럼 수 / zoom 레벨             │
-└─────────────────────────────────────────────────────────┘
-```
+#### 자동 배치 (Auto Layout)
+- [x] **격자(Grid)**: 알파벳 순 정렬, 정사각형 그리드
+- [x] **계층(Hierarchical)**: FK 방향 기반 상하 트리 (BFS 레벨 배정, 사이클 처리)
+- [x] **방사형(Radial)**: d3-force 시뮬레이션
+  - `forceLink` — FK 연결 테이블 간 인력 (distance ≈ 230px)
+  - `forceManyBody(-350)` — 반발력
+  - `forceX/Y(0.08)` — 중심 인력 (비연결 테이블 이탈 방지)
+  - `forceCollide` — 바운딩박스 기반 겹침 방지
+  - 300틱 동기 시뮬레이션
 
-### 3.1 Toolbar
-- **New Table**: 새 테이블 캔버스 중앙에 추가
-- **Import DDL**: DDL import 모달 열기
-- **Export DDL**: DDL export 모달 열기 (dialect 선택)
-- **Save / Load**: JSON 저장 및 불러오기
+#### FK 모달
+- [x] FK 추가를 독립 모달(FkModal)로 분리 — 소스 컬럼, 참조 테이블/컬럼, ON DELETE/UPDATE 선택
 
-### 3.2 Sidebar (테이블 목록)
-- 전체 테이블 리스트 표시
-- 클릭 시 해당 테이블로 캔버스 포커스 이동
-- 테이블 삭제 버튼
+#### 테이블 카드 UX
+- [x] 테이블 코멘트 표시 (헤더 아래 별도 행)
+- [x] 컬럼 PK(금) / FK(파랑) / UQ / AI 배지 표시
+- [x] 컬럼 hover 툴팁 — 타입, Nullable, FK 참조 대상, 기본값, 코멘트
+- [x] **컬럼 더블클릭 → 플로팅 팝업 편집** (ColumnEditPopup)
+  - 이름, 타입, 길이, PK/NN/UQ/AI, 기본값, 코멘트 즉시 수정
+  - 뷰포트 경계 자동 조정, Esc / 외부 클릭 닫기
 
-### 3.3 Canvas (메인 편집 영역)
-- SVG 또는 HTML+CSS 기반 ERD 렌더링
-- 테이블 카드: 헤더(테이블명) + 컬럼 목록
-- 관계선: FK 연결 시 테이블 간 선 표시
-- 마우스 휠: 줌, 클릭+드래그(빈 영역): 패닝
+#### 다중 선택 및 일괄 삭제
+- [x] Ctrl/Cmd + 클릭으로 테이블 다중 선택 (카드 + 사이드바)
+- [x] 2개 이상 선택 시 사이드바에 "선택 삭제(N)" 버튼 표시
+- [x] 일괄 삭제 시 관련 FK 참조 전부 제거
 
-### 3.4 Table Detail Panel (우클릭 또는 더블클릭 시 표시)
-- 테이블명 편집
-- 컬럼 편집 (이름, 타입, PK/NN/UQ/AI 제약조건)
-- 컬럼 순서 변경 (드래그)
-- FK 설정 (참조 테이블 / 컬럼 선택)
+#### 컬럼 도메인 (Domain)
+- [x] 재사용 가능한 컬럼 속성 템플릿 정의
+- [x] 도메인 → 컬럼 적용 시 타입·제약 조건 일괄 동기화
+- [x] 도메인 수정 시 연결된 모든 컬럼에 즉시 반영
+- [x] 컬럼 수동 편집 시 도메인 연결 자동 해제
+- [x] DomainModal 표 형태 뷰 (이름/타입/길이/NULL/PK/UQ/AI/기본값/설명)
 
-### 3.5 Import/Export 모달
-- **Import**: 텍스트 입력창 + 파일 업로드 버튼, dialect 선택
-- **Export**: dialect 선택 후 DDL 텍스트 표시, 복사/다운로드 버튼
+#### 관계선 스타일
+- [x] nullable FK 컬럼: 점선 (`stroke-dasharray`)
+- [x] not null FK 컬럼: 실선
+
+#### 배포
+- [x] Dockerfile — 멀티스테이지 빌드 (node:22-alpine 빌드 → nginx:alpine 서빙)
+- [x] nginx SPA 설정 (`try_files`, 정적 자산 1년 캐시)
+- [x] `@sveltejs/adapter-static` + `fallback: 'index.html'`
 
 ---
 
-## 4. 데이터 모델
+### Phase 4 — API 서버 연동 (별도 프로젝트)
 
-### ERD 내부 상태 (TypeScript 타입)
+- [ ] 스토리지 레이어 추상화 (LocalStorage → API 교체 가능)
+- [ ] 프로젝트 개념 도입 (여러 ERD를 프로젝트 단위로 관리)
+- [ ] API 서버 연동 (프로젝트 CRUD)
+- [ ] OIDC 인증 연동 (로그인 / 로그아웃 / 토큰 갱신)
+- [ ] 프로젝트 목록 페이지 (`/projects`)
+- [ ] 인증 없는 경우 LocalStorage 모드 폴백
+
+### Phase 5 — 실시간 협업
+
+- [ ] WebSocket 기반 실시간 동기화
+- [ ] 다른 사용자 커서 / 선택 표시
+- [ ] 동시 편집 충돌 해결 (CRDT 또는 OT)
+- [ ] 멤버 초대 / 권한 관리 (owner / editor / viewer)
+- [ ] 변경 이력 (History) 조회
+
+---
+
+## 3. 핵심 데이터 모델
 
 ```typescript
-type ColumnType =
-  | 'INT' | 'BIGINT' | 'SMALLINT' | 'TINYINT'
-  | 'VARCHAR' | 'CHAR' | 'TEXT' | 'LONGTEXT'
-  | 'BOOLEAN' | 'DATE' | 'DATETIME' | 'TIMESTAMP'
-  | 'DECIMAL' | 'FLOAT' | 'DOUBLE'
-  | 'JSON' | 'UUID';
-
 interface Column {
   id: string;
   name: string;
+  domainId?: string;        // 도메인 연결
   type: ColumnType;
-  length?: number;       // VARCHAR(255) 등
+  length?: number;
   nullable: boolean;
   primaryKey: boolean;
   unique: boolean;
@@ -138,11 +140,11 @@ interface Column {
 
 interface ForeignKey {
   id: string;
-  columnId: string;          // 이 테이블의 컬럼
-  refTableId: string;        // 참조 테이블
-  refColumnId: string;       // 참조 컬럼
-  onDelete: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
-  onUpdate: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+  columnId: string;
+  referencedTableId: string;
+  referencedColumnId: string;
+  onDelete: ReferentialAction;   // CASCADE | SET NULL | RESTRICT | NO ACTION
+  onUpdate: ReferentialAction;
 }
 
 interface Table {
@@ -154,224 +156,93 @@ interface Table {
   comment?: string;
 }
 
-// Phase 3: 컬럼 도메인 (재사용 가능한 컬럼 타입 프리셋)
 interface ColumnDomain {
   id: string;
-  name: string;          // 예: 'PK_BIGINT', 'CREATED_AT', 'USER_ID'
-  type: ColumnType;
-  length?: number;
-  nullable: boolean;
-  primaryKey: boolean;
-  unique: boolean;
-  autoIncrement: boolean;
-  defaultValue?: string;
-  comment?: string;
+  name: string;
+  // Column과 동일한 속성 (type, length, nullable, primaryKey, unique, autoIncrement, defaultValue, comment)
 }
 
 interface ERDSchema {
   version: string;
   tables: Table[];
-  domains: ColumnDomain[];  // Phase 3 추가
+  domains: ColumnDomain[];
   createdAt: string;
   updatedAt: string;
-}
-
-// 미래: API 서버 연동 시 추가될 타입
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  ownerId: string;
-  members: ProjectMember[];
-  schema: ERDSchema;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ProjectMember {
-  userId: string;
-  role: 'owner' | 'editor' | 'viewer';
 }
 ```
+
+스키마는 `localStorage['erdmini_schema']`에 JSON으로 자동 저장.
 
 ---
 
-## 5. DDL 변환 규칙
+## 4. 기술 결정 사항
 
-### Export (ERD → DDL)
+| 항목 | 결정 | 이유 |
+|---|---|---|
+| 캔버스 렌더링 | HTML+CSS `div` + `transform` | 테이블 카드를 DOM 요소로 직접 관리, 드래그/선택 구현 용이 |
+| 관계선 렌더링 | SVG `position: absolute; overflow: visible` | Canvas world div 안에 배치, 좌표 계산 단순 |
+| 상태 관리 | Svelte 5 Runes (`$state`, `.svelte.ts`) | 프레임워크 내장, 별도 라이브러리 불필요 |
+| 자동 배치 | 격자·계층: 직접 구현 / 방사형: d3-force | 격자·계층은 단순 알고리즘으로 충분; 방사형은 force simulation이 자연스러운 클러스터링 제공 |
+| DDL 파서 | 직접 구현 (정규식 기반) | 의존성 최소화, 경량 |
+| 스타일링 | Tailwind CSS v4 | 이미 설치됨, 유틸리티 클래스 |
+| 배포 | Docker + nginx (정적 SPA) | 서버리스, 별도 런타임 불필요 |
+| 인증 (미래) | OIDC | 표준 프로토콜, 다양한 IdP 지원 |
+| 실시간 협업 (미래) | WebSocket | 양방향 통신, 낮은 레이턴시 |
 
-```sql
--- MySQL 예시
-CREATE TABLE `users` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(100) NOT NULL,
-  `email` VARCHAR(255) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_email` (`email`)
-) COMMENT='사용자 테이블';
+---
 
-ALTER TABLE `orders`
-  ADD CONSTRAINT `fk_orders_user_id`
-  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-  ON DELETE CASCADE ON UPDATE RESTRICT;
+## 5. 파일 구조
+
 ```
-
-- FK는 CREATE TABLE 이후 ALTER TABLE로 분리 생성 (순환 참조 방지)
-- dialect에 따라 backtick(MySQL) / double-quote(PostgreSQL) 사용
-
-### Import (DDL → ERD)
-
-- `CREATE TABLE` 구문 파싱하여 테이블/컬럼 추출
-- `PRIMARY KEY`, `UNIQUE`, `NOT NULL`, `DEFAULT` 제약조건 인식
-- `FOREIGN KEY ... REFERENCES` 파싱하여 관계 자동 연결
-- 파싱 실패 시 에러 메시지와 함께 부분 결과 표시
+src/
+├── lib/
+│   ├── components/
+│   │   ├── Canvas.svelte            뷰포트 변환 (zoom/pan), 배경 클릭 선택 해제
+│   │   ├── TableCard.svelte         드래그 가능한 테이블 카드, 컬럼 목록, 툴팁
+│   │   ├── ColumnEditPopup.svelte   컬럼 더블클릭 플로팅 편집 팝업
+│   │   ├── TableEditor.svelte       우측 패널 — 테이블명/코멘트/컬럼 CRUD/FK 관리
+│   │   ├── RelationLines.svelte     FK SVG 오버레이 (베지어 + 까마귀발)
+│   │   ├── Sidebar.svelte           테이블 목록, 다중 선택, 일괄 삭제
+│   │   ├── Toolbar.svelte           로고, 새 테이블, DDL/도메인/자동배치 버튼
+│   │   ├── DdlModal.svelte          Import/Export 탭 모달
+│   │   ├── DomainModal.svelte       도메인 관리 (표 형태)
+│   │   └── FkModal.svelte           FK 추가 모달
+│   ├── store/
+│   │   └── erd.svelte.ts            ERDStore + CanvasState ($state 기반)
+│   ├── types/
+│   │   └── erd.ts                   Column, Table, ERDSchema, ForeignKey 타입
+│   └── utils/
+│       ├── auto-layout.ts           grid / hierarchical / radial(d3-force) 알고리즘
+│       ├── ddl-export.ts            MySQL / PostgreSQL DDL 생성
+│       └── ddl-import.ts            DDL 파싱 → ERDSchema
+└── routes/
+    └── +page.svelte                 루트 페이지 — 전체 레이아웃 조합
+```
 
 ---
 
 ## 6. 관계선 표현
 
-| 관계 유형 | 표기 |
-|-----------|------|
-| 1:1       | `──────` (양쪽 단선) |
-| 1:N       | `──────<` (N쪽 까마귀 발) |
-| N:M       | `>──────<` (양쪽 까마귀 발) |
+| 관계 | 표기 | 구현 |
+|---|---|---|
+| 1:N | 까마귀발 (N쪽) | SVG path + polyline |
+| nullable FK | 점선 | `stroke-dasharray: 5 3` |
+| not null FK | 실선 | 기본 stroke |
 
-- FK가 정의된 컬럼 ↔ 참조 컬럼 사이에 선 렌더링
-- 선은 테이블 이동 시 실시간 업데이트
-- 선 클릭 시 관계 정보 표시 및 삭제 가능
+FK 라인은 테이블 이동 시 실시간 업데이트. 라인 클릭 시 삭제.
 
 ---
 
-## 7. 구현 우선순위
+## 7. OIDC 인증 연동 (미래 고려사항)
 
-### ✅ Phase 1 - 기본 편집기 (완료)
-- [x] 캔버스 렌더링 (테이블 카드, HTML+CSS transform)
-- [x] 테이블 추가 / 삭제
-- [x] 컬럼 추가 / 수정 / 삭제 (이름, 타입, PK/NN/UQ/AI)
-- [x] 테이블 드래그 이동
-- [x] 캔버스 줌 / 패닝
-
-### ✅ Phase 2 - 관계 및 DDL (완료)
-- [x] FK 관계 설정 UI (TableEditor 내 FK 섹션)
-- [x] 관계선 렌더링 (SVG bezier + crow's foot 표기)
-- [x] DDL Export (MySQL / PostgreSQL)
-- [x] DDL Import (정규식 파싱, 스키마 prefix 제거, ALTER TABLE FK 처리)
-
-### Phase 3 - 편의 기능 및 UX 개선
-- [ ] **JSON Export / Import** — ERD 스키마 전체를 `.erd.json` 파일로 저장/불러오기 (Toolbar에 버튼 추가)
-- [ ] **테이블 자동 배치 (Auto Arrange)** — 버튼 클릭 시 레이아웃 자동 정렬. 형태 선택 가능:
-  - Grid (격자형): 테이블을 균등 격자로 배치
-  - Hierarchical (계층형): FK 참조 방향 기준 상→하 트리 배치
-  - Radial (방사형): 중심 테이블 기준 원형 배치
-- [ ] **FK 추가 UI 개선** — TableEditor의 인라인 폼을 레이어 팝업(모달)으로 교체. 더 넓은 화면에서 편집 가능하도록
-- [ ] **관계선 nullable 표시** — FK 컬럼의 nullable 여부를 선 스타일로 구분
-  - nullable: 점선(`stroke-dasharray`)
-  - not null: 실선
-- [ ] **컬럼 / 테이블 코멘트** — Column.comment, Table.comment 편집 UI 추가. DDL export 시 `COMMENT` 절 포함
-- [ ] **컬럼 도메인(Domain) 정의** — 재사용 가능한 컬럼 타입 프리셋 정의 기능
-  - 도메인: 이름 + 타입 + 기본 제약조건 조합 (예: `PK_BIGINT`, `CREATED_AT`, `USER_ID`)
-  - 컬럼 추가 시 도메인 선택 → 자동 채우기
-  - 도메인 정의는 ERDSchema에 포함되어 JSON export/import 시 함께 저장
-- [ ] **Dockerfile 추가** — 빌드 및 배포용 Dockerfile (Node 빌더 + nginx 서빙 멀티스테이지)
-- [ ] LocalStorage 자동 저장 (탭 닫아도 ERD 유지)
-
-### Phase 4 - API 서버 연동 (별도 프로젝트)
-- [ ] 스토리지 레이어 추상화 (LocalStorage → API 교체 가능하도록)
-- [ ] 프로젝트 개념 도입 (여러 ERD를 프로젝트 단위로 관리)
-- [ ] API 서버 연동 (프로젝트 CRUD)
-- [ ] OIDC 인증 연동 (로그인 / 로그아웃 / 토큰 갱신)
-- [ ] 프로젝트 목록 페이지 (`/projects`)
-- [ ] 인증이 없는 경우 LocalStorage 모드로 폴백
-
-### Phase 5 - 실시간 협업
-- [ ] WebSocket 기반 실시간 동기화
-- [ ] 다른 사용자 커서 / 선택 표시
-- [ ] 동시 편집 충돌 해결 (CRDT 또는 OT)
-- [ ] 멤버 초대 / 권한 관리 (owner / editor / viewer)
-- [ ] 변경 이력 (History) 조회
-
----
-
-## 8. 기술 결정 사항
-
-| 항목 | 결정 | 이유 |
-|------|------|------|
-| 캔버스 렌더링 | SVG | 관계선 그리기에 적합, 확대/축소 자연스러움 |
-| 상태 관리 | Svelte 5 Runes (`$state`) | 프레임워크 내장, 별도 라이브러리 불필요 |
-| DDL 파서 | 직접 구현 (정규식 기반) | 의존성 최소화, 경량 |
-| 스타일링 | Tailwind CSS v4 | 이미 설치됨 |
-| 파일 포맷 | JSON (`.erd.json`) | 사람이 읽기 쉽고 버전 관리 친화적 |
-| 스토리지 레이어 | 인터페이스로 추상화 | LocalStorage / API 서버 교체 용이 |
-| 인증 | OIDC (미래) | 표준 프로토콜, 다양한 IdP 지원 |
-| 실시간 협업 | WebSocket (미래) | 양방향 통신, 낮은 레이턴시 |
-
-### 스토리지 레이어 추상화 (현재부터 고려)
-
-Phase 4 전환 비용을 최소화하기 위해, 처음부터 스토리지를 인터페이스로 분리한다.
-
-```typescript
-interface StorageAdapter {
-  listProjects(): Promise<ProjectSummary[]>;
-  loadProject(id: string): Promise<ERDSchema>;
-  saveProject(id: string, schema: ERDSchema): Promise<void>;
-  deleteProject(id: string): Promise<void>;
-}
-
-// Phase 1~3: LocalStorage 구현체
-class LocalStorageAdapter implements StorageAdapter { ... }
-
-// Phase 4: API 서버 구현체 (나중에 추가)
-class ApiStorageAdapter implements StorageAdapter { ... }
-```
-
----
-
-## 9. 파일 구조 (예상)
-
-```
-src/
-├── lib/
-│   ├── types/
-│   │   ├── erd.ts               # ERD 타입 정의 (Table, Column, FK 등)
-│   │   └── project.ts           # Project, ProjectMember 타입 (미래)
-│   ├── storage/
-│   │   ├── adapter.ts           # StorageAdapter 인터페이스
-│   │   ├── local.ts             # LocalStorageAdapter 구현체
-│   │   └── api.ts               # ApiStorageAdapter 구현체 (미래)
-│   ├── store/
-│   │   └── erd.svelte.ts        # ERD 전역 상태 (Svelte runes)
-│   ├── utils/
-│   │   ├── ddl-export.ts        # ERD → DDL 변환
-│   │   ├── ddl-import.ts        # DDL → ERD 파싱
-│   │   └── layout.ts            # 자동 배치 알고리즘
-│   └── components/
-│       ├── Canvas.svelte         # 메인 캔버스
-│       ├── TableCard.svelte      # 테이블 카드 컴포넌트
-│       ├── RelationLine.svelte   # 관계선 SVG
-│       ├── Sidebar.svelte        # 테이블 목록 사이드바
-│       ├── Toolbar.svelte        # 상단 툴바
-│       ├── TableEditor.svelte    # 테이블/컬럼 편집 패널
-│       ├── ImportModal.svelte    # DDL import 모달
-│       └── ExportModal.svelte    # DDL export 모달
-└── routes/
-    ├── +layout.svelte            # 공통 레이아웃 (미래: 인증 상태 처리)
-    ├── +page.svelte              # ERD 편집 메인 페이지
-    └── projects/                 # (미래) 프로젝트 목록
-        └── +page.svelte
-```
-
----
-
-## 10. OIDC 인증 연동 (미래 고려사항)
-
-- SvelteKit의 `hooks.server.ts`에서 세션 검증
-- OIDC Provider (예: Keycloak, Auth0, Google) 연동
-- 인증 없이도 LocalStorage 모드로 동작 가능하게 유지 (게스트 모드)
-- Access Token을 API 요청 헤더에 자동 첨부 (`Authorization: Bearer ...`)
-- Refresh Token 자동 갱신 처리
+- SvelteKit `hooks.server.ts`에서 세션 검증
+- OIDC Provider (Keycloak, Auth0, Google 등) 연동
+- 인증 없이도 LocalStorage 모드로 동작 (게스트 모드 유지)
+- Access Token을 API 요청 헤더에 자동 첨부 (`Authorization: Bearer …`)
+- Refresh Token 자동 갱신
 
 ```
 [사용자] → [SvelteKit] → [OIDC Provider] → 토큰 발급
-                ↓
-           [API 서버] ← Authorization: Bearer <token>
+               ↓
+          [API 서버] ← Authorization: Bearer <token>
 ```
