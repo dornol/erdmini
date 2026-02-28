@@ -137,6 +137,7 @@
   "mobile_continue_anyway": "Continue anyway",
   "mobile_open_on_desktop": "Please open on PC or tablet (landscape)",
   "zoom_reset": "Reset",
+  "zoom_fit": "Fit",
   "storage_full_warning": "Storage is full. Please back up your data by exporting as JSON.",
   "storage_full_export": "Export JSON",
   "domain_delete_confirm": "Delete domain \"{name}\"? {count} column(s) will be unlinked.",

@@ -70,10 +70,44 @@
     };
   });
 
+  const TABLE_W = 200;
+  const HEADER_H = 37;
+  const ROW_H = 26;
+
   function resetView() {
     canvasState.x = 0;
     canvasState.y = 0;
     canvasState.scale = 1;
+  }
+
+  function fitToWindow() {
+    const tables = erdStore.schema.tables;
+    if (tables.length === 0) return;
+    const rect = viewportEl.getBoundingClientRect();
+    const PAD = 60;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const t of tables) {
+      const h = HEADER_H + t.columns.length * ROW_H;
+      minX = Math.min(minX, t.position.x);
+      minY = Math.min(minY, t.position.y);
+      maxX = Math.max(maxX, t.position.x + TABLE_W);
+      maxY = Math.max(maxY, t.position.y + h);
+    }
+
+    const worldW = maxX - minX;
+    const worldH = maxY - minY;
+    const scale = Math.min(
+      (rect.width - PAD * 2) / worldW,
+      (rect.height - PAD * 2) / worldH,
+      2,
+    );
+    const clampedScale = Math.max(0.2, Math.min(3, scale));
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    canvasState.scale = clampedScale;
+    canvasState.x = rect.width / 2 - cx * clampedScale;
+    canvasState.y = rect.height / 2 - cy * clampedScale;
   }
 </script>
 
@@ -102,7 +136,9 @@
 
   <div class="zoom-indicator">
     <span class="zoom-pct">{Math.round(canvasState.scale * 100)}%</span>
-    <button class="zoom-reset" onclick={resetView}>{m.zoom_reset()}</button>
+    <button class="zoom-btn" onclick={fitToWindow}>{m.zoom_fit()}</button>
+    <span class="zoom-sep"></span>
+    <button class="zoom-btn" onclick={resetView}>{m.zoom_reset()}</button>
   </div>
 
 </div>
@@ -415,7 +451,7 @@
     user-select: none;
   }
 
-  .zoom-reset {
+  .zoom-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -431,8 +467,15 @@
     transition: background 0.15s;
   }
 
-  .zoom-reset:hover {
+  .zoom-btn:hover {
     background: var(--erd-zoom-border);
+  }
+
+  .zoom-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--erd-zoom-border);
+    flex-shrink: 0;
   }
 
 </style>

@@ -137,6 +137,7 @@
   "mobile_continue_anyway": "仍然继续",
   "mobile_open_on_desktop": "请在电脑或平板（横屏）上打开",
   "zoom_reset": "重置",
+  "zoom_fit": "适应窗口",
   "storage_full_warning": "存储空间不足，请导出 JSON 备份数据。",
   "storage_full_export": "导出 JSON",
   "domain_delete_confirm": "确定删除域 \"{name}\" 吗？{count} 个列的关联将被解除。",
