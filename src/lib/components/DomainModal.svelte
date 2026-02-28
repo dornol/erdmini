@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { ColumnDomain, ColumnType } from '$lib/types/erd';
   import { exportDomainsToXlsx, exportDomainTemplate, importDomainsFromXlsx } from '$lib/utils/domain-xlsx';
@@ -348,7 +349,20 @@
                   <td class="td-actions">
                     <button
                       class="icon-btn del"
-                      onclick={(e) => { e.stopPropagation(); erdStore.deleteDomain(domain.id); }}
+                      onclick={async (e) => {
+                        e.stopPropagation();
+                        const linkedCount = erdStore.schema.tables.reduce(
+                          (sum, t) => sum + t.columns.filter((c) => c.domainId === domain.id).length, 0
+                        );
+                        if (linkedCount > 0) {
+                          const ok = await dialogStore.confirm(
+                            m.domain_delete_confirm({ name: domain.name, count: linkedCount }),
+                            { title: m.domain_delete(), confirmText: m.action_delete(), variant: 'danger' }
+                          );
+                          if (!ok) return;
+                        }
+                        erdStore.deleteDomain(domain.id);
+                      }}
                       aria-label={m.domain_delete()}
                     >✕</button>
                   </td>

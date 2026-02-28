@@ -16,6 +16,7 @@
   let viewportWidth = $state(768);
   let forceDesktop = $state(false);
   let isMobile = $derived(viewportWidth < 768);
+  let storageBannerDismissed = $state(false);
 
   function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } {
     const pt = prev.tables;
@@ -236,6 +237,21 @@
   </div>
 {:else}
   <div class="app">
+    {#if erdStore.storageFull && !storageBannerDismissed}
+      <div class="storage-banner">
+        <span class="storage-msg">{m.storage_full_warning()}</span>
+        <button class="storage-export-btn" onclick={() => {
+          const blob = new Blob([JSON.stringify($state.snapshot(erdStore.schema), null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'erdmini-backup.json';
+          a.click();
+          URL.revokeObjectURL(url);
+        }}>{m.storage_full_export()}</button>
+        <button class="storage-close-btn" onclick={() => (storageBannerDismissed = true)}>✕</button>
+      </div>
+    {/if}
     <Toolbar />
     <div class="main">
       <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} />
@@ -355,5 +371,53 @@
     color: #e2e8f0;
     border-color: #475569;
     background: #1e293b;
+  }
+
+  .storage-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #fef3c7;
+    border-bottom: 1px solid #f59e0b;
+    flex-shrink: 0;
+  }
+
+  .storage-msg {
+    flex: 1;
+    font-size: 13px;
+    color: #92400e;
+    font-weight: 500;
+  }
+
+  .storage-export-btn {
+    font-size: 12px;
+    color: #92400e;
+    background: white;
+    border: 1px solid #f59e0b;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .storage-export-btn:hover {
+    background: #fffbeb;
+  }
+
+  .storage-close-btn {
+    background: none;
+    border: none;
+    font-size: 14px;
+    color: #b45309;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+  }
+
+  .storage-close-btn:hover {
+    background: #fde68a;
   }
 </style>

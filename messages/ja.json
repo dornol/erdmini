@@ -136,5 +136,9 @@
   "mobile_schema_summary": "テーブル {tables} 件 · ドメイン {domains} 件",
   "mobile_continue_anyway": "このまま続ける",
   "mobile_open_on_desktop": "PC またはタブレット（横向き）で開いてください",
-  "zoom_reset": "リセット"
+  "zoom_reset": "リセット",
+  "storage_full_warning": "ストレージ容量が不足しています。JSONでバックアップしてください。",
+  "storage_full_export": "JSON エクスポート",
+  "domain_delete_confirm": "ドメイン「{name}」を削除しますか？{count} 件のカラムの連携が解除されます。",
+  "column_delete_fk_confirm": "このカラムを削除すると、関連する FK {count} 件も削除されます。続行しますか？"
 }

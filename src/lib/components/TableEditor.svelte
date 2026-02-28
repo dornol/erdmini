@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import FkModal from './FkModal.svelte';
@@ -276,7 +277,25 @@
               <button
                 class="icon-btn del"
                 title={m.action_delete()}
-                onclick={() => erdStore.deleteColumn(selectedTable!.id, col.id)}
+                onclick={async () => {
+                  const table = selectedTable!;
+                  // Count FKs in this table that use this column
+                  let fkCount = table.foreignKeys.filter((fk) => fk.columnIds.includes(col.id)).length;
+                  // Count FKs in other tables that reference this column
+                  fkCount += erdStore.schema.tables
+                    .filter((t) => t.id !== table.id)
+                    .reduce((sum, t) => sum + t.foreignKeys.filter(
+                      (fk) => fk.referencedTableId === table.id && fk.referencedColumnIds.includes(col.id)
+                    ).length, 0);
+                  if (fkCount > 0) {
+                    const ok = await dialogStore.confirm(
+                      m.column_delete_fk_confirm({ count: fkCount }),
+                      { title: m.action_delete(), confirmText: m.action_delete(), variant: 'danger' }
+                    );
+                    if (!ok) return;
+                  }
+                  erdStore.deleteColumn(table.id, col.id);
+                }}
               >✕</button>
             </div>
           </div>

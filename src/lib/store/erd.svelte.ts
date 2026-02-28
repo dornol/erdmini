@@ -68,6 +68,7 @@ class ERDStore {
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
   hoveredColumnInfo = $state<{ tableId: string; columnId: string } | null>(null);
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
+  storageFull = $state(false);
 
   // Undo/Redo
   private _undoStack: HistoryEntry[] = [];
@@ -137,7 +138,10 @@ class ERDStore {
     if (typeof window === 'undefined') return;
     try {
       window.localStorage.setItem(LS_KEY, JSON.stringify($state.snapshot(this.schema)));
-    } catch {}
+      this.storageFull = false;
+    } catch {
+      this.storageFull = true;
+    }
   }
 
   addTable(viewportWidth = 800, viewportHeight = 600) {
@@ -255,8 +259,15 @@ class ERDStore {
     const table = this.schema.tables.find((t) => t.id === tableId);
     if (!table) return;
     table.columns = table.columns.filter((c) => c.id !== columnId);
-    // Remove FKs that reference this column
+    // Remove FKs that reference this column (in same table)
     table.foreignKeys = table.foreignKeys.filter((fk) => !fk.columnIds.includes(columnId));
+    // Remove FKs in other tables that reference this column
+    for (const t of this.schema.tables) {
+      if (t.id === tableId) continue;
+      t.foreignKeys = t.foreignKeys.filter(
+        (fk) => !(fk.referencedTableId === tableId && fk.referencedColumnIds.includes(columnId))
+      );
+    }
     this.schema.updatedAt = now();
   }
 
