@@ -77,6 +77,10 @@
   let importOpen = $state(false);
   let exportOpen = $state(false);
   let themeOpen = $state(false);
+  let shortcutsOpen = $state(false);
+
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+  const mod = isMac ? '⌘' : 'Ctrl';
 
   const THEMES: { id: ThemeId; label: () => string; dot: string }[] = [
     { id: 'modern',    label: () => m.theme_modern(),    dot: '#1e293b' },
@@ -309,6 +313,54 @@
     <button class="btn-lang" onclick={() => languageStore.toggle()}>
       {languageStore.current === 'ko' ? 'EN' : 'KO'}
     </button>
+
+    <!-- Shortcuts help -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-help"
+        onclick={() => (shortcutsOpen = !shortcutsOpen)}
+        aria-expanded={shortcutsOpen}
+        aria-haspopup="dialog"
+        title={m.shortcuts_title()}
+      >
+        ?
+      </button>
+      {#if shortcutsOpen}
+        <div
+          class="shortcuts-panel"
+          role="dialog"
+          tabindex="-1"
+          onmouseleave={() => (shortcutsOpen = false)}
+        >
+          <div class="shortcuts-header">{m.shortcuts_title()}</div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_general()}</div>
+            <div class="shortcut-row"><kbd>{mod}+Z</kbd><span>{m.shortcuts_undo()}</span></div>
+            <div class="shortcut-row"><kbd>{mod}+Shift+Z</kbd><span>{m.shortcuts_redo()}</span></div>
+            <div class="shortcut-row"><kbd>Delete / Backspace</kbd><span>{m.shortcuts_delete()}</span></div>
+            <div class="shortcut-row"><kbd>Esc</kbd><span>{m.shortcuts_deselect()}</span></div>
+          </div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_canvas()}</div>
+            <div class="shortcut-row"><kbd>Scroll</kbd><span>{m.shortcuts_zoom()}</span></div>
+            <div class="shortcut-row"><kbd>Drag</kbd><span>{m.shortcuts_pan()}</span></div>
+          </div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_selection()}</div>
+            <div class="shortcut-row"><kbd>{mod}+Click</kbd><span>{m.shortcuts_multi_select()}</span></div>
+          </div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_editing()}</div>
+            <div class="shortcut-row"><kbd>Double-click header</kbd><span>{m.shortcuts_rename_table()}</span></div>
+            <div class="shortcut-row"><kbd>Double-click column</kbd><span>{m.shortcuts_edit_column()}</span></div>
+          </div>
+        </div>
+      {/if}
+    </div>
   </div>
 
   <div class="zoom-display">
@@ -478,6 +530,83 @@
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, 0.3);
     flex-shrink: 0;
+  }
+
+  .btn-help {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #475569;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-help:hover {
+    background: #334155;
+    color: white;
+  }
+
+  .shortcuts-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    z-index: 200;
+    min-width: 260px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    padding: 12px 0;
+  }
+
+  .shortcuts-header {
+    padding: 0 14px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    border-bottom: 1px solid #334155;
+    margin-bottom: 4px;
+  }
+
+  .shortcuts-group {
+    padding: 6px 14px;
+  }
+
+  .shortcuts-group-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 12px;
+    color: #cbd5e1;
+  }
+
+  .shortcut-row kbd {
+    background: #334155;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-family: inherit;
+    white-space: nowrap;
   }
 
   .zoom-display {

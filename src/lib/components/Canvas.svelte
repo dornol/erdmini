@@ -1,6 +1,7 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
+  import CanvasHistory from './CanvasHistory.svelte';
   import Minimap from './Minimap.svelte';
 
   let { children } = $props();
@@ -78,6 +79,8 @@
   >
     {@render children()}
   </div>
+
+  <CanvasHistory />
 
   {#if erdStore.schema.tables.length > 0}
     <Minimap />

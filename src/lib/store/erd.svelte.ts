@@ -40,6 +40,8 @@ function loadFromStorage(): ERDSchema {
   }
 }
 
+export type HistoryEntry = { snap: string; label: string; detail: string; time: number };
+
 const MAX_HISTORY = 50;
 
 class ERDStore {
@@ -51,41 +53,63 @@ class ERDStore {
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnId: string; refTableId: string; refColumnId: string } | null>(null);
 
   // Undo/Redo
-  private _undoStack: string[] = [];
-  private _redoStack: string[] = [];
-  private _skipSnapshot = false;
+  private _undoStack: HistoryEntry[] = [];
+  private _redoStack: HistoryEntry[] = [];
+  _undoVersion = $state(0);
+  _isUndoRedoing = false;
 
-  get canUndo(): boolean { return this._undoStack.length > 0; }
-  get canRedo(): boolean { return this._redoStack.length > 0; }
+  get canUndo(): boolean { void this._undoVersion; return this._undoStack.length > 0; }
+  get canRedo(): boolean { void this._undoVersion; return this._redoStack.length > 0; }
 
-  pushSnapshot() {
-    if (this._skipSnapshot) return;
-    const snap = JSON.stringify($state.snapshot(this.schema));
+  get historyEntries(): HistoryEntry[] {
+    // Access version to make this reactive
+    void this._undoVersion;
+    return [...this._undoStack];
+  }
+
+  pushSnapshotRaw(snap: string, label: string, detail: string = '') {
     // Avoid duplicate snapshots
-    if (this._undoStack.length > 0 && this._undoStack[this._undoStack.length - 1] === snap) return;
-    this._undoStack.push(snap);
+    if (this._undoStack.length > 0 && this._undoStack[this._undoStack.length - 1].snap === snap) return;
+    this._undoStack.push({ snap, label, detail, time: Date.now() });
     if (this._undoStack.length > MAX_HISTORY) this._undoStack.shift();
     this._redoStack = [];
+    this._undoVersion++;
   }
 
   undo() {
     if (this._undoStack.length === 0) return;
     const current = JSON.stringify($state.snapshot(this.schema));
-    this._redoStack.push(current);
+    this._redoStack.push({ snap: current, label: '', time: Date.now() });
     const prev = this._undoStack.pop()!;
-    this._skipSnapshot = true;
-    this.schema = JSON.parse(prev);
-    this._skipSnapshot = false;
+    this._isUndoRedoing = true;
+    this.schema = JSON.parse(prev.snap);
+    this._undoVersion++;
   }
 
   redo() {
     if (this._redoStack.length === 0) return;
     const current = JSON.stringify($state.snapshot(this.schema));
-    this._undoStack.push(current);
+    this._undoStack.push({ snap: current, label: '', time: Date.now() });
     const next = this._redoStack.pop()!;
-    this._skipSnapshot = true;
-    this.schema = JSON.parse(next);
-    this._skipSnapshot = false;
+    this._isUndoRedoing = true;
+    this.schema = JSON.parse(next.snap);
+    this._undoVersion++;
+  }
+
+  jumpToHistory(index: number) {
+    if (index < 0 || index >= this._undoStack.length) return;
+    const current = JSON.stringify($state.snapshot(this.schema));
+    // Push items from index+1..end and current state onto redo stack
+    for (let i = this._undoStack.length - 1; i > index; i--) {
+      this._redoStack.push(this._undoStack[i]);
+    }
+    this._redoStack.push({ snap: current, label: '', time: Date.now() });
+    // Restore the target snapshot
+    const target = this._undoStack[index];
+    this._undoStack = this._undoStack.slice(0, index);
+    this._isUndoRedoing = true;
+    this.schema = JSON.parse(target.snap);
+    this._undoVersion++;
   }
 
   get selectedTable(): Table | undefined {

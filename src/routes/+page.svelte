@@ -8,19 +8,129 @@
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import { erdStore } from '$lib/store/erd.svelte';
+  import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import * as m from '$lib/paraglide/messages';
 
   let sidebarCollapsed = $state(false);
 
+  function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } {
+    const pt = prev.tables;
+    const ct = cur.tables;
+    const prevIds = new Set(pt.map((t) => t.id));
+    const curIds = new Set(ct.map((t) => t.id));
+
+    // Table added
+    if (ct.length > pt.length) {
+      const added = ct.find((t) => !prevIds.has(t.id));
+      return { label: 'history_add_table', detail: added?.name ?? '' };
+    }
+    // Table deleted
+    if (ct.length < pt.length) {
+      const removed = pt.find((t) => !curIds.has(t.id));
+      return { label: 'history_delete_table', detail: removed?.name ?? '' };
+    }
+
+    // Column added/deleted
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (!pt2) continue;
+      if (ct2.columns.length > pt2.columns.length) {
+        const prevColIds = new Set(pt2.columns.map((c) => c.id));
+        const added = ct2.columns.find((c) => !prevColIds.has(c.id));
+        return { label: 'history_add_column', detail: `${ct2.name}.${added?.name ?? ''}` };
+      }
+      if (ct2.columns.length < pt2.columns.length) {
+        const curColIds = new Set(ct2.columns.map((c) => c.id));
+        const removed = pt2.columns.find((c) => !curColIds.has(c.id));
+        return { label: 'history_delete_column', detail: `${ct2.name}.${removed?.name ?? ''}` };
+      }
+    }
+
+    // FK added/deleted
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (!pt2) continue;
+      if (ct2.foreignKeys.length > pt2.foreignKeys.length) {
+        const prevFkIds = new Set(pt2.foreignKeys.map((f) => f.id));
+        const added = ct2.foreignKeys.find((f) => !prevFkIds.has(f.id));
+        const refTable = added ? ct.find((t) => t.id === added.referencedTableId) : null;
+        return { label: 'history_add_fk', detail: `${ct2.name} → ${refTable?.name ?? ''}` };
+      }
+      if (ct2.foreignKeys.length < pt2.foreignKeys.length) {
+        const curFkIds = new Set(ct2.foreignKeys.map((f) => f.id));
+        const removed = pt2.foreignKeys.find((f) => !curFkIds.has(f.id));
+        const refTable = removed ? pt.find((t) => t.id === removed.referencedTableId) : null;
+        return { label: 'history_delete_fk', detail: `${ct2.name} → ${refTable?.name ?? ''}` };
+      }
+    }
+
+    // Domain changes
+    const prevDomains = prev.domains ?? [];
+    const curDomains = cur.domains ?? [];
+    if (curDomains.length !== prevDomains.length) {
+      if (curDomains.length > prevDomains.length) {
+        const prevDomIds = new Set(prevDomains.map((d) => d.id));
+        const added = curDomains.find((d) => !prevDomIds.has(d.id));
+        return { label: 'history_edit_domain', detail: added?.name ?? '' };
+      }
+      const curDomIds = new Set(curDomains.map((d) => d.id));
+      const removed = prevDomains.find((d) => !curDomIds.has(d.id));
+      return { label: 'history_edit_domain', detail: removed?.name ?? '' };
+    }
+
+    // Table name change
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (pt2 && pt2.name !== ct2.name) {
+        return { label: 'history_edit_table', detail: `${pt2.name} → ${ct2.name}` };
+      }
+    }
+
+    // Column property edit (same count but different content)
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (!pt2) continue;
+      for (const cc of ct2.columns) {
+        const pc = pt2.columns.find((c) => c.id === cc.id);
+        if (pc && JSON.stringify(pc) !== JSON.stringify(cc)) {
+          return { label: 'history_edit_column', detail: `${ct2.name}.${cc.name}` };
+        }
+      }
+    }
+
+    // Position changes (layout)
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (pt2 && (pt2.position.x !== ct2.position.x || pt2.position.y !== ct2.position.y)) {
+        return { label: 'history_layout', detail: '' };
+      }
+    }
+
+    return { label: 'history_edit', detail: '' };
+  }
+
   // Auto-save to localStorage and push undo snapshot whenever schema changes
+  // prevSchemaSnap captures the state BEFORE the mutation so undo restores the correct state
   let prevUpdatedAt = $state(erdStore.schema.updatedAt);
+  let prevSchemaSnap: string = JSON.stringify($state.snapshot(erdStore.schema));
   $effect(() => {
     const cur = erdStore.schema.updatedAt;
     if (cur !== prevUpdatedAt) {
-      erdStore.pushSnapshot();
+      if (erdStore._isUndoRedoing) {
+        // Undo/redo triggered this change — don't push, just reset flag
+        erdStore._isUndoRedoing = false;
+      } else {
+        // Normal mutation — push the PREVIOUS state (before this change)
+        const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
+        const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;
+        const { label, detail } = deriveLabel(prevSchema, curSchema);
+        erdStore.pushSnapshotRaw(prevSchemaSnap, label, detail);
+      }
       prevUpdatedAt = cur;
     }
+    // Always capture current state for next mutation
+    prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
     erdStore.saveToStorage();
   });
 
