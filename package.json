@@ -27,7 +27,7 @@
 	},
 	"dependencies": {
 		"d3-force": "^3.0.0",
-		"html2canvas": "^1.4.1",
+		"html-to-image": "^1.11.13",
 		"node-sql-parser": "^5.4.0"
 	}
 }

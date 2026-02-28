@@ -87,11 +87,13 @@
 
     if (erdStore.schema.tables.length === 0) return;
 
-    const html2canvas = (await import('html2canvas')).default;
+    const { toPng } = await import('html-to-image');
     const PAD = 40;
 
-    // Save current transform
+    // Save originals
     const origTransform = worldEl.style.transform;
+    const origWidth = worldEl.style.width;
+    const origHeight = worldEl.style.height;
 
     // Reset to identity so getBoundingClientRect reflects actual world coords at scale=1
     worldEl.style.transform = 'translate(0px, 0px) scale(1)';
@@ -116,35 +118,39 @@
       return;
     }
 
-    const w = maxX - minX + PAD * 2;
-    const h = maxY - minY + PAD * 2;
+    const w = Math.ceil(maxX - minX + PAD * 2);
+    const h = Math.ceil(maxY - minY + PAD * 2);
 
-    // Shift so all tables start at (PAD, PAD)
+    // Shift so all tables start at (PAD, PAD) and give worldEl explicit dimensions
     worldEl.style.transform = `translate(${-minX + PAD}px, ${-minY + PAD}px) scale(1)`;
+    worldEl.style.width = `${w}px`;
+    worldEl.style.height = `${h}px`;
 
-    // Temporarily allow overflow so html2canvas sees full content
+    // Temporarily allow overflow so capture sees full content
     const viewportEl = worldEl.parentElement;
     const origOverflow = viewportEl?.style.overflow ?? '';
     if (viewportEl) viewportEl.style.overflow = 'visible';
 
     try {
-      const canvas = await html2canvas(worldEl, {
+      const dataUrl = await toPng(worldEl, {
         width: w,
         height: h,
-        x: 0,
-        y: 0,
+        pixelRatio: 2,
         backgroundColor: '#f8fafc',
-        scale: 2,
-        logging: false,
+        filter: (node: HTMLElement) => {
+          // Exclude hover tooltips from export
+          return !node.classList?.contains('col-tooltip');
+        },
       });
 
-      const url = canvas.toDataURL('image/png');
       const a = document.createElement('a');
-      a.href = url;
+      a.href = dataUrl;
       a.download = 'erdmini_diagram.png';
       a.click();
     } finally {
       worldEl.style.transform = origTransform;
+      worldEl.style.width = origWidth;
+      worldEl.style.height = origHeight;
       if (viewportEl) viewportEl.style.overflow = origOverflow;
     }
   }
