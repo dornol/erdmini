@@ -1,3 +1,5 @@
+import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
+import type { SimulationNodeDatum } from 'd3-force';
 import type { Table } from '$lib/types/erd';
 
 export type LayoutType = 'grid' | 'hierarchical' | 'radial';
@@ -129,69 +131,64 @@ function hierarchicalLayout(tables: Table[]): Map<string, { x: number; y: number
   return result;
 }
 
+interface RNode extends SimulationNodeDatum {
+  id: string;
+  h: number;
+}
+
 /**
- * Radial: most-connected table at center, others in concentric rings.
- * Ring radius is sized so tables don't overlap even for tall tables.
+ * Radial: force-directed layout using d3-force.
+ * - forceCollide prevents overlap (uses actual table bounding box)
+ * - forceLink pulls FK-connected tables close together
+ * - forceManyBody repels unconnected tables
+ * Result: compact, organic arrangement where related tables cluster naturally.
  */
 function radialLayout(tables: Table[]): Map<string, { x: number; y: number }> {
   const result = new Map<string, { x: number; y: number }>();
   if (tables.length === 0) return result;
 
-  // Compute total FK degree (in + out) for each table
-  const degree = new Map<string, number>();
-  for (const t of tables) degree.set(t.id, 0);
-  for (const table of tables) {
-    for (const fk of table.foreignKeys) {
-      degree.set(table.id, (degree.get(table.id) ?? 0) + 1);
-      if (degree.has(fk.referencedTableId)) {
-        degree.set(fk.referencedTableId, (degree.get(fk.referencedTableId) ?? 0) + 1);
-      }
-    }
+  const cx = 600, cy = 500;
+  const n = tables.length;
+
+  // Spread tables evenly on a circle as starting positions
+  const initR = Math.max(120, (n * (TABLE_W + GAP_X)) / (2 * Math.PI) * 0.45);
+  const nodes: RNode[] = tables.map((t, i) => ({
+    id: t.id,
+    h: tableHeight(t),
+    x: cx + Math.cos((2 * Math.PI * i) / n) * initR,
+    y: cy + Math.sin((2 * Math.PI * i) / n) * initR,
+  }));
+
+  const idToIdx = new Map(nodes.map((nd, i) => [nd.id, i]));
+
+  // FK edges as index pairs
+  const links = tables.flatMap((t) =>
+    t.foreignKeys
+      .filter((fk) => idToIdx.has(fk.referencedTableId))
+      .map((fk) => ({ source: idToIdx.get(t.id)!, target: idToIdx.get(fk.referencedTableId)! })),
+  );
+
+  const sim = forceSimulation<RNode>(nodes)
+    // FK links attract connected tables; distance ≈ table width + small gap
+    .force('link', forceLink(links).distance(TABLE_W + 30).strength(0.5))
+    // Global repulsion to spread tables apart
+    .force('charge', forceManyBody<RNode>().strength(-350))
+    // Per-node gravity toward canvas center — keeps disconnected tables from drifting away
+    .force('x', forceX(cx).strength(0.08))
+    .force('y', forceY(cy).strength(0.08))
+    // Collision: half-diagonal of bounding box + padding → no overlap
+    .force('collision', forceCollide<RNode>((d) => Math.hypot(TABLE_W / 2 + 10, d.h / 2 + 10)).strength(1))
+    .stop();
+
+  sim.tick(300);
+
+  for (const nd of nodes) {
+    result.set(nd.id, {
+      x: Math.round((nd.x ?? cx) - TABLE_W / 2),
+      y: Math.round((nd.y ?? cy) - nd.h / 2),
+    });
   }
 
-  const sorted = [...tables].sort((a, b) => {
-    const diff = (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0);
-    return diff !== 0 ? diff : a.name.localeCompare(b.name);
-  });
-
-  const centerTable = sorted[0];
-  const cx = 600;
-  const cy = 500;
-
-  // Center table positioned at canvas center
-  result.set(centerTable.id, {
-    x: cx - TABLE_W / 2,
-    y: cy - tableHeight(centerTable) / 2,
-  });
-
-  // Fill concentric rings. Each ring's radius is sized so tables fit without overlap.
-  // Minimum slot width = TABLE_W + GAP_X, minimum slot height = avg table height + GAP_Y.
-  const avgH = tables.reduce((sum, t) => sum + tableHeight(t), 0) / tables.length;
-  const slotDiag = Math.sqrt((TABLE_W + GAP_X) ** 2 + (avgH + GAP_Y) ** 2);
-
-  let ringStart = 1;
-  let ring = 0;
-  while (ringStart < sorted.length) {
-    // Radius: ensure adjacent tables on ring don't overlap
-    // arc length between 2 adjacent slots >= slotDiag  →  radius >= slotDiag * capacity / (2π)
-    // We grow radius per ring to always fit the tables comfortably.
-    const radius = slotDiag * (ring + 1) * 0.6 + 150;
-    const circumference = 2 * Math.PI * radius;
-    const capacity = Math.max(1, Math.floor(circumference / slotDiag));
-    const ringEnd = Math.min(ringStart + capacity, sorted.length);
-    const count = ringEnd - ringStart;
-
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
-      const t = sorted[ringStart + i];
-      result.set(t.id, {
-        x: Math.round(cx + radius * Math.cos(angle) - TABLE_W / 2),
-        y: Math.round(cy + radius * Math.sin(angle) - tableHeight(t) / 2),
-      });
-    }
-    ringStart = ringEnd;
-    ring++;
-  }
   return result;
 }
 

@@ -1,11 +1,41 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+
+  function onItemClick(e: MouseEvent, tableId: string) {
+    if (e.ctrlKey || e.metaKey) {
+      const newSet = new Set(erdStore.selectedTableIds);
+      if (newSet.has(tableId)) {
+        newSet.delete(tableId);
+      } else {
+        newSet.add(tableId);
+      }
+      erdStore.selectedTableIds = newSet;
+    } else {
+      erdStore.selectedTableId = tableId;
+      erdStore.selectedTableIds = new Set([tableId]);
+    }
+  }
+
+  function bulkDelete() {
+    const ids = [...erdStore.selectedTableIds];
+    if (ids.length < 2) return;
+    if (window.confirm(`선택한 ${ids.length}개 테이블을 삭제하시겠습니까?`)) {
+      erdStore.deleteTables(ids);
+    }
+  }
 </script>
 
 <aside class="sidebar">
   <div class="sidebar-header">
     <span>테이블 목록</span>
-    <span class="count">{erdStore.schema.tables.length}</span>
+    <div class="header-right">
+      {#if erdStore.selectedTableIds.size >= 2}
+        <button class="bulk-delete-btn" onclick={bulkDelete}>
+          선택 삭제({erdStore.selectedTableIds.size})
+        </button>
+      {/if}
+      <span class="count">{erdStore.schema.tables.length}</span>
+    </div>
   </div>
 
   <ul class="table-list">
@@ -14,8 +44,8 @@
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <li
         class="table-item"
-        class:active={erdStore.selectedTableId === table.id}
-        onclick={() => (erdStore.selectedTableId = table.id)}
+        class:active={erdStore.selectedTableIds.has(table.id)}
+        onclick={(e) => onItemClick(e, table.id)}
       >
         <div class="item-info">
           <span class="item-name">{table.name}</span>
@@ -60,6 +90,29 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid #e2e8f0;
+    gap: 6px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bulk-delete-btn {
+    background: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fca5a5;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .bulk-delete-btn:hover {
+    background: #fecaca;
   }
 
   .count {

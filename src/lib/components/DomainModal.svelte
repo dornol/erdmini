@@ -107,37 +107,51 @@
     </div>
 
     <div class="modal-body">
-      <!-- Domain list -->
-      <div class="domain-list">
-        {#each erdStore.schema.domains as domain (domain.id)}
-          <div class="domain-row" class:editing={editingId === domain.id}>
-            <div class="domain-info">
-              <span class="domain-name">{domain.name}</span>
-              <span class="domain-type">
-                {domain.type}{domain.length ? `(${domain.length})` : ''}
-                {domain.nullable ? 'NULL' : 'NOT NULL'}
-                {domain.primaryKey ? '· PK' : ''}
-                {domain.unique ? '· UQ' : ''}
-                {domain.autoIncrement ? '· AI' : ''}
-              </span>
-              {#if domain.comment}
-                <span class="domain-comment">{domain.comment}</span>
-              {/if}
-            </div>
-            <div class="domain-actions">
-              <button class="icon-btn" onclick={() => startEdit(domain)}>수정</button>
-              <button
-                class="icon-btn del"
-                onclick={() => erdStore.deleteDomain(domain.id)}
-                aria-label="도메인 삭제"
-              >✕</button>
-            </div>
-          </div>
-        {:else}
-          {#if !showForm}
-            <p class="empty-msg">도메인이 없습니다.</p>
-          {/if}
-        {/each}
+      <!-- Domain table -->
+      <div class="table-wrapper">
+        <table class="domain-table">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>타입</th>
+              <th>길이</th>
+              <th>NULL</th>
+              <th>PK</th>
+              <th>UQ</th>
+              <th>AI</th>
+              <th>기본값</th>
+              <th>설명</th>
+              <th>액션</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each erdStore.schema.domains as domain (domain.id)}
+              <tr class:editing={editingId === domain.id}>
+                <td class="td-name">{domain.name}</td>
+                <td class="td-mono">{domain.type}</td>
+                <td class="td-mono">{domain.length ?? '—'}</td>
+                <td class="td-null">{domain.nullable ? 'NULL' : 'NOT NULL'}</td>
+                <td class="td-badge">{#if domain.primaryKey}<span class="badge pk">PK</span>{/if}</td>
+                <td class="td-badge">{#if domain.unique}<span class="badge uq">UQ</span>{/if}</td>
+                <td class="td-badge">{#if domain.autoIncrement}<span class="badge ai">AI</span>{/if}</td>
+                <td class="td-mono td-optional">{domain.defaultValue ?? '—'}</td>
+                <td class="td-comment">{domain.comment ?? '—'}</td>
+                <td class="td-actions">
+                  <button class="icon-btn" onclick={() => startEdit(domain)}>수정</button>
+                  <button
+                    class="icon-btn del"
+                    onclick={() => erdStore.deleteDomain(domain.id)}
+                    aria-label="도메인 삭제"
+                  >✕</button>
+                </td>
+              </tr>
+            {:else}
+              <tr>
+                <td colspan="10" class="empty-cell">도메인이 없습니다.</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
       </div>
 
       <!-- Add/Edit form -->
@@ -220,8 +234,7 @@
     background: white;
     border-radius: 10px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    width: 480px;
-    max-width: 90vw;
+    width: min(90vw, 780px);
     max-height: 85vh;
     display: flex;
     flex-direction: column;
@@ -266,57 +279,128 @@
     overflow-y: auto;
   }
 
-  .domain-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  /* ── Domain table ── */
+  .table-wrapper {
+    overflow-x: auto;
   }
 
-  .domain-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 10px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
+  .domain-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
   }
 
-  .domain-row.editing {
-    border-color: #3b82f6;
-    background: #eff6ff;
-  }
-
-  .domain-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .domain-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #1e293b;
-  }
-
-  .domain-type {
-    font-size: 11px;
+  .domain-table thead th {
+    background: #f1f5f9;
     color: #64748b;
-  }
-
-  .domain-comment {
     font-size: 11px;
-    color: #94a3b8;
-    font-style: italic;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
   }
 
-  .domain-actions {
+  .domain-table tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .domain-table tbody tr:nth-child(even) {
+    background: #f8fafc;
+  }
+
+  .domain-table tbody tr:hover {
+    background: #f1f5f9;
+  }
+
+  .domain-table tbody tr.editing {
+    background: #eff6ff;
+    outline: 2px solid #3b82f6;
+    outline-offset: -1px;
+  }
+
+  .domain-table td {
+    padding: 6px 8px;
+    color: #1e293b;
+    vertical-align: middle;
+  }
+
+  .td-name {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .td-mono {
+    font-family: monospace;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  .td-null {
+    white-space: nowrap;
+    color: #64748b;
+    font-size: 11px;
+  }
+
+  .td-badge {
+    text-align: center;
+    width: 32px;
+  }
+
+  .td-optional {
+    color: #94a3b8;
+  }
+
+  .td-comment {
+    color: #64748b;
+    font-style: italic;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .td-actions {
     display: flex;
     gap: 4px;
-    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+  }
+
+  .badge.pk {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
+  }
+
+  .badge.uq {
+    background: #ede9fe;
+    color: #6d28d9;
+    border: 1px solid #c4b5fd;
+  }
+
+  .badge.ai {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+  }
+
+  .empty-cell {
+    text-align: center;
+    padding: 20px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-style: italic;
   }
 
   .icon-btn {
@@ -340,13 +424,7 @@
     border-color: #fca5a5;
   }
 
-  .empty-msg {
-    font-size: 12px;
-    color: #94a3b8;
-    text-align: center;
-    padding: 16px 0;
-  }
-
+  /* ── Form ── */
   .form-section {
     display: flex;
     flex-direction: column;

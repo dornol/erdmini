@@ -9,7 +9,7 @@
   let isDragging = $state(false);
   let dragStart = { mouseX: 0, mouseY: 0, tableX: 0, tableY: 0 };
 
-  let isSelected = $derived(erdStore.selectedTableId === table.id);
+  let isSelected = $derived(erdStore.selectedTableIds.has(table.id));
 
   // Set of column IDs that are FK source columns
   let fkSourceIds = $derived(new Set(table.foreignKeys.map((fk) => fk.columnId)));
@@ -33,7 +33,19 @@
     if (e.button !== 0) return;
     e.stopPropagation();
 
+    if (e.ctrlKey || e.metaKey) {
+      const newSet = new Set(erdStore.selectedTableIds);
+      if (newSet.has(table.id)) {
+        newSet.delete(table.id);
+      } else {
+        newSet.add(table.id);
+      }
+      erdStore.selectedTableIds = newSet;
+      return;
+    }
+
     erdStore.selectedTableId = table.id;
+    erdStore.selectedTableIds = new Set([table.id]);
     isDragging = true;
     dragStart = {
       mouseX: e.clientX,
@@ -52,6 +64,16 @@
 
   function onMouseUp() {
     isDragging = false;
+  }
+
+  function onColumnDblClick(e: MouseEvent, colId: string) {
+    e.stopPropagation();
+    erdStore.editingColumnInfo = {
+      tableId: table.id,
+      columnId: colId,
+      anchorX: e.clientX,
+      anchorY: e.clientY,
+    };
   }
 
   function onDeleteClick(e: MouseEvent) {
@@ -108,7 +130,8 @@
       {@const fk = table.foreignKeys.find((f) => f.columnId === col.id)}
       {@const refTable = fk ? erdStore.schema.tables.find((t) => t.id === fk.referencedTableId) : undefined}
       {@const refCol = refTable ? refTable.columns.find((c) => c.id === fk!.referencedColumnId) : undefined}
-      <div class="column-row">
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="column-row" ondblclick={(e) => onColumnDblClick(e, col.id)}>
 
         <!-- Key badge: PK (gold) or FK (blue) or nothing -->
         <div class="col-key">

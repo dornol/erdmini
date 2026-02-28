@@ -43,6 +43,8 @@ function loadFromStorage(): ERDSchema {
 class ERDStore {
   schema = $state<ERDSchema>(loadFromStorage());
   selectedTableId = $state<string | null>(null);
+  selectedTableIds = $state<Set<string>>(new Set());
+  editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
 
   get selectedTable(): Table | undefined {
     return this.schema.tables.find((t) => t.id === this.selectedTableId);
@@ -96,6 +98,19 @@ class ERDStore {
     if (this.selectedTableId === id) {
       this.selectedTableId = null;
     }
+  }
+
+  deleteTables(ids: string[]) {
+    const idSet = new Set(ids);
+    this.schema.tables = this.schema.tables
+      .filter((t) => !idSet.has(t.id))
+      .map((t) => ({
+        ...t,
+        foreignKeys: t.foreignKeys.filter((fk) => !idSet.has(fk.referencedTableId)),
+      }));
+    this.schema.updatedAt = now();
+    if (this.selectedTableId && idSet.has(this.selectedTableId)) this.selectedTableId = null;
+    this.selectedTableIds = new Set();
   }
 
   updateTableName(id: string, name: string) {
@@ -261,6 +276,7 @@ class ERDStore {
     if (!schema.domains) schema.domains = [];
     this.schema = schema;
     this.selectedTableId = null;
+    this.selectedTableIds = new Set();
   }
 }
 

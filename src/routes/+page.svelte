@@ -1,5 +1,6 @@
 <script lang="ts">
   import Canvas from '$lib/components/Canvas.svelte';
+  import ColumnEditPopup from '$lib/components/ColumnEditPopup.svelte';
   import RelationLines from '$lib/components/RelationLines.svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import TableCard from '$lib/components/TableCard.svelte';
@@ -28,6 +29,16 @@
     </Canvas>
     <TableEditor />
   </div>
+
+  {#if erdStore.editingColumnInfo}
+    <ColumnEditPopup
+      tableId={erdStore.editingColumnInfo.tableId}
+      columnId={erdStore.editingColumnInfo.columnId}
+      anchorX={erdStore.editingColumnInfo.anchorX}
+      anchorY={erdStore.editingColumnInfo.anchorY}
+      onclose={() => (erdStore.editingColumnInfo = null)}
+    />
+  {/if}
 </div>
 
 <style>

@@ -30,6 +30,7 @@
     if (target !== viewportEl && !target.classList.contains('canvas-world')) return;
 
     erdStore.selectedTableId = null;
+    erdStore.selectedTableIds = new Set();
     isPanning = true;
     panStart = { x: e.clientX - canvasState.x, y: e.clientY - canvasState.y };
   }
