@@ -31,7 +31,7 @@
     if (e.key === 'Enter') (e.target as HTMLElement).blur();
   }
 
-  function onTableCommentBlur() {
+  function saveComment() {
     if (capturedTableId) {
       erdStore.updateTableComment(capturedTableId, tableCommentInput);
     }
@@ -108,7 +108,8 @@
         id="tbl-comment"
         class="text-input"
         bind:value={tableCommentInput}
-        onblur={onTableCommentBlur}
+        oninput={saveComment}
+        onblur={saveComment}
         placeholder="(선택)"
       />
     </div>

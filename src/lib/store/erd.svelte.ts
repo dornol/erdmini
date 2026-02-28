@@ -99,16 +99,16 @@ class ERDStore {
   }
 
   updateTableName(id: string, name: string) {
-    this.schema.tables = this.schema.tables.map((t) =>
-      t.id === id ? { ...t, name } : t
-    );
+    const table = this.schema.tables.find((t) => t.id === id);
+    if (!table) return;
+    table.name = name;
     this.schema.updatedAt = now();
   }
 
   updateTableComment(id: string, comment: string) {
-    this.schema.tables = this.schema.tables.map((t) =>
-      t.id === id ? { ...t, comment } : t
-    );
+    const table = this.schema.tables.find((t) => t.id === id);
+    if (!table) return;
+    table.comment = comment || undefined;
     this.schema.updatedAt = now();
   }
 
