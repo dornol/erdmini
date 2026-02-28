@@ -27,6 +27,14 @@
   }
 
   function onMouseDown(e: MouseEvent) {
+    // Right-click drag: pan without deselecting
+    if (e.button === 2) {
+      e.preventDefault();
+      isPanning = true;
+      panStart = { x: e.clientX - canvasState.x, y: e.clientY - canvasState.y };
+      return;
+    }
+
     if (e.button !== 0) return;
     // Only pan on background clicks (target is viewport or world div)
     const target = e.target as HTMLElement;
@@ -36,6 +44,10 @@
     erdStore.selectedTableIds = new Set();
     isPanning = true;
     panStart = { x: e.clientX - canvasState.x, y: e.clientY - canvasState.y };
+  }
+
+  function onContextMenu(e: MouseEvent) {
+    e.preventDefault();
   }
 
   function onMouseMove(e: MouseEvent) {
@@ -64,6 +76,7 @@
   bind:this={viewportEl}
   onwheel={onWheel}
   onmousedown={onMouseDown}
+  oncontextmenu={onContextMenu}
   data-theme={themeStore.current}
   style="cursor: {isPanning ? 'grabbing' : 'default'}"
 >
