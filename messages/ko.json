@@ -80,5 +80,10 @@
   "domain_name_placeholder": "도메인 이름",
   "domain_delete": "도메인 삭제",
   "card_no_columns": "컬럼 없음",
-  "column_not_found": "컬럼을 찾을 수 없습니다."
+  "column_not_found": "컬럼을 찾을 수 없습니다.",
+  "toolbar_theme": "테마",
+  "theme_modern": "모던",
+  "theme_classic": "클래식",
+  "theme_blueprint": "블루프린트",
+  "theme_minimal": "미니멀"
 }

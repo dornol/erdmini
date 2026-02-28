@@ -80,5 +80,10 @@
   "domain_name_placeholder": "Domain name",
   "domain_delete": "Delete domain",
   "card_no_columns": "No columns",
-  "column_not_found": "Column not found."
+  "column_not_found": "Column not found.",
+  "toolbar_theme": "Theme",
+  "theme_modern": "Modern",
+  "theme_classic": "Classic",
+  "theme_blueprint": "Blueprint",
+  "theme_minimal": "Minimal"
 }

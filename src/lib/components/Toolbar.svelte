@@ -2,6 +2,7 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { languageStore } from '$lib/store/language.svelte';
+  import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType } from '$lib/utils/auto-layout';
   import DdlModal from './DdlModal.svelte';
@@ -75,6 +76,14 @@
   let layoutOpen = $state(false);
   let importOpen = $state(false);
   let exportOpen = $state(false);
+  let themeOpen = $state(false);
+
+  const THEMES: { id: ThemeId; label: () => string; dot: string }[] = [
+    { id: 'modern',    label: () => m.theme_modern(),    dot: '#1e293b' },
+    { id: 'classic',   label: () => m.theme_classic(),   dot: '#6b4c2a' },
+    { id: 'blueprint', label: () => m.theme_blueprint(), dot: '#1e4a7a' },
+    { id: 'minimal',   label: () => m.theme_minimal(),   dot: '#f0f0f0' },
+  ];
 
   const LAYOUT_LABELS: Record<LayoutType, () => string> = {
     grid: () => m.layout_grid(),
@@ -138,7 +147,7 @@
         width: w,
         height: h,
         pixelRatio: 2,
-        backgroundColor: '#f8fafc',
+        backgroundColor: getComputedStyle(document.querySelector('.canvas-viewport')!).getPropertyValue('--erd-canvas-bg').trim() || '#f8fafc',
         filter: (node: HTMLElement) => {
           // Exclude hover tooltips from export
           return !node.classList?.contains('col-tooltip');
@@ -263,6 +272,38 @@
     <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
       {m.toolbar_domains()}
     </button>
+
+    <!-- Theme dropdown -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-secondary"
+        onclick={() => (themeOpen = !themeOpen)}
+        aria-expanded={themeOpen}
+        aria-haspopup="menu"
+      >
+        {m.toolbar_theme()} ▾
+      </button>
+      {#if themeOpen}
+        <div
+          class="dropdown-menu"
+          role="menu"
+          tabindex="-1"
+          onmouseleave={() => (themeOpen = false)}
+        >
+          {#each THEMES as t}
+            <button
+              class="dropdown-item theme-item"
+              class:active={themeStore.current === t.id}
+              role="menuitem"
+              onclick={() => { themeStore.set(t.id); themeOpen = false; }}
+            >
+              <span class="theme-dot" style="background:{t.dot}"></span>
+              {t.label()}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
 
     <!-- Language toggle -->
     <button class="btn-lang" onclick={() => languageStore.toggle()}>
@@ -418,6 +459,25 @@
   .dropdown-item:hover {
     background: #334155;
     color: white;
+  }
+
+  .theme-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .theme-item.active {
+    color: white;
+    background: #334155;
+  }
+
+  .theme-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
   }
 
   .zoom-display {

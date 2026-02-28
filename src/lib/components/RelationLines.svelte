@@ -1,7 +1,17 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
+
+  const THEME_COLORS: Record<string, { normal: string; hover: string }> = {
+    modern:    { normal: '#94a3b8', hover: '#3b82f6' },
+    classic:   { normal: '#b0a08a', hover: '#b8860b' },
+    blueprint: { normal: '#3a7ac0', hover: '#60a5fa' },
+    minimal:   { normal: '#d4d4d4', hover: '#737373' },
+  };
+
+  let lineColors = $derived(THEME_COLORS[themeStore.current] ?? THEME_COLORS.modern);
 
   const TABLE_WIDTH = 200;
   const HEADER_HEIGHT = 37;
@@ -143,7 +153,7 @@
 >
   <defs>
     <marker id="circle-start" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-      <circle cx="3" cy="3" r="2" fill="#94a3b8" />
+      <circle cx="3" cy="3" r="2" fill={lineColors.normal} />
     </marker>
   </defs>
 
@@ -154,7 +164,7 @@
       (hc.tableId === line.fk.referencedTableId && hc.columnId === line.fk.referencedColumnId)
     )}
     {@const isHovered = hoveredId === line.fk.id || isColumnHovered}
-    {@const color = isHovered ? '#3b82f6' : '#94a3b8'}
+    {@const color = isHovered ? lineColors.hover : lineColors.normal}
 
     <!-- Invisible wide hit area -->
     <path

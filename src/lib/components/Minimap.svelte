@@ -108,8 +108,8 @@
 
   .minimap {
     position: relative;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #e2e8f0;
+    background: var(--erd-minimap-bg);
+    border: 1px solid var(--erd-minimap-border);
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
@@ -118,15 +118,15 @@
 
   .mini-table {
     position: absolute;
-    background: #93c5fd;
-    border: 0.5px solid #3b82f6;
+    background: var(--erd-minimap-table);
+    border: 0.5px solid var(--erd-minimap-table-border);
     border-radius: 1px;
     min-width: 2px;
     min-height: 2px;
   }
 
   .mini-table.active {
-    background: #3b82f6;
+    background: var(--erd-minimap-table-active);
   }
 
   .mini-viewport {
