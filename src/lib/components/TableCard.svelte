@@ -2,6 +2,7 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Table } from '$lib/types/erd';
+  import * as m from '$lib/paraglide/messages';
 
   let { table }: { table: Table } = $props();
 
@@ -79,9 +80,9 @@
 
   async function onDeleteClick(e: MouseEvent) {
     e.stopPropagation();
-    const ok = await dialogStore.confirm(`"${table.name}" 테이블을 삭제하시겠습니까?`, {
-      title: '테이블 삭제',
-      confirmText: '삭제',
+    const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
+      title: m.dialog_delete_table_title(),
+      confirmText: m.action_delete(),
       variant: 'danger',
     });
     if (ok) erdStore.deleteTable(table.id);
@@ -120,7 +121,7 @@
     {:else}
       <span class="table-name">{table.name}</span>
     {/if}
-    <button class="delete-btn" onclick={onDeleteClick} title="테이블 삭제">✕</button>
+    <button class="delete-btn" onclick={onDeleteClick} title={m.action_delete()}>✕</button>
   </div>
 
   <!-- Comment (optional) -->
@@ -171,7 +172,7 @@
           <div class="tt-title">{col.name}</div>
 
           <div class="tt-row">
-            <span class="tt-label">타입</span>
+            <span class="tt-label">{m.column_type()}</span>
             <span class="tt-mono">{col.type}{col.length ? `(${col.length})` : ''}</span>
           </div>
           <div class="tt-row">
@@ -198,7 +199,7 @@
 
           {#if col.defaultValue}
             <div class="tt-row">
-              <span class="tt-label">기본값</span>
+              <span class="tt-label">{m.column_default()}</span>
               <span class="tt-mono">{col.defaultValue}</span>
             </div>
           {/if}
@@ -211,7 +212,7 @@
       </div>
     {/each}
     {#if table.columns.length === 0}
-      <div class="no-columns">컬럼 없음</div>
+      <div class="no-columns">{m.card_no_columns()}</div>
     {/if}
   </div>
 </div>

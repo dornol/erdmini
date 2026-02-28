@@ -3,6 +3,7 @@
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import FkModal from './FkModal.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   let selectedTable = $derived(erdStore.selectedTable);
 
@@ -75,7 +76,7 @@
   function getFkLabel(fk: { columnId: string; referencedTableId: string; referencedColumnId: string; onDelete: string }) {
     const col = selectedTable?.columns.find((c) => c.id === fk.columnId);
     const refTable = erdStore.schema.tables.find((t) => t.id === fk.referencedTableId);
-    const refCol = refTable?.columns.find((c) => c.id === fk.referencedColumnId);
+    const refCol = refTable?.columns.find((c) => c.id === fk!.referencedColumnId);
     return {
       colName: col?.name ?? '?',
       refTableName: refTable?.name ?? '?',
@@ -122,12 +123,12 @@
 {#if selectedTable}
   <aside class="editor">
     <div class="editor-header">
-      <span class="editor-title">테이블 편집</span>
+      <span class="editor-title">{m.editor_title()}</span>
     </div>
 
     <!-- Table name & comment -->
     <div class="section">
-      <label class="field-label" for="tbl-name">테이블명</label>
+      <label class="field-label" for="tbl-name">{m.editor_table_name()}</label>
       <input
         id="tbl-name"
         class="text-input"
@@ -135,23 +136,23 @@
         onblur={onTableNameBlur}
         onkeydown={onTableNameKeyDown}
       />
-      <label class="field-label" for="tbl-comment" style="margin-top:8px">코멘트</label>
+      <label class="field-label" for="tbl-comment" style="margin-top:8px">{m.column_comment()}</label>
       <input
         id="tbl-comment"
         class="text-input"
         bind:value={tableCommentInput}
         oninput={saveComment}
         onblur={saveComment}
-        placeholder="(선택)"
+        placeholder={m.optional()}
       />
     </div>
 
     <!-- Columns -->
     <div class="section columns-section">
       <div class="section-header">
-        <span class="field-label">컬럼</span>
+        <span class="field-label">{m.editor_columns()}</span>
         <button class="add-col-btn" onclick={() => erdStore.addColumn(selectedTable!.id)}>
-          + 추가
+          {m.action_add()}
         </button>
       </div>
 
@@ -171,12 +172,12 @@
           >
             <!-- Drag handle + Name -->
             <div class="col-name-row">
-              <span class="drag-handle" title="드래그하여 순서 변경">⠿</span>
+              <span class="drag-handle" title={m.editor_drag_hint()}>⠿</span>
               <input
               class="col-input col-name"
               value={col.name}
               oninput={(e) => onColumnChange(col, 'name', (e.target as HTMLInputElement).value)}
-              placeholder="이름"
+              placeholder={m.column_name()}
             />
             </div>
 
@@ -194,25 +195,25 @@
               {#if hasDomains}
                 {#if col.domainId}
                   {@const linkedDomain = erdStore.schema.domains.find((d) => d.id === col.domainId)}
-                  <div class="domain-badge" title="도메인 연결됨 — 클릭하여 해제">
+                  <div class="domain-badge" title={m.domain_linked_hint()}>
                     <span class="domain-badge-name">{linkedDomain?.name ?? '?'}</span>
                     <button
                       class="domain-unlink"
-                      aria-label="도메인 연결 해제"
+                      aria-label={m.domain_unlink()}
                       onclick={() => onColumnChange(col, 'domainId', undefined)}
                     >✕</button>
                   </div>
                 {:else}
                   <select
                     class="col-select domain-select"
-                    title="도메인 적용"
+                    title={m.domain_apply()}
                     value=""
                     onchange={(e) => {
                       const v = (e.target as HTMLSelectElement).value;
                       if (v) { applyDomain(col.id, v); (e.target as HTMLSelectElement).value = ''; }
                     }}
                   >
-                    <option value="">도메인▼</option>
+                    <option value="">{m.domain_select_placeholder()}</option>
                     {#each erdStore.schema.domains as domain}
                       <option value={domain.id}>{domain.name}</option>
                     {/each}
@@ -262,30 +263,30 @@
               class="col-input col-comment"
               value={col.comment ?? ''}
               oninput={(e) => onColumnChange(col, 'comment', (e.target as HTMLInputElement).value || undefined)}
-              placeholder="코멘트 (선택)"
+              placeholder={m.column_comment() + ' ' + m.optional()}
             />
 
             <!-- Move up/down/delete -->
             <div class="col-actions">
               <button
                 class="icon-btn"
-                title="위로"
+                title={m.action_move_up()}
                 onclick={() => erdStore.moveColumnUp(selectedTable!.id, col.id)}
               >↑</button>
               <button
                 class="icon-btn"
-                title="아래로"
+                title={m.action_move_down()}
                 onclick={() => erdStore.moveColumnDown(selectedTable!.id, col.id)}
               >↓</button>
               <button
                 class="icon-btn del"
-                title="삭제"
+                title={m.action_delete()}
                 onclick={() => erdStore.deleteColumn(selectedTable!.id, col.id)}
               >✕</button>
             </div>
           </div>
         {:else}
-          <p class="no-cols">컬럼이 없습니다.</p>
+          <p class="no-cols">{m.editor_no_columns()}</p>
         {/each}
       </div>
     </div>
@@ -294,7 +295,7 @@
     <div class="section fk-section">
       <div class="section-header">
         <span class="field-label">Foreign Keys</span>
-        <button class="add-col-btn" onclick={() => (showFkModal = true)}>+ FK 추가</button>
+        <button class="add-col-btn" onclick={() => (showFkModal = true)}>{m.fk_add()}</button>
       </div>
 
       {#each selectedTable.foreignKeys as fk (fk.id)}
@@ -306,18 +307,18 @@
           <span class="fk-action">{label.onDelete}</span>
           <button
             class="icon-btn del"
-            title="FK 삭제"
+            title={m.fk_delete()}
             onclick={() => erdStore.deleteForeignKey(selectedTable!.id, fk.id)}
           >✕</button>
         </div>
       {:else}
-        <p class="no-cols">FK가 없습니다.</p>
+        <p class="no-cols">{m.editor_no_fk()}</p>
       {/each}
     </div>
   </aside>
 {:else}
   <aside class="editor editor-empty">
-    <p>테이블을 선택하세요</p>
+    <p>{m.editor_no_table()}</p>
   </aside>
 {/if}
 

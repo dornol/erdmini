@@ -2,6 +2,7 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { REFERENTIAL_ACTIONS } from '$lib/types/erd';
   import type { ReferentialAction } from '$lib/types/erd';
+  import * as m from '$lib/paraglide/messages';
 
   interface Props {
     tableId: string;
@@ -44,22 +45,22 @@
   class="backdrop"
   role="dialog"
   aria-modal="true"
-  aria-label="FK 추가"
+  aria-label={m.fk_add()}
   tabindex="-1"
   onclick={onBackdropClick}
   onkeydown={(e) => { if (e.key === 'Escape') onclose(); }}
 >
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">FK 추가 — {selectedTable?.name ?? ''}</span>
-      <button class="close-btn" onclick={onclose} aria-label="닫기">✕</button>
+      <span class="modal-title">{m.fk_modal_title({ name: selectedTable?.name ?? '' })}</span>
+      <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
     </div>
 
     <div class="modal-body">
       <div class="form-row">
-        <label for="fkm-col">컬럼</label>
+        <label for="fkm-col">{m.fk_column_label()}</label>
         <select id="fkm-col" bind:value={fkColumnId}>
-          <option value="">선택...</option>
+          <option value="">{m.select_placeholder()}</option>
           {#each selectedTable?.columns ?? [] as col}
             <option value={col.id}>{col.name}</option>
           {/each}
@@ -67,9 +68,9 @@
       </div>
 
       <div class="form-row">
-        <label for="fkm-ref-table">참조 테이블</label>
+        <label for="fkm-ref-table">{m.fk_ref_table()}</label>
         <select id="fkm-ref-table" bind:value={fkRefTableId}>
-          <option value="">선택...</option>
+          <option value="">{m.select_placeholder()}</option>
           {#each otherTables as t}
             <option value={t.id}>{t.name}</option>
           {/each}
@@ -77,9 +78,9 @@
       </div>
 
       <div class="form-row">
-        <label for="fkm-ref-col">참조 컬럼</label>
+        <label for="fkm-ref-col">{m.fk_ref_column()}</label>
         <select id="fkm-ref-col" bind:value={fkRefColumnId} disabled={!fkRefTableId}>
-          <option value="">선택...</option>
+          <option value="">{m.select_placeholder()}</option>
           {#each refTableColumns as col}
             <option value={col.id}>{col.name}</option>
           {/each}
@@ -107,13 +108,13 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn-cancel" onclick={onclose}>취소</button>
+      <button class="btn-cancel" onclick={onclose}>{m.action_cancel()}</button>
       <button
         class="btn-submit"
         onclick={submit}
         disabled={!fkColumnId || !fkRefTableId || !fkRefColumnId}
       >
-        추가
+        {m.action_add_submit()}
       </button>
     </div>
   </div>

@@ -2,6 +2,7 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { ColumnDomain, ColumnType } from '$lib/types/erd';
+  import * as m from '$lib/paraglide/messages';
 
   interface Props {
     onclose: () => void;
@@ -95,15 +96,15 @@
   class="backdrop"
   role="dialog"
   aria-modal="true"
-  aria-label="컬럼 도메인 관리"
+  aria-label={m.domain_modal_title()}
   tabindex="-1"
   onclick={onBackdropClick}
   onkeydown={(e) => { if (e.key === 'Escape') onclose(); }}
 >
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">컬럼 도메인 관리</span>
-      <button class="close-btn" onclick={onclose} aria-label="닫기">✕</button>
+      <span class="modal-title">{m.domain_modal_title()}</span>
+      <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
     </div>
 
     <div class="modal-body">
@@ -112,16 +113,16 @@
         <table class="domain-table">
           <thead>
             <tr>
-              <th>이름</th>
-              <th>타입</th>
-              <th>길이</th>
+              <th>{m.column_name()}</th>
+              <th>{m.column_type()}</th>
+              <th>{m.column_length()}</th>
               <th>NULL</th>
               <th>PK</th>
               <th>UQ</th>
               <th>AI</th>
-              <th>기본값</th>
-              <th>설명</th>
-              <th>액션</th>
+              <th>{m.column_default()}</th>
+              <th>{m.column_description()}</th>
+              <th>{m.domain_actions()}</th>
             </tr>
           </thead>
           <tbody>
@@ -137,17 +138,17 @@
                 <td class="td-mono td-optional">{domain.defaultValue ?? '—'}</td>
                 <td class="td-comment">{domain.comment ?? '—'}</td>
                 <td class="td-actions">
-                  <button class="icon-btn" onclick={() => startEdit(domain)}>수정</button>
+                  <button class="icon-btn" onclick={() => startEdit(domain)}>{m.action_edit()}</button>
                   <button
                     class="icon-btn del"
                     onclick={() => erdStore.deleteDomain(domain.id)}
-                    aria-label="도메인 삭제"
+                    aria-label={m.domain_delete()}
                   >✕</button>
                 </td>
               </tr>
             {:else}
               <tr>
-                <td colspan="10" class="empty-cell">도메인이 없습니다.</td>
+                <td colspan="10" class="empty-cell">{m.domain_empty()}</td>
               </tr>
             {/each}
           </tbody>
@@ -157,16 +158,16 @@
       <!-- Add/Edit form -->
       {#if showForm}
         <div class="form-section">
-          <div class="form-section-title">{editingId ? '도메인 수정' : '도메인 추가'}</div>
+          <div class="form-section-title">{editingId ? m.domain_edit_form_title() : m.domain_add_form_title()}</div>
 
           <div class="form-row">
-            <label for="dm-name">이름</label>
-            <input id="dm-name" class="input" bind:value={formName} placeholder="도메인 이름" />
+            <label for="dm-name">{m.column_name()}</label>
+            <input id="dm-name" class="input" bind:value={formName} placeholder={m.domain_name_placeholder()} />
           </div>
 
           <div class="form-row-2col">
             <div class="form-row">
-              <label for="dm-type">타입</label>
+              <label for="dm-type">{m.column_type()}</label>
               <select id="dm-type" class="input" bind:value={formType}>
                 {#each COLUMN_TYPES as t}
                   <option value={t}>{t}</option>
@@ -175,7 +176,7 @@
             </div>
             {#if hasLength}
               <div class="form-row">
-                <label for="dm-length">길이</label>
+                <label for="dm-length">{m.column_length()}</label>
                 <input
                   id="dm-length"
                   class="input"
@@ -196,24 +197,24 @@
           </div>
 
           <div class="form-row">
-            <label for="dm-default">기본값</label>
-            <input id="dm-default" class="input" bind:value={formDefaultValue} placeholder="(선택)" />
+            <label for="dm-default">{m.column_default()}</label>
+            <input id="dm-default" class="input" bind:value={formDefaultValue} placeholder={m.optional()} />
           </div>
 
           <div class="form-row">
-            <label for="dm-comment">설명</label>
-            <input id="dm-comment" class="input" bind:value={formComment} placeholder="(선택)" />
+            <label for="dm-comment">{m.column_description()}</label>
+            <input id="dm-comment" class="input" bind:value={formComment} placeholder={m.optional()} />
           </div>
 
           <div class="form-actions">
-            <button class="btn-cancel" onclick={resetForm}>취소</button>
+            <button class="btn-cancel" onclick={resetForm}>{m.action_cancel()}</button>
             <button class="btn-submit" onclick={submitForm} disabled={!formName.trim()}>
-              {editingId ? '수정' : '추가'}
+              {editingId ? m.action_edit() : m.action_add_submit()}
             </button>
           </div>
         </div>
       {:else}
-        <button class="add-btn" onclick={startAdd}>+ 도메인 추가</button>
+        <button class="add-btn" onclick={startAdd}>{m.domain_add_btn()}</button>
       {/if}
     </div>
   </div>

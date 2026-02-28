@@ -2,6 +2,7 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
+  import * as m from '$lib/paraglide/messages';
 
   interface Props {
     tableId: string;
@@ -63,20 +64,20 @@
     bind:this={popupEl}
     style="left: {anchorX + 14}px; top: {anchorY - 10}px;"
     role="dialog"
-    aria-label="컬럼 편집"
+    aria-label={m.editor_title()}
     tabindex="-1"
     onmousedown={(e) => e.stopPropagation()}
   >
     {#if col}
       <div class="popup-header">
         <span class="popup-title">{col.name}</span>
-        <button class="close-btn" onclick={onclose} aria-label="닫기">✕</button>
+        <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
       </div>
 
       <div class="popup-body">
         <!-- Name -->
         <div class="field-row">
-          <label for="ce-name" class="field-label">이름</label>
+          <label for="ce-name" class="field-label">{m.column_name()}</label>
           <input
             id="ce-name"
             class="field-input"
@@ -88,7 +89,7 @@
         <!-- Type + Length -->
         <div class="field-row-2col">
           <div class="field-row">
-            <label for="ce-type" class="field-label">타입</label>
+            <label for="ce-type" class="field-label">{m.column_type()}</label>
             <select
               id="ce-type"
               class="field-input"
@@ -102,7 +103,7 @@
           </div>
           {#if hasLength}
             <div class="field-row">
-              <label for="ce-length" class="field-label">길이</label>
+              <label for="ce-length" class="field-label">{m.column_length()}</label>
               <input
                 id="ce-length"
                 class="field-input"
@@ -154,36 +155,36 @@
 
         <!-- Default value -->
         <div class="field-row">
-          <label for="ce-default" class="field-label">기본값</label>
+          <label for="ce-default" class="field-label">{m.column_default()}</label>
           <input
             id="ce-default"
             class="field-input"
             value={col.defaultValue ?? ''}
             oninput={(e) => onChange('defaultValue', (e.target as HTMLInputElement).value || undefined)}
-            placeholder="(없음)"
+            placeholder={m.none_placeholder()}
           />
         </div>
 
         <!-- Comment -->
         <div class="field-row">
-          <label for="ce-comment" class="field-label">코멘트</label>
+          <label for="ce-comment" class="field-label">{m.column_comment()}</label>
           <input
             id="ce-comment"
             class="field-input field-comment"
             value={col.comment ?? ''}
             oninput={(e) => onChange('comment', (e.target as HTMLInputElement).value || undefined)}
-            placeholder="(없음)"
+            placeholder={m.none_placeholder()}
           />
         </div>
       </div>
     {:else}
       <div class="popup-header">
-        <span class="popup-title">컬럼 편집</span>
+        <span class="popup-title">{m.editor_title()}</span>
         <button class="close-btn" onclick={onclose}>✕</button>
       </div>
       <div class="popup-body">
         <p style="color: #94a3b8; font-size: 12px; text-align: center; padding: 8px 0;">
-          컬럼을 찾을 수 없습니다.
+          {m.column_not_found()}
         </p>
       </div>
     {/if}

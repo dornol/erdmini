@@ -1,6 +1,7 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   let {
     collapsed = false,
@@ -55,9 +56,9 @@
   async function bulkDelete() {
     const ids = [...erdStore.selectedTableIds];
     if (ids.length < 2) return;
-    const ok = await dialogStore.confirm(`선택한 ${ids.length}개 테이블을 삭제하시겠습니까?`, {
-      title: '테이블 삭제',
-      confirmText: '삭제',
+    const ok = await dialogStore.confirm(m.dialog_bulk_delete_confirm({ count: ids.length }), {
+      title: m.dialog_delete_table_title(),
+      confirmText: m.action_delete(),
       variant: 'danger',
     });
     if (ok) erdStore.deleteTables(ids);
@@ -70,7 +71,7 @@
 </script>
 
 {#if collapsed}
-  <button class="expand-btn" onclick={ontoggle} title="사이드바 열기">
+  <button class="expand-btn" onclick={ontoggle} title={m.sidebar_expand()}>
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
@@ -78,15 +79,15 @@
 {:else}
   <aside class="sidebar">
     <div class="sidebar-header">
-      <span>테이블 목록</span>
+      <span>{m.sidebar_title()}</span>
       <div class="header-right">
         {#if erdStore.selectedTableIds.size >= 2}
           <button class="bulk-delete-btn" onclick={bulkDelete}>
-            선택 삭제({erdStore.selectedTableIds.size})
+            {m.sidebar_bulk_delete({ count: erdStore.selectedTableIds.size })}
           </button>
         {/if}
         <span class="count">{erdStore.schema.tables.length}</span>
-        <button class="collapse-btn" onclick={ontoggle} title="사이드바 접기">
+        <button class="collapse-btn" onclick={ontoggle} title={m.sidebar_collapse()}>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <path d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -98,15 +99,15 @@
       <input
         type="text"
         class="search-input"
-        placeholder="테이블 검색..."
+        placeholder={m.sidebar_search_placeholder()}
         bind:value={searchQuery}
       />
       <button
         class="sort-btn"
-        title={sortBy === 'creation' ? '이름순 정렬' : '생성순 정렬'}
+        title={sortBy === 'creation' ? m.sidebar_sort_by_name() : m.sidebar_sort_by_creation()}
         onclick={() => (sortBy = sortBy === 'creation' ? 'name' : 'creation')}
       >
-        {sortBy === 'creation' ? '생성순' : '이름순'}
+        {sortBy === 'creation' ? m.sidebar_sort_creation() : m.sidebar_sort_name()}
       </button>
     </div>
 
@@ -132,17 +133,17 @@
           <div class="item-actions">
             <button
               class="item-action-btn"
-              title="복제"
+              title={m.action_duplicate()}
               onclick={(e) => duplicateTable(e, table.id)}
             >⧉</button>
             <button
               class="item-action-btn item-delete"
-              title="삭제"
+              title={m.action_delete()}
               onclick={async (e) => {
                 e.stopPropagation();
-                const ok = await dialogStore.confirm(`"${table.name}" 테이블을 삭제하시겠습니까?`, {
-                  title: '테이블 삭제',
-                  confirmText: '삭제',
+                const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
+                  title: m.dialog_delete_table_title(),
+                  confirmText: m.action_delete(),
                   variant: 'danger',
                 });
                 if (ok) erdStore.deleteTable(table.id);
@@ -153,9 +154,9 @@
       {:else}
         <li class="empty-hint">
           {#if searchQuery.trim()}
-            검색 결과가 없습니다.
+            {m.sidebar_no_results()}
           {:else}
-            테이블이 없습니다.<br />+ 새 테이블로 시작하세요.
+            {m.sidebar_empty()}
           {/if}
         </li>
       {/each}
@@ -402,5 +403,6 @@
     color: #94a3b8;
     text-align: center;
     line-height: 1.6;
+    white-space: pre-line;
   }
 </style>

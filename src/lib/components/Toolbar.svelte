@@ -1,10 +1,12 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { languageStore } from '$lib/store/language.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType } from '$lib/utils/auto-layout';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   let viewportWidth = $state(800);
   let viewportHeight = $state(600);
@@ -60,8 +62,8 @@
           const schema = JSON.parse(reader.result as string);
           erdStore.loadSchema(schema);
         } catch {
-          dialogStore.alert('JSON 파싱에 실패했습니다. 올바른 erdmini 스키마 파일인지 확인하세요.', {
-            title: '불러오기 실패',
+          dialogStore.alert(m.json_parse_error(), {
+            title: m.json_import_failed(),
           });
         }
       };
@@ -72,10 +74,10 @@
 
   let layoutOpen = $state(false);
 
-  const LAYOUT_LABELS: Record<LayoutType, string> = {
-    grid: '격자',
-    hierarchical: '계층',
-    radial: '방사형',
+  const LAYOUT_LABELS: Record<LayoutType, () => string> = {
+    grid: () => m.layout_grid(),
+    hierarchical: () => m.layout_hierarchical(),
+    radial: () => m.layout_radial(),
   };
 
   // Image export
@@ -139,7 +141,7 @@
 
   <div class="actions">
     <button class="btn-primary" onclick={addTable}>
-      + 새 테이블
+      {m.toolbar_add_table()}
     </button>
 
     <!-- Auto-arrange dropdown -->
@@ -150,7 +152,7 @@
         aria-expanded={layoutOpen}
         aria-haspopup="menu"
       >
-        자동 배치 ▾
+        {m.toolbar_auto_layout()}
       </button>
       {#if layoutOpen}
         <div
@@ -165,7 +167,7 @@
               role="menuitem"
               onclick={() => { applyLayout(type as LayoutType); layoutOpen = false; }}
             >
-              {label}
+              {label()}
             </button>
           {/each}
         </div>
@@ -179,16 +181,21 @@
       Export DDL
     </button>
     <button class="btn-secondary" onclick={importJson}>
-      JSON 불러오기
+      {m.toolbar_json_import()}
     </button>
     <button class="btn-secondary" onclick={exportJson}>
-      JSON 저장
+      {m.toolbar_json_export()}
     </button>
     <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
-      도메인
+      {m.toolbar_domains()}
     </button>
     <button class="btn-secondary" onclick={exportImage}>
-      이미지 저장
+      {m.toolbar_image_export()}
+    </button>
+
+    <!-- Language toggle -->
+    <button class="btn-lang" onclick={() => languageStore.toggle()}>
+      {languageStore.current === 'ko' ? 'EN' : 'KO'}
     </button>
   </div>
 
@@ -276,6 +283,26 @@
   .btn-secondary:hover {
     background: #334155;
     color: white;
+  }
+
+  .btn-lang {
+    background: #334155;
+    color: #60a5fa;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-lang:hover {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
   }
 
   .dropdown-wrap {

@@ -4,6 +4,7 @@
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL } from '$lib/utils/ddl-export';
   import { importDDL } from '$lib/utils/ddl-import';
+  import * as m from '$lib/paraglide/messages';
 
   let {
     mode = 'export',
@@ -25,7 +26,7 @@
   // Export state
   let exportDialect = $state<Dialect>('mysql');
   let exportText = $derived(exportDDL(erdStore.schema, exportDialect));
-  let copyLabel = $state('복사');
+  let copyLabel = $state<'copy' | 'copied'>('copy');
 
   // Import state
   let importDialect = $state<Dialect>('mysql');
@@ -36,8 +37,8 @@
 
   async function copyToClipboard() {
     await navigator.clipboard.writeText(exportText);
-    copyLabel = '복사됨!';
-    setTimeout(() => (copyLabel = '복사'), 1500);
+    copyLabel = 'copied';
+    setTimeout(() => (copyLabel = 'copy'), 1500);
   }
 
   function downloadSql() {
@@ -86,10 +87,10 @@
           erdStore.schema.tables = [...erdStore.schema.tables, t];
         }
         erdStore.schema.updatedAt = new Date().toISOString();
-        importSuccess = `${result.tables.length}개 테이블을 가져왔습니다.`;
+        importSuccess = m.ddl_import_success({ count: result.tables.length });
       }
     } catch (e) {
-      importErrors = [`Import 오류: ${e instanceof Error ? e.message : e}`];
+      importErrors = [`Import error: ${e instanceof Error ? e.message : e}`];
     } finally {
       importing = false;
     }
@@ -129,8 +130,10 @@
             {/each}
           </select>
           <div class="spacer"></div>
-          <button class="btn-secondary" onclick={copyToClipboard}>{copyLabel}</button>
-          <button class="btn-secondary" onclick={downloadSql}>다운로드 .sql</button>
+          <button class="btn-secondary" onclick={copyToClipboard}>
+            {copyLabel === 'copy' ? m.ddl_copy() : m.ddl_copied()}
+          </button>
+          <button class="btn-secondary" onclick={downloadSql}>{m.ddl_download()}</button>
         </div>
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>
       {:else}
@@ -141,16 +144,16 @@
               <option value={opt.value}>{opt.label}</option>
             {/each}
           </select>
-          <button class="btn-secondary" onclick={openFile}>파일 열기</button>
+          <button class="btn-secondary" onclick={openFile}>{m.action_open_file()}</button>
           <div class="spacer"></div>
           <button class="btn-primary" onclick={doImport} disabled={importing}>
-            {importing ? '가져오는 중...' : '가져오기'}
+            {importing ? m.ddl_importing() : m.ddl_import_action()}
           </button>
         </div>
         <textarea
           class="code-area"
           bind:value={importText}
-          placeholder="SQL DDL을 붙여넣거나 파일을 여세요..."
+          placeholder={m.ddl_paste_placeholder()}
           spellcheck="false"
         ></textarea>
         {#if importSuccess}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   const opts = $derived(dialogStore.current.options);
   const isConfirm = $derived(opts?.type === 'confirm');
@@ -43,7 +44,7 @@
       <div class="dialog-actions">
         {#if isConfirm}
           <button class="btn btn-cancel" onclick={onCancel}>
-            {opts.cancelText ?? '취소'}
+            {opts.cancelText ?? m.action_cancel()}
           </button>
         {/if}
         <button
@@ -53,7 +54,7 @@
           bind:this={confirmBtn}
           onclick={onConfirm}
         >
-          {opts.confirmText ?? '확인'}
+          {opts.confirmText ?? m.action_confirm()}
         </button>
       </div>
     </div>
