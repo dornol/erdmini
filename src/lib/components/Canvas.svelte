@@ -48,12 +48,6 @@
     isPanning = false;
   }
 
-  function resetView() {
-    canvasState.x = 0;
-    canvasState.y = 0;
-    canvasState.scale = 1;
-  }
-
   $effect(() => {
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
@@ -86,11 +80,6 @@
     <Minimap />
   {/if}
 
-  <!-- Zoom indicator -->
-  <div class="zoom-indicator">
-    <span>{Math.round(canvasState.scale * 100)}%</span>
-    <button onclick={resetView}>리셋</button>
-  </div>
 </div>
 
 <style>
@@ -376,32 +365,4 @@
     height: 0;
   }
 
-  .zoom-indicator {
-    position: absolute;
-    bottom: 16px;
-    right: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--erd-zoom-bg);
-    border: 1px solid var(--erd-zoom-border);
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 12px;
-    color: var(--erd-zoom-text);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-
-  .zoom-indicator button {
-    font-size: 11px;
-    color: var(--erd-zoom-btn);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .zoom-indicator button:hover {
-    text-decoration: underline;
-  }
 </style>

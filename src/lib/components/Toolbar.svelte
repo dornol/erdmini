@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { canvasState, erdStore } from '$lib/store/erd.svelte';
+  import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { languageStore } from '$lib/store/language.svelte';
   import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
@@ -276,7 +276,9 @@
     <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
       {m.toolbar_domains()}
     </button>
+  </div>
 
+  <div class="toolbar-right">
     <!-- Theme dropdown -->
     <div class="dropdown-wrap">
       <button
@@ -289,7 +291,7 @@
       </button>
       {#if themeOpen}
         <div
-          class="dropdown-menu"
+          class="dropdown-menu dropdown-right"
           role="menu"
           tabindex="-1"
           onmouseleave={() => (themeOpen = false)}
@@ -362,10 +364,6 @@
       {/if}
     </div>
   </div>
-
-  <div class="zoom-display">
-    {Math.round(canvasState.scale * 100)}%
-  </div>
 </header>
 
 {#if modalMode}
@@ -408,10 +406,17 @@
   }
 
   .actions {
-    flex: 1;
     display: flex;
     gap: 6px;
     align-items: center;
+  }
+
+  .toolbar-right {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
   }
 
   .btn-primary {
@@ -493,6 +498,11 @@
     z-index: 200;
     min-width: 110px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .dropdown-right {
+    left: auto;
+    right: 0;
   }
 
   .dropdown-item {
@@ -609,11 +619,4 @@
     white-space: nowrap;
   }
 
-  .zoom-display {
-    color: #94a3b8;
-    font-size: 12px;
-    min-width: 40px;
-    text-align: right;
-    flex-shrink: 0;
-  }
 </style>
