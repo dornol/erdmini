@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL } from '$lib/utils/ddl-export';
   import { importDDL } from '$lib/utils/ddl-import';
@@ -78,14 +79,93 @@
         importErrors = result.errors;
       }
       if (result.tables.length > 0) {
-        const existingNames = new Set(erdStore.schema.tables.map((t) => t.name));
-        const offsetX = erdStore.schema.tables.length * 30;
-        for (const t of result.tables) {
-          if (existingNames.has(t.name)) {
-            t.position.x += offsetX;
-          }
-          erdStore.schema.tables = [...erdStore.schema.tables, t];
+        // Build name→existing table id map
+        const nameToExistingId = new Map<string, string>();
+        for (const t of erdStore.schema.tables) {
+          nameToExistingId.set(t.name, t.id);
         }
+
+        // Find duplicates
+        const duplicateNames = result.tables
+          .filter((t) => nameToExistingId.has(t.name))
+          .map((t) => t.name);
+
+        let action: string | null = null;
+        if (duplicateNames.length > 0) {
+          action = await dialogStore.choice(
+            m.import_duplicate_message({ count: duplicateNames.length, names: duplicateNames.join(', ') }),
+            {
+              title: m.import_duplicate_title(),
+              choices: [
+                { key: 'overwrite', label: m.import_overwrite(), variant: 'danger' },
+                { key: 'skip', label: m.import_skip(), variant: 'default' },
+              ],
+            },
+          );
+          if (action === null) {
+            // User cancelled
+            importing = false;
+            return;
+          }
+        }
+
+        const duplicateSet = new Set(duplicateNames);
+        // Build name→new id map for imported tables
+        const nameToNewId = new Map<string, string>();
+        for (const t of result.tables) {
+          nameToNewId.set(t.name, t.id);
+        }
+
+        if (action === 'overwrite') {
+          // Remove existing duplicate tables and add all imported tables
+          const oldIdsToRemove = new Set(
+            duplicateNames.map((n) => nameToExistingId.get(n)!),
+          );
+          // Build old→new id mapping for FK re-linking
+          const oldToNewId = new Map<string, string>();
+          for (const name of duplicateNames) {
+            oldToNewId.set(nameToExistingId.get(name)!, nameToNewId.get(name)!);
+          }
+
+          // Remove old duplicates and re-link FKs in remaining existing tables
+          erdStore.schema.tables = erdStore.schema.tables
+            .filter((t) => !oldIdsToRemove.has(t.id))
+            .map((t) => ({
+              ...t,
+              foreignKeys: t.foreignKeys.map((fk) =>
+                oldToNewId.has(fk.referencedTableId)
+                  ? { ...fk, referencedTableId: oldToNewId.get(fk.referencedTableId)! }
+                  : fk,
+              ),
+            }));
+
+          // Add all imported tables
+          for (const t of result.tables) {
+            erdStore.schema.tables = [...erdStore.schema.tables, t];
+          }
+        } else if (action === 'skip') {
+          // Only add non-duplicate tables; re-link their FKs to existing table ids
+          for (const t of result.tables) {
+            if (duplicateSet.has(t.name)) continue;
+            // Re-link FKs: if referencing a skipped table, point to existing id
+            t.foreignKeys = t.foreignKeys.map((fk) => {
+              // Find if referenced table was skipped
+              for (const [name, newId] of nameToNewId) {
+                if (fk.referencedTableId === newId && duplicateSet.has(name)) {
+                  return { ...fk, referencedTableId: nameToExistingId.get(name)! };
+                }
+              }
+              return fk;
+            });
+            erdStore.schema.tables = [...erdStore.schema.tables, t];
+          }
+        } else {
+          // No duplicates — add all
+          for (const t of result.tables) {
+            erdStore.schema.tables = [...erdStore.schema.tables, t];
+          }
+        }
+
         erdStore.schema.updatedAt = new Date().toISOString();
         importSuccess = m.ddl_import_success({ count: result.tables.length });
       }

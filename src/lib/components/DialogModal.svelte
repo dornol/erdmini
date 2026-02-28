@@ -6,6 +6,8 @@
   const isConfirm = $derived(opts?.type === 'confirm');
   const isDanger = $derived(opts?.variant === 'danger');
 
+  const choiceOpts = $derived(dialogStore.choiceState.options);
+
   function onConfirm() {
     dialogStore.close(true);
   }
@@ -21,6 +23,14 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') onCancel();
     if (e.key === 'Enter') onConfirm();
+  }
+
+  function handleChoiceBackdrop(e: MouseEvent) {
+    if (e.target === e.currentTarget) dialogStore.closeChoice(null);
+  }
+
+  function handleChoiceKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') dialogStore.closeChoice(null);
   }
 
   let confirmBtn: HTMLButtonElement | undefined = $state();
@@ -56,6 +66,35 @@
         >
           {opts.confirmText ?? m.action_confirm()}
         </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if choiceOpts}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div class="backdrop" onmousedown={handleChoiceBackdrop} onkeydown={handleChoiceKeydown}>
+    <div class="dialog" role="alertdialog" aria-modal="true">
+      {#if choiceOpts.title}
+        <div class="dialog-title">{choiceOpts.title}</div>
+      {/if}
+      <div class="dialog-message">{choiceOpts.message}</div>
+      <div class="dialog-actions">
+        <button class="btn btn-cancel" onclick={() => dialogStore.closeChoice(null)}>
+          {m.action_cancel()}
+        </button>
+        {#each choiceOpts.choices as c}
+          <button
+            class="btn"
+            class:btn-danger={c.variant === 'danger'}
+            class:btn-primary={c.variant === 'primary'}
+            class:btn-default={!c.variant || c.variant === 'default'}
+            onclick={() => dialogStore.closeChoice(c.key)}
+          >
+            {c.label}
+          </button>
+        {/each}
       </div>
     </div>
   </div>
@@ -155,5 +194,14 @@
 
   .btn-danger:hover {
     background: #dc2626;
+  }
+
+  .btn-default {
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+
+  .btn-default:hover {
+    background: #e2e8f0;
   }
 </style>

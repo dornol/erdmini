@@ -372,6 +372,7 @@ class ERDStore {
   loadSchema(schema: ERDSchema) {
     if (!schema.domains) schema.domains = [];
     this.schema = schema;
+    this.schema.updatedAt = new Date().toISOString();
     this.selectedTableId = null;
     this.selectedTableIds = new Set();
   }

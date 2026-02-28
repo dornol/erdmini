@@ -113,5 +113,13 @@
   "history_delete_fk": "FK 삭제",
   "history_edit_domain": "도메인 수정",
   "history_layout": "레이아웃 변경",
-  "history_edit": "수정"
+  "history_edit": "수정",
+  "import_merge_or_replace_title": "불러오기 방식",
+  "import_merge_or_replace_message": "기존 스키마에 테이블이 있습니다. 어떻게 처리할까요?",
+  "import_merge": "병합",
+  "import_replace": "교체",
+  "import_duplicate_title": "중복 테이블",
+  "import_duplicate_message": "{count}개 테이블이 이미 존재합니다: {names}",
+  "import_overwrite": "덮어쓰기",
+  "import_skip": "건너뛰기"
 }

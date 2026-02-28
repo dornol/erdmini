@@ -113,5 +113,13 @@
   "history_delete_fk": "Delete FK",
   "history_edit_domain": "Edit domain",
   "history_layout": "Layout change",
-  "history_edit": "Edit"
+  "history_edit": "Edit",
+  "import_merge_or_replace_title": "Import Mode",
+  "import_merge_or_replace_message": "There are existing tables in the schema. How would you like to proceed?",
+  "import_merge": "Merge",
+  "import_replace": "Replace",
+  "import_duplicate_title": "Duplicate Tables",
+  "import_duplicate_message": "{count} table(s) already exist: {names}",
+  "import_overwrite": "Overwrite",
+  "import_skip": "Skip"
 }
