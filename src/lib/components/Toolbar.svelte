@@ -85,32 +85,47 @@
     const worldEl = document.querySelector('.canvas-world') as HTMLElement | null;
     if (!worldEl) return;
 
+    if (erdStore.schema.tables.length === 0) return;
+
     const html2canvas = (await import('html2canvas')).default;
-
-    // Compute bounds of all tables
-    const tables = erdStore.schema.tables;
-    if (tables.length === 0) return;
-
-    const TABLE_W = 200;
-    const HEADER_H = 37;
-    const ROW_H = 26;
     const PAD = 40;
 
+    // Save current transform
+    const origTransform = worldEl.style.transform;
+
+    // Reset to identity so getBoundingClientRect reflects actual world coords at scale=1
+    worldEl.style.transform = 'translate(0px, 0px) scale(1)';
+    void worldEl.getBoundingClientRect(); // force layout
+
+    const worldRect = worldEl.getBoundingClientRect();
+    const cards = Array.from(worldEl.querySelectorAll<HTMLElement>('.table-card'));
+
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const t of tables) {
-      const h = HEADER_H + t.columns.length * ROW_H;
-      minX = Math.min(minX, t.position.x);
-      minY = Math.min(minY, t.position.y);
-      maxX = Math.max(maxX, t.position.x + TABLE_W);
-      maxY = Math.max(maxY, t.position.y + h);
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      const x = rect.left - worldRect.left;
+      const y = rect.top - worldRect.top;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + rect.width);
+      maxY = Math.max(maxY, y + rect.height);
+    }
+
+    if (!isFinite(minX)) {
+      worldEl.style.transform = origTransform;
+      return;
     }
 
     const w = maxX - minX + PAD * 2;
     const h = maxY - minY + PAD * 2;
 
-    // Temporarily reset transform for capture
-    const origTransform = worldEl.style.transform;
+    // Shift so all tables start at (PAD, PAD)
     worldEl.style.transform = `translate(${-minX + PAD}px, ${-minY + PAD}px) scale(1)`;
+
+    // Temporarily allow overflow so html2canvas sees full content
+    const viewportEl = worldEl.parentElement;
+    const origOverflow = viewportEl?.style.overflow ?? '';
+    if (viewportEl) viewportEl.style.overflow = 'visible';
 
     try {
       const canvas = await html2canvas(worldEl, {
@@ -120,6 +135,7 @@
         y: 0,
         backgroundColor: '#f8fafc',
         scale: 2,
+        logging: false,
       });
 
       const url = canvas.toDataURL('image/png');
@@ -129,6 +145,7 @@
       a.click();
     } finally {
       worldEl.style.transform = origTransform;
+      if (viewportEl) viewportEl.style.overflow = origOverflow;
     }
   }
 </script>
