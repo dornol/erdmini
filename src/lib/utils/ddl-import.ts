@@ -60,6 +60,7 @@ interface ParsedFK {
 
 interface ParsedTable {
   name: string;
+  comment?: string;
   columns: Column[];
   primaryKeys: string[];
   uniqueColumns: string[];
@@ -206,7 +207,8 @@ function parseCreateTable(block: string): ParsedTable | null {
 
     const colName = stripQuotes(colMatch[1]);
     const rawType = colMatch[2].trim();
-    const rest = colMatch[3].toUpperCase();
+    const restOrig = colMatch[3];          // preserve original case for comment extraction
+    const rest = restOrig.toUpperCase();
 
     const type = normalizeType(rawType);
     const length = extractLength(rawType);
@@ -219,6 +221,9 @@ function parseCreateTable(block: string): ParsedTable | null {
       rawType.toUpperCase().startsWith('BIGSERIAL');
     const defaultMatch = trimmed.match(/DEFAULT\s+('(?:[^'\\]|\\.)*'|\S+)/i);
     const defaultValue = defaultMatch ? defaultMatch[1].replace(/^'|'$/g, '') : undefined;
+    // Extract inline COMMENT '...' (MySQL style)
+    const colCommentMatch = restOrig.match(/\bCOMMENT\s+'((?:[^'\\]|\\.)*)'/i);
+    const colComment = colCommentMatch ? colCommentMatch[1].replace(/\\'/g, "'") : undefined;
 
     if (primaryKey) primaryKeys.push(colName);
 
@@ -233,6 +238,7 @@ function parseCreateTable(block: string): ParsedTable | null {
     };
     if (length !== undefined) col.length = length;
     if (defaultValue !== undefined) col.defaultValue = defaultValue;
+    if (colComment) col.comment = colComment;
 
     columns.push(col);
   }
@@ -243,7 +249,12 @@ function parseCreateTable(block: string): ParsedTable | null {
     if (uniqueColumns.includes(col.name)) col.unique = true;
   }
 
-  return { name: tableName, columns, primaryKeys, uniqueColumns, foreignKeys };
+  // Parse table-level COMMENT from the suffix after the closing paren (MySQL: COMMENT='...')
+  const suffix = block.slice(bodyEnd + 1);
+  const tableCommentMatch = suffix.match(/\bCOMMENT\s*=?\s*'((?:[^'\\]|\\.)*)'/i);
+  const tableComment = tableCommentMatch ? tableCommentMatch[1].replace(/\\'/g, "'") : undefined;
+
+  return { name: tableName, comment: tableComment, columns, primaryKeys, uniqueColumns, foreignKeys };
 }
 
 function getUniqueName(name: string, existing: string[]): string {
@@ -315,6 +326,7 @@ export function importDDL(sql: string): ImportResult {
         columns: parsed.columns,
         foreignKeys: [],
         position,
+        comment: parsed.comment,
       };
       parsedPairs.push({ table, parsed: { ...parsed, name: uniqueName } });
       tables.push(table);
@@ -349,6 +361,29 @@ export function importDDL(sql: string): ImportResult {
       };
       table.foreignKeys.push(fk);
     }
+  }
+
+  // Parse PostgreSQL COMMENT ON TABLE / COMMENT ON COLUMN statements
+  const commentOnTableRe =
+    /COMMENT\s+ON\s+TABLE\s+(`[^`]+`|"[^"]+"|[\w$.]+)\s+IS\s+'((?:[^'\\]|\\.)*)'\s*;/gi;
+  let cotM: RegExpExecArray | null;
+  while ((cotM = commentOnTableRe.exec(sql)) !== null) {
+    const tName = stripSchemaPrefix(stripQuotes(cotM[1]));
+    const tComment = cotM[2].replace(/\\'/g, "'");
+    const t = tables.find((tb) => tb.name === tName);
+    if (t) t.comment = tComment;
+  }
+
+  const commentOnColRe =
+    /COMMENT\s+ON\s+COLUMN\s+(`[^`]+`|"[^"]+"|[\w$.]+)\.(`[^`]+`|"[^"]+"|[\w$.]+)\s+IS\s+'((?:[^'\\]|\\.)*)'\s*;/gi;
+  let cocM: RegExpExecArray | null;
+  while ((cocM = commentOnColRe.exec(sql)) !== null) {
+    const tName = stripSchemaPrefix(stripQuotes(cocM[1]));
+    const cName = stripQuotes(cocM[2]);
+    const cComment = cocM[3].replace(/\\'/g, "'");
+    const t = tables.find((tb) => tb.name === tName);
+    const c = t?.columns.find((col) => col.name === cName);
+    if (c) c.comment = cComment;
   }
 
   return { tables, errors };
