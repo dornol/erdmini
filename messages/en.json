@@ -130,5 +130,10 @@
   "import_duplicate_title": "Duplicate Tables",
   "import_duplicate_message": "{count} table(s) already exist: {names}",
   "import_overwrite": "Overwrite",
-  "import_skip": "Skip"
+  "import_skip": "Skip",
+  "mobile_desktop_optimized": "This app is optimized for desktop",
+  "mobile_description": "ERD design, table drag, zoom/pan features\nwork best on a larger screen.",
+  "mobile_schema_summary": "{tables} tables · {domains} domains",
+  "mobile_continue_anyway": "Continue anyway",
+  "mobile_open_on_desktop": "Please open on PC or tablet (landscape)"
 }

@@ -13,6 +13,9 @@
   import * as m from '$lib/paraglide/messages';
 
   let sidebarCollapsed = $state(false);
+  let viewportWidth = $state(768);
+  let forceDesktop = $state(false);
+  let isMobile = $derived(viewportWidth < 768);
 
   function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } {
     const pt = prev.tables;
@@ -189,33 +192,75 @@
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
   });
+
+  function handleResize() {
+    viewportWidth = window.innerWidth;
+  }
+  $effect(() => {
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  });
 </script>
 
-<div class="app">
-  <Toolbar />
-  <div class="main">
-    <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} />
-    <Canvas>
-      <RelationLines />
-      {#each erdStore.schema.tables as table (table.id)}
-        <TableCard {table} />
-      {/each}
-    </Canvas>
-    <TableEditor />
+{#if isMobile && !forceDesktop}
+  <div class="mobile-notice">
+    <div class="mobile-card">
+      <svg class="mobile-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="10" width="35" height="30" rx="4" fill="none" stroke="#60a5fa" stroke-width="2.5"/>
+        <line x1="5" y1="20" x2="40" y2="20" stroke="#60a5fa" stroke-width="2" opacity="0.5"/>
+        <rect x="60" y="10" width="35" height="24" rx="4" fill="none" stroke="#34d399" stroke-width="2.5"/>
+        <line x1="60" y1="20" x2="95" y2="20" stroke="#34d399" stroke-width="2" opacity="0.5"/>
+        <rect x="30" y="60" width="40" height="30" rx="4" fill="none" stroke="#f472b6" stroke-width="2.5"/>
+        <line x1="30" y1="70" x2="70" y2="70" stroke="#f472b6" stroke-width="2" opacity="0.5"/>
+        <line x1="40" y1="40" x2="68" y2="60" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 2"/>
+        <line x1="22" y1="40" x2="42" y2="60" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 2"/>
+        <circle cx="68" cy="60" r="3" fill="#94a3b8"/>
+        <circle cx="42" cy="60" r="3" fill="#94a3b8"/>
+      </svg>
+      <h1 class="mobile-title">erdmini</h1>
+      <p class="mobile-heading">{m.mobile_desktop_optimized()}</p>
+      <p class="mobile-desc">{m.mobile_description()}</p>
+
+      {#if erdStore.schema.tables.length > 0 || (erdStore.schema.domains ?? []).length > 0}
+        <div class="mobile-summary">
+          {m.mobile_schema_summary({ tables: erdStore.schema.tables.length, domains: (erdStore.schema.domains ?? []).length })}
+        </div>
+      {/if}
+
+      <p class="mobile-sub">{m.mobile_open_on_desktop()}</p>
+      <button class="mobile-btn" onclick={() => (forceDesktop = true)}>
+        {m.mobile_continue_anyway()} &rarr;
+      </button>
+    </div>
   </div>
+{:else}
+  <div class="app">
+    <Toolbar />
+    <div class="main">
+      <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} />
+      <Canvas>
+        <RelationLines />
+        {#each erdStore.schema.tables as table (table.id)}
+          <TableCard {table} />
+        {/each}
+      </Canvas>
+      <TableEditor />
+    </div>
 
-  {#if erdStore.editingColumnInfo}
-    <ColumnEditPopup
-      tableId={erdStore.editingColumnInfo.tableId}
-      columnId={erdStore.editingColumnInfo.columnId}
-      anchorX={erdStore.editingColumnInfo.anchorX}
-      anchorY={erdStore.editingColumnInfo.anchorY}
-      onclose={() => (erdStore.editingColumnInfo = null)}
-    />
-  {/if}
+    {#if erdStore.editingColumnInfo}
+      <ColumnEditPopup
+        tableId={erdStore.editingColumnInfo.tableId}
+        columnId={erdStore.editingColumnInfo.columnId}
+        anchorX={erdStore.editingColumnInfo.anchorX}
+        anchorY={erdStore.editingColumnInfo.anchorY}
+        onclose={() => (erdStore.editingColumnInfo = null)}
+      />
+    {/if}
 
-  <DialogModal />
-</div>
+    <DialogModal />
+  </div>
+{/if}
 
 <style>
   .app {
@@ -229,5 +274,86 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+  }
+
+  .mobile-notice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: #0f172a;
+    padding: 24px;
+  }
+
+  .mobile-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 360px;
+    width: 100%;
+  }
+
+  .mobile-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 12px;
+  }
+
+  .mobile-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0 0 20px;
+    letter-spacing: -0.5px;
+  }
+
+  .mobile-heading {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 0 0 12px;
+  }
+
+  .mobile-desc {
+    font-size: 14px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin: 0 0 20px;
+    white-space: pre-line;
+  }
+
+  .mobile-summary {
+    font-size: 13px;
+    color: #cbd5e1;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+  }
+
+  .mobile-sub {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 24px;
+  }
+
+  .mobile-btn {
+    font-size: 14px;
+    color: #94a3b8;
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px 24px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .mobile-btn:hover {
+    color: #e2e8f0;
+    border-color: #475569;
+    background: #1e293b;
   }
 </style>
