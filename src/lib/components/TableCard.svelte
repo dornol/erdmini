@@ -136,7 +136,12 @@
       {@const refTable = fk ? erdStore.schema.tables.find((t) => t.id === fk.referencedTableId) : undefined}
       {@const refCol = refTable ? refTable.columns.find((c) => c.id === fk!.referencedColumnId) : undefined}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="column-row" ondblclick={(e) => onColumnDblClick(e, col.id)}>
+      <div
+        class="column-row"
+        ondblclick={(e) => onColumnDblClick(e, col.id)}
+        onmouseenter={() => (erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id })}
+        onmouseleave={() => (erdStore.hoveredColumnInfo = null)}
+      >
 
         <!-- Key badge: PK (gold) or FK (blue) or nothing -->
         <div class="col-key">

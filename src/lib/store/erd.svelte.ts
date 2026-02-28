@@ -47,6 +47,7 @@ class ERDStore {
   selectedTableId = $state<string | null>(null);
   selectedTableIds = $state<Set<string>>(new Set());
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
+  hoveredColumnInfo = $state<{ tableId: string; columnId: string } | null>(null);
 
   // Undo/Redo
   private _undoStack: string[] = [];

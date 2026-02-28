@@ -135,7 +135,12 @@
   </defs>
 
   {#each lines as line (line.fk.id)}
-    {@const isHovered = hoveredId === line.fk.id}
+    {@const hc = erdStore.hoveredColumnInfo}
+    {@const isColumnHovered = hc !== null && (
+      (hc.tableId === line.tableId && hc.columnId === line.fk.columnId) ||
+      (hc.tableId === line.fk.referencedTableId && hc.columnId === line.fk.referencedColumnId)
+    )}
+    {@const isHovered = hoveredId === line.fk.id || isColumnHovered}
     {@const color = isHovered ? '#3b82f6' : '#94a3b8'}
 
     <!-- Invisible wide hit area -->
