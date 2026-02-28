@@ -367,6 +367,22 @@ class ERDStore {
     this.schema.updatedAt = now();
   }
 
+  upsertDomains(items: Omit<ColumnDomain, 'id'>[]): { added: number; updated: number } {
+    let added = 0;
+    let updated = 0;
+    for (const item of items) {
+      const existing = this.schema.domains.find((d) => d.name === item.name);
+      if (existing) {
+        this.updateDomain(existing.id, item);
+        updated++;
+      } else {
+        this.addDomain(item);
+        added++;
+      }
+    }
+    return { added, updated };
+  }
+
   duplicateTable(id: string) {
     const src = this.schema.tables.find((t) => t.id === id);
     if (!src) return;

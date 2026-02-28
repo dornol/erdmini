@@ -5,7 +5,7 @@ function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function normalizeType(raw: string): ColumnType {
+export function normalizeType(raw: string): ColumnType {
   const upper = raw.toUpperCase().trim();
   const base = upper.replace(/\s*\([^)]*\)/, '').trim();
 

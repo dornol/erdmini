@@ -2,6 +2,7 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { ColumnDomain, ColumnType } from '$lib/types/erd';
+  import { exportDomainsToXlsx, exportDomainTemplate, importDomainsFromXlsx } from '$lib/utils/domain-xlsx';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -10,9 +11,14 @@
 
   let { onclose }: Props = $props();
 
-  let editingId = $state<string | null>(null);
-  let showForm = $state(false);
+  // Search
+  let searchQuery = $state('');
 
+  // Inline editing
+  let editingId = $state<string | null>(null);
+  let addingNew = $state(false);
+
+  // Form fields for inline editing
   let formName = $state('');
   let formType = $state<ColumnType>('VARCHAR');
   let formLength = $state<number | undefined>(255);
@@ -23,8 +29,28 @@
   let formDefaultValue = $state('');
   let formComment = $state('');
 
+  // Upload result message
+  let uploadMessage = $state('');
+  let uploadMessageTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // File input ref
+  let fileInput: HTMLInputElement | undefined = $state();
+
   let hasLength = $derived(
     formType === 'VARCHAR' || formType === 'CHAR' || formType === 'DECIMAL',
+  );
+
+  let filteredDomains = $derived(
+    searchQuery.trim()
+      ? erdStore.schema.domains.filter((d) => {
+          const q = searchQuery.trim().toLowerCase();
+          return (
+            d.name.toLowerCase().includes(q) ||
+            d.type.toLowerCase().includes(q) ||
+            (d.comment ?? '').toLowerCase().includes(q)
+          );
+        })
+      : erdStore.schema.domains,
   );
 
   function resetForm() {
@@ -38,16 +64,12 @@
     formDefaultValue = '';
     formComment = '';
     editingId = null;
-    showForm = false;
-  }
-
-  function startAdd() {
-    resetForm();
-    showForm = true;
+    addingNew = false;
   }
 
   function startEdit(domain: ColumnDomain) {
     editingId = domain.id;
+    addingNew = false;
     formName = domain.name;
     formType = domain.type;
     formLength = domain.length;
@@ -57,10 +79,14 @@
     formAutoIncrement = domain.autoIncrement;
     formDefaultValue = domain.defaultValue ?? '';
     formComment = domain.comment ?? '';
-    showForm = true;
   }
 
-  function submitForm() {
+  function startAdd() {
+    resetForm();
+    addingNew = true;
+  }
+
+  function saveEdit() {
     if (!formName.trim()) return;
     const fields = {
       name: formName.trim(),
@@ -75,10 +101,79 @@
     };
     if (editingId) {
       erdStore.updateDomain(editingId, fields);
-    } else {
+    } else if (addingNew) {
       erdStore.addDomain(fields);
     }
     resetForm();
+  }
+
+  function cancelEdit() {
+    resetForm();
+  }
+
+  function handleRowKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  }
+
+  function handleRowClick(domain: ColumnDomain) {
+    if (editingId === domain.id) return;
+    // If we're already editing something else, save it first
+    if (editingId || addingNew) {
+      saveEdit();
+    }
+    startEdit(domain);
+  }
+
+  // Click outside to save
+  function handleTableClick(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    // Check if click is on the modal but outside any editing row or display row
+    if (
+      (editingId || addingNew) &&
+      !target.closest('.editing-row') &&
+      !target.closest('.add-row') &&
+      !target.closest('.display-row')
+    ) {
+      saveEdit();
+    }
+  }
+
+  // Excel
+  function handleDownload() {
+    exportDomainsToXlsx(erdStore.schema.domains);
+  }
+
+  async function handleUpload(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const items = await importDomainsFromXlsx(file);
+      const result = erdStore.upsertDomains(items);
+      uploadMessage = m.domain_upload_result({
+        added: String(result.added),
+        updated: String(result.updated),
+      });
+      if (uploadMessageTimer) clearTimeout(uploadMessageTimer);
+      uploadMessageTimer = setTimeout(() => {
+        uploadMessage = '';
+      }, 4000);
+    } catch {
+      uploadMessage = 'Error reading file';
+      if (uploadMessageTimer) clearTimeout(uploadMessageTimer);
+      uploadMessageTimer = setTimeout(() => {
+        uploadMessage = '';
+      }, 4000);
+    }
+    // Reset file input
+    input.value = '';
   }
 
   function onBackdropClick(e: MouseEvent) {
@@ -86,8 +181,19 @@
   }
 
   function onKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onclose();
+    if (e.key === 'Escape' && !editingId && !addingNew) onclose();
   }
+
+  // Propagation field indicators
+  const PROPAGATE_FIELDS = new Set([
+    'type',
+    'length',
+    'nullable',
+    'primaryKey',
+    'unique',
+    'autoIncrement',
+    'defaultValue',
+  ]);
 </script>
 
 <svelte:window onkeydown={onKeyDown} />
@@ -99,121 +205,195 @@
   aria-label={m.domain_modal_title()}
   tabindex="-1"
   onclick={onBackdropClick}
-  onkeydown={(e) => { if (e.key === 'Escape') onclose(); }}
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && !editingId && !addingNew) onclose();
+  }}
 >
-  <div class="modal">
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="modal" onclick={handleTableClick} onkeydown={() => {}}>
     <div class="modal-header">
       <span class="modal-title">{m.domain_modal_title()}</span>
-      <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
+      <div class="header-controls">
+        <input
+          class="search-input"
+          type="text"
+          placeholder={m.domain_search_placeholder()}
+          bind:value={searchQuery}
+        />
+        <button
+          class="header-icon-btn"
+          onclick={handleDownload}
+          title={m.domain_download_xlsx()}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v8m0 0L5 7m3 3l3-3M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button
+          class="header-icon-btn"
+          onclick={() => fileInput?.click()}
+          title={m.domain_upload_xlsx()}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 10V2m0 0L5 5m3-3l3 3M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="template-link" onclick={exportDomainTemplate}>
+          {m.domain_download_template()}
+        </button>
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept=".xlsx,.xls"
+          class="hidden-input"
+          onchange={handleUpload}
+        />
+        <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
+      </div>
     </div>
 
+    {#if uploadMessage}
+      <div class="upload-message">{uploadMessage}</div>
+    {/if}
+
     <div class="modal-body">
-      <!-- Domain table -->
       <div class="table-wrapper">
         <table class="domain-table">
           <thead>
             <tr>
-              <th>{m.column_name()}</th>
-              <th>{m.column_type()}</th>
-              <th>{m.column_length()}</th>
-              <th>NULL</th>
-              <th>PK</th>
-              <th>UQ</th>
-              <th>AI</th>
-              <th>{m.column_default()}</th>
-              <th>{m.column_description()}</th>
+              <th class="th-local" title={m.domain_local_hint()}>
+                {m.column_name()}
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">{m.column_type()}</span>
+                <span class="propagate-icon">↔</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">{m.column_length()}</span>
+                <span class="propagate-icon">↔</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">NULL</span>
+                <span class="propagate-icon">↔</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">PK</span>
+                <span class="propagate-icon">↔</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">UQ</span>
+                <span class="propagate-icon">↔</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">AI</span>
+                <span class="propagate-icon">↔</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">{m.column_default()}</span>
+                <span class="propagate-icon">↔</span>
+              </th>
+              <th class="th-local" title={m.domain_local_hint()}>
+                {m.column_description()}
+              </th>
               <th>{m.domain_actions()}</th>
             </tr>
           </thead>
           <tbody>
-            {#each erdStore.schema.domains as domain (domain.id)}
-              <tr class:editing={editingId === domain.id}>
-                <td class="td-name">{domain.name}</td>
-                <td class="td-mono">{domain.type}</td>
-                <td class="td-mono">{domain.length ?? '—'}</td>
-                <td class="td-null">{domain.nullable ? 'NULL' : 'NOT NULL'}</td>
-                <td class="td-badge">{#if domain.primaryKey}<span class="badge pk">PK</span>{/if}</td>
-                <td class="td-badge">{#if domain.unique}<span class="badge uq">UQ</span>{/if}</td>
-                <td class="td-badge">{#if domain.autoIncrement}<span class="badge ai">AI</span>{/if}</td>
-                <td class="td-mono td-optional">{domain.defaultValue ?? '—'}</td>
-                <td class="td-comment">{domain.comment ?? '—'}</td>
-                <td class="td-actions">
-                  <button class="icon-btn" onclick={() => startEdit(domain)}>{m.action_edit()}</button>
-                  <button
-                    class="icon-btn del"
-                    onclick={() => erdStore.deleteDomain(domain.id)}
-                    aria-label={m.domain_delete()}
-                  >✕</button>
-                </td>
-              </tr>
+            {#each filteredDomains as domain (domain.id)}
+              {#if editingId === domain.id}
+                <!-- Editing row -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <tr class="editing-row" onkeydown={handleRowKeydown}>
+                  <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
+                  <td>
+                    <select class="cell-select" bind:value={formType}>
+                      {#each COLUMN_TYPES as t}
+                        <option value={t}>{t}</option>
+                      {/each}
+                    </select>
+                  </td>
+                  <td>
+                    {#if hasLength}
+                      <input class="cell-input cell-num" type="number" bind:value={formLength} min="1" max="65535" />
+                    {:else}
+                      <span class="td-mono">—</span>
+                    {/if}
+                  </td>
+                  <td class="td-check"><input type="checkbox" bind:checked={formNullable} /></td>
+                  <td class="td-check"><input type="checkbox" bind:checked={formPrimaryKey} /></td>
+                  <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
+                  <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
+                  <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
+                  <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
+                  <td class="td-actions">
+                    <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>✓</button>
+                    <button class="icon-btn" onclick={cancelEdit}>✕</button>
+                  </td>
+                </tr>
+              {:else}
+                <!-- Display row -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <tr class="display-row" onclick={() => handleRowClick(domain)}>
+                  <td class="td-name">{domain.name}</td>
+                  <td class="td-mono">{domain.type}</td>
+                  <td class="td-mono">{domain.length ?? '—'}</td>
+                  <td class="td-null">{domain.nullable ? 'NULL' : 'NOT NULL'}</td>
+                  <td class="td-badge">{#if domain.primaryKey}<span class="badge pk">PK</span>{/if}</td>
+                  <td class="td-badge">{#if domain.unique}<span class="badge uq">UQ</span>{/if}</td>
+                  <td class="td-badge">{#if domain.autoIncrement}<span class="badge ai">AI</span>{/if}</td>
+                  <td class="td-mono td-optional">{domain.defaultValue ?? '—'}</td>
+                  <td class="td-comment">{domain.comment ?? '—'}</td>
+                  <td class="td-actions">
+                    <button
+                      class="icon-btn del"
+                      onclick={(e) => { e.stopPropagation(); erdStore.deleteDomain(domain.id); }}
+                      aria-label={m.domain_delete()}
+                    >✕</button>
+                  </td>
+                </tr>
+              {/if}
             {:else}
               <tr>
                 <td colspan="10" class="empty-cell">{m.domain_empty()}</td>
               </tr>
             {/each}
+
+            <!-- Add new row -->
+            {#if addingNew}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <tr class="editing-row add-row" onkeydown={handleRowKeydown}>
+                <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
+                <td>
+                  <select class="cell-select" bind:value={formType}>
+                    {#each COLUMN_TYPES as t}
+                      <option value={t}>{t}</option>
+                    {/each}
+                  </select>
+                </td>
+                <td>
+                  {#if hasLength}
+                    <input class="cell-input cell-num" type="number" bind:value={formLength} min="1" max="65535" />
+                  {:else}
+                    <span class="td-mono">—</span>
+                  {/if}
+                </td>
+                <td class="td-check"><input type="checkbox" bind:checked={formNullable} /></td>
+                <td class="td-check"><input type="checkbox" bind:checked={formPrimaryKey} /></td>
+                <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
+                <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
+                <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
+                <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
+                <td class="td-actions">
+                  <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>✓</button>
+                  <button class="icon-btn" onclick={cancelEdit}>✕</button>
+                </td>
+              </tr>
+            {/if}
           </tbody>
         </table>
       </div>
 
-      <!-- Add/Edit form -->
-      {#if showForm}
-        <div class="form-section">
-          <div class="form-section-title">{editingId ? m.domain_edit_form_title() : m.domain_add_form_title()}</div>
-
-          <div class="form-row">
-            <label for="dm-name">{m.column_name()}</label>
-            <input id="dm-name" class="input" bind:value={formName} placeholder={m.domain_name_placeholder()} />
-          </div>
-
-          <div class="form-row-2col">
-            <div class="form-row">
-              <label for="dm-type">{m.column_type()}</label>
-              <select id="dm-type" class="input" bind:value={formType}>
-                {#each COLUMN_TYPES as t}
-                  <option value={t}>{t}</option>
-                {/each}
-              </select>
-            </div>
-            {#if hasLength}
-              <div class="form-row">
-                <label for="dm-length">{m.column_length()}</label>
-                <input
-                  id="dm-length"
-                  class="input"
-                  type="number"
-                  bind:value={formLength}
-                  min="1"
-                  max="65535"
-                />
-              </div>
-            {/if}
-          </div>
-
-          <div class="form-flags">
-            <label><input type="checkbox" bind:checked={formNullable} /> NULL</label>
-            <label><input type="checkbox" bind:checked={formPrimaryKey} /> PK</label>
-            <label><input type="checkbox" bind:checked={formUnique} /> UQ</label>
-            <label><input type="checkbox" bind:checked={formAutoIncrement} /> AI</label>
-          </div>
-
-          <div class="form-row">
-            <label for="dm-default">{m.column_default()}</label>
-            <input id="dm-default" class="input" bind:value={formDefaultValue} placeholder={m.optional()} />
-          </div>
-
-          <div class="form-row">
-            <label for="dm-comment">{m.column_description()}</label>
-            <input id="dm-comment" class="input" bind:value={formComment} placeholder={m.optional()} />
-          </div>
-
-          <div class="form-actions">
-            <button class="btn-cancel" onclick={resetForm}>{m.action_cancel()}</button>
-            <button class="btn-submit" onclick={submitForm} disabled={!formName.trim()}>
-              {editingId ? m.action_edit() : m.action_add_submit()}
-            </button>
-          </div>
-        </div>
-      {:else}
+      {#if !addingNew}
         <button class="add-btn" onclick={startAdd}>{m.domain_add_btn()}</button>
       {/if}
     </div>
@@ -235,7 +415,7 @@
     background: white;
     border-radius: 10px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    width: min(90vw, 780px);
+    width: min(92vw, 860px);
     max-height: 85vh;
     display: flex;
     flex-direction: column;
@@ -248,12 +428,77 @@
     padding: 14px 18px;
     border-bottom: 1px solid #e2e8f0;
     flex-shrink: 0;
+    gap: 12px;
   }
 
   .modal-title {
     font-size: 14px;
     font-weight: 600;
     color: #1e293b;
+    white-space: nowrap;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .search-input {
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: #1e293b;
+    outline: none;
+    width: 180px;
+    background: #f8fafc;
+  }
+
+  .search-input:focus {
+    border-color: #3b82f6;
+    background: white;
+  }
+
+  .header-icon-btn {
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 7px;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .header-icon-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #cbd5e1;
+  }
+
+  .template-link {
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+  }
+
+  .template-link:hover {
+    color: #3b82f6;
+  }
+
+  .hidden-input {
+    display: none;
   }
 
   .close-btn {
@@ -270,6 +515,14 @@
   .close-btn:hover {
     color: #ef4444;
     background: #fee2e2;
+  }
+
+  .upload-message {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    padding: 6px 18px;
+    border-bottom: 1px solid #dbeafe;
   }
 
   .modal-body {
@@ -302,21 +555,42 @@
     text-align: left;
     border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
+    position: relative;
+  }
+
+  /* Propagation column headers */
+  .th-propagate {
+    border-bottom: 2px solid #3b82f6 !important;
+  }
+
+  .th-propagate .th-label {
+    margin-right: 2px;
+  }
+
+  .propagate-icon {
+    font-size: 9px;
+    color: #3b82f6;
+    vertical-align: middle;
+  }
+
+  .th-local {
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .domain-table tbody tr {
     border-bottom: 1px solid #f1f5f9;
   }
 
-  .domain-table tbody tr:nth-child(even) {
+  .domain-table tbody tr.display-row:nth-child(even) {
     background: #f8fafc;
   }
 
-  .domain-table tbody tr:hover {
+  .domain-table tbody tr.display-row:hover {
     background: #f1f5f9;
+    cursor: pointer;
   }
 
-  .domain-table tbody tr.editing {
+  .domain-table tbody tr.editing-row {
     background: #eff6ff;
     outline: 2px solid #3b82f6;
     outline-offset: -1px;
@@ -350,6 +624,11 @@
     width: 32px;
   }
 
+  .td-check {
+    text-align: center;
+    width: 32px;
+  }
+
   .td-optional {
     color: #94a3b8;
   }
@@ -367,6 +646,43 @@
     display: flex;
     gap: 4px;
     white-space: nowrap;
+  }
+
+  /* Inline cell inputs */
+  .cell-input {
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    padding: 3px 6px;
+    font-size: 12px;
+    color: #1e293b;
+    outline: none;
+    width: 100%;
+    min-width: 50px;
+    box-sizing: border-box;
+    background: white;
+  }
+
+  .cell-input:focus {
+    border-color: #3b82f6;
+  }
+
+  .cell-num {
+    width: 70px;
+  }
+
+  .cell-select {
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    padding: 3px 4px;
+    font-size: 12px;
+    color: #1e293b;
+    outline: none;
+    background: white;
+    cursor: pointer;
+  }
+
+  .cell-select:focus {
+    border-color: #3b82f6;
   }
 
   .badge {
@@ -419,88 +735,26 @@
     color: #1e293b;
   }
 
+  .icon-btn.save {
+    color: #16a34a;
+    border-color: #bbf7d0;
+  }
+
+  .icon-btn.save:hover {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .icon-btn.save:disabled {
+    color: #94a3b8;
+    border-color: #e2e8f0;
+    cursor: not-allowed;
+  }
+
   .icon-btn.del:hover {
     background: #fee2e2;
     color: #ef4444;
     border-color: #fca5a5;
-  }
-
-  /* ── Form ── */
-  .form-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 14px;
-  }
-
-  .form-section-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .form-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .form-row-2col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .form-row label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .input {
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: #1e293b;
-    background: white;
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .input:focus {
-    border-color: #3b82f6;
-  }
-
-  .form-flags {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .form-flags label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    color: #475569;
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 4px;
   }
 
   .add-btn {
@@ -518,39 +772,5 @@
   .add-btn:hover {
     border-color: #3b82f6;
     color: #3b82f6;
-  }
-
-  .btn-cancel {
-    background: none;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: 13px;
-    color: #64748b;
-    cursor: pointer;
-  }
-
-  .btn-cancel:hover {
-    background: #f1f5f9;
-  }
-
-  .btn-submit {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .btn-submit:disabled {
-    background: #93c5fd;
-    cursor: not-allowed;
-  }
-
-  .btn-submit:not(:disabled):hover {
-    background: #2563eb;
   }
 </style>
