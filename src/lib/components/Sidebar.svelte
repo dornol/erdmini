@@ -13,6 +13,25 @@
 
   let searchQuery = $state('');
   let sortBy = $state<'creation' | 'name'>('creation');
+  let sidebarWidth = $state(240);
+  let resizing = $state(false);
+
+  function onResizeStart(e: MouseEvent) {
+    e.preventDefault();
+    resizing = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+    function onMove(ev: MouseEvent) {
+      sidebarWidth = Math.max(180, Math.min(480, startWidth + ev.clientX - startX));
+    }
+    function onUp() {
+      resizing = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
 
   const filteredTables = $derived(() => {
     let tables = erdStore.schema.tables;
@@ -31,13 +50,37 @@
     return tables;
   });
 
+  let tooltip = $state<{ text: string; x: number; y: number } | null>(null);
+
+  function showTooltip(e: MouseEvent, text: string) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    tooltip = { text, x: rect.left, y: rect.bottom + 4 };
+  }
+
+  function hideTooltip() {
+    tooltip = null;
+  }
+
   function getTableMeta(table: typeof erdStore.schema.tables[0]) {
     const colCount = table.columns.length;
     const fkCount = table.foreignKeys.length;
     const pkCols = table.columns.filter((c) => c.primaryKey).map((c) => c.name);
-    const refCount = erdStore.schema.tables.reduce((n, t) =>
-      n + t.foreignKeys.filter(fk => fk.referencedTableId === table.id).length, 0);
-    return { colCount, fkCount, pkCols, refCount };
+    const fkDetails = table.foreignKeys.map(fk => {
+      const srcCol = table.columns.find(c => c.id === fk.columnId)?.name ?? '?';
+      const refTable = erdStore.schema.tables.find(t => t.id === fk.referencedTableId);
+      const refCol = refTable?.columns.find(c => c.id === fk.referencedColumnId)?.name ?? '?';
+      return `${srcCol} → ${refTable?.name ?? '?'}.${refCol}`;
+    });
+    const refs = erdStore.schema.tables.flatMap(t =>
+      t.foreignKeys
+        .filter(fk => fk.referencedTableId === table.id)
+        .map(fk => {
+          const srcCol = t.columns.find(c => c.id === fk.columnId)?.name ?? '?';
+          const refCol = table.columns.find(c => c.id === fk.referencedColumnId)?.name ?? '?';
+          return `${t.name}.${srcCol} → ${refCol}`;
+        })
+    );
+    return { colCount, fkCount, fkDetails, pkCols, refCount: refs.length, refDetails: refs };
   }
 
   function onItemClick(e: MouseEvent, tableId: string) {
@@ -87,7 +130,7 @@
     </svg>
   </button>
 {:else}
-  <aside class="sidebar">
+  <aside class="sidebar" class:resizing style="width:{sidebarWidth}px">
     <div class="sidebar-header">
       <span>{m.sidebar_title()}</span>
       <div class="header-right">
@@ -132,19 +175,31 @@
           onclick={(e) => onItemClick(e, table.id)}
         >
           <div class="item-info">
-            <span class="item-name">{table.name}</span>
-            <div class="meta-badges">
-              {#if meta.pkCols.length > 0}
-                <span class="badge badge-pk">PK {meta.pkCols.join(', ')}</span>
-              {/if}
-              <span class="badge badge-cols">{meta.colCount} cols</span>
-              {#if meta.fkCount > 0}
-                <span class="badge badge-fk">FK→ {meta.fkCount}</span>
-              {/if}
-              {#if meta.refCount > 0}
-                <span class="badge badge-ref">{m.sidebar_ref_count({ count: meta.refCount })}</span>
-              {/if}
+            <div class="item-name-row">
+              <span class="item-name">{table.name}</span>
+              <span class="badge badge-cols">{meta.colCount}</span>
             </div>
+            {#if meta.pkCols.length > 0 || meta.fkCount > 0 || meta.refCount > 0}
+              <div class="meta-badges">
+                {#if meta.pkCols.length > 0}
+                  <span class="badge badge-pk">{meta.pkCols.join(', ')}</span>
+                {/if}
+                {#if meta.fkCount > 0}
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <span class="badge badge-fk badge-hover"
+                    onmouseenter={(e) => showTooltip(e, meta.fkDetails.join('\n'))}
+                    onmouseleave={hideTooltip}
+                  >→{meta.fkCount}</span>
+                {/if}
+                {#if meta.refCount > 0}
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <span class="badge badge-ref badge-hover"
+                    onmouseenter={(e) => showTooltip(e, meta.refDetails.join('\n'))}
+                    onmouseleave={hideTooltip}
+                  >←{meta.refCount}</span>
+                {/if}
+              </div>
+            {/if}
             {#if table.comment}
               <span class="item-comment">{table.comment}</span>
             {/if}
@@ -180,18 +235,43 @@
         </li>
       {/each}
     </ul>
+    {#if tooltip}
+      <div class="fixed-tooltip" style="left:{tooltip.x}px;top:{tooltip.y}px">
+        {tooltip.text}
+      </div>
+    {/if}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="resize-handle" onmousedown={onResizeStart}></div>
   </aside>
 {/if}
 
 <style>
   .sidebar {
-    width: 240px;
+    position: relative;
     flex-shrink: 0;
     background: #f8fafc;
     border-right: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .sidebar.resizing {
+    user-select: none;
+  }
+
+  .resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+  }
+
+  .resize-handle:hover {
+    background: #93c5fd;
   }
 
   .sidebar-header {
@@ -352,14 +432,22 @@
     overflow: hidden;
   }
 
+  .item-name-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
   .item-name {
-    display: block;
     font-size: 13px;
     font-weight: 500;
     color: #1e293b;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .meta-badges {
@@ -401,6 +489,24 @@
     background: #ccfbf1;
     border-color: #5eead4;
     color: #0f766e;
+  }
+
+  .badge-hover {
+    cursor: default;
+  }
+
+  .fixed-tooltip {
+    position: fixed;
+    background: #1e293b;
+    color: #f1f5f9;
+    font-size: 11px;
+    font-weight: 400;
+    padding: 6px 8px;
+    border-radius: 4px;
+    white-space: pre;
+    z-index: 9999;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
   }
 
   .item-comment {

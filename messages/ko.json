@@ -38,7 +38,6 @@
   "sidebar_sort_by_creation": "생성순 정렬",
   "sidebar_sort_creation": "생성순",
   "sidebar_sort_name": "이름순",
-  "sidebar_ref_count": "←{count} ref",
   "sidebar_no_results": "검색 결과가 없습니다.",
   "sidebar_empty": "테이블이 없습니다.\n+ 새 테이블로 시작하세요.",
   "dialog_delete_table_title": "테이블 삭제",

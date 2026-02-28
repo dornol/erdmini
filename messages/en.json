@@ -38,7 +38,6 @@
   "sidebar_sort_by_creation": "Sort by creation",
   "sidebar_sort_creation": "Creation",
   "sidebar_sort_name": "Name",
-  "sidebar_ref_count": "←{count} ref",
   "sidebar_no_results": "No results found.",
   "sidebar_empty": "No tables.\nClick + New Table to start.",
   "dialog_delete_table_title": "Delete Table",
