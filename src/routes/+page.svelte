@@ -42,6 +42,13 @@
       return;
     }
 
+    // Escape: deselect
+    if (e.key === 'Escape' && !isEditing) {
+      erdStore.selectedTableId = null;
+      erdStore.selectedTableIds = new Set();
+      return;
+    }
+
     // Delete selected table(s)
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing) {
       const ids = [...erdStore.selectedTableIds];
