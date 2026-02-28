@@ -135,8 +135,7 @@
       {@const fk = table.foreignKeys.find((f) => f.columnId === col.id)}
       {@const refTable = fk ? erdStore.schema.tables.find((t) => t.id === fk.referencedTableId) : undefined}
       {@const refCol = refTable ? refTable.columns.find((c) => c.id === fk!.referencedColumnId) : undefined}
-      {@const hfk = erdStore.hoveredFkInfo}
-      {@const isFkHighlighted = hfk !== null && (
+      {@const isFkHighlighted = erdStore.hoveredFkInfo.some((hfk) =>
         (hfk.sourceTableId === table.id && hfk.sourceColumnId === col.id) ||
         (hfk.refTableId === table.id && hfk.refColumnId === col.id)
       )}
@@ -145,8 +144,27 @@
         class="column-row"
         class:fk-highlighted={isFkHighlighted}
         ondblclick={(e) => onColumnDblClick(e, col.id)}
-        onmouseenter={() => (erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id })}
-        onmouseleave={() => (erdStore.hoveredColumnInfo = null)}
+        onmouseenter={() => {
+          erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id };
+          if (fk) {
+            erdStore.hoveredFkInfo = [{
+              sourceTableId: table.id, sourceColumnId: col.id,
+              refTableId: fk.referencedTableId, refColumnId: fk.referencedColumnId,
+            }];
+          } else if (col.primaryKey) {
+            erdStore.hoveredFkInfo = erdStore.schema.tables.flatMap((t) =>
+              t.foreignKeys.filter((f) => f.referencedTableId === table.id && f.referencedColumnId === col.id)
+                .map((f) => ({
+                  sourceTableId: t.id, sourceColumnId: f.columnId,
+                  refTableId: table.id, refColumnId: col.id,
+                }))
+            );
+          }
+        }}
+        onmouseleave={() => {
+          erdStore.hoveredColumnInfo = null;
+          erdStore.hoveredFkInfo = [];
+        }}
       >
 
         <!-- Key badge: PK (gold) or FK (blue) or nothing -->

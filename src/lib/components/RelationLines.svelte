@@ -4,11 +4,11 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
 
-  const THEME_COLORS: Record<string, { normal: string; hover: string }> = {
-    modern:    { normal: '#94a3b8', hover: '#3b82f6' },
-    classic:   { normal: '#b0a08a', hover: '#b8860b' },
-    blueprint: { normal: '#3a7ac0', hover: '#60a5fa' },
-    minimal:   { normal: '#d4d4d4', hover: '#737373' },
+  const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string }> = {
+    modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc' },
+    classic:   { normal: '#b0a08a', hover: '#b8860b', bg: '#f5f0e4' },
+    blueprint: { normal: '#3a7ac0', hover: '#60a5fa', bg: '#0c1a30' },
+    minimal:   { normal: '#d4d4d4', hover: '#737373', bg: '#fafafa' },
   };
 
   let lineColors = $derived(THEME_COLORS[themeStore.current] ?? THEME_COLORS.modern);
@@ -52,8 +52,21 @@
         const srcCenterX = table.position.x + TABLE_WIDTH / 2;
         const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
 
-        const fromRight = srcCenterX <= refCenterX;
-        const toLeft = fromRight;
+        // Detect horizontal overlap (vertically stacked tables)
+        const overlapAmount = Math.min(table.position.x + TABLE_WIDTH, refTable.position.x + TABLE_WIDTH)
+          - Math.max(table.position.x, refTable.position.x);
+        const overlapsX = overlapAmount > TABLE_WIDTH * 0.3;
+
+        let fromRight: boolean;
+        let toLeft: boolean;
+        if (overlapsX) {
+          // Both exit from the same side — smooth C-curve instead of U-turn
+          fromRight = true;
+          toLeft = false;
+        } else {
+          fromRight = srcCenterX <= refCenterX;
+          toLeft = fromRight;
+        }
 
         const x1 = fromRight ? table.position.x + TABLE_WIDTH : table.position.x;
         const y1 = colY(table, srcColIdx);
@@ -71,62 +84,82 @@
   });
 
   function bezierPath(line: FKLine): string {
-    const { x1, y1, x2, y2 } = line;
+    const { x1, y1, x2, y2, fromRight, toLeft } = line;
     const dx = Math.abs(x2 - x1);
-    const offset = Math.max(40, Math.min(150, dx * 0.4));
-    const cx1 = x1 + (line.fromRight ? offset : -offset);
-    const cx2 = x2 + (line.toLeft ? -offset : offset);
-    return `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
+    const dy = Math.abs(y2 - y1);
+    // Straight horizontal segment at each end so markers sit on a flat portion
+    const straight = Math.min(20, Math.max(8, dx * 0.25));
+    const dirS = fromRight ? 1 : -1;
+    const dirT = toLeft ? -1 : 1;
+    const sx1 = x1 + dirS * straight;
+    const sx2 = x2 + dirT * straight;
+    const curveDx = Math.abs(sx2 - sx1);
+    // Use dy to ensure enough curve width for vertically stacked tables
+    const offset = Math.max(40, Math.min(150, Math.max(curveDx * 0.4, dy * 0.4)));
+    const cx1 = sx1 + dirS * offset;
+    const cx2 = sx2 + dirT * offset;
+    return `M ${x1} ${y1} L ${sx1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${sx2} ${y2} L ${x2} ${y2}`;
   }
 
-  // Crow's foot marker at the "many" end (target side)
-  // Points outward from the target table edge
-  function crowsFoot(line: FKLine): string {
+  // === Parent (referenced/PK) side — always "one" ===
+  // Order from table: cardinality (6px) → participation (14px) → line
+
+  // Cardinality: always one tick (FK references PK/unique) — closest to table
+  function parentOneTick(line: FKLine): string {
     const { x2, y2, toLeft } = line;
-    // dir points away from the table (outward from the edge)
     const dir = toLeft ? -1 : 1;
-    const len = 10;
-    const spread = 8;
-    const tip = x2 + dir * len;
-    return [
-      `M ${x2} ${y2} L ${tip} ${y2}`,
-      `M ${x2} ${y2} L ${tip} ${y2 - spread}`,
-      `M ${x2} ${y2} L ${tip} ${y2 + spread}`,
-    ].join(' ');
+    const tickX = x2 + dir * 6;
+    return `M ${tickX} ${y2 - 6} L ${tickX} ${y2 + 6}`;
   }
 
-  // One tick at the source side (the "one" end)
-  function oneTick(line: FKLine): string {
+  // Participation: mandatory tick (|) when FK column is NOT NULL — further from table
+  function parentMandatoryTick(line: FKLine): string {
+    const { x2, y2, toLeft } = line;
+    const dir = toLeft ? -1 : 1;
+    const tickX = x2 + dir * 14;
+    return `M ${tickX} ${y2 - 6} L ${tickX} ${y2 + 6}`;
+  }
+
+  // === Child (source, FK holder) side ===
+  // Order from table: cardinality (4–12px) → participation (18px) → line
+
+  // Cardinality: one tick (1:1 when FK column is unique) — closest to table
+  function childOneTick(line: FKLine): string {
     const { x1, y1, fromRight } = line;
-    // dir points away from the table edge
     const dir = fromRight ? 1 : -1;
-    const tickX = x1 + dir * 8;
+    const tickX = x1 + dir * 6;
     return `M ${tickX} ${y1 - 6} L ${tickX} ${y1 + 6}`;
   }
 
-  // One tick at the target side (for 1:1 unique FK)
-  function oneTickTarget(line: FKLine): string {
-    const { x2, y2, toLeft } = line;
-    const dir = toLeft ? -1 : 1;
-    const tickX = x2 + dir * 8;
-    return `M ${tickX} ${y2 - 6} L ${tickX} ${y2 + 6}`;
+  // Cardinality: crow's foot (1:N when FK column is not unique) — closest to table
+  function childCrowsFoot(line: FKLine): string {
+    const { x1, y1, fromRight } = line;
+    const dir = fromRight ? 1 : -1;
+    const tipX = x1 + dir * 12;  // convergence (further from table)
+    const baseX = x1 + dir * 4;  // prong tips (closer to table)
+    const spread = 7;
+    return [
+      `M ${tipX} ${y1} L ${baseX} ${y1}`,
+      `M ${tipX} ${y1} L ${baseX} ${y1 - spread}`,
+      `M ${tipX} ${y1} L ${baseX} ${y1 + spread}`,
+    ].join(' ');
   }
 
   let hoveredId = $state<string | null>(null);
 
   function onLineEnter(line: FKLine) {
     hoveredId = line.fk.id;
-    erdStore.hoveredFkInfo = {
+    erdStore.hoveredFkInfo = [{
       sourceTableId: line.tableId,
       sourceColumnId: line.fk.columnId,
       refTableId: line.fk.referencedTableId,
       refColumnId: line.fk.referencedColumnId,
-    };
+    }];
   }
 
   function onLineLeave() {
     hoveredId = null;
-    erdStore.hoveredFkInfo = null;
+    erdStore.hoveredFkInfo = [];
   }
 
   async function handleLineClick(line: FKLine) {
@@ -151,12 +184,6 @@
   overflow="visible"
   style="position:absolute; top:0; left:0; pointer-events:none"
 >
-  <defs>
-    <marker id="circle-start" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-      <circle cx="3" cy="3" r="2" fill={lineColors.normal} />
-    </marker>
-  </defs>
-
   {#each lines as line (line.fk.id)}
     {@const hc = erdStore.hoveredColumnInfo}
     {@const isColumnHovered = hc !== null && (
@@ -191,14 +218,34 @@
       stroke-dasharray={line.isNullable ? '6 3' : 'none'}
     />
 
-    <!-- Source side: one tick -->
-    <path d={oneTick(line)} stroke={color} stroke-width="2" fill="none" />
-
-    <!-- Target side: crow's foot (N) or one tick (1:1 unique) -->
-    {#if line.isUnique}
-      <path d={oneTickTarget(line)} stroke={color} stroke-width="2" fill="none" />
+    <!-- Parent (referenced/PK) side: cardinality (6px) + participation (14px) -->
+    <path d={parentOneTick(line)} stroke={color} stroke-width="2" fill="none" />
+    {#if line.isNullable}
+      <circle
+        cx={line.x2 + (line.toLeft ? -1 : 1) * 14}
+        cy={line.y2}
+        r={5}
+        stroke={color}
+        stroke-width="2"
+        fill={lineColors.bg}
+      />
     {:else}
-      <path d={crowsFoot(line)} stroke={color} stroke-width="2" fill="none" />
+      <path d={parentMandatoryTick(line)} stroke={color} stroke-width="2" fill="none" />
     {/if}
+
+    <!-- Child (source/FK) side: cardinality (4–12px) + participation (18px) -->
+    {#if line.isUnique}
+      <path d={childOneTick(line)} stroke={color} stroke-width="2" fill="none" />
+    {:else}
+      <path d={childCrowsFoot(line)} stroke={color} stroke-width="2" fill="none" />
+    {/if}
+    <circle
+      cx={line.x1 + (line.fromRight ? 1 : -1) * 18}
+      cy={line.y1}
+      r={5}
+      stroke={color}
+      stroke-width="2"
+      fill={lineColors.bg}
+    />
   {/each}
 </svg>
