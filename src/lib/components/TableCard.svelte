@@ -94,6 +94,11 @@
     <button class="delete-btn" onclick={onDeleteClick} title="테이블 삭제">✕</button>
   </div>
 
+  <!-- Comment (optional) -->
+  {#if table.comment}
+    <div class="table-comment">{table.comment}</div>
+  {/if}
+
   <!-- Columns -->
   <div class="column-list">
     {#each table.columns as col (col.id)}
@@ -182,6 +187,18 @@
   .delete-btn:hover {
     color: #f87171 !important;
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  .table-comment {
+    padding: 4px 10px;
+    font-size: 11px;
+    color: #64748b;
+    font-style: italic;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .column-list {
