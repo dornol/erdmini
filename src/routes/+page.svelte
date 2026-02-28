@@ -8,6 +8,8 @@
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import { erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   let sidebarCollapsed = $state(false);
 
@@ -22,19 +24,46 @@
     erdStore.saveToStorage();
   });
 
-  // Undo/Redo keyboard shortcuts
-  function handleKeydown(e: KeyboardEvent) {
+  // Keyboard shortcuts
+  async function handleKeydown(e: KeyboardEvent) {
+    const tag = (e.target as HTMLElement)?.tagName;
+    const isEditing = tag === 'INPUT' || tag === 'TEXTAREA';
+
+    // Undo/Redo
     const key = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && (key === 'z' || key === 'y')) {
-      // Don't intercept if user is typing in an input/textarea
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-
+      if (isEditing) return;
       e.preventDefault();
       if (key === 'y' || (key === 'z' && e.shiftKey)) {
         erdStore.redo();
       } else {
         erdStore.undo();
+      }
+      return;
+    }
+
+    // Delete selected table(s)
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing) {
+      const ids = [...erdStore.selectedTableIds];
+      if (ids.length === 0) return;
+      e.preventDefault();
+
+      if (ids.length === 1) {
+        const table = erdStore.schema.tables.find((t) => t.id === ids[0]);
+        if (!table) return;
+        const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
+          title: m.dialog_delete_table_title(),
+          confirmText: m.action_delete(),
+          variant: 'danger',
+        });
+        if (ok) erdStore.deleteTable(ids[0]);
+      } else {
+        const ok = await dialogStore.confirm(m.dialog_bulk_delete_confirm({ count: ids.length }), {
+          title: m.dialog_delete_table_title(),
+          confirmText: m.action_delete(),
+          variant: 'danger',
+        });
+        if (ok) erdStore.deleteTables(ids);
       }
     }
   }
