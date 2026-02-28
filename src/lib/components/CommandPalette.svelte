@@ -14,7 +14,7 @@
     | { kind: 'table'; tableId: string; tableName: string }
     | { kind: 'column'; tableId: string; tableName: string; columnName: string; columnType: string };
 
-  const filtered = $derived(() => {
+  const filtered = $derived.by(() => {
     const q = query.trim().toLowerCase();
     const tables: ResultItem[] = [];
     const columns: ResultItem[] = [];
@@ -47,9 +47,10 @@
 
   // Scroll highlighted item into view
   $effect(() => {
+    const idx = highlightIdx;
     if (resultsEl) {
-      const item = resultsEl.querySelector('.cmd-item.highlighted') as HTMLElement | null;
-      item?.scrollIntoView({ block: 'nearest' });
+      const items = resultsEl.querySelectorAll('.cmd-item');
+      (items[idx] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' });
     }
   });
 
@@ -76,7 +77,7 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    const { all } = filtered();
+    const { all } = filtered;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       highlightIdx = (highlightIdx + 1) % Math.max(all.length, 1);
@@ -123,12 +124,12 @@
     </div>
 
     <div class="cmd-results" bind:this={resultsEl}>
-      {#if filtered().all.length === 0}
+      {#if filtered.all.length === 0}
         <div class="cmd-empty">{m.cmd_palette_no_results()}</div>
       {:else}
-        {#if filtered().tables.length > 0}
+        {#if filtered.tables.length > 0}
           <div class="cmd-group-label">{m.cmd_palette_tables()}</div>
-          {#each filtered().tables as item, i}
+          {#each filtered.tables as item, i}
             {@const globalIdx = i}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -147,10 +148,10 @@
           {/each}
         {/if}
 
-        {#if filtered().columns.length > 0}
+        {#if filtered.columns.length > 0}
           <div class="cmd-group-label">{m.cmd_palette_columns()}</div>
-          {#each filtered().columns as item, i}
-            {@const globalIdx = filtered().tables.length + i}
+          {#each filtered.columns as item, i}
+            {@const globalIdx = filtered.tables.length + i}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
