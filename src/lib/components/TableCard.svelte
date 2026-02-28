@@ -12,6 +12,7 @@
   let dragStart = { mouseX: 0, mouseY: 0, tableX: 0, tableY: 0 };
 
   let isSelected = $derived(erdStore.selectedTableIds.has(table.id));
+  let isHovered = $state(false);
 
   // Set of column IDs that are FK source columns
   let fkSourceIds = $derived(new Set(table.foreignKeys.map((fk) => fk.columnId)));
@@ -102,8 +103,10 @@
 <div
   class="table-card"
   class:selected={isSelected}
-  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {isDragging ? 'grabbing' : 'grab'}; z-index: {isSelected ? 10 : 1}"
+  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}"
   onmousedown={onMouseDown}
+  onmouseenter={() => (isHovered = true)}
+  onmouseleave={() => (isHovered = false)}
 >
   <!-- Header -->
   <div class="table-header" ondblclick={onHeaderDblClick}>
