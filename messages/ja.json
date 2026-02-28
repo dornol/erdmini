@@ -135,5 +135,6 @@
   "mobile_description": "ERD 設計、テーブルドラッグ、ズーム/パンなどの機能は\n大きな画面で最適に動作します。",
   "mobile_schema_summary": "テーブル {tables} 件 · ドメイン {domains} 件",
   "mobile_continue_anyway": "このまま続ける",
-  "mobile_open_on_desktop": "PC またはタブレット（横向き）で開いてください"
+  "mobile_open_on_desktop": "PC またはタブレット（横向き）で開いてください",
+  "zoom_reset": "リセット"
 }

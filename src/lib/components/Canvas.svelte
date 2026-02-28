@@ -3,6 +3,7 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import CanvasHistory from './CanvasHistory.svelte';
   import Minimap from './Minimap.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   let { children } = $props();
 
@@ -68,6 +69,12 @@
       window.removeEventListener('mouseup', onMouseUp);
     };
   });
+
+  function resetView() {
+    canvasState.x = 0;
+    canvasState.y = 0;
+    canvasState.scale = 1;
+  }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -92,6 +99,11 @@
   {#if erdStore.schema.tables.length > 0}
     <Minimap />
   {/if}
+
+  <div class="zoom-indicator">
+    <span class="zoom-pct">{Math.round(canvasState.scale * 100)}%</span>
+    <button class="zoom-reset" onclick={resetView}>{m.zoom_reset()}</button>
+  </div>
 
 </div>
 
@@ -376,6 +388,51 @@
     left: 0;
     width: 0;
     height: 0;
+  }
+
+  .zoom-indicator {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--erd-zoom-bg);
+    border: 1px solid var(--erd-zoom-border);
+    border-radius: 6px;
+    padding: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .zoom-pct {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--erd-zoom-text);
+    padding: 0 8px;
+    min-width: 36px;
+    text-align: center;
+    user-select: none;
+  }
+
+  .zoom-reset {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    padding: 0 10px;
+    border: none;
+    background: transparent;
+    color: var(--erd-zoom-btn);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  .zoom-reset:hover {
+    background: var(--erd-zoom-border);
   }
 
 </style>

@@ -135,5 +135,6 @@
   "mobile_description": "ERD design, table drag, zoom/pan features\nwork best on a larger screen.",
   "mobile_schema_summary": "{tables} tables · {domains} domains",
   "mobile_continue_anyway": "Continue anyway",
-  "mobile_open_on_desktop": "Please open on PC or tablet (landscape)"
+  "mobile_open_on_desktop": "Please open on PC or tablet (landscape)",
+  "zoom_reset": "Reset"
 }
