@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { erdStore } from '$lib/store/erd.svelte';
+  import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import * as m from '$lib/paraglide/messages';
 
@@ -35,7 +35,9 @@
     const colCount = table.columns.length;
     const fkCount = table.foreignKeys.length;
     const pkCols = table.columns.filter((c) => c.primaryKey).map((c) => c.name);
-    return { colCount, fkCount, pkCols };
+    const refCount = erdStore.schema.tables.reduce((n, t) =>
+      n + t.foreignKeys.filter(fk => fk.referencedTableId === table.id).length, 0);
+    return { colCount, fkCount, pkCols, refCount };
   }
 
   function onItemClick(e: MouseEvent, tableId: string) {
@@ -50,6 +52,14 @@
     } else {
       erdStore.selectedTableId = tableId;
       erdStore.selectedTableIds = new Set([tableId]);
+      const table = erdStore.schema.tables.find(t => t.id === tableId);
+      if (table) {
+        const vp = document.querySelector('.canvas-viewport')?.getBoundingClientRect();
+        const cx = table.position.x + 110;
+        const cy = table.position.y + 50;
+        canvasState.x = -cx * canvasState.scale + (vp?.width ?? 800) / 2;
+        canvasState.y = -cy * canvasState.scale + (vp?.height ?? 600) / 2;
+      }
     }
   }
 
@@ -123,9 +133,18 @@
         >
           <div class="item-info">
             <span class="item-name">{table.name}</span>
-            <span class="item-meta">
-              {meta.colCount} cols{#if meta.fkCount > 0} · {meta.fkCount} FK{/if}{#if meta.pkCols.length > 0} · PK: {meta.pkCols.join(', ')}{/if}
-            </span>
+            <div class="meta-badges">
+              {#if meta.pkCols.length > 0}
+                <span class="badge badge-pk">PK {meta.pkCols.join(', ')}</span>
+              {/if}
+              <span class="badge badge-cols">{meta.colCount} cols</span>
+              {#if meta.fkCount > 0}
+                <span class="badge badge-fk">FK→ {meta.fkCount}</span>
+              {/if}
+              {#if meta.refCount > 0}
+                <span class="badge badge-ref">{m.sidebar_ref_count({ count: meta.refCount })}</span>
+              {/if}
+            </div>
             {#if table.comment}
               <span class="item-comment">{table.comment}</span>
             {/if}
@@ -343,14 +362,45 @@
     white-space: nowrap;
   }
 
-  .item-meta {
-    display: block;
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: 1px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .meta-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 600;
+    border: 1px solid;
     white-space: nowrap;
+    line-height: 1.4;
+  }
+
+  .badge-pk {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+  }
+
+  .badge-cols {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #64748b;
+  }
+
+  .badge-fk {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+  }
+
+  .badge-ref {
+    background: #ccfbf1;
+    border-color: #5eead4;
+    color: #0f766e;
   }
 
   .item-comment {
