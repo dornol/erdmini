@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   let {
     collapsed = false,
@@ -51,12 +52,15 @@
     }
   }
 
-  function bulkDelete() {
+  async function bulkDelete() {
     const ids = [...erdStore.selectedTableIds];
     if (ids.length < 2) return;
-    if (window.confirm(`선택한 ${ids.length}개 테이블을 삭제하시겠습니까?`)) {
-      erdStore.deleteTables(ids);
-    }
+    const ok = await dialogStore.confirm(`선택한 ${ids.length}개 테이블을 삭제하시겠습니까?`, {
+      title: '테이블 삭제',
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (ok) erdStore.deleteTables(ids);
   }
 
   function duplicateTable(e: MouseEvent, tableId: string) {
@@ -134,11 +138,14 @@
             <button
               class="item-action-btn item-delete"
               title="삭제"
-              onclick={(e) => {
+              onclick={async (e) => {
                 e.stopPropagation();
-                if (window.confirm(`"${table.name}" 테이블을 삭제하시겠습니까?`)) {
-                  erdStore.deleteTable(table.id);
-                }
+                const ok = await dialogStore.confirm(`"${table.name}" 테이블을 삭제하시겠습니까?`, {
+                  title: '테이블 삭제',
+                  confirmText: '삭제',
+                  variant: 'danger',
+                });
+                if (ok) erdStore.deleteTable(table.id);
               }}
             >✕</button>
           </div>

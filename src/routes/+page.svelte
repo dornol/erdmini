@@ -5,6 +5,7 @@
   import Sidebar from '$lib/components/Sidebar.svelte';
   import TableCard from '$lib/components/TableCard.svelte';
   import TableEditor from '$lib/components/TableEditor.svelte';
+  import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import { erdStore } from '$lib/store/erd.svelte';
 
@@ -65,6 +66,8 @@
       onclose={() => (erdStore.editingColumnInfo = null)}
     />
   {/if}
+
+  <DialogModal />
 </div>
 
 <style>

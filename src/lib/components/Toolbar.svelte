@@ -1,5 +1,6 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType } from '$lib/utils/auto-layout';
   import DdlModal from './DdlModal.svelte';
@@ -59,7 +60,9 @@
           const schema = JSON.parse(reader.result as string);
           erdStore.loadSchema(schema);
         } catch {
-          alert('JSON 파싱에 실패했습니다. 올바른 erdmini 스키마 파일인지 확인하세요.');
+          dialogStore.alert('JSON 파싱에 실패했습니다. 올바른 erdmini 스키마 파일인지 확인하세요.', {
+            title: '불러오기 실패',
+          });
         }
       };
       reader.readAsText(file);

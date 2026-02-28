@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
 
   const TABLE_WIDTH = 200;
@@ -105,16 +106,19 @@
 
   let hoveredId = $state<string | null>(null);
 
-  function handleLineClick(line: FKLine) {
+  async function handleLineClick(line: FKLine) {
     const colName = erdStore.schema.tables
       .find((t) => t.id === line.tableId)
       ?.columns.find((c) => c.id === line.fk.columnId)?.name ?? line.fk.columnId;
     const refTable = erdStore.schema.tables.find((t) => t.id === line.fk.referencedTableId);
     const refCol = refTable?.columns.find((c) => c.id === line.fk.referencedColumnId);
     const msg = `FK "${colName}" → "${refTable?.name ?? '?'}.${refCol?.name ?? '?'}" 을(를) 삭제하시겠습니까?`;
-    if (window.confirm(msg)) {
-      erdStore.deleteForeignKey(line.tableId, line.fk.id);
-    }
+    const ok = await dialogStore.confirm(msg, {
+      title: 'FK 삭제',
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (ok) erdStore.deleteForeignKey(line.tableId, line.fk.id);
   }
 </script>
 

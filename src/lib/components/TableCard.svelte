@@ -1,5 +1,6 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Table } from '$lib/types/erd';
 
   let { table }: { table: Table } = $props();
@@ -76,11 +77,14 @@
     };
   }
 
-  function onDeleteClick(e: MouseEvent) {
+  async function onDeleteClick(e: MouseEvent) {
     e.stopPropagation();
-    if (window.confirm(`"${table.name}" 테이블을 삭제하시겠습니까?`)) {
-      erdStore.deleteTable(table.id);
-    }
+    const ok = await dialogStore.confirm(`"${table.name}" 테이블을 삭제하시겠습니까?`, {
+      title: '테이블 삭제',
+      confirmText: '삭제',
+      variant: 'danger',
+    });
+    if (ok) erdStore.deleteTable(table.id);
   }
 
   $effect(() => {
