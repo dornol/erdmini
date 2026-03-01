@@ -449,6 +449,19 @@ function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
       }
       cleaned = cleaned.replace(fkPattern, '');
 
+      // Extract and strip table-level UNIQUE constraints (parser misparses them as columns)
+      const uqPattern = /,?\s*\bunique\s*\(([^)]+)\)/gi;
+      let uqMatch: RegExpExecArray | null;
+      while ((uqMatch = uqPattern.exec(cleaned)) !== null) {
+        if (tblName) {
+          const cols = uqMatch[1].split(',').map(s => s.trim()).filter(Boolean);
+          if (cols.length > 0) {
+            alterUQs.push({ tableName: tblName, columns: cols });
+          }
+        }
+      }
+      cleaned = cleaned.replace(uqPattern, '');
+
       // Also strip any remaining inline references (now that FKs are extracted)
       cleaned = cleaned.replace(/\breferences\s+\w+\s*(\([^)]*\))?\s*/gi, '');
 
@@ -1017,6 +1030,9 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
           name: auq.name,
         });
       }
+    } else if (colIds.length === 1) {
+      const col = srcTable.columns.find((c) => c.id === colIds[0]);
+      if (col && !col.unique) col.unique = true;
     }
   }
 

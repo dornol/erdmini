@@ -330,3 +330,46 @@ describe('importDDL — PostgreSQL', () => {
     expect(nameCol.comment).toBe('User name');
   });
 });
+
+describe('importDDL — MSSQL', () => {
+  it('does not create spurious "unique" columns from table-level UNIQUE constraints', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[Users] (
+        [UserId] INT IDENTITY(1,1) NOT NULL,
+        [Email] NVARCHAR(255) NOT NULL,
+        [Username] NVARCHAR(100) NOT NULL,
+        CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED ([UserId] ASC),
+        CONSTRAINT [UQ_Users_Email] UNIQUE NONCLUSTERED ([Email] ASC)
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.errors).toHaveLength(0);
+    const table = result.tables[0];
+    const colNames = table.columns.map((c) => c.name);
+    expect(colNames).not.toContain('unique');
+    expect(colNames).toEqual(['UserId', 'Email', 'Username']);
+    const emailCol = table.columns.find((c) => c.name === 'Email')!;
+    expect(emailCol.unique).toBe(true);
+  });
+
+  it('handles composite UNIQUE constraints without creating false columns', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[Orders] (
+        [OrderId] INT IDENTITY(1,1) NOT NULL,
+        [CustomerId] INT NOT NULL,
+        [ProductId] INT NOT NULL,
+        CONSTRAINT [PK_Orders] PRIMARY KEY CLUSTERED ([OrderId] ASC),
+        CONSTRAINT [UQ_Customer_Product] UNIQUE NONCLUSTERED ([CustomerId] ASC, [ProductId] ASC)
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.errors).toHaveLength(0);
+    const table = result.tables[0];
+    const colNames = table.columns.map((c) => c.name);
+    expect(colNames).not.toContain('unique');
+    expect(table.uniqueKeys.length).toBe(1);
+    expect(table.uniqueKeys[0].columnIds).toHaveLength(2);
+  });
+});
