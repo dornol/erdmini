@@ -1,9 +1,11 @@
 export type ThemeId = 'modern' | 'classic' | 'blueprint' | 'minimal';
 
 const STORAGE_KEY = 'erdmini_theme';
+const DARK_KEY = 'erdmini_dark';
 
 class ThemeStore {
   current = $state<ThemeId>('modern');
+  darkMode = $state(false);
 
   constructor() {
     if (typeof localStorage !== 'undefined') {
@@ -11,6 +13,7 @@ class ThemeStore {
       if (saved && ['modern', 'classic', 'blueprint', 'minimal'].includes(saved)) {
         this.current = saved;
       }
+      this.darkMode = localStorage.getItem(DARK_KEY) === 'true';
     }
   }
 
@@ -18,6 +21,13 @@ class ThemeStore {
     this.current = id;
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, id);
+    }
+  }
+
+  toggleDark() {
+    this.darkMode = !this.darkMode;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(DARK_KEY, String(this.darkMode));
     }
   }
 }

@@ -24,6 +24,10 @@
   "toolbar_auto_layout": "Auto Layout ▾",
   "toolbar_import": "Import",
   "toolbar_export": "Export",
+  "toolbar_backup_all": "Backup All",
+  "toolbar_restore_all": "Restore All",
+  "backup_restore_success": "Backup restored successfully.",
+  "backup_restore_failed": "Backup restore failed",
   "toolbar_json_import": "Import JSON",
   "toolbar_json_export": "Export JSON",
   "toolbar_domains": "Domains",
@@ -35,7 +39,7 @@
   "sidebar_expand": "Expand sidebar",
   "sidebar_collapse": "Collapse sidebar",
   "sidebar_bulk_delete": "Delete ({count})",
-  "sidebar_search_placeholder": "Search tables...",
+  "sidebar_search_placeholder": "Search tables/columns...",
   "sidebar_sort_by_name": "Sort by name",
   "sidebar_sort_by_creation": "Sort by creation",
   "sidebar_sort_creation": "Creation",
@@ -207,5 +211,9 @@
   "table_group_placeholder": "Group name...",
   "sidebar_ungrouped": "Ungrouped",
   "sidebar_group_by": "Group",
-  "fk_drag_hint": "Drag to create FK"
+  "fk_drag_hint": "Drag to create FK",
+  "fk_edit_title": "Edit FK — {name}",
+  "ddl_import_table_parse_error": "Table parse error: {error}",
+  "ddl_import_no_create_table": "No CREATE TABLE statements found.",
+  "ddl_import_fk_resolve_failed": "FK resolve failed: {detail}"
 }

@@ -18,7 +18,11 @@
   let sortBy = $state<'creation' | 'name'>('creation');
   let viewMode = $state<'flat' | 'group'>('flat');
   let collapsedGroups = $state<Set<string>>(new Set());
-  let sidebarWidth = $state(240);
+  let sidebarWidth = $state(
+    typeof localStorage !== 'undefined'
+      ? Number(localStorage.getItem('erdmini_sidebar_width')) || 240
+      : 240
+  );
   let resizing = $state(false);
 
   function onResizeStart(e: MouseEvent) {
@@ -33,6 +37,7 @@
       resizing = false;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      localStorage.setItem('erdmini_sidebar_width', String(sidebarWidth));
     }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -41,10 +46,13 @@
   const filteredTables = $derived(() => {
     let tables = erdStore.schema.tables;
 
-    // Search filter
+    // Search filter (matches table name or column names)
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      tables = tables.filter((t) => t.name.toLowerCase().includes(q));
+      tables = tables.filter((t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.columns.some((c) => c.name.toLowerCase().includes(q))
+      );
     }
 
     // Sort
@@ -368,8 +376,8 @@
   .sidebar {
     position: relative;
     flex-shrink: 0;
-    background: #f8fafc;
-    border-right: 1px solid #e2e8f0;
+    background: var(--app-panel-bg, #f8fafc);
+    border-right: 1px solid var(--app-border, #e2e8f0);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -400,10 +408,10 @@
     padding: 10px 14px;
     font-size: 12px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
     gap: 6px;
   }
 
@@ -416,7 +424,7 @@
   .collapse-btn {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     cursor: pointer;
     padding: 2px;
     border-radius: 3px;
@@ -426,8 +434,8 @@
   }
 
   .collapse-btn:hover {
-    color: #475569;
-    background: #e2e8f0;
+    color: var(--app-text-secondary, #475569);
+    background: var(--app-hover-bg, #e2e8f0);
   }
 
   .expand-btn {
@@ -435,20 +443,20 @@
     left: 0;
     top: 48px;
     z-index: 50;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--app-panel-bg, #f8fafc);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-left: none;
     border-radius: 0 6px 6px 0;
     padding: 8px 4px;
     cursor: pointer;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     display: flex;
     align-items: center;
   }
 
   .expand-btn:hover {
-    background: #e2e8f0;
-    color: #1e293b;
+    background: var(--app-hover-bg, #e2e8f0);
+    color: var(--app-text, #1e293b);
   }
 
   .search-bar {
@@ -456,18 +464,18 @@
     align-items: center;
     gap: 4px;
     padding: 8px 10px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
 
   .search-input {
     flex: 1;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 4px;
     padding: 5px 8px;
     font-size: 12px;
     outline: none;
-    background: white;
-    color: #1e293b;
+    background: var(--app-input-bg, white);
+    color: var(--app-text, #1e293b);
   }
 
   .search-input:focus {
@@ -475,24 +483,24 @@
   }
 
   .search-input::placeholder {
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
   }
 
   .sort-btn {
     background: none;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 4px;
     padding: 4px 6px;
     font-size: 10px;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
   }
 
   .sort-btn:hover {
-    background: #e2e8f0;
-    color: #1e293b;
+    background: var(--app-hover-bg, #e2e8f0);
+    color: var(--app-text, #1e293b);
   }
 
   .bulk-delete-btn {
@@ -512,8 +520,8 @@
   }
 
   .count {
-    background: #e2e8f0;
-    color: #475569;
+    background: var(--app-badge-bg, #e2e8f0);
+    color: var(--app-text-secondary, #475569);
     border-radius: 10px;
     padding: 1px 7px;
     font-size: 11px;
@@ -526,7 +534,7 @@
     overflow-y: auto;
     flex: 1;
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: var(--app-scrollbar, #cbd5e1) transparent;
   }
 
   .table-list::-webkit-scrollbar {
@@ -538,12 +546,12 @@
   }
 
   .table-list::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: var(--app-scrollbar, #cbd5e1);
     border-radius: 3px;
   }
 
   .table-list::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: var(--app-text-faint, #94a3b8);
   }
 
   .table-item {
@@ -551,16 +559,16 @@
     align-items: flex-start;
     padding: 8px 14px;
     cursor: pointer;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--app-border-light, #f1f5f9);
     transition: background 0.1s;
   }
 
   .table-item:hover {
-    background: #f1f5f9;
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .table-item.active {
-    background: #eff6ff;
+    background: var(--app-active-bg, #eff6ff);
     border-left: 3px solid #3b82f6;
     padding-left: 11px;
   }
@@ -580,7 +588,7 @@
   .item-name {
     font-size: 13px;
     font-weight: 500;
-    color: #1e293b;
+    color: var(--app-text, #1e293b);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -612,9 +620,9 @@
   }
 
   .badge-cols {
-    background: #f1f5f9;
-    border-color: #e2e8f0;
-    color: #64748b;
+    background: var(--app-badge-bg, #f1f5f9);
+    border-color: var(--app-badge-border, #e2e8f0);
+    color: var(--app-text-muted, #64748b);
   }
 
   .badge-fk {
@@ -650,7 +658,7 @@
   .item-comment {
     display: block;
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     font-style: italic;
     margin-top: 1px;
     overflow: hidden;
@@ -673,7 +681,7 @@
   .item-action-btn {
     background: none;
     border: none;
-    color: #cbd5e1;
+    color: var(--app-text-faint, #cbd5e1);
     cursor: pointer;
     font-size: 11px;
     padding: 2px 4px;
@@ -683,7 +691,7 @@
 
   .item-action-btn:hover {
     color: #3b82f6;
-    background: #eff6ff;
+    background: var(--app-active-bg, #eff6ff);
   }
 
   .item-delete:hover {
@@ -694,7 +702,7 @@
   .empty-hint {
     padding: 24px 14px;
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     text-align: center;
     line-height: 1.6;
     white-space: pre-line;
@@ -719,18 +727,18 @@
     gap: 4px;
     padding: 6px 14px;
     cursor: pointer;
-    background: #f1f5f9;
-    border-bottom: 1px solid #e2e8f0;
+    background: var(--app-hover-bg, #f1f5f9);
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
     user-select: none;
   }
 
   .group-header:hover {
-    background: #e2e8f0;
+    background: var(--app-badge-bg, #e2e8f0);
   }
 
   .group-chevron {
     font-size: 10px;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     transition: transform 0.15s;
     display: inline-block;
     transform: rotate(90deg);
@@ -743,7 +751,7 @@
   .group-label {
     font-size: 11px;
     font-weight: 600;
-    color: #475569;
+    color: var(--app-text-secondary, #475569);
     flex: 1;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -751,8 +759,8 @@
 
   .group-count {
     font-size: 10px;
-    background: #e2e8f0;
-    color: #64748b;
+    background: var(--app-badge-bg, #e2e8f0);
+    color: var(--app-text-muted, #64748b);
     border-radius: 8px;
     padding: 0 6px;
   }

@@ -1,6 +1,7 @@
 import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
 import { generateId } from '$lib/utils/common';
+import * as m from '$lib/paraglide/messages';
 
 /** Track type normalizations (original → normalized) */
 let _typeWarnings: { original: string; normalized: string }[] = [];
@@ -27,6 +28,7 @@ export function normalizeType(raw: string): ColumnType {
   if (base === 'CHARACTER' || base === 'NCHAR') return 'CHAR';
   if (base === 'UNIQUEIDENTIFIER') return 'UUID';
   if (base === 'NVARCHAR(MAX)') return 'TEXT';
+  if (base === 'ENUM') return 'ENUM';
 
   if ((COLUMN_TYPES as readonly string[]).includes(base)) return base as ColumnType;
   _typeWarnings.push({ original: raw.trim(), normalized: 'VARCHAR' });
@@ -690,7 +692,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
         }
       }
       if (stmts.length === 0 && errors.length === 0) {
-        errors.push('No CREATE TABLE statements found.');
+        errors.push(m.ddl_import_no_create_table());
         return { tables, errors, warnings };
       }
     }
@@ -780,6 +782,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
           if (/^(unique|primary|key|foreign|constraint|check|index|references)$/i.test(colName)) continue;
           const rawType = def.definition?.dataType ?? 'VARCHAR';
           const length = def.definition?.length ?? undefined;
+          const scale = def.definition?.scale ?? undefined;
           const warnsBefore = _typeWarnings.length;
           const type = normalizeType(rawType);
           // Capture type normalization warnings with table/column context
@@ -813,6 +816,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
             autoIncrement: autoInc,
           };
           if (length !== undefined) col.length = length;
+          if (scale !== undefined) col.scale = scale;
           if (defaultValue !== undefined) col.defaultValue = defaultValue;
           if (comment) col.comment = comment;
 
@@ -930,12 +934,12 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       tables.push(table);
       tableIdx++;
     } catch (e) {
-      errors.push(`테이블 파싱 오류: ${e instanceof Error ? e.message : e}`);
+      errors.push(m.ddl_import_table_parse_error({ error: e instanceof Error ? e.message : String(e) }));
     }
   }
 
   if (tables.length === 0) {
-    errors.push('CREATE TABLE 구문을 찾을 수 없습니다.');
+    errors.push(m.ddl_import_no_create_table());
     return { tables, errors, warnings };
   }
 
@@ -947,7 +951,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
     for (const fkDef of parsedFKs) {
       const refTable = tables.find((t) => t.name === fkDef.refTableName);
       if (!refTable) {
-        errors.push(`FK 해결 실패: ${table.name}.(${fkDef.columnNames.join(', ')}) → ${fkDef.refTableName}`);
+        errors.push(m.ddl_import_fk_resolve_failed({ detail: `${table.name}.(${fkDef.columnNames.join(', ')}) → ${fkDef.refTableName}` }));
         continue;
       }
       const columnIds: string[] = [];
@@ -957,9 +961,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
         const srcCol = table.columns.find((c) => c.name === fkDef.columnNames[i]);
         const refCol = refTable.columns.find((c) => c.name === fkDef.refColumnNames[i]);
         if (!srcCol || !refCol) {
-          errors.push(
-            `FK 해결 실패: ${table.name}.${fkDef.columnNames[i]} → ${fkDef.refTableName}.${fkDef.refColumnNames[i]}`,
-          );
+          errors.push(m.ddl_import_fk_resolve_failed({ detail: `${table.name}.${fkDef.columnNames[i]} → ${fkDef.refTableName}.${fkDef.refColumnNames[i]}` }));
           valid = false;
           break;
         }

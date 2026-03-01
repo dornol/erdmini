@@ -8,30 +8,38 @@ function q(name: string, dialect: Dialect): string {
 
 function columnTypeSql(col: Column, dialect: Dialect): string {
   const len = col.length ? `(${col.length})` : '';
+  const decimalLen = col.length
+    ? `(${col.length}${col.scale != null ? `,${col.scale}` : ''})`
+    : '';
+
+  const enumList = col.enumValues?.length ? `(${col.enumValues.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ')})` : '';
 
   if (dialect === 'mysql' || dialect === 'mariadb') {
     if (col.autoIncrement && (col.type === 'BIGINT' || col.type === 'INT')) return col.type;
+    if (col.type === 'ENUM') return `ENUM${enumList || "('value')"}`;
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${col.type}${len || '(255)'}`;
-    if (col.type === 'DECIMAL') return `DECIMAL${len || '(10,2)'}`;
+    if (col.type === 'DECIMAL') return `DECIMAL${decimalLen || '(10,2)'}`;
     if (col.type === 'UUID') return 'CHAR(36)';
     return col.type;
   }
 
   if (dialect === 'postgresql') {
     if (col.autoIncrement) return col.type === 'BIGINT' ? 'BIGSERIAL' : 'SERIAL';
+    if (col.type === 'ENUM') return 'VARCHAR(255)'; // PG uses custom types, fallback to VARCHAR
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${col.type}${len || '(255)'}`;
     if (col.type === 'DATETIME') return 'TIMESTAMP';
-    if (col.type === 'DECIMAL') return `DECIMAL${len || '(10,2)'}`;
+    if (col.type === 'DECIMAL') return `DECIMAL${decimalLen || '(10,2)'}`;
     return col.type;
   }
 
   // MSSQL
+  if (col.type === 'ENUM') return 'NVARCHAR(255)';
   if (col.type === 'BOOLEAN') return 'BIT';
   if (col.type === 'TEXT') return 'NVARCHAR(MAX)';
   if (col.type === 'VARCHAR') return `NVARCHAR${len || '(255)'}`;
   if (col.type === 'CHAR') return `NCHAR${len || '(255)'}`;
   if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return 'DATETIME2';
-  if (col.type === 'DECIMAL') return `DECIMAL${len || '(10,2)'}`;
+  if (col.type === 'DECIMAL') return `DECIMAL${decimalLen || '(10,2)'}`;
   if (col.type === 'DOUBLE') return 'FLOAT';
   if (col.type === 'JSON') return 'NVARCHAR(MAX)';
   if (col.type === 'UUID') return 'UNIQUEIDENTIFIER';

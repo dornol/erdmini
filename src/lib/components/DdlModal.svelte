@@ -7,6 +7,7 @@
   import { exportDDL } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { importDDL } from '$lib/utils/ddl-import';
+  import { computeLayout } from '$lib/utils/auto-layout';
   import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
@@ -196,6 +197,10 @@
         }
 
         erdStore.schema.updatedAt = now();
+        // Auto-layout imported tables using hierarchical layout (FK-aware)
+        const layoutType = result.tables.some((t) => t.foreignKeys.length > 0) ? 'hierarchical' : 'grid';
+        const positions = computeLayout(erdStore.schema.tables, layoutType);
+        erdStore.applyLayout(positions);
         importSuccess = m.ddl_import_success({ count: result.tables.length });
       }
     } catch (e) {
@@ -317,9 +322,9 @@
   }
 
   .modal {
-    background: white;
+    background: var(--app-popup-bg, white);
     border-radius: 10px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--app-popup-shadow, 0 20px 60px rgba(0,0,0,0.3));
     width: 680px;
     max-width: 95vw;
     max-height: 85vh;
@@ -331,7 +336,7 @@
   .modal-header {
     display: flex;
     align-items: center;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
     padding: 0 12px;
   }
 
@@ -347,7 +352,7 @@
     border: none;
     font-size: 13px;
     font-weight: 500;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: color 0.15s, border-color 0.15s;
@@ -359,22 +364,22 @@
   }
 
   .tab:hover:not(.active) {
-    color: #1e293b;
+    color: var(--app-text, #1e293b);
   }
 
   .close-btn {
     background: none;
     border: none;
     font-size: 14px;
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     cursor: pointer;
     padding: 6px;
     border-radius: 4px;
   }
 
   .close-btn:hover {
-    background: #f1f5f9;
-    color: #1e293b;
+    background: var(--app-hover-bg, #f1f5f9);
+    color: var(--app-text, #1e293b);
   }
 
   .modal-body {
@@ -396,13 +401,13 @@
 
   .label {
     font-size: 12px;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     font-weight: 600;
   }
 
   .format-tabs {
     display: flex;
-    background: #f1f5f9;
+    background: var(--app-badge-bg, #f1f5f9);
     border-radius: 5px;
     padding: 2px;
     gap: 1px;
@@ -416,19 +421,19 @@
     border-radius: 4px;
     font-size: 12px;
     font-weight: 500;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     cursor: pointer;
     transition: all 0.12s;
   }
 
   .format-tab.active {
-    background: white;
-    color: #1e293b;
+    background: var(--app-input-bg, white);
+    color: var(--app-text, #1e293b);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   }
 
   .format-tab:hover:not(.active) {
-    color: #1e293b;
+    color: var(--app-text, #1e293b);
   }
 
   .dialect-select-wrap {
@@ -446,18 +451,18 @@
     font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
     font-size: 12px;
     line-height: 1.6;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
     padding: 12px;
     resize: none;
     outline: none;
-    color: #1e293b;
-    background: #f8fafc;
+    color: var(--app-text, #1e293b);
+    background: var(--app-panel-bg, #f8fafc);
   }
 
   .code-area:focus {
     border-color: #3b82f6;
-    background: white;
+    background: var(--app-input-bg, white);
   }
 
   .btn-primary {
@@ -483,17 +488,17 @@
 
   .btn-secondary {
     background: none;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
     padding: 5px 12px;
     font-size: 12px;
-    color: #475569;
+    color: var(--app-text-secondary, #475569);
     cursor: pointer;
     transition: background 0.15s;
   }
 
   .btn-secondary:hover {
-    background: #f1f5f9;
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .msg-success {

@@ -7,10 +7,11 @@
 
   interface Props {
     tableId: string;
+    editFkId?: string;
     onclose: () => void;
   }
 
-  let { tableId, onclose }: Props = $props();
+  let { tableId, editFkId, onclose }: Props = $props();
 
   let selectedTable = $derived(erdStore.schema.tables.find((t) => t.id === tableId));
   let otherTables = $derived(erdStore.schema.tables.filter((t) => t.id !== tableId));
@@ -21,6 +22,24 @@
 
   // Composite FK: list of column pairs
   let columnPairs = $state<{ srcColId: string; refColId: string }[]>([{ srcColId: '', refColId: '' }]);
+
+  let isEditMode = $derived(!!editFkId);
+
+  // Initialize from existing FK when editing
+  $effect(() => {
+    if (editFkId && selectedTable) {
+      const fk = selectedTable.foreignKeys.find((f) => f.id === editFkId);
+      if (fk) {
+        fkRefTableId = fk.referencedTableId;
+        fkOnDelete = fk.onDelete ?? 'RESTRICT';
+        fkOnUpdate = fk.onUpdate ?? 'RESTRICT';
+        columnPairs = fk.columnIds.map((srcId, i) => ({
+          srcColId: srcId,
+          refColId: fk.referencedColumnIds[i] ?? '',
+        }));
+      }
+    }
+  });
 
   let refTableColumns = $derived(
     erdStore.schema.tables.find((t) => t.id === fkRefTableId)?.columns ?? [],
@@ -44,7 +63,11 @@
     if (!canSubmit) return;
     const columnIds = columnPairs.map((p) => p.srcColId);
     const referencedColumnIds = columnPairs.map((p) => p.refColId);
-    erdStore.addForeignKey(tableId, columnIds, fkRefTableId, referencedColumnIds, fkOnDelete, fkOnUpdate);
+    if (isEditMode && editFkId) {
+      erdStore.updateForeignKey(tableId, editFkId, columnIds, fkRefTableId, referencedColumnIds, fkOnDelete, fkOnUpdate);
+    } else {
+      erdStore.addForeignKey(tableId, columnIds, fkRefTableId, referencedColumnIds, fkOnDelete, fkOnUpdate);
+    }
     onclose();
   }
 
@@ -70,7 +93,7 @@
 >
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">{m.fk_modal_title({ name: selectedTable?.name ?? '' })}</span>
+      <span class="modal-title">{isEditMode ? m.fk_edit_title({ name: selectedTable?.name ?? '' }) : m.fk_modal_title({ name: selectedTable?.name ?? '' })}</span>
       <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
     </div>
 
@@ -154,7 +177,7 @@
         onclick={submit}
         disabled={!canSubmit}
       >
-        {m.action_add_submit()}
+        {isEditMode ? m.action_confirm() : m.action_add_submit()}
       </button>
     </div>
   </div>

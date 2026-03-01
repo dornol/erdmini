@@ -253,7 +253,7 @@ class ERDStore {
   moveTable(id: string, x: number, y: number) {
     const table = this.schema.tables.find((t) => t.id === id);
     if (!table) return;
-    table.position = { x, y };
+    table.position = { x: canvasState.snap(x), y: canvasState.snap(y) };
   }
 
   applyLayout(positions: Map<string, { x: number; y: number }>) {
@@ -366,6 +366,27 @@ class ERDStore {
       onUpdate,
     };
     table.foreignKeys = [...table.foreignKeys, fk];
+    this.schema.updatedAt = now();
+  }
+
+  updateForeignKey(
+    tableId: string,
+    fkId: string,
+    columnIds: string[],
+    referencedTableId: string,
+    referencedColumnIds: string[],
+    onDelete: ForeignKey['onDelete'] = 'RESTRICT',
+    onUpdate: ForeignKey['onUpdate'] = 'RESTRICT',
+  ) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    const fk = table.foreignKeys.find((f) => f.id === fkId);
+    if (!fk) return;
+    fk.columnIds = columnIds;
+    fk.referencedTableId = referencedTableId;
+    fk.referencedColumnIds = referencedColumnIds;
+    fk.onDelete = onDelete;
+    fk.onUpdate = onUpdate;
     this.schema.updatedAt = now();
   }
 
@@ -519,6 +540,12 @@ class CanvasState {
   x = $state(0);
   y = $state(0);
   scale = $state(1);
+  snapToGrid = $state(false);
+  gridSize = 20;
+
+  snap(v: number): number {
+    return this.snapToGrid ? Math.round(v / this.gridSize) * this.gridSize : v;
+  }
 }
 
 export const canvasState = new CanvasState();

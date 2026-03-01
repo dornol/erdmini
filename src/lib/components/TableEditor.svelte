@@ -10,6 +10,7 @@
   import SearchableSelect from './SearchableSelect.svelte';
   import { TABLE_COLOR_IDS, TABLE_COLORS } from '$lib/constants/table-colors';
   import { themeStore } from '$lib/store/theme.svelte';
+  import { now } from '$lib/utils/common';
 
   let selectedTable = $derived(erdStore.selectedTable);
 
@@ -86,6 +87,7 @@
 
   // FK modal
   let showFkModal = $state(false);
+  let editingFkId = $state<string | undefined>(undefined);
 
   // UK modal
   let showUkModal = $state(false);
@@ -154,6 +156,20 @@
   <aside class="editor">
     <div class="editor-header">
       <span class="editor-title">{m.editor_title()}</span>
+      <button
+        class="lock-btn"
+        class:locked={selectedTable.locked}
+        title={selectedTable.locked ? 'Unlock position' : 'Lock position'}
+        onclick={() => {
+          const table = erdStore.schema.tables.find((t) => t.id === selectedTable!.id);
+          if (table) {
+            table.locked = !table.locked;
+            erdStore.schema.updatedAt = now();
+          }
+        }}
+      >
+        {selectedTable.locked ? '🔒' : '🔓'}
+      </button>
     </div>
 
     <!-- Table name & comment -->
@@ -388,7 +404,7 @@
     <div class="section fk-section">
       <div class="section-header">
         <span class="field-label">Foreign Keys</span>
-        <button class="add-col-btn" onclick={() => (showFkModal = true)}>{m.fk_add()}</button>
+        <button class="add-col-btn" onclick={() => { editingFkId = undefined; showFkModal = true; }}>{m.fk_add()}</button>
       </div>
 
       {#each selectedTable.foreignKeys as fk (fk.id)}
@@ -410,6 +426,11 @@
           <span class="fk-arrow">→</span>
           <span class="fk-ref">{label.refTableName}.{label.refColName}</span>
           <span class="fk-action">{label.onDelete}</span>
+          <button
+            class="icon-btn"
+            title={m.action_edit()}
+            onclick={() => { editingFkId = fk.id; showFkModal = true; }}
+          >✎</button>
           <button
             class="icon-btn del"
             title={m.fk_delete()}
@@ -491,7 +512,7 @@
 {/if}
 
 {#if showFkModal && selectedTable}
-  <FkModal tableId={selectedTable.id} onclose={() => (showFkModal = false)} />
+  <FkModal tableId={selectedTable.id} editFkId={editingFkId} onclose={() => { showFkModal = false; editingFkId = undefined; }} />
 {/if}
 
 {#if showUkModal && selectedTable}
@@ -506,8 +527,8 @@
   .editor {
     width: 320px;
     flex-shrink: 0;
-    background: white;
-    border-left: 1px solid #e2e8f0;
+    background: var(--app-card-bg, white);
+    border-left: 1px solid var(--app-border, #e2e8f0);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -517,26 +538,48 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     font-size: 13px;
   }
 
   .editor-header {
     padding: 10px 16px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .lock-btn {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+
+  .lock-btn:hover {
+    opacity: 1;
+  }
+
+  .lock-btn.locked {
+    opacity: 1;
   }
 
   .editor-title {
     font-size: 12px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .section {
     padding: 12px 16px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--app-border-light, #f1f5f9);
   }
 
   .section-header {
@@ -613,7 +656,7 @@
     display: block;
     font-size: 11px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 6px;
@@ -621,11 +664,12 @@
 
   .text-input {
     width: 100%;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 5px;
     padding: 6px 10px;
     font-size: 13px;
-    color: #1e293b;
+    color: var(--app-text, #1e293b);
+    background: var(--app-input-bg, white);
     outline: none;
     box-sizing: border-box;
     transition: border-color 0.15s;
@@ -661,8 +705,8 @@
     flex-direction: column;
     gap: 4px;
     padding: 8px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--app-panel-bg, #f8fafc);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
     transition: opacity 0.15s, border-color 0.15s;
   }
@@ -684,7 +728,7 @@
 
   .drag-handle {
     cursor: grab;
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     font-size: 14px;
     line-height: 1;
     user-select: none;
@@ -692,7 +736,7 @@
   }
 
   .drag-handle:hover {
-    color: #475569;
+    color: var(--app-text-secondary, #475569);
   }
 
   .col-type-row {
@@ -701,12 +745,12 @@
   }
 
   .col-input {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 4px;
     padding: 4px 7px;
     font-size: 12px;
-    color: #1e293b;
-    background: white;
+    color: var(--app-text, #1e293b);
+    background: var(--app-input-bg, white);
     outline: none;
     width: 100%;
     box-sizing: border-box;
@@ -770,7 +814,7 @@
 
   .col-comment {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     font-style: italic;
   }
 
@@ -785,7 +829,7 @@
     align-items: center;
     gap: 3px;
     font-size: 11px;
-    color: #475569;
+    color: var(--app-text-secondary, #475569);
     cursor: pointer;
     user-select: none;
   }
@@ -802,18 +846,18 @@
 
   .icon-btn {
     background: none;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 4px;
     padding: 2px 7px;
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     cursor: pointer;
     transition: background 0.1s, color 0.1s;
   }
 
   .icon-btn:hover {
-    background: #f1f5f9;
-    color: #1e293b;
+    background: var(--app-hover-bg, #f1f5f9);
+    color: var(--app-text, #1e293b);
   }
 
   .icon-btn.del:hover {
@@ -824,7 +868,7 @@
 
   .no-cols {
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     text-align: center;
     padding: 16px 0;
   }
@@ -835,20 +879,20 @@
     align-items: center;
     gap: 4px;
     padding: 5px 8px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--app-panel-bg, #f8fafc);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
     font-size: 11px;
   }
 
   .fk-col {
-    color: #1e293b;
+    color: var(--app-text, #1e293b);
     font-weight: 600;
     flex-shrink: 0;
   }
 
   .fk-arrow {
-    color: #94a3b8;
+    color: var(--app-text-faint, #94a3b8);
     flex-shrink: 0;
   }
 
@@ -862,7 +906,7 @@
   }
 
   .fk-action {
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     font-size: 10px;
     flex-shrink: 0;
   }
@@ -880,7 +924,7 @@
 
   .color-group-section {
     padding: 12px 16px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--app-border-light, #f1f5f9);
   }
 
   .color-dots {

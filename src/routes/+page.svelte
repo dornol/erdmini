@@ -10,6 +10,7 @@
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
+  import { themeStore } from '$lib/store/theme.svelte';
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
@@ -194,6 +195,25 @@
       return;
     }
 
+    // Ctrl+A: Select all tables
+    if ((e.ctrlKey || e.metaKey) && key === 'a' && !isEditing) {
+      e.preventDefault();
+      const allIds = new Set(erdStore.schema.tables.map((t) => t.id));
+      erdStore.selectedTableIds = allIds;
+      if (allIds.size > 0) erdStore.selectedTableId = erdStore.schema.tables[0].id;
+      return;
+    }
+
+    // Ctrl+D: Duplicate selected table(s)
+    if ((e.ctrlKey || e.metaKey) && key === 'd' && !isEditing) {
+      e.preventDefault();
+      const ids = [...erdStore.selectedTableIds];
+      for (const id of ids) {
+        erdStore.duplicateTable(id);
+      }
+      return;
+    }
+
     // Escape: deselect
     if (e.key === 'Escape' && !isEditing) {
       erdStore.selectedTableId = null;
@@ -325,7 +345,7 @@
     </div>
   </div>
 {:else}
-  <div class="app">
+  <div class="app" data-dark={themeStore.darkMode || undefined}>
     {#if erdStore.storageFull && !storageBannerDismissed}
       <div class="storage-banner">
         <span class="storage-msg">{m.storage_full_warning()}</span>
@@ -382,6 +402,51 @@
     flex-direction: column;
     height: 100vh;
     overflow: hidden;
+
+    /* Light mode defaults */
+    --app-panel-bg: #f8fafc;
+    --app-card-bg: white;
+    --app-border: #e2e8f0;
+    --app-border-light: #f1f5f9;
+    --app-text: #1e293b;
+    --app-text-secondary: #475569;
+    --app-text-muted: #64748b;
+    --app-text-faint: #94a3b8;
+    --app-input-bg: white;
+    --app-input-border: #e2e8f0;
+    --app-hover-bg: #f1f5f9;
+    --app-active-bg: #eff6ff;
+    --app-popup-bg: white;
+    --app-popup-shadow: 0 8px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+    --app-badge-bg: #f1f5f9;
+    --app-badge-border: #e2e8f0;
+    --app-cancel-bg: #f1f5f9;
+    --app-cancel-text: #475569;
+    --app-cancel-hover: #e2e8f0;
+    --app-scrollbar: #cbd5e1;
+  }
+
+  .app[data-dark] {
+    --app-panel-bg: #1e293b;
+    --app-card-bg: #1e293b;
+    --app-border: #334155;
+    --app-border-light: #1e293b;
+    --app-text: #f1f5f9;
+    --app-text-secondary: #cbd5e1;
+    --app-text-muted: #94a3b8;
+    --app-text-faint: #64748b;
+    --app-input-bg: #0f172a;
+    --app-input-border: #475569;
+    --app-hover-bg: #334155;
+    --app-active-bg: #1e3a5f;
+    --app-popup-bg: #1e293b;
+    --app-popup-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+    --app-badge-bg: #334155;
+    --app-badge-border: #475569;
+    --app-cancel-bg: #334155;
+    --app-cancel-text: #cbd5e1;
+    --app-cancel-hover: #475569;
+    --app-scrollbar: #475569;
   }
 
   .main {

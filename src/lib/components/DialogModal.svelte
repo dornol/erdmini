@@ -123,9 +123,9 @@
   }
 
   .dialog {
-    background: white;
+    background: var(--app-popup-bg, white);
     border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--app-popup-shadow, 0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05));
     padding: 24px;
     min-width: 320px;
     max-width: 440px;
@@ -135,13 +135,13 @@
   .dialog-title {
     font-size: 15px;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--app-text, #1e293b);
     margin-bottom: 8px;
   }
 
   .dialog-message {
     font-size: 14px;
-    color: #475569;
+    color: var(--app-text-secondary, #475569);
     line-height: 1.6;
     word-break: keep-all;
     white-space: pre-line;
@@ -170,12 +170,12 @@
   }
 
   .btn-cancel {
-    background: #f1f5f9;
-    color: #475569;
+    background: var(--app-cancel-bg, #f1f5f9);
+    color: var(--app-cancel-text, #475569);
   }
 
   .btn-cancel:hover {
-    background: #e2e8f0;
+    background: var(--app-cancel-hover, #e2e8f0);
   }
 
   .btn-primary {
@@ -197,11 +197,11 @@
   }
 
   .btn-default {
-    background: #f1f5f9;
-    color: #1e293b;
+    background: var(--app-cancel-bg, #f1f5f9);
+    color: var(--app-text, #1e293b);
   }
 
   .btn-default:hover {
-    background: #e2e8f0;
+    background: var(--app-cancel-hover, #e2e8f0);
   }
 </style>

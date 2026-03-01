@@ -24,6 +24,10 @@
   "toolbar_auto_layout": "자동 배치 ▾",
   "toolbar_import": "불러오기",
   "toolbar_export": "내보내기",
+  "toolbar_backup_all": "전체 백업",
+  "toolbar_restore_all": "전체 복원",
+  "backup_restore_success": "백업이 복원되었습니다.",
+  "backup_restore_failed": "백업 복원 실패",
   "toolbar_json_import": "JSON 불러오기",
   "toolbar_json_export": "JSON 저장",
   "toolbar_domains": "도메인",
@@ -35,7 +39,7 @@
   "sidebar_expand": "사이드바 열기",
   "sidebar_collapse": "사이드바 접기",
   "sidebar_bulk_delete": "선택 삭제({count})",
-  "sidebar_search_placeholder": "테이블 검색...",
+  "sidebar_search_placeholder": "테이블/컬럼 검색...",
   "sidebar_sort_by_name": "이름순 정렬",
   "sidebar_sort_by_creation": "생성순 정렬",
   "sidebar_sort_creation": "생성순",
@@ -207,5 +211,9 @@
   "table_group_placeholder": "그룹명...",
   "sidebar_ungrouped": "미분류",
   "sidebar_group_by": "그룹",
-  "fk_drag_hint": "FK 연결 드래그"
+  "fk_drag_hint": "FK 연결 드래그",
+  "fk_edit_title": "FK 수정 — {name}",
+  "ddl_import_table_parse_error": "테이블 파싱 오류: {error}",
+  "ddl_import_no_create_table": "CREATE TABLE 구문을 찾을 수 없습니다.",
+  "ddl_import_fk_resolve_failed": "FK 해결 실패: {detail}"
 }

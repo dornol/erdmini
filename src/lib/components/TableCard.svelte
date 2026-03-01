@@ -66,19 +66,21 @@
 
     // Multi-drag: if table is already in a multi-selection group
     if (erdStore.selectedTableIds.has(table.id) && erdStore.selectedTableIds.size > 1) {
-      isDragging = true;
-      dragStart = { mouseX: e.clientX, mouseY: e.clientY, tableX: 0, tableY: 0 };
-      groupDragStarts = new Map();
-      for (const id of erdStore.selectedTableIds) {
-        const t = erdStore.schema.tables.find((tbl) => tbl.id === id);
-        if (t) groupDragStarts.set(id, { x: t.position.x, y: t.position.y });
+      if (!table.locked) {
+        isDragging = true;
+        dragStart = { mouseX: e.clientX, mouseY: e.clientY, tableX: 0, tableY: 0 };
+        groupDragStarts = new Map();
+        for (const id of erdStore.selectedTableIds) {
+          const t = erdStore.schema.tables.find((tbl) => tbl.id === id);
+          if (t && !t.locked) groupDragStarts.set(id, { x: t.position.x, y: t.position.y });
+        }
       }
       return;
     }
 
     erdStore.selectedTableId = table.id;
     erdStore.selectedTableIds = new Set([table.id]);
-    isDragging = true;
+    if (!table.locked) isDragging = true;
     dragStart = {
       mouseX: e.clientX,
       mouseY: e.clientY,
@@ -140,7 +142,7 @@
   class="table-card"
   class:selected={isSelected}
   class:fk-dragging={fkDragStore.active}
-  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}"
+  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}"
   onmousedown={onMouseDown}
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}
@@ -164,6 +166,7 @@
       />
     {:else}
       <span class="table-name">{table.name}</span>
+      {#if table.locked}<span class="lock-icon" title="Locked">🔒</span>{/if}
     {/if}
     <button class="delete-btn" onclick={onDeleteClick} title={m.action_delete()}>✕</button>
   </div>
@@ -366,6 +369,12 @@
     font-weight: 600;
     padding: 1px 4px;
     outline: none;
+  }
+
+  .lock-icon {
+    font-size: 10px;
+    flex-shrink: 0;
+    opacity: 0.7;
   }
 
   .delete-btn {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { erdStore } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
@@ -9,6 +9,7 @@
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { exportSvg } from '$lib/utils/svg-export';
   import { sanitizeFilename, now } from '$lib/utils/common';
+  import { TABLE_W } from '$lib/constants/layout';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -78,6 +79,57 @@
     const positions = computeLayout(erdStore.schema.tables, type);
     erdStore.applyLayout(positions);
   }
+
+  // Align / distribute selected tables
+  function getSelectedTables() {
+    return erdStore.schema.tables.filter((t) => erdStore.selectedTableIds.has(t.id));
+  }
+
+  function alignTables(dir: 'left' | 'right' | 'top' | 'bottom') {
+    const tables = getSelectedTables();
+    if (tables.length < 2) return;
+    let target: number;
+    switch (dir) {
+      case 'left': target = Math.min(...tables.map((t) => t.position.x)); break;
+      case 'right': target = Math.max(...tables.map((t) => t.position.x + TABLE_W)); break;
+      case 'top': target = Math.min(...tables.map((t) => t.position.y)); break;
+      case 'bottom': target = Math.max(...tables.map((t) => t.position.y)); break;
+    }
+    for (const t of tables) {
+      switch (dir) {
+        case 'left': erdStore.moveTable(t.id, target, t.position.y); break;
+        case 'right': erdStore.moveTable(t.id, target - TABLE_W, t.position.y); break;
+        case 'top': erdStore.moveTable(t.id, t.position.x, target); break;
+        case 'bottom': erdStore.moveTable(t.id, t.position.x, target); break;
+      }
+    }
+    erdStore.schema.updatedAt = now();
+  }
+
+  function distributeTables(axis: 'h' | 'v') {
+    const tables = getSelectedTables();
+    if (tables.length < 3) return;
+    if (axis === 'h') {
+      const sorted = [...tables].sort((a, b) => a.position.x - b.position.x);
+      const min = sorted[0].position.x;
+      const max = sorted[sorted.length - 1].position.x;
+      const step = (max - min) / (sorted.length - 1);
+      for (let i = 1; i < sorted.length - 1; i++) {
+        erdStore.moveTable(sorted[i].id, min + step * i, sorted[i].position.y);
+      }
+    } else {
+      const sorted = [...tables].sort((a, b) => a.position.y - b.position.y);
+      const min = sorted[0].position.y;
+      const max = sorted[sorted.length - 1].position.y;
+      const step = (max - min) / (sorted.length - 1);
+      for (let i = 1; i < sorted.length - 1; i++) {
+        erdStore.moveTable(sorted[i].id, sorted[i].position.x, min + step * i);
+      }
+    }
+    erdStore.schema.updatedAt = now();
+  }
+
+  let alignOpen = $state(false);
 
   // JSON export
   function exportJson() {
@@ -236,6 +288,40 @@
     input.click();
   }
 
+  // Full backup export
+  function exportBackup() {
+    const json = projectStore.exportAll();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `erdmini_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Full backup import
+  function importBackup() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = projectStore.importAll(reader.result as string);
+        if (result.ok) {
+          dialogStore.alert(m.backup_restore_success());
+        } else {
+          dialogStore.alert(result.error ?? '', { title: m.backup_restore_failed() });
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
   // SVG export
   function exportSvgFile() {
     const svg = exportSvg(erdStore.schema, themeStore.current);
@@ -261,6 +347,29 @@
     } catch {
       dialogStore.alert(m.share_copy_failed());
     }
+  }
+
+  function formatDate(iso: string): string {
+    try {
+      const d = new Date(iso);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } catch {
+      return '';
+    }
+  }
+
+  function getProjectTableCount(projId: string): number {
+    if (projId === projectStore.index.activeProjectId) {
+      return erdStore.schema.tables.length;
+    }
+    try {
+      const raw = window.localStorage.getItem(`erdmini_schema_${projId}`);
+      if (raw) {
+        const schema = JSON.parse(raw);
+        return schema.tables?.length ?? 0;
+      }
+    } catch { /* ignore */ }
+    return 0;
   }
 
   let layoutOpen = $state(false);
@@ -405,7 +514,8 @@
                 class="project-item-name"
                 onclick={() => { projectStore.switchProject(proj.id); projectOpen = false; }}
               >
-                {proj.name}
+                <span class="project-item-label">{proj.name}</span>
+                <span class="project-item-meta">{formatDate(proj.updatedAt)} · {getProjectTableCount(proj.id)} tables</span>
               </button>
               <div class="project-item-actions">
                 <button
@@ -492,6 +602,51 @@
       {/if}
     </div>
 
+    <!-- Snap to grid toggle -->
+    <button
+      class="btn-secondary btn-snap"
+      class:snap-active={canvasState.snapToGrid}
+      onclick={() => (canvasState.snapToGrid = !canvasState.snapToGrid)}
+      title={canvasState.snapToGrid ? 'Snap: ON' : 'Snap: OFF'}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <rect x="9" y="1" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <rect x="1" y="9" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <rect x="9" y="9" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+      </svg>
+    </button>
+
+    <!-- Align/Distribute (visible when 2+ selected) -->
+    {#if erdStore.selectedTableIds.size >= 2}
+      <div class="dropdown-wrap">
+        <button
+          class="btn-secondary btn-align"
+          onclick={() => (alignOpen = !alignOpen)}
+          title="Align / Distribute"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <line x1="2" y1="1" x2="2" y2="15" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="5" y="3" width="8" height="3" rx="0.5" fill="currentColor" opacity="0.6"/>
+            <rect x="5" y="10" width="5" height="3" rx="0.5" fill="currentColor" opacity="0.6"/>
+          </svg>
+        </button>
+        {#if alignOpen}
+          <div class="dropdown-menu align-menu" role="menu" tabindex="-1" onmouseleave={() => (alignOpen = false)}>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('left'); alignOpen = false; }}>Align Left</button>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('right'); alignOpen = false; }}>Align Right</button>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('top'); alignOpen = false; }}>Align Top</button>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('bottom'); alignOpen = false; }}>Align Bottom</button>
+            {#if erdStore.selectedTableIds.size >= 3}
+              <div class="dropdown-sep"></div>
+              <button class="dropdown-item" role="menuitem" onclick={() => { distributeTables('h'); alignOpen = false; }}>Distribute H</button>
+              <button class="dropdown-item" role="menuitem" onclick={() => { distributeTables('v'); alignOpen = false; }}>Distribute V</button>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     <span class="separator"></span>
 
     <!-- Import dropdown -->
@@ -516,6 +671,10 @@
           </button>
           <button class="dropdown-item" role="menuitem" onclick={() => { importJson(); importOpen = false; }}>
             JSON
+          </button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" role="menuitem" onclick={() => { importBackup(); importOpen = false; }}>
+            {m.toolbar_restore_all()}
           </button>
         </div>
       {/if}
@@ -550,6 +709,10 @@
           <button class="dropdown-item" role="menuitem" onclick={() => { exportSvgFile(); exportOpen = false; }}>
             SVG
           </button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportBackup(); exportOpen = false; }}>
+            {m.toolbar_backup_all()}
+          </button>
         </div>
       {/if}
     </div>
@@ -572,6 +735,31 @@
   </div>
 
   <div class="toolbar-right">
+    <!-- Dark mode toggle -->
+    <button
+      class="btn-dark-toggle"
+      onclick={() => themeStore.toggleDark()}
+      title={themeStore.darkMode ? 'Light Mode' : 'Dark Mode'}
+    >
+      {#if themeStore.darkMode}
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="3.05" y1="3.05" x2="4.46" y2="4.46" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="11.54" y1="11.54" x2="12.95" y2="12.95" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="3.05" y1="12.95" x2="4.46" y2="11.54" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="11.54" y1="4.46" x2="12.95" y2="3.05" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      {:else}
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M14 9.5A6.5 6.5 0 016.5 2 5.5 5.5 0 108 14a5.5 5.5 0 006-4.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      {/if}
+    </button>
+
     <!-- Theme dropdown -->
     <div class="dropdown-wrap">
       <button
@@ -800,6 +988,36 @@
   .btn-secondary:hover {
     background: #334155;
     color: white;
+  }
+
+  .btn-snap {
+    padding: 5px 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-snap.snap-active {
+    background: #1e40af;
+    border-color: #3b82f6;
+    color: #93c5fd;
+  }
+
+  .btn-align {
+    padding: 5px 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .align-menu {
+    min-width: 120px;
+  }
+
+  .dropdown-sep {
+    height: 1px;
+    background: #475569;
+    margin: 4px 0;
   }
 
   .btn-lang {
@@ -1069,9 +1287,28 @@
     min-width: 0;
   }
 
+  .project-item-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .project-item-meta {
+    display: block;
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 400;
+    margin-top: 1px;
+  }
+
   .project-item.active .project-item-name {
     color: #60a5fa;
     font-weight: 600;
+  }
+
+  .project-item.active .project-item-meta {
+    color: #93c5fd;
   }
 
   .project-item-actions {
@@ -1135,6 +1372,26 @@
   .project-new-row {
     display: flex;
     padding: 0;
+  }
+
+  .btn-dark-toggle {
+    background: transparent;
+    color: #fbbf24;
+    border: 1px solid #475569;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-dark-toggle:hover {
+    background: #334155;
+    color: #fcd34d;
   }
 
 </style>

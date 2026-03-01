@@ -30,6 +30,8 @@
     col?.type === 'VARCHAR' || col?.type === 'CHAR' || col?.type === 'DECIMAL',
   );
 
+  let isDecimal = $derived(col?.type === 'DECIMAL');
+
   function onKeyDown(e: KeyboardEvent) {
     if (e.key === 'Escape') onclose();
   }
@@ -83,8 +85,8 @@
           />
         </div>
 
-        <!-- Type + Length -->
-        <div class="field-row-2col">
+        <!-- Type + Length + Scale -->
+        <div class="field-row-2col" style={isDecimal ? 'grid-template-columns: 1fr 1fr 1fr;' : ''}>
           <div class="field-row">
             <label for="ce-type" class="field-label">{m.column_type()}</label>
             <SearchableSelect
@@ -96,7 +98,7 @@
           </div>
           {#if hasLength}
             <div class="field-row">
-              <label for="ce-length" class="field-label">{m.column_length()}</label>
+              <label for="ce-length" class="field-label">{isDecimal ? 'P' : m.column_length()}</label>
               <input
                 id="ce-length"
                 class="field-input"
@@ -105,6 +107,20 @@
                 oninput={(e) => onChange('length', Number((e.target as HTMLInputElement).value) || undefined)}
                 min="1"
                 max="65535"
+              />
+            </div>
+          {/if}
+          {#if isDecimal}
+            <div class="field-row">
+              <label for="ce-scale" class="field-label">S</label>
+              <input
+                id="ce-scale"
+                class="field-input"
+                type="number"
+                value={col.scale ?? ''}
+                oninput={(e) => onChange('scale', Number((e.target as HTMLInputElement).value) || undefined)}
+                min="0"
+                max="30"
               />
             </div>
           {/if}
@@ -158,6 +174,24 @@
           />
         </div>
 
+        <!-- ENUM values (only when type is ENUM) -->
+        {#if col.type === 'ENUM'}
+          <div class="field-row">
+            <label for="ce-enum" class="field-label">ENUM</label>
+            <input
+              id="ce-enum"
+              class="field-input"
+              value={(col.enumValues ?? []).join(', ')}
+              oninput={(e) => {
+                const raw = (e.target as HTMLInputElement).value;
+                const values = raw.split(',').map((v) => v.trim()).filter(Boolean);
+                onChange('enumValues', values.length > 0 ? values : undefined);
+              }}
+              placeholder="val1, val2, val3"
+            />
+          </div>
+        {/if}
+
         <!-- CHECK constraint -->
         <div class="field-row">
           <label for="ce-check" class="field-label">{m.column_check()}</label>
@@ -207,10 +241,10 @@
   .popup {
     position: absolute;
     width: 280px;
-    background: white;
-    border: 1px solid #e2e8f0;
+    background: var(--app-popup-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 10px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--app-popup-shadow, 0 8px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08));
     overflow: hidden;
   }
 
@@ -271,18 +305,18 @@
   .field-label {
     font-size: 10px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .field-input {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 5px;
     padding: 5px 8px;
     font-size: 12px;
-    color: #1e293b;
-    background: white;
+    color: var(--app-text, #1e293b);
+    background: var(--app-input-bg, white);
     outline: none;
     width: 100%;
     box-sizing: border-box;
@@ -300,7 +334,7 @@
 
   .field-comment {
     font-style: italic;
-    color: #64748b;
+    color: var(--app-text-muted, #64748b);
   }
 
   .flags-row {
@@ -315,7 +349,7 @@
     gap: 3px;
     font-size: 11px;
     font-weight: 600;
-    color: #475569;
+    color: var(--app-text-secondary, #475569);
     cursor: pointer;
     user-select: none;
   }

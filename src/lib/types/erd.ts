@@ -4,7 +4,7 @@ export type ColumnType =
   | 'BOOLEAN'
   | 'DATE' | 'DATETIME' | 'TIMESTAMP'
   | 'DECIMAL' | 'FLOAT' | 'DOUBLE'
-  | 'JSON' | 'UUID';
+  | 'JSON' | 'UUID' | 'ENUM';
 
 export const COLUMN_TYPES: ColumnType[] = [
   'INT', 'BIGINT', 'SMALLINT',
@@ -12,7 +12,7 @@ export const COLUMN_TYPES: ColumnType[] = [
   'BOOLEAN',
   'DATE', 'DATETIME', 'TIMESTAMP',
   'DECIMAL', 'FLOAT', 'DOUBLE',
-  'JSON', 'UUID',
+  'JSON', 'UUID', 'ENUM',
 ];
 
 export interface Column {
@@ -21,12 +21,14 @@ export interface Column {
   domainId?: string;
   type: ColumnType;
   length?: number;
+  scale?: number;
   nullable: boolean;
   primaryKey: boolean;
   unique: boolean;
   autoIncrement: boolean;
   defaultValue?: string;
   check?: string;
+  enumValues?: string[];
   comment?: string;
 }
 
@@ -81,6 +83,7 @@ export interface Table {
   comment?: string;
   color?: string;
   group?: string;
+  locked?: boolean;
 }
 
 export interface ERDSchema {
@@ -92,7 +95,7 @@ export interface ERDSchema {
 }
 
 export const DOMAIN_FIELDS: (keyof Column)[] = [
-  'type', 'length', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue',
+  'type', 'length', 'scale', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue',
 ];
 
 export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql';

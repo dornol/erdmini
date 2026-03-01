@@ -9,6 +9,32 @@ function schemaKey(projectId: string): string {
   return `erdmini_schema_${projectId}`;
 }
 
+function canvasKey(projectId: string): string {
+  return `erdmini_canvas_${projectId}`;
+}
+
+function saveCanvasState(projectId: string) {
+  window.localStorage.setItem(canvasKey(projectId), JSON.stringify({
+    x: canvasState.x, y: canvasState.y, scale: canvasState.scale,
+  }));
+}
+
+function restoreCanvasState(projectId: string) {
+  const raw = window.localStorage.getItem(canvasKey(projectId));
+  if (raw) {
+    try {
+      const { x, y, scale } = JSON.parse(raw);
+      canvasState.x = x ?? 0;
+      canvasState.y = y ?? 0;
+      canvasState.scale = scale ?? 1;
+      return;
+    } catch { /* fall through */ }
+  }
+  canvasState.x = 0;
+  canvasState.y = 0;
+  canvasState.scale = 1;
+}
+
 function migrateSchema(raw: string): ERDSchema {
   try {
     const parsed = JSON.parse(raw) as ERDSchema;
@@ -108,6 +134,7 @@ class ProjectStore {
     } else {
       erdStore.loadSchema(defaultSchema());
     }
+    restoreCanvasState(projectId);
   }
 
   private saveIndex() {
@@ -123,6 +150,7 @@ class ProjectStore {
     const id = this.index.activeProjectId;
     if (!id) return;
     erdStore.saveToStorageAs(id);
+    saveCanvasState(id);
     // Update meta timestamps
     const meta = this.index.projects.find((p) => p.id === id);
     if (meta) {
@@ -135,10 +163,6 @@ class ProjectStore {
     if (id === this.index.activeProjectId) return;
     // Save current project first
     this.saveCurrentSchema();
-    // Reset canvas position
-    canvasState.x = 0;
-    canvasState.y = 0;
-    canvasState.scale = 1;
     // Clear undo/redo history
     erdStore.clearHistory();
     // Update active project
@@ -168,10 +192,6 @@ class ProjectStore {
     const schema = defaultSchema();
     window.localStorage.setItem(schemaKey(id), JSON.stringify(schema));
     this.saveIndex();
-    // Reset canvas and load
-    canvasState.x = 0;
-    canvasState.y = 0;
-    canvasState.scale = 1;
     erdStore.clearHistory();
     erdStore.loadSchema(schema);
   }
@@ -187,17 +207,15 @@ class ProjectStore {
   deleteProject(id: string) {
     if (this.index.projects.length <= 1) return;
     this.index.projects = this.index.projects.filter((p) => p.id !== id);
-    // Remove schema from localStorage
+    // Remove schema and canvas state from localStorage
     window.localStorage.removeItem(schemaKey(id));
+    window.localStorage.removeItem(canvasKey(id));
     // If deleting active project, switch to first remaining
     if (this.index.activeProjectId === id) {
       const next = this.index.projects[0];
       this.index.activeProjectId = next.id;
       next.lastOpenedAt = now();
       this.saveIndex();
-      canvasState.x = 0;
-      canvasState.y = 0;
-      canvasState.scale = 1;
       erdStore.clearHistory();
       this.loadProjectSchema(next.id);
     } else {
@@ -221,11 +239,61 @@ class ProjectStore {
     this.index.activeProjectId = id;
     window.localStorage.setItem(schemaKey(id), JSON.stringify(schema));
     this.saveIndex();
-    canvasState.x = 0;
-    canvasState.y = 0;
-    canvasState.scale = 1;
     erdStore.clearHistory();
     erdStore.loadSchema(schema);
+  }
+
+  exportAll(): string {
+    // Save current project first
+    this.saveCurrentSchema();
+    const backup: Record<string, unknown> = {
+      _type: 'erdmini_backup',
+      _version: 1,
+      index: $state.snapshot(this.index),
+      schemas: {} as Record<string, unknown>,
+    };
+    const schemas = backup.schemas as Record<string, unknown>;
+    for (const proj of this.index.projects) {
+      const raw = window.localStorage.getItem(schemaKey(proj.id));
+      if (raw) {
+        try {
+          schemas[proj.id] = JSON.parse(raw);
+        } catch {
+          schemas[proj.id] = null;
+        }
+      }
+    }
+    return JSON.stringify(backup, null, 2);
+  }
+
+  importAll(json: string): { ok: boolean; error?: string } {
+    try {
+      const backup = JSON.parse(json);
+      if (backup._type !== 'erdmini_backup') {
+        return { ok: false, error: 'Invalid backup file' };
+      }
+      const index = backup.index as ProjectIndex;
+      const schemas = backup.schemas as Record<string, unknown>;
+      if (!index?.projects?.length) {
+        return { ok: false, error: 'No projects in backup' };
+      }
+      // Write all schemas to localStorage
+      for (const proj of index.projects) {
+        const schema = schemas[proj.id];
+        if (schema) {
+          window.localStorage.setItem(schemaKey(proj.id), JSON.stringify(schema));
+        }
+      }
+      // Write project index
+      this.index = index;
+      this.saveIndex();
+      // Load active project
+      erdStore.clearHistory();
+      this.loadProjectSchema(this.index.activeProjectId);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
   }
 
   duplicateProject(id: string) {
@@ -254,10 +322,6 @@ class ProjectStore {
     this.index.projects = [...this.index.projects, meta];
     this.index.activeProjectId = newId;
     this.saveIndex();
-    // Load duplicated schema
-    canvasState.x = 0;
-    canvasState.y = 0;
-    canvasState.scale = 1;
     erdStore.clearHistory();
     this.loadProjectSchema(newId);
   }
