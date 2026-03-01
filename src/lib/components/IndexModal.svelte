@@ -91,7 +91,9 @@
           <div class="col-row">
             <div class="col-select">
               <SearchableSelect
-                options={(selectedTable?.columns ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                options={(selectedTable?.columns ?? [])
+                  .filter((c) => c.id === colId || !selectedColumnIds.includes(c.id))
+                  .map((c) => ({ value: c.id, label: c.name }))}
                 value={colId}
                 onchange={(v) => (selectedColumnIds[idx] = v)}
                 placeholder={m.idx_column_select()}
