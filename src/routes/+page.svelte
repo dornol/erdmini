@@ -299,12 +299,17 @@
 
     (async () => {
       try {
-        const schema = await shareStringToSchema(shareData);
-        // Derive project name from table names, fallback to generic
-        const tableSummary = schema.tables.slice(0, 3).map((t) => t.name).join(', ');
-        const name = tableSummary
-          ? `Shared: ${tableSummary}${schema.tables.length > 3 ? '…' : ''}`
-          : 'Shared Project';
+        const { schema, projectName } = await shareStringToSchema(shareData);
+        // Use embedded project name if available, otherwise derive from table names
+        let name: string;
+        if (projectName) {
+          name = `shared: ${projectName}`;
+        } else {
+          const tableSummary = schema.tables.slice(0, 3).map((t) => t.name).join(', ');
+          name = tableSummary
+            ? `Shared: ${tableSummary}${schema.tables.length > 3 ? '…' : ''}`
+            : 'Shared Project';
+        }
         projectStore.createProjectWithSchema(name, schema);
       } catch {
         // Invalid share data — silently ignore

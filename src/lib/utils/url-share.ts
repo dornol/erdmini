@@ -2,9 +2,10 @@ import type { ERDSchema } from '$lib/types/erd';
 
 /**
  * Compress schema JSON → deflate → base64url string
+ * Payload: { n: projectName, s: schema } (short keys to minimize URL length)
  */
-export async function schemaToShareString(schema: ERDSchema): Promise<string> {
-  const json = JSON.stringify(schema);
+export async function schemaToShareString(schema: ERDSchema, projectName: string): Promise<string> {
+  const json = JSON.stringify({ n: projectName, s: schema });
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
@@ -36,9 +37,10 @@ export async function schemaToShareString(schema: ERDSchema): Promise<string> {
 }
 
 /**
- * Decompress base64url string → inflate → ERDSchema
+ * Decompress base64url string → inflate → { schema, projectName }
+ * Backwards-compatible: if parsed JSON has .tables, it's the old raw ERDSchema format
  */
-export async function shareStringToSchema(encoded: string): Promise<ERDSchema> {
+export async function shareStringToSchema(encoded: string): Promise<{ schema: ERDSchema; projectName: string | null }> {
   // base64url → base64
   let b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
   while (b64.length % 4) b64 += '=';
@@ -73,7 +75,15 @@ export async function shareStringToSchema(encoded: string): Promise<ERDSchema> {
   }
 
   const json = new TextDecoder().decode(merged);
-  return JSON.parse(json) as ERDSchema;
+  const parsed = JSON.parse(json);
+
+  // Backwards compatibility: old format is raw ERDSchema (has .tables property)
+  if (parsed.tables) {
+    return { schema: parsed as ERDSchema, projectName: null };
+  }
+
+  // New format: { n: projectName, s: schema }
+  return { schema: parsed.s as ERDSchema, projectName: parsed.n ?? null };
 }
 
 /**

@@ -339,7 +339,7 @@
   let shareStatus = $state<'idle' | 'copied'>('idle');
   async function shareLink() {
     try {
-      const encoded = await schemaToShareString(erdStore.schema);
+      const encoded = await schemaToShareString(erdStore.schema, projectStore.activeProject?.name ?? 'Untitled');
       const url = buildShareUrl(encoded);
       await navigator.clipboard.writeText(url);
       shareStatus = 'copied';
