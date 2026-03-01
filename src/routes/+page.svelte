@@ -8,9 +8,10 @@
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
-  import { erdStore } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
 
   let sidebarCollapsed = $state(false);
@@ -197,6 +198,35 @@
         if (ok) erdStore.deleteTables(ids);
       }
     }
+
+    // Keyboard zoom: +/= to zoom in, - to zoom out
+    if (!isEditing && (e.key === '+' || e.key === '=' || e.key === '-')) {
+      e.preventDefault();
+      const factor = (e.key === '-') ? 0.9 : 1.1;
+      const newScale = Math.min(3, Math.max(0.2, canvasState.scale * factor));
+      // Zoom toward viewport center
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cx = vw / 2;
+      const cy = vh / 2;
+      canvasState.x = cx - (cx - canvasState.x) * (newScale / canvasState.scale);
+      canvasState.y = cy - (cy - canvasState.y) * (newScale / canvasState.scale);
+      canvasState.scale = newScale;
+      return;
+    }
+
+    // Keyboard pan: Arrow keys
+    if (!isEditing && e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      const step = 60;
+      switch (e.key) {
+        case 'ArrowLeft':  canvasState.x += step; break;
+        case 'ArrowRight': canvasState.x -= step; break;
+        case 'ArrowUp':    canvasState.y += step; break;
+        case 'ArrowDown':  canvasState.y -= step; break;
+      }
+      return;
+    }
   }
 
   $effect(() => {
@@ -268,7 +298,12 @@
       <Canvas>
         <RelationLines />
         {#each erdStore.schema.tables as table (table.id)}
-          <TableCard {table} />
+          <div
+            in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
+            out:fade={{ duration: 150 }}
+          >
+            <TableCard {table} />
+          </div>
         {/each}
       </Canvas>
       <TableEditor />

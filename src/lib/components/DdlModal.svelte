@@ -4,6 +4,7 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL } from '$lib/utils/ddl-export';
+  import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { importDDL } from '$lib/utils/ddl-import';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
@@ -18,6 +19,14 @@
 
   let activeTab = $state<'import' | 'export'>(untrack(() => mode));
 
+  type ExportFormat = 'ddl' | 'mermaid' | 'plantuml';
+
+  const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
+    { value: 'ddl', label: 'DDL' },
+    { value: 'mermaid', label: 'Mermaid' },
+    { value: 'plantuml', label: 'PlantUML' },
+  ];
+
   const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
     { value: 'mysql', label: 'MySQL' },
     { value: 'postgresql', label: 'PostgreSQL' },
@@ -26,8 +35,13 @@
   ];
 
   // Export state
+  let exportFormat = $state<ExportFormat>('ddl');
   let exportDialect = $state<Dialect>('mysql');
-  let exportText = $derived(exportDDL(erdStore.schema, exportDialect));
+  let exportText = $derived.by(() => {
+    if (exportFormat === 'mermaid') return exportMermaid(erdStore.schema);
+    if (exportFormat === 'plantuml') return exportPlantUML(erdStore.schema);
+    return exportDDL(erdStore.schema, exportDialect);
+  });
   let copyLabel = $state<'copy' | 'copied'>('copy');
 
   // Import state
@@ -43,12 +57,18 @@
     setTimeout(() => (copyLabel = 'copy'), 1500);
   }
 
-  function downloadSql() {
+  function downloadFile() {
     const blob = new Blob([exportText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `erdmini_${exportDialect}.sql`;
+    if (exportFormat === 'mermaid') {
+      a.download = 'erdmini.mmd';
+    } else if (exportFormat === 'plantuml') {
+      a.download = 'erdmini.puml';
+    } else {
+      a.download = `erdmini_${exportDialect}.sql`;
+    }
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -204,20 +224,32 @@
     <div class="modal-body">
       {#if activeTab === 'export'}
         <div class="export-controls">
-          <span class="label">Dialect:</span>
-          <div class="dialect-select-wrap">
-            <SearchableSelect
-              options={DIALECT_OPTIONS}
-              value={exportDialect}
-              onchange={(v) => (exportDialect = v as Dialect)}
-              size="md"
-            />
+          <div class="format-tabs">
+            {#each FORMAT_OPTIONS as opt}
+              <button
+                class="format-tab"
+                class:active={exportFormat === opt.value}
+                onclick={() => exportFormat = opt.value}
+              >{opt.label}</button>
+            {/each}
           </div>
+          {#if exportFormat === 'ddl'}
+            <div class="dialect-select-wrap">
+              <SearchableSelect
+                options={DIALECT_OPTIONS}
+                value={exportDialect}
+                onchange={(v) => (exportDialect = v as Dialect)}
+                size="md"
+              />
+            </div>
+          {/if}
           <div class="spacer"></div>
           <button class="btn-secondary" onclick={copyToClipboard}>
             {copyLabel === 'copy' ? m.ddl_copy() : m.ddl_copied()}
           </button>
-          <button class="btn-secondary" onclick={downloadSql}>{m.ddl_download()}</button>
+          <button class="btn-secondary" onclick={downloadFile}>
+            {exportFormat === 'mermaid' ? '.mmd' : exportFormat === 'plantuml' ? '.puml' : m.ddl_download()}
+          </button>
         </div>
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>
       {:else}
@@ -351,6 +383,37 @@
     font-size: 12px;
     color: #64748b;
     font-weight: 600;
+  }
+
+  .format-tabs {
+    display: flex;
+    background: #f1f5f9;
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .format-tab {
+    padding: 4px 10px;
+    border: none;
+    background: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .format-tab.active {
+    background: white;
+    color: #1e293b;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  .format-tab:hover:not(.active) {
+    color: #1e293b;
   }
 
   .dialect-select-wrap {

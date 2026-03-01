@@ -163,5 +163,12 @@
   "domain_group_placeholder": "分组名...",
   "domain_usage_count": "{count} 个使用",
   "domain_unused": "未使用",
-  "domain_show_unused_only": "仅未使用"
+  "domain_show_unused_only": "仅未使用",
+  "export_format": "格式",
+  "export_format_ddl": "DDL",
+  "export_format_mermaid": "Mermaid",
+  "export_format_plantuml": "PlantUML",
+  "shortcuts_zoom_in": "放大",
+  "shortcuts_zoom_out": "缩小",
+  "shortcuts_keyboard_zoom": "键盘缩放 (+/-)"
 }

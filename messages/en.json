@@ -163,5 +163,12 @@
   "domain_group_placeholder": "Group name...",
   "domain_usage_count": "{count} used",
   "domain_unused": "Unused",
-  "domain_show_unused_only": "Unused only"
+  "domain_show_unused_only": "Unused only",
+  "export_format": "Format",
+  "export_format_ddl": "DDL",
+  "export_format_mermaid": "Mermaid",
+  "export_format_plantuml": "PlantUML",
+  "shortcuts_zoom_in": "Zoom in",
+  "shortcuts_zoom_out": "Zoom out",
+  "shortcuts_keyboard_zoom": "Keyboard zoom (+/-)"
 }
