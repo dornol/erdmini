@@ -444,6 +444,25 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .columns-section::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .columns-section::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .columns-section::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .columns-section::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 
   .fk-section,
@@ -453,6 +472,29 @@
     gap: 4px;
     overflow-y: auto;
     max-height: 200px;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .fk-section::-webkit-scrollbar,
+  .uk-section::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .fk-section::-webkit-scrollbar-track,
+  .uk-section::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .fk-section::-webkit-scrollbar-thumb,
+  .uk-section::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .fk-section::-webkit-scrollbar-thumb:hover,
+  .uk-section::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 
   .field-label {

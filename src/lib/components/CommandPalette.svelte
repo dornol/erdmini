@@ -236,6 +236,25 @@
     flex: 1;
     overflow-y: auto;
     padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+  }
+
+  .cmd-results::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .cmd-results::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .cmd-results::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 3px;
+  }
+
+  .cmd-results::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
   }
 
   .cmd-group-label {

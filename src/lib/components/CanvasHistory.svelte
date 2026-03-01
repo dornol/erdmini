@@ -186,6 +186,25 @@
   .history-panel-list {
     overflow-y: auto;
     flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148,163,184,0.5) transparent;
+  }
+
+  .history-panel-list::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .history-panel-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .history-panel-list::-webkit-scrollbar-thumb {
+    background: rgba(148,163,184,0.5);
+    border-radius: 3px;
+  }
+
+  .history-panel-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(148,163,184,0.8);
   }
 
   .history-item {

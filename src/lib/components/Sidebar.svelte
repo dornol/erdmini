@@ -410,6 +410,25 @@
     margin: 0;
     overflow-y: auto;
     flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .table-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .table-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .table-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 
   .table-item {
