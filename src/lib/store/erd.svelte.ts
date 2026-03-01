@@ -1,8 +1,6 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { generateId, now } from '$lib/utils/common';
 
-export { generateId };
-
 const LS_KEY = 'erdmini_schema';
 
 function getNextTableName(tables: Table[]): string {
@@ -484,7 +482,7 @@ class ERDStore {
       if (!table.uniqueKeys) table.uniqueKeys = [];
     }
     this.schema = schema;
-    this.schema.updatedAt = new Date().toISOString();
+    this.schema.updatedAt = now();
     this.selectedTableId = null;
     this.selectedTableIds = new Set();
   }

@@ -8,7 +8,7 @@
   import type { LayoutType } from '$lib/utils/auto-layout';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { exportSvg } from '$lib/utils/svg-export';
-  import { sanitizeFilename } from '$lib/utils/common';
+  import { sanitizeFilename, now } from '$lib/utils/common';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -224,7 +224,7 @@
             }
           }
 
-          erdStore.schema.updatedAt = new Date().toISOString();
+          erdStore.schema.updatedAt = now();
         } catch {
           dialogStore.alert(m.json_parse_error(), {
             title: m.json_import_failed(),

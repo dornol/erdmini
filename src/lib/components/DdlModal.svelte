@@ -7,7 +7,7 @@
   import { exportDDL } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { importDDL } from '$lib/utils/ddl-import';
-  import { sanitizeFilename } from '$lib/utils/common';
+  import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
 
@@ -195,7 +195,7 @@
           }
         }
 
-        erdStore.schema.updatedAt = new Date().toISOString();
+        erdStore.schema.updatedAt = now();
         importSuccess = m.ddl_import_success({ count: result.tables.length });
       }
     } catch (e) {

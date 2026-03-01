@@ -1,10 +1,10 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
-  import CanvasHistory from './CanvasHistory.svelte';
-  import Minimap from './Minimap.svelte';
   import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
   import * as m from '$lib/paraglide/messages';
+  import CanvasHistory from './CanvasHistory.svelte';
+  import Minimap from './Minimap.svelte';
 
   let { children } = $props();
 
