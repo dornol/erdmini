@@ -8,27 +8,21 @@
 
 **기술 스택:** SvelteKit 2, Svelte 5 Runes, TypeScript, Tailwind CSS v4, d3-force
 
-### 전체 시스템 아키텍처 (로드맵 포함)
+### 전체 시스템 아키텍처
 
 ```
-                    현재 (Phase 1~3)            미래 (Phase 4~5)
-                   ┌────────────────┐          ┌────────────────┐
-                   │  erdmini       │          │  erdmini       │
-                   │  (Frontend)    │◀────────▶│  (Frontend)    │
-                   │                │   REST/  │                │
-                   │  LocalStorage  │   WS     │  ┌──────────┐  │
-                   └────────────────┘          │  │ API 서버  │  │
-                                               │  │ (별도     │  │
-                                               │  │  프로젝트)│  │
-                                               │  └────┬─────┘  │
-                                               │       │        │
-                                               │  ┌────▼─────┐  │
-                                               │  │   DB     │  │
-                                               │  └──────────┘  │
-                                               │                │
-                                               │  OIDC Provider │
-                                               │  (Auth)        │
-                                               └────────────────┘
+  Local 모드 (기본)                Server 모드 (Docker)             미래
+ ┌─────────────────┐            ┌─────────────────────┐         ┌──────────────┐
+ │  erdmini SPA    │            │  erdmini (Node.js)   │         │  + OIDC 인증  │
+ │  (adapter-static)│            │  (adapter-node)      │         │  + 실시간 협업 │
+ │                 │            │                     │         │  (WebSocket)  │
+ │  StorageProvider│            │  StorageProvider    │         │              │
+ │  └─ localStorage│            │  └─ fetch → API     │         └──────────────┘
+ └─────────────────┘            │       ↓             │
+                                │  /api/storage/*     │
+                                │       ↓             │
+                                │  SQLite (WAL)       │
+                                └─────────────────────┘
 ```
 
 ---
@@ -149,11 +143,17 @@
 
 ---
 
-### Phase 4 — API 서버 연동 (별도 프로젝트)
+### ✅ Phase 4 — 듀얼 스토리지 모드 (완료)
 
-- [ ] 스토리지 레이어 추상화 (LocalStorage → API 교체 가능)
-- [ ] 프로젝트 개념 도입 (여러 ERD를 프로젝트 단위로 관리)
-- [ ] API 서버 연동 (프로젝트 CRUD)
+- [x] 스토리지 레이어 추상화 (`StorageProvider` 인터페이스 + Local/Server 구현체)
+- [x] `PUBLIC_STORAGE_MODE` 환경변수로 `local`(기본) / `server` 모드 선택
+- [x] 서버 모드: SvelteKit API + SQLite (better-sqlite3, WAL 모드)
+- [x] `projectStore` 비동기화 (`async init(provider)`, 모든 I/O 메서드 async)
+- [x] `svelte.config.js` 조건부 어댑터 (adapter-static / adapter-node)
+- [x] Docker 지원 (`Dockerfile.server`, `docker-compose.yml`)
+- [x] 정적 빌드(`pnpm build`) / 서버 빌드(`pnpm build:server`) 모두 정상 동작 확인
+
+#### 미구현 (별도 프로젝트)
 - [ ] OIDC 인증 연동 (로그인 / 로그아웃 / 토큰 갱신)
 - [ ] 프로젝트 목록 페이지 (`/projects`)
 - [ ] 인증 없는 경우 LocalStorage 모드 폴백
@@ -218,7 +218,7 @@ interface ERDSchema {
 }
 ```
 
-스키마는 `localStorage['erdmini_schema']`에 JSON으로 자동 저장.
+스키마는 `StorageProvider`를 통해 저장. Local 모드: `localStorage`, Server 모드: SQLite (API 경유).
 
 ---
 
@@ -232,7 +232,7 @@ interface ERDSchema {
 | 자동 배치 | 격자·계층: 직접 구현 / 방사형: d3-force | 격자·계층은 단순 알고리즘으로 충분; 방사형은 force simulation이 자연스러운 클러스터링 제공 |
 | DDL 파서 | 직접 구현 (정규식 기반) | 의존성 최소화, 경량 |
 | 스타일링 | Tailwind CSS v4 | 이미 설치됨, 유틸리티 클래스 |
-| 배포 | Docker + nginx (정적 SPA) | 서버리스, 별도 런타임 불필요 |
+| 배포 | Docker — 정적 SPA(nginx) 또는 서버 모드(Node.js + SQLite) | `PUBLIC_STORAGE_MODE`로 전환 |
 | 인증 (미래) | OIDC | 표준 프로토콜, 다양한 IdP 지원 |
 | 실시간 협업 (미래) | WebSocket | 양방향 통신, 낮은 레이턴시 |
 
@@ -254,8 +254,16 @@ src/
 │   │   ├── DdlModal.svelte          Import/Export 탭 모달
 │   │   ├── DomainModal.svelte       도메인 관리 (표 형태)
 │   │   └── FkModal.svelte           FK 추가 모달
+│   ├── server/
+│   │   └── db.ts                    SQLite (better-sqlite3) 모듈 — 서버 모드 전용
+│   ├── storage/
+│   │   ├── types.ts                 StorageProvider 인터페이스
+│   │   ├── local-storage-provider.ts  localStorage 구현체
+│   │   ├── server-storage-provider.ts fetch 기반 서버 구현체
+│   │   └── index.ts                 Provider 팩토리 (PUBLIC_STORAGE_MODE 기반)
 │   ├── store/
-│   │   └── erd.svelte.ts            ERDStore + CanvasState ($state 기반)
+│   │   ├── erd.svelte.ts            ERDStore + CanvasState ($state 기반)
+│   │   └── project.svelte.ts        ProjectStore (async, provider 위임)
 │   ├── types/
 │   │   └── erd.ts                   Column, Table, ERDSchema, ForeignKey 타입
 │   └── utils/
@@ -263,6 +271,10 @@ src/
 │       ├── ddl-export.ts            MySQL / PostgreSQL DDL 생성
 │       └── ddl-import.ts            DDL 파싱 → ERDSchema
 └── routes/
+    ├── api/storage/
+    │   ├── index/+server.ts         ProjectIndex API (GET/PUT)
+    │   ├── schemas/[id]/+server.ts  Schema CRUD API (GET/PUT/DELETE)
+    │   └── canvas/[id]/+server.ts   Canvas state API (GET/PUT/DELETE)
     └── +page.svelte                 루트 페이지 — 전체 레이아웃 조합
 ```
 

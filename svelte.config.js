@@ -1,12 +1,11 @@
-import adapter from '@sveltejs/adapter-static';
+const isServer = process.env.PUBLIC_STORAGE_MODE === 'server';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		adapter: adapter({
-			// SPA fallback: all unmatched routes serve index.html (nginx handles the rest)
-			fallback: 'index.html'
-		})
+		adapter: isServer
+			? (await import('@sveltejs/adapter-node')).default()
+			: (await import('@sveltejs/adapter-static')).default({ fallback: 'index.html' })
 	}
 };
 

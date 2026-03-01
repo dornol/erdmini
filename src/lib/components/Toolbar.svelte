@@ -48,9 +48,9 @@
     renameValue = currentName;
   }
 
-  function finishRename() {
+  async function finishRename() {
     if (renamingId && renameValue.trim()) {
-      projectStore.renameProject(renamingId, renameValue.trim());
+      await projectStore.renameProject(renamingId, renameValue.trim());
     }
     renamingId = null;
     renameValue = '';
@@ -63,12 +63,12 @@
       confirmText: m.action_delete(),
       variant: 'danger',
     });
-    if (ok) projectStore.deleteProject(id);
+    if (ok) await projectStore.deleteProject(id);
   }
 
-  function handleNewProject() {
+  async function handleNewProject() {
     const name = newProjectName.trim() || m.project_default_name();
-    projectStore.createProject(name);
+    await projectStore.createProject(name);
     newProjectName = '';
     showNewProjectInput = false;
     projectOpen = false;
@@ -289,8 +289,8 @@
   }
 
   // Full backup export
-  function exportBackup() {
-    const json = projectStore.exportAll();
+  async function exportBackup() {
+    const json = await projectStore.exportAll();
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -309,8 +309,8 @@
       const file = input.files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => {
-        const result = projectStore.importAll(reader.result as string);
+      reader.onload = async () => {
+        const result = await projectStore.importAll(reader.result as string);
         if (result.ok) {
           dialogStore.alert(m.backup_restore_success());
         } else {
@@ -512,7 +512,7 @@
             {:else}
               <button
                 class="project-item-name"
-                onclick={() => { projectStore.switchProject(proj.id); projectOpen = false; }}
+                onclick={async () => { await projectStore.switchProject(proj.id); projectOpen = false; }}
               >
                 <span class="project-item-label">{proj.name}</span>
                 <span class="project-item-meta">{formatDate(proj.updatedAt)} · {getProjectTableCount(proj.id)} tables</span>
@@ -526,7 +526,7 @@
                 <button
                   class="project-action-btn"
                   title={m.project_duplicate()}
-                  onclick={(e) => { e.stopPropagation(); projectStore.duplicateProject(proj.id); projectOpen = false; }}
+                  onclick={async (e) => { e.stopPropagation(); await projectStore.duplicateProject(proj.id); projectOpen = false; }}
                 >⧉</button>
                 {#if projectStore.index.projects.length > 1}
                   <button

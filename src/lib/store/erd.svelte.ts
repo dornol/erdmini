@@ -1,8 +1,6 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { generateId, now } from '$lib/utils/common';
 
-const LS_KEY = 'erdmini_schema';
-
 function getNextTableName(tables: Table[]): string {
   let i = 1;
   while (tables.some((t) => t.name === `table_${i}`)) i++;
@@ -34,37 +32,12 @@ function migrateFK(schema: ERDSchema) {
   }
 }
 
-function loadFromStorage(): ERDSchema {
-  if (typeof window === 'undefined') return defaultSchema();
-  try {
-    const raw = window.localStorage.getItem(LS_KEY);
-    if (!raw) return defaultSchema();
-    const parsed = JSON.parse(raw) as ERDSchema;
-    // Migrate older schemas that lack domains
-    if (!parsed.domains) parsed.domains = [];
-    // Migrate legacy single-column FK format
-    migrateFK(parsed);
-    // Migrate older schemas that lack uniqueKeys / indexes
-    // Fix PK columns that are incorrectly nullable
-    for (const table of parsed.tables) {
-      if (!table.uniqueKeys) table.uniqueKeys = [];
-      if (!table.indexes) table.indexes = [];
-      for (const col of table.columns) {
-        if (col.primaryKey && col.nullable) col.nullable = false;
-      }
-    }
-    return parsed;
-  } catch {
-    return defaultSchema();
-  }
-}
-
 export type HistoryEntry = { snap: string; label: string; detail: string; time: number };
 
 const MAX_HISTORY = 50;
 
 class ERDStore {
-  schema = $state<ERDSchema>(loadFromStorage());
+  schema = $state<ERDSchema>(defaultSchema());
   selectedTableId = $state<string | null>(null);
   selectedTableIds = $state<Set<string>>(new Set());
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
@@ -136,26 +109,6 @@ class ERDStore {
 
   get selectedTable(): Table | undefined {
     return this.schema.tables.find((t) => t.id === this.selectedTableId);
-  }
-
-  saveToStorage() {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(LS_KEY, JSON.stringify($state.snapshot(this.schema)));
-      this.storageFull = false;
-    } catch {
-      this.storageFull = true;
-    }
-  }
-
-  saveToStorageAs(projectId: string) {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(`erdmini_schema_${projectId}`, JSON.stringify($state.snapshot(this.schema)));
-      this.storageFull = false;
-    } catch {
-      this.storageFull = true;
-    }
   }
 
   clearHistory() {

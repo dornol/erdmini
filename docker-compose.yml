@@ -1,0 +1,15 @@
+services:
+  erdmini:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "3000:3000"
+    volumes:
+      - erdmini-data:/data
+    environment:
+      - PUBLIC_STORAGE_MODE=server
+      - DB_PATH=/data/erdmini.db
+
+volumes:
+  erdmini-data:

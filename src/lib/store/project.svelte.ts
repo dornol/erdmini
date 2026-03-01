@@ -1,39 +1,7 @@
 import type { ERDSchema, ProjectIndex, ProjectMeta } from '$lib/types/erd';
+import type { StorageProvider } from '$lib/storage/types';
 import { erdStore, defaultSchema, canvasState } from '$lib/store/erd.svelte';
 import { generateId, now } from '$lib/utils/common';
-
-const PROJECTS_KEY = 'erdmini_projects';
-const LEGACY_KEY = 'erdmini_schema';
-
-function schemaKey(projectId: string): string {
-  return `erdmini_schema_${projectId}`;
-}
-
-function canvasKey(projectId: string): string {
-  return `erdmini_canvas_${projectId}`;
-}
-
-function saveCanvasState(projectId: string) {
-  window.localStorage.setItem(canvasKey(projectId), JSON.stringify({
-    x: canvasState.x, y: canvasState.y, scale: canvasState.scale,
-  }));
-}
-
-function restoreCanvasState(projectId: string) {
-  const raw = window.localStorage.getItem(canvasKey(projectId));
-  if (raw) {
-    try {
-      const { x, y, scale } = JSON.parse(raw);
-      canvasState.x = x ?? 0;
-      canvasState.y = y ?? 0;
-      canvasState.scale = scale ?? 1;
-      return;
-    } catch { /* fall through */ }
-  }
-  canvasState.x = 0;
-  canvasState.y = 0;
-  canvasState.scale = 1;
-}
 
 function migrateSchema(raw: string): ERDSchema {
   try {
@@ -61,29 +29,30 @@ function migrateSchema(raw: string): ERDSchema {
 
 class ProjectStore {
   index = $state<ProjectIndex>({ version: '1', activeProjectId: '', projects: [] });
+  private _initialized = $state(false);
+  private provider!: StorageProvider;
+  private _saving = false;
 
-  constructor() {
-    if (typeof window === 'undefined') return;
-    this.migrate();
+  get initialized(): boolean {
+    return this._initialized;
   }
 
-  private migrate() {
-    const existingIndex = window.localStorage.getItem(PROJECTS_KEY);
+  async init(provider: StorageProvider) {
+    this.provider = provider;
+    await this.migrate();
+    this._initialized = true;
+  }
+
+  private async migrate() {
+    const existingIndex = await this.provider.loadIndex();
     if (existingIndex) {
-      // Already migrated
-      try {
-        this.index = JSON.parse(existingIndex) as ProjectIndex;
-        // Load active project schema
-        this.loadProjectSchema(this.index.activeProjectId);
-      } catch {
-        this.createDefaultProject();
-      }
+      this.index = existingIndex;
+      await this.loadProjectSchema(this.index.activeProjectId);
       return;
     }
 
-    const legacySchema = window.localStorage.getItem(LEGACY_KEY);
-    if (legacySchema) {
-      // Migrate legacy single-schema
+    const legacyRaw = await this.provider.loadLegacySchema();
+    if (legacyRaw) {
       const id = generateId();
       const ts = now();
       const meta: ProjectMeta = {
@@ -94,23 +63,18 @@ class ProjectStore {
         lastOpenedAt: ts,
       };
       this.index = { version: '1', activeProjectId: id, projects: [meta] };
-      // Copy schema to new key
-      const schema = migrateSchema(legacySchema);
-      window.localStorage.setItem(schemaKey(id), JSON.stringify(schema));
-      // Save project index
-      this.saveIndex();
-      // Remove legacy key
-      window.localStorage.removeItem(LEGACY_KEY);
-      // Load into erdStore
+      const schema = migrateSchema(legacyRaw);
+      await this.provider.saveSchema(id, schema);
+      await this.saveIndex();
+      await this.provider.deleteLegacyKey();
       erdStore.loadSchema(schema);
       return;
     }
 
-    // Nothing exists — create default
-    this.createDefaultProject();
+    await this.createDefaultProject();
   }
 
-  private createDefaultProject() {
+  private async createDefaultProject() {
     const id = generateId();
     const ts = now();
     const meta: ProjectMeta = {
@@ -122,61 +86,74 @@ class ProjectStore {
     };
     this.index = { version: '1', activeProjectId: id, projects: [meta] };
     const schema = defaultSchema();
-    window.localStorage.setItem(schemaKey(id), JSON.stringify(schema));
-    this.saveIndex();
+    await this.provider.saveSchema(id, schema);
+    await this.saveIndex();
     erdStore.loadSchema(schema);
   }
 
-  private loadProjectSchema(projectId: string) {
-    const raw = window.localStorage.getItem(schemaKey(projectId));
-    if (raw) {
-      erdStore.loadSchema(migrateSchema(raw));
+  private async loadProjectSchema(projectId: string) {
+    const schema = await this.provider.loadSchema(projectId);
+    if (schema) {
+      erdStore.loadSchema(migrateSchema(JSON.stringify(schema)));
     } else {
       erdStore.loadSchema(defaultSchema());
     }
-    restoreCanvasState(projectId);
+    const canvas = await this.provider.loadCanvasState(projectId);
+    if (canvas) {
+      canvasState.x = canvas.x ?? 0;
+      canvasState.y = canvas.y ?? 0;
+      canvasState.scale = canvas.scale ?? 1;
+    } else {
+      canvasState.x = 0;
+      canvasState.y = 0;
+      canvasState.scale = 1;
+    }
   }
 
-  private saveIndex() {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(PROJECTS_KEY, JSON.stringify($state.snapshot(this.index)));
+  private async saveIndex() {
+    await this.provider.saveIndex($state.snapshot(this.index) as ProjectIndex);
   }
 
   get activeProject(): ProjectMeta | undefined {
     return this.index.projects.find((p) => p.id === this.index.activeProjectId);
   }
 
-  saveCurrentSchema() {
+  async saveCurrentSchema() {
     const id = this.index.activeProjectId;
-    if (!id) return;
-    erdStore.saveToStorageAs(id);
-    saveCanvasState(id);
-    // Update meta timestamps
-    const meta = this.index.projects.find((p) => p.id === id);
-    if (meta) {
-      meta.updatedAt = now();
-      this.saveIndex();
+    if (!id || this._saving) return;
+    this._saving = true;
+    try {
+      const schema = $state.snapshot(erdStore.schema) as ERDSchema;
+      await this.provider.saveSchema(id, schema);
+      await this.provider.saveCanvasState(id, {
+        x: canvasState.x, y: canvasState.y, scale: canvasState.scale,
+      });
+      erdStore.storageFull = false;
+      const meta = this.index.projects.find((p) => p.id === id);
+      if (meta) {
+        meta.updatedAt = now();
+        await this.saveIndex();
+      }
+    } catch {
+      erdStore.storageFull = true;
+    } finally {
+      this._saving = false;
     }
   }
 
-  switchProject(id: string) {
+  async switchProject(id: string) {
     if (id === this.index.activeProjectId) return;
-    // Save current project first
-    this.saveCurrentSchema();
-    // Clear undo/redo history
+    await this.saveCurrentSchema();
     erdStore.clearHistory();
-    // Update active project
     this.index.activeProjectId = id;
     const meta = this.index.projects.find((p) => p.id === id);
     if (meta) meta.lastOpenedAt = now();
-    this.saveIndex();
-    // Load target schema
-    this.loadProjectSchema(id);
+    await this.saveIndex();
+    await this.loadProjectSchema(id);
   }
 
-  createProject(name: string) {
-    // Save current project first
-    this.saveCurrentSchema();
+  async createProject(name: string) {
+    await this.saveCurrentSchema();
     const id = generateId();
     const ts = now();
     const meta: ProjectMeta = {
@@ -188,44 +165,40 @@ class ProjectStore {
     };
     this.index.projects = [...this.index.projects, meta];
     this.index.activeProjectId = id;
-    // Write empty schema
     const schema = defaultSchema();
-    window.localStorage.setItem(schemaKey(id), JSON.stringify(schema));
-    this.saveIndex();
+    await this.provider.saveSchema(id, schema);
+    await this.saveIndex();
     erdStore.clearHistory();
     erdStore.loadSchema(schema);
   }
 
-  renameProject(id: string, name: string) {
+  async renameProject(id: string, name: string) {
     const meta = this.index.projects.find((p) => p.id === id);
     if (!meta) return;
     meta.name = name;
     meta.updatedAt = now();
-    this.saveIndex();
+    await this.saveIndex();
   }
 
-  deleteProject(id: string) {
+  async deleteProject(id: string) {
     if (this.index.projects.length <= 1) return;
     this.index.projects = this.index.projects.filter((p) => p.id !== id);
-    // Remove schema and canvas state from localStorage
-    window.localStorage.removeItem(schemaKey(id));
-    window.localStorage.removeItem(canvasKey(id));
-    // If deleting active project, switch to first remaining
+    await this.provider.deleteSchema(id);
+    await this.provider.deleteCanvasState(id);
     if (this.index.activeProjectId === id) {
       const next = this.index.projects[0];
       this.index.activeProjectId = next.id;
       next.lastOpenedAt = now();
-      this.saveIndex();
+      await this.saveIndex();
       erdStore.clearHistory();
-      this.loadProjectSchema(next.id);
+      await this.loadProjectSchema(next.id);
     } else {
-      this.saveIndex();
+      await this.saveIndex();
     }
   }
 
-  createProjectWithSchema(name: string, schema: ERDSchema) {
-    // Save current project first
-    this.saveCurrentSchema();
+  async createProjectWithSchema(name: string, schema: ERDSchema) {
+    await this.saveCurrentSchema();
     const id = generateId();
     const ts = now();
     const meta: ProjectMeta = {
@@ -237,15 +210,14 @@ class ProjectStore {
     };
     this.index.projects = [...this.index.projects, meta];
     this.index.activeProjectId = id;
-    window.localStorage.setItem(schemaKey(id), JSON.stringify(schema));
-    this.saveIndex();
+    await this.provider.saveSchema(id, schema);
+    await this.saveIndex();
     erdStore.clearHistory();
     erdStore.loadSchema(schema);
   }
 
-  exportAll(): string {
-    // Save current project first
-    this.saveCurrentSchema();
+  async exportAll(): Promise<string> {
+    await this.saveCurrentSchema();
     const backup: Record<string, unknown> = {
       _type: 'erdmini_backup',
       _version: 1,
@@ -254,19 +226,13 @@ class ProjectStore {
     };
     const schemas = backup.schemas as Record<string, unknown>;
     for (const proj of this.index.projects) {
-      const raw = window.localStorage.getItem(schemaKey(proj.id));
-      if (raw) {
-        try {
-          schemas[proj.id] = JSON.parse(raw);
-        } catch {
-          schemas[proj.id] = null;
-        }
-      }
+      const schema = await this.provider.loadSchema(proj.id);
+      schemas[proj.id] = schema ?? null;
     }
     return JSON.stringify(backup, null, 2);
   }
 
-  importAll(json: string): { ok: boolean; error?: string } {
+  async importAll(json: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const backup = JSON.parse(json);
       if (backup._type !== 'erdmini_backup') {
@@ -277,31 +243,27 @@ class ProjectStore {
       if (!index?.projects?.length) {
         return { ok: false, error: 'No projects in backup' };
       }
-      // Write all schemas to localStorage
       for (const proj of index.projects) {
         const schema = schemas[proj.id];
         if (schema) {
-          window.localStorage.setItem(schemaKey(proj.id), JSON.stringify(schema));
+          await this.provider.saveSchema(proj.id, schema as ERDSchema);
         }
       }
-      // Write project index
       this.index = index;
-      this.saveIndex();
-      // Load active project
+      await this.saveIndex();
       erdStore.clearHistory();
-      this.loadProjectSchema(this.index.activeProjectId);
+      await this.loadProjectSchema(this.index.activeProjectId);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   }
 
-  duplicateProject(id: string) {
+  async duplicateProject(id: string) {
     const src = this.index.projects.find((p) => p.id === id);
     if (!src) return;
-    // Save current if duplicating active
     if (id === this.index.activeProjectId) {
-      this.saveCurrentSchema();
+      await this.saveCurrentSchema();
     }
     const newId = generateId();
     const ts = now();
@@ -312,18 +274,13 @@ class ProjectStore {
       updatedAt: ts,
       lastOpenedAt: ts,
     };
-    // Copy schema data
-    const raw = window.localStorage.getItem(schemaKey(id));
-    if (raw) {
-      window.localStorage.setItem(schemaKey(newId), raw);
-    } else {
-      window.localStorage.setItem(schemaKey(newId), JSON.stringify(defaultSchema()));
-    }
+    const schema = await this.provider.loadSchema(id);
+    await this.provider.saveSchema(newId, schema ?? defaultSchema());
     this.index.projects = [...this.index.projects, meta];
     this.index.activeProjectId = newId;
-    this.saveIndex();
+    await this.saveIndex();
     erdStore.clearHistory();
-    this.loadProjectSchema(newId);
+    await this.loadProjectSchema(newId);
   }
 }
 

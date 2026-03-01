@@ -8,12 +8,14 @@
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
+  import { onMount } from 'svelte';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
+  import { getStorageProvider } from '$lib/storage';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
 
@@ -23,6 +25,11 @@
   let forceDesktop = $state(false);
   let isMobile = $derived(viewportWidth < 768);
   let storageBannerDismissed = $state(false);
+
+  onMount(async () => {
+    const provider = await getStorageProvider();
+    await projectStore.init(provider);
+  });
 
   function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } {
     const pt = prev.tables;
@@ -164,9 +171,9 @@
     }
     // Always capture current state for next mutation
     prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
-    // Debounced save — avoid writing to localStorage on every drag frame
+    // Debounced save — avoid writing to storage on every drag frame
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => projectStore.saveCurrentSchema(), 300);
+    saveTimer = setTimeout(async () => { await projectStore.saveCurrentSchema(); }, 300);
   });
 
   // Keyboard shortcuts
@@ -310,7 +317,7 @@
             ? `Shared: ${tableSummary}${schema.tables.length > 3 ? '…' : ''}`
             : 'Shared Project';
         }
-        projectStore.createProjectWithSchema(name, schema);
+        await projectStore.createProjectWithSchema(name, schema);
       } catch {
         // Invalid share data — silently ignore
       }
@@ -318,7 +325,11 @@
   });
 </script>
 
-{#if isMobile && !forceDesktop}
+{#if !projectStore.initialized}
+  <div class="app-loading">
+    <div class="loading-spinner"></div>
+  </div>
+{:else if isMobile && !forceDesktop}
   <div class="mobile-notice">
     <div class="mobile-card">
       <svg class="mobile-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -402,6 +413,27 @@
 {/if}
 
 <style>
+  .app-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: #0f172a;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #334155;
+    border-top-color: #60a5fa;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
   .app {
     display: flex;
     flex-direction: column;
