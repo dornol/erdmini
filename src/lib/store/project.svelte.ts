@@ -1,15 +1,12 @@
 import type { ERDSchema, ProjectIndex, ProjectMeta } from '$lib/types/erd';
-import { erdStore, defaultSchema, generateId, canvasState } from '$lib/store/erd.svelte';
+import { erdStore, defaultSchema, canvasState } from '$lib/store/erd.svelte';
+import { generateId, now } from '$lib/utils/common';
 
 const PROJECTS_KEY = 'erdmini_projects';
 const LEGACY_KEY = 'erdmini_schema';
 
 function schemaKey(projectId: string): string {
   return `erdmini_schema_${projectId}`;
-}
-
-function now(): string {
-  return new Date().toISOString();
 }
 
 function migrateSchema(raw: string): ERDSchema {

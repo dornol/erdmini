@@ -1,10 +1,6 @@
 import type { ERDSchema, Table } from '$lib/types/erd';
+import { TABLE_W, TABLE_CARD_W, HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
 
-const TABLE_W = 220;
-const LINE_ATTACH_W = 200; // RelationLines uses 200 for FK attachment X
-const HEADER_H = 37;
-const ROW_H = 26;
-const COMMENT_H = 24;
 const PAD = 40;
 
 interface ThemeColors {
@@ -141,13 +137,13 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
   const parts: string[] = [];
 
   // Card background
-  parts.push(`<rect x="${x}" y="${y}" width="${TABLE_W}" height="${h}" rx="${r}" fill="${theme.cardBg}" stroke="${theme.cardBorder}" stroke-width="${theme.cardBorderWidth}"/>`);
+  parts.push(`<rect x="${x}" y="${y}" width="${TABLE_CARD_W}" height="${h}" rx="${r}" fill="${theme.cardBg}" stroke="${theme.cardBorder}" stroke-width="${theme.cardBorderWidth}"/>`);
 
   // Header background (clip to top radius)
-  parts.push(`<clipPath id="hdr-${esc(t.id)}"><rect x="${x}" y="${y}" width="${TABLE_W}" height="${HEADER_H}" rx="${r}"/></clipPath>`);
-  parts.push(`<rect x="${x}" y="${y}" width="${TABLE_W}" height="${HEADER_H}" fill="${theme.headerBg}" clip-path="url(#hdr-${esc(t.id)})"/>`);
+  parts.push(`<clipPath id="hdr-${esc(t.id)}"><rect x="${x}" y="${y}" width="${TABLE_CARD_W}" height="${HEADER_H}" rx="${r}"/></clipPath>`);
+  parts.push(`<rect x="${x}" y="${y}" width="${TABLE_CARD_W}" height="${HEADER_H}" fill="${theme.headerBg}" clip-path="url(#hdr-${esc(t.id)})"/>`);
   // Header bottom border (to cover rounded corners at bottom of header)
-  parts.push(`<rect x="${x}" y="${y + HEADER_H - 1}" width="${TABLE_W}" height="1" fill="${theme.headerBg}"/>`);
+  parts.push(`<rect x="${x}" y="${y + HEADER_H - 1}" width="${TABLE_CARD_W}" height="1" fill="${theme.headerBg}"/>`);
 
   // Table name
   const nameText = t.name.length > 24 ? t.name.slice(0, 23) + '\u2026' : t.name;
@@ -157,8 +153,8 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
 
   // Comment
   if (t.comment) {
-    parts.push(`<rect x="${x}" y="${curY}" width="${TABLE_W}" height="${COMMENT_H}" fill="${theme.commentBg}"/>`);
-    parts.push(`<line x1="${x}" y1="${curY + COMMENT_H}" x2="${x + TABLE_W}" y2="${curY + COMMENT_H}" stroke="${theme.commentBorder}" stroke-width="0.5"/>`);
+    parts.push(`<rect x="${x}" y="${curY}" width="${TABLE_CARD_W}" height="${COMMENT_H}" fill="${theme.commentBg}"/>`);
+    parts.push(`<line x1="${x}" y1="${curY + COMMENT_H}" x2="${x + TABLE_CARD_W}" y2="${curY + COMMENT_H}" stroke="${theme.commentBorder}" stroke-width="0.5"/>`);
     const commentText = t.comment.length > 28 ? t.comment.slice(0, 27) + '\u2026' : t.comment;
     parts.push(`<text x="${x + 10}" y="${curY + COMMENT_H / 2 + 4}" fill="${theme.commentText}" font-size="11" font-style="italic" font-family="system-ui,sans-serif">${esc(commentText)}</text>`);
     curY += COMMENT_H;
@@ -170,7 +166,7 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
   const uniqueKeyColIds = new Set((t.uniqueKeys ?? []).flatMap((uk) => uk.columnIds));
 
   if (t.columns.length === 0) {
-    parts.push(`<text x="${x + TABLE_W / 2}" y="${curY + ROW_H / 2 + 4}" text-anchor="middle" fill="${theme.noColText}" font-size="12" font-style="italic" font-family="system-ui,sans-serif">No columns</text>`);
+    parts.push(`<text x="${x + TABLE_CARD_W / 2}" y="${curY + ROW_H / 2 + 4}" text-anchor="middle" fill="${theme.noColText}" font-size="12" font-style="italic" font-family="system-ui,sans-serif">No columns</text>`);
   }
 
   for (let i = 0; i < t.columns.length; i++) {
@@ -180,7 +176,7 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
 
     // Row border (except last)
     if (i < t.columns.length - 1 && theme.colBorder !== 'none') {
-      parts.push(`<line x1="${x + 1}" y1="${rowY + ROW_H}" x2="${x + TABLE_W - 1}" y2="${rowY + ROW_H}" stroke="${theme.colBorder}" stroke-width="0.5"/>`);
+      parts.push(`<line x1="${x + 1}" y1="${rowY + ROW_H}" x2="${x + TABLE_CARD_W - 1}" y2="${rowY + ROW_H}" stroke="${theme.colBorder}" stroke-width="0.5"/>`);
     }
 
     let textX = x + 8;
@@ -202,7 +198,7 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
 
     // Type text (right-aligned area)
     const typeStr = `${col.type}${col.length ? `(${col.length})` : ''}${col.nullable ? '?' : ''}`;
-    let typeX = x + TABLE_W - 8;
+    let typeX = x + TABLE_CARD_W - 8;
 
     // UQ / AI badges (rightmost)
     const showUq = ((col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey);
@@ -239,19 +235,19 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
         const refColIdx = getColIndex(refTable, fk.referencedColumnIds[i]);
         if (srcColIdx < 0 || refColIdx < 0) continue;
 
-        const srcCenterX = table.position.x + LINE_ATTACH_W / 2;
-        const refCenterX = refTable.position.x + LINE_ATTACH_W / 2;
-        const overlapAmount = Math.min(table.position.x + LINE_ATTACH_W, refTable.position.x + LINE_ATTACH_W)
+        const srcCenterX = table.position.x + TABLE_W / 2;
+        const refCenterX = refTable.position.x + TABLE_W / 2;
+        const overlapAmount = Math.min(table.position.x + TABLE_W, refTable.position.x + TABLE_W)
           - Math.max(table.position.x, refTable.position.x);
-        const overlapsX = overlapAmount > LINE_ATTACH_W * 0.3;
+        const overlapsX = overlapAmount > TABLE_W * 0.3;
 
         let fromRight: boolean, toLeft: boolean;
         if (overlapsX) { fromRight = true; toLeft = false; }
         else { fromRight = srcCenterX <= refCenterX; toLeft = fromRight; }
 
-        const x1 = (fromRight ? table.position.x + LINE_ATTACH_W : table.position.x) - offsetX;
+        const x1 = (fromRight ? table.position.x + TABLE_W : table.position.x) - offsetX;
         const y1 = colY(table, srcColIdx) - offsetY;
-        const x2 = (toLeft ? refTable.position.x : refTable.position.x + LINE_ATTACH_W) - offsetX;
+        const x2 = (toLeft ? refTable.position.x : refTable.position.x + TABLE_W) - offsetX;
         const y2 = colY(refTable, refColIdx) - offsetY;
 
         const srcCol = table.columns[srcColIdx];
@@ -309,7 +305,7 @@ export function exportSvg(schema: ERDSchema, themeId: string): string {
     const h = cardHeight(t);
     minX = Math.min(minX, t.position.x);
     minY = Math.min(minY, t.position.y);
-    maxX = Math.max(maxX, t.position.x + TABLE_W);
+    maxX = Math.max(maxX, t.position.x + TABLE_CARD_W);
     maxY = Math.max(maxY, t.position.y + h);
   }
 

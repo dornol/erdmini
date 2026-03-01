@@ -3,6 +3,7 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import CanvasHistory from './CanvasHistory.svelte';
   import Minimap from './Minimap.svelte';
+  import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
   import * as m from '$lib/paraglide/messages';
 
   let { children } = $props();
@@ -69,10 +70,6 @@
       window.removeEventListener('mouseup', onMouseUp);
     };
   });
-
-  const TABLE_W = 200;
-  const HEADER_H = 37;
-  const ROW_H = 26;
 
   function resetView() {
     canvasState.x = 0;

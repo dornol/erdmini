@@ -1,6 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
-  import { COLUMN_TYPES } from '$lib/types/erd';
+  import { COLUMN_TYPES, DOMAIN_FIELDS } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
@@ -18,10 +18,6 @@
   let col = $derived(
     erdStore.schema.tables.find((t) => t.id === tableId)?.columns.find((c) => c.id === columnId),
   );
-
-  const DOMAIN_FIELDS: (keyof Column)[] = [
-    'type', 'length', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue',
-  ];
 
   function onChange(field: keyof Column, value: unknown) {
     if (!col) return;

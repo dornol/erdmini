@@ -1,15 +1,9 @@
 import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
 import type { SimulationNodeDatum } from 'd3-force';
 import type { Table } from '$lib/types/erd';
+import { TABLE_W, HEADER_H, COMMENT_H, ROW_H, BOTTOM_PAD } from '$lib/constants/layout';
 
 export type LayoutType = 'grid' | 'hierarchical' | 'radial';
-
-// Must match TableCard.svelte measurements
-const TABLE_W    = 200;
-const HEADER_H   = 37;   // header padding(8*2) + font(~13) + border
-const COMMENT_H  = 26;   // comment row: padding(4*2) + font(~11) + border(1) + slack
-const ROW_H      = 26;   // column row: padding(3*2) + font(12) + line-height slack
-const BOTTOM_PAD = 8;    // .column-list padding (4px top + 4px bottom)
 
 const GAP_X  = 60;   // horizontal gap between table right edge and next table left edge
 const GAP_Y  = 60;   // vertical gap between table bottom and next table top

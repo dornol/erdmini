@@ -1,7 +1,7 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
-  import { COLUMN_TYPES } from '$lib/types/erd';
+  import { COLUMN_TYPES, DOMAIN_FIELDS } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import FkModal from './FkModal.svelte';
   import UniqueKeyModal from './UniqueKeyModal.svelte';
@@ -41,11 +41,6 @@
       erdStore.updateTableComment(capturedTableId, tableCommentInput);
     }
   }
-
-  // Fields managed by a domain — manual edits to these auto-unlink the domain
-  const DOMAIN_FIELDS: (keyof Column)[] = [
-    'type', 'length', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue',
-  ];
 
   function onColumnChange(col: Column, field: keyof Column, value: unknown) {
     if (!selectedTable) return;

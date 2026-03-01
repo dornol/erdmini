@@ -3,6 +3,7 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
+  import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
 
   const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string; dash: string }> = {
     modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc', dash: '' },
@@ -12,10 +13,6 @@
   };
 
   let lineColors = $derived(THEME_COLORS[themeStore.current] ?? THEME_COLORS.modern);
-
-  const TABLE_WIDTH = 200;
-  const HEADER_HEIGHT = 37;
-  const ROW_HEIGHT = 26;
 
   interface FKLine {
     fk: ForeignKey;
@@ -45,7 +42,7 @@
   }
 
   function colY(table: Table, colIdx: number): number {
-    return table.position.y + HEADER_HEIGHT + colIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+    return table.position.y + HEADER_H + colIdx * ROW_H + ROW_H / 2;
   }
 
   function computeBezier(x1: number, y1: number, x2: number, y2: number, fromRight: boolean, toLeft: boolean) {
@@ -79,12 +76,12 @@
           const refColIdx = getColIndex(refTable, fk.referencedColumnIds[i]);
           if (srcColIdx < 0 || refColIdx < 0) continue;
 
-          const srcCenterX = table.position.x + TABLE_WIDTH / 2;
-          const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
+          const srcCenterX = table.position.x + TABLE_W / 2;
+          const refCenterX = refTable.position.x + TABLE_W / 2;
 
-          const overlapAmount = Math.min(table.position.x + TABLE_WIDTH, refTable.position.x + TABLE_WIDTH)
+          const overlapAmount = Math.min(table.position.x + TABLE_W, refTable.position.x + TABLE_W)
             - Math.max(table.position.x, refTable.position.x);
-          const overlapsX = overlapAmount > TABLE_WIDTH * 0.3;
+          const overlapsX = overlapAmount > TABLE_W * 0.3;
 
           let fromRight: boolean;
           let toLeft: boolean;
@@ -96,9 +93,9 @@
             toLeft = fromRight;
           }
 
-          const x1 = fromRight ? table.position.x + TABLE_WIDTH : table.position.x;
+          const x1 = fromRight ? table.position.x + TABLE_W : table.position.x;
           const y1 = colY(table, srcColIdx);
-          const x2 = toLeft ? refTable.position.x : refTable.position.x + TABLE_WIDTH;
+          const x2 = toLeft ? refTable.position.x : refTable.position.x + TABLE_W;
           const y2 = colY(refTable, refColIdx);
 
           const srcCol = table.columns[srcColIdx];

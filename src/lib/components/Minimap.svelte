@@ -1,11 +1,9 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
+  import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
 
   const MAP_W = 180;
   const MAP_H = 120;
-  const TABLE_W = 200;
-  const HEADER_H = 37;
-  const ROW_H = 26;
   const PAD = 40;
 
   let viewportEl: HTMLDivElement | undefined = $state(undefined);

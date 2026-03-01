@@ -1,14 +1,9 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, TableIndex, UniqueKey } from '$lib/types/erd';
+import { generateId, now } from '$lib/utils/common';
+
+export { generateId };
 
 const LS_KEY = 'erdmini_schema';
-
-export function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-function now(): string {
-  return new Date().toISOString();
-}
 
 function getNextTableName(tables: Table[]): string {
   let i = 1;

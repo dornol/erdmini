@@ -1,9 +1,6 @@
 import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
+import { generateId } from '$lib/utils/common';
 
 /** Track type normalizations (original → normalized) */
 let _typeWarnings: { original: string; normalized: string }[] = [];

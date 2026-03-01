@@ -8,6 +8,7 @@
   import type { LayoutType } from '$lib/utils/auto-layout';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { exportSvg } from '$lib/utils/svg-export';
+  import { sanitizeFilename } from '$lib/utils/common';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -40,10 +41,6 @@
   let renameValue = $state('');
   let newProjectName = $state('');
   let showNewProjectInput = $state(false);
-
-  function sanitizeFilename(name: string): string {
-    return name.replace(/[^a-zA-Z0-9가-힣ぁ-んァ-ヶ一-龥_\-. ]/g, '_').replace(/\s+/g, '_');
-  }
 
   function startRename(id: string, currentName: string) {
     renamingId = id;

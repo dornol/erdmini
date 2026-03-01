@@ -89,6 +89,10 @@ export interface ERDSchema {
   updatedAt: string;
 }
 
+export const DOMAIN_FIELDS: (keyof Column)[] = [
+  'type', 'length', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue',
+];
+
 export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql';
 
 export interface ProjectMeta {

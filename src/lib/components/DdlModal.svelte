@@ -7,6 +7,7 @@
   import { exportDDL } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { importDDL } from '$lib/utils/ddl-import';
+  import { sanitizeFilename } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
 
@@ -57,10 +58,6 @@
     await navigator.clipboard.writeText(exportText);
     copyLabel = 'copied';
     setTimeout(() => (copyLabel = 'copy'), 1500);
-  }
-
-  function sanitizeFilename(name: string): string {
-    return name.replace(/[^a-zA-Z0-9가-힣ぁ-んァ-ヶ一-龥_\-. ]/g, '_').replace(/\s+/g, '_');
   }
 
   function downloadFile() {
