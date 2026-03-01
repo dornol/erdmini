@@ -45,9 +45,13 @@ function loadFromStorage(): ERDSchema {
     // Migrate legacy single-column FK format
     migrateFK(parsed);
     // Migrate older schemas that lack uniqueKeys / indexes
+    // Fix PK columns that are incorrectly nullable
     for (const table of parsed.tables) {
       if (!table.uniqueKeys) table.uniqueKeys = [];
       if (!table.indexes) table.indexes = [];
+      for (const col of table.columns) {
+        if (col.primaryKey && col.nullable) col.nullable = false;
+      }
     }
     return parsed;
   } catch {
@@ -498,6 +502,9 @@ class ERDStore {
     migrateFK(schema);
     for (const table of schema.tables) {
       if (!table.uniqueKeys) table.uniqueKeys = [];
+      for (const col of table.columns) {
+        if (col.primaryKey && col.nullable) col.nullable = false;
+      }
     }
     this.schema = schema;
     this.schema.updatedAt = now();
