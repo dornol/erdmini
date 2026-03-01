@@ -147,5 +147,15 @@
   "cmd_palette_tables": "Tables",
   "cmd_palette_columns": "Columns",
   "cmd_palette_hint": "↑↓ navigate  Enter select  Esc close",
-  "cmd_palette_open": "Search palette"
+  "cmd_palette_open": "Search palette",
+  "uq_section": "Composite Unique Keys",
+  "uq_add": "+ Add Unique",
+  "uq_delete": "Delete unique",
+  "uq_modal_title": "Add Composite Unique — {name}",
+  "uq_column_select": "Select column",
+  "uq_add_column": "+ Add column",
+  "uq_name_placeholder": "Constraint name (optional)",
+  "uq_no_keys": "No composite unique keys",
+  "history_add_uq": "Add composite unique",
+  "history_delete_uq": "Delete composite unique"
 }

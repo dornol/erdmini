@@ -147,5 +147,15 @@
   "cmd_palette_tables": "表",
   "cmd_palette_columns": "列",
   "cmd_palette_hint": "↑↓ 移动  Enter 选择  Esc 关闭",
-  "cmd_palette_open": "搜索面板"
+  "cmd_palette_open": "搜索面板",
+  "uq_section": "复合唯一键",
+  "uq_add": "+ 添加唯一",
+  "uq_delete": "删除唯一",
+  "uq_modal_title": "添加复合唯一 — {name}",
+  "uq_column_select": "选择列",
+  "uq_add_column": "+ 添加列",
+  "uq_name_placeholder": "约束名 (可选)",
+  "uq_no_keys": "暂无复合唯一键",
+  "history_add_uq": "添加复合唯一",
+  "history_delete_uq": "删除复合唯一"
 }

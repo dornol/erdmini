@@ -4,6 +4,7 @@
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import FkModal from './FkModal.svelte';
+  import UniqueKeyModal from './UniqueKeyModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
 
@@ -74,6 +75,14 @@
 
   // FK modal
   let showFkModal = $state(false);
+
+  // UK modal
+  let showUkModal = $state(false);
+
+  function getUkLabel(uk: { columnIds: string[] }) {
+    const colNames = uk.columnIds.map((id) => selectedTable?.columns.find((c) => c.id === id)?.name ?? '?');
+    return `(${colNames.join(', ')})`;
+  }
 
   function getFkLabel(fk: { columnIds: string[]; referencedTableId: string; referencedColumnIds: string[]; onDelete: string }) {
     const colNames = fk.columnIds.map((id) => selectedTable?.columns.find((c) => c.id === id)?.name ?? '?');
@@ -314,7 +323,19 @@
 
       {#each selectedTable.foreignKeys as fk (fk.id)}
         {@const label = getFkLabel(fk)}
-        <div class="fk-row">
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="fk-row"
+          onmouseenter={() => {
+            erdStore.hoveredFkInfo = [{
+              sourceTableId: selectedTable!.id,
+              sourceColumnIds: fk.columnIds,
+              refTableId: fk.referencedTableId,
+              refColumnIds: fk.referencedColumnIds,
+            }];
+          }}
+          onmouseleave={() => { erdStore.hoveredFkInfo = []; }}
+        >
           <span class="fk-col">{label.colName}</span>
           <span class="fk-arrow">→</span>
           <span class="fk-ref">{label.refTableName}.{label.refColName}</span>
@@ -329,6 +350,36 @@
         <p class="no-cols">{m.editor_no_fk()}</p>
       {/each}
     </div>
+
+    <!-- Unique Keys -->
+    <div class="section uk-section">
+      <div class="section-header">
+        <span class="field-label">{m.uq_section()}</span>
+        <button class="add-col-btn" onclick={() => (showUkModal = true)}>{m.uq_add()}</button>
+      </div>
+
+      {#each selectedTable.uniqueKeys as uk (uk.id)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="fk-row"
+          onmouseenter={() => { erdStore.hoveredUkInfo = { tableId: selectedTable!.id, columnIds: uk.columnIds }; }}
+          onmouseleave={() => { erdStore.hoveredUkInfo = null; }}
+        >
+          <span class="fk-col">{getUkLabel(uk)}</span>
+          {#if uk.name}
+            <span class="fk-action">{uk.name}</span>
+          {/if}
+          <span style="flex:1"></span>
+          <button
+            class="icon-btn del"
+            title={m.uq_delete()}
+            onclick={() => erdStore.deleteUniqueKey(selectedTable!.id, uk.id)}
+          >&#x2715;</button>
+        </div>
+      {:else}
+        <p class="no-cols">{m.uq_no_keys()}</p>
+      {/each}
+    </div>
   </aside>
 {:else}
   <aside class="editor editor-empty">
@@ -338,6 +389,10 @@
 
 {#if showFkModal && selectedTable}
   <FkModal tableId={selectedTable.id} onclose={() => (showFkModal = false)} />
+{/if}
+
+{#if showUkModal && selectedTable}
+  <UniqueKeyModal tableId={selectedTable.id} onclose={() => (showUkModal = false)} />
 {/if}
 
 <style>
@@ -391,7 +446,8 @@
     flex-direction: column;
   }
 
-  .fk-section {
+  .fk-section,
+  .uk-section {
     display: flex;
     flex-direction: column;
     gap: 4px;

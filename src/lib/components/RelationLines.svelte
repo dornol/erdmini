@@ -191,7 +191,12 @@
       (hc.tableId === line.tableId && line.fk.columnIds.includes(hc.columnId)) ||
       (hc.tableId === line.fk.referencedTableId && line.fk.referencedColumnIds.includes(hc.columnId))
     )}
-    {@const isHovered = hoveredId === line.fk.id || isColumnHovered}
+    {@const isEditorFkHovered = erdStore.hoveredFkInfo.some((hfk) =>
+      hfk.sourceTableId === line.tableId &&
+      hfk.sourceColumnIds.every((id) => line.fk.columnIds.includes(id)) &&
+      hfk.refTableId === line.fk.referencedTableId
+    )}
+    {@const isHovered = hoveredId === line.fk.id || isColumnHovered || isEditorFkHovered}
     {@const color = isHovered ? lineColors.hover : lineColors.normal}
 
     <!-- Invisible wide hit area -->

@@ -147,5 +147,15 @@
   "cmd_palette_tables": "テーブル",
   "cmd_palette_columns": "カラム",
   "cmd_palette_hint": "↑↓ 移動  Enter 選択  Esc 閉じる",
-  "cmd_palette_open": "検索パレット"
+  "cmd_palette_open": "検索パレット",
+  "uq_section": "複合ユニークキー",
+  "uq_add": "+ ユニーク追加",
+  "uq_delete": "ユニーク削除",
+  "uq_modal_title": "複合ユニーク追加 — {name}",
+  "uq_column_select": "カラム選択",
+  "uq_add_column": "+ カラム追加",
+  "uq_name_placeholder": "制約名 (任意)",
+  "uq_no_keys": "複合ユニークキーがありません",
+  "history_add_uq": "複合ユニーク追加",
+  "history_delete_uq": "複合ユニーク削除"
 }

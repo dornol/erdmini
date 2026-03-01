@@ -46,6 +46,12 @@ export type ReferentialAction = 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION
 
 export const REFERENTIAL_ACTIONS: ReferentialAction[] = ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'];
 
+export interface UniqueKey {
+  id: string;
+  columnIds: string[];
+  name?: string;
+}
+
 export interface ForeignKey {
   id: string;
   columnIds: string[];
@@ -60,6 +66,7 @@ export interface Table {
   name: string;
   columns: Column[];
   foreignKeys: ForeignKey[];
+  uniqueKeys: UniqueKey[];
   position: { x: number; y: number };
   comment?: string;
 }

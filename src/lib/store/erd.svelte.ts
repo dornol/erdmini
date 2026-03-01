@@ -1,4 +1,4 @@
-import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table } from '$lib/types/erd';
+import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, UniqueKey } from '$lib/types/erd';
 
 const LS_KEY = 'erdmini_schema';
 
@@ -51,6 +51,10 @@ function loadFromStorage(): ERDSchema {
     if (!parsed.domains) parsed.domains = [];
     // Migrate legacy single-column FK format
     migrateFK(parsed);
+    // Migrate older schemas that lack uniqueKeys
+    for (const table of parsed.tables) {
+      if (!table.uniqueKeys) table.uniqueKeys = [];
+    }
     return parsed;
   } catch {
     return defaultSchema();
@@ -68,6 +72,7 @@ class ERDStore {
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
   hoveredColumnInfo = $state<{ tableId: string; columnId: string } | null>(null);
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
+  hoveredUkInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
   storageFull = $state(false);
 
   // Undo/Redo
@@ -166,6 +171,7 @@ class ERDStore {
         },
       ],
       foreignKeys: [],
+      uniqueKeys: [],
       position: { x: worldX - 100, y: worldY - 60 },
     };
     this.schema.tables = [...this.schema.tables, newTable];
@@ -261,6 +267,10 @@ class ERDStore {
     table.columns = table.columns.filter((c) => c.id !== columnId);
     // Remove FKs that reference this column (in same table)
     table.foreignKeys = table.foreignKeys.filter((fk) => !fk.columnIds.includes(columnId));
+    // Remove UniqueKeys that reference this column
+    if (table.uniqueKeys) {
+      table.uniqueKeys = table.uniqueKeys.filter((uk) => !uk.columnIds.includes(columnId));
+    }
     // Remove FKs in other tables that reference this column
     for (const t of this.schema.tables) {
       if (t.id === tableId) continue;
@@ -334,6 +344,25 @@ class ERDStore {
     this.schema.updatedAt = now();
   }
 
+  addUniqueKey(tableId: string, columnIds: string[], name?: string) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    const uk: UniqueKey = {
+      id: generateId(),
+      columnIds,
+      name: name || undefined,
+    };
+    table.uniqueKeys = [...table.uniqueKeys, uk];
+    this.schema.updatedAt = now();
+  }
+
+  deleteUniqueKey(tableId: string, ukId: string) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    table.uniqueKeys = table.uniqueKeys.filter((uk) => uk.id !== ukId);
+    this.schema.updatedAt = now();
+  }
+
   // Domain CRUD
   addDomain(fields: Omit<ColumnDomain, 'id'>) {
     const domain: ColumnDomain = { id: generateId(), ...fields };
@@ -404,6 +433,7 @@ class ERDStore {
       name: newName,
       columns: src.columns.map((c) => ({ ...c, id: generateId() })),
       foreignKeys: [],
+      uniqueKeys: [],
       position: { x: src.position.x + 30, y: src.position.y + 30 },
       comment: src.comment,
     };
@@ -416,6 +446,9 @@ class ERDStore {
   loadSchema(schema: ERDSchema) {
     if (!schema.domains) schema.domains = [];
     migrateFK(schema);
+    for (const table of schema.tables) {
+      if (!table.uniqueKeys) table.uniqueKeys = [];
+    }
     this.schema = schema;
     this.schema.updatedAt = new Date().toISOString();
     this.selectedTableId = null;

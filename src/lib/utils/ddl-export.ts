@@ -86,6 +86,22 @@ function createTableSql(table: Table, dialect: Dialect): string {
     lines.push(`  UNIQUE (${q(col.name, dialect)})`);
   }
 
+  // Composite unique keys
+  if (table.uniqueKeys) {
+    for (const uk of table.uniqueKeys) {
+      const ukColNames = uk.columnIds
+        .map((id) => table.columns.find((c) => c.id === id))
+        .filter((c) => c != null)
+        .map((c) => q(c.name, dialect));
+      if (ukColNames.length < 2) continue;
+      if (uk.name) {
+        lines.push(`  CONSTRAINT ${q(uk.name, dialect)} UNIQUE (${ukColNames.join(', ')})`);
+      } else {
+        lines.push(`  UNIQUE (${ukColNames.join(', ')})`);
+      }
+    }
+  }
+
   let trailer: string;
   if (dialect === 'mysql' || dialect === 'mariadb') {
     const comment = table.comment

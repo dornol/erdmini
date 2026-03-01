@@ -1,4 +1,4 @@
-import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table } from '$lib/types/erd';
+import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, UniqueKey } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
 
 function generateId(): string {
@@ -106,11 +106,18 @@ interface MSSQLAlterFK {
   refColumns: string[];
 }
 
+interface MSSQLAlterUQ {
+  tableName: string;
+  columns: string[];
+  name?: string;
+}
+
 interface MSSQLPreprocessResult {
   statements: string[];
   tableComments: Map<string, string>;
   colComments: Map<string, Map<string, string>>;
   alterFKs: MSSQLAlterFK[];
+  alterUQs: MSSQLAlterUQ[];
 }
 
 /** Unwrap MSSQL default parens: DEFAULT ((0)) → DEFAULT 0, DEFAULT (getdate()) → DEFAULT getdate() */
@@ -298,6 +305,7 @@ function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
   const tableComments = new Map<string, string>();
   const colComments = new Map<string, Map<string, string>>();
   const alterFKs: MSSQLAlterFK[] = [];
+  const alterUQs: MSSQLAlterUQ[] = [];
   const statements: string[] = [];
   const seenStmts = new Set<string>();
 
@@ -343,6 +351,22 @@ function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
         refTable: alterFKMatch[3],
         refColumns: alterFKMatch[4].split(',').map((s: string) => s.replace(/[\[\]]/g, '').trim()),
       });
+      continue;
+    }
+
+    // Extract ALTER TABLE UNIQUE via regex
+    const alterUQMatch = trimmed.match(
+      /alter\s+table\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?\s+add\s+(?:constraint\s+(\S+)\s+)?unique\s*(?:nonclustered\s*)?\(([^)]+)\)/i,
+    );
+    if (alterUQMatch) {
+      const cols = alterUQMatch[3].split(',').map((s: string) => s.replace(/[\[\]]/g, '').trim());
+      if (cols.length >= 2) {
+        alterUQs.push({
+          tableName: alterUQMatch[1],
+          columns: cols,
+          name: alterUQMatch[2]?.replace(/[\[\]]/g, ''),
+        });
+      }
       continue;
     }
 
@@ -439,7 +463,7 @@ function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
     }
   }
 
-  return { statements, tableComments, colComments, alterFKs };
+  return { statements, tableComments, colComments, alterFKs, alterUQs };
 }
 
 function cleanMSSQLStatement(sql: string): string {
@@ -509,11 +533,13 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
   let stmts: any[];
   let mssqlComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null = null;
   let mssqlAlterFKs: MSSQLAlterFK[] = [];
+  let mssqlAlterUQs: MSSQLAlterUQ[] = [];
 
   if (dialect === 'mssql') {
     const preprocessed = preprocessMSSQL(sql);
     mssqlComments = { tableComments: preprocessed.tableComments, colComments: preprocessed.colComments };
     mssqlAlterFKs = preprocessed.alterFKs;
+    mssqlAlterUQs = preprocessed.alterUQs;
     stmts = [];
     for (const stmtSql of preprocessed.statements) {
       try {
@@ -604,6 +630,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       const columns: Column[] = [];
       const primaryKeys: string[] = [];
       const uniqueColumns: string[] = [];
+      const compositeUniqueGroups: { columns: string[]; name?: string }[] = [];
       const foreignKeys: ParsedFK[] = [];
       const defs = stmt.create_definitions ?? [];
 
@@ -651,8 +678,14 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
               primaryKeys.push(extractColumnName(d.column));
             }
           } else if (ct.includes('UNIQUE')) {
-            for (const d of def.definition ?? []) {
-              uniqueColumns.push(extractColumnName(d.column));
+            const uqCols = (def.definition ?? []).map((d: any) => extractColumnName(d.column));
+            const uqName = def.constraint?.length > 0 ? def.constraint : undefined;
+            if (uqCols.length >= 2) {
+              compositeUniqueGroups.push({ columns: uqCols, name: uqName });
+            } else {
+              for (const c of uqCols) {
+                uniqueColumns.push(c);
+              }
             }
           } else if (ct === 'FOREIGN KEY') {
             const fkCols = def.definition ?? [];
@@ -700,11 +733,27 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       const col = tableIdx % GRID_COLS;
       const row = Math.floor(tableIdx / GRID_COLS);
 
+      // Resolve composite unique keys
+      const uniqueKeys: UniqueKey[] = [];
+      for (const group of compositeUniqueGroups) {
+        const colIds = group.columns
+          .map((name) => columns.find((c) => c.name === name)?.id)
+          .filter((id): id is string => !!id);
+        if (colIds.length >= 2) {
+          uniqueKeys.push({
+            id: generateId(),
+            columnIds: colIds,
+            name: group.name,
+          });
+        }
+      }
+
       const table: Table = {
         id: generateId(),
         name: tableName,
         columns,
         foreignKeys: [],
+        uniqueKeys,
         position: { x: 40 + col * GRID_GAP_X, y: 40 + row * GRID_GAP_Y },
         comment: tableComment,
       };
@@ -802,6 +851,22 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       onDelete: 'RESTRICT',
       onUpdate: 'RESTRICT',
     });
+  }
+
+  // Apply MSSQL ALTER TABLE UNIQUE constraints
+  for (const auq of mssqlAlterUQs) {
+    const srcTable = tables.find((t) => t.name === auq.tableName);
+    if (!srcTable) continue;
+    const colIds = auq.columns
+      .map((name) => srcTable.columns.find((c) => c.name === name)?.id)
+      .filter((id): id is string => !!id);
+    if (colIds.length >= 2) {
+      srcTable.uniqueKeys.push({
+        id: generateId(),
+        columnIds: colIds,
+        name: auq.name,
+      });
+    }
   }
 
   // Apply MSSQL sp_addextendedproperty comments

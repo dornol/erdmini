@@ -17,6 +17,9 @@
   // Set of column IDs that are FK source columns
   let fkSourceIds = $derived(new Set(table.foreignKeys.flatMap((fk) => fk.columnIds)));
 
+  // Set of column IDs that are part of composite unique keys
+  let uniqueKeyColIds = $derived(new Set((table.uniqueKeys ?? []).flatMap((uk) => uk.columnIds)));
+
   function onHeaderDblClick() {
     isEditing = true;
     editName = table.name;
@@ -143,10 +146,11 @@
         (hfk.sourceTableId === table.id && hfk.sourceColumnIds.includes(col.id)) ||
         (hfk.refTableId === table.id && hfk.refColumnIds.includes(col.id))
       )}
+      {@const isUkHighlighted = erdStore.hoveredUkInfo?.tableId === table.id && erdStore.hoveredUkInfo.columnIds.includes(col.id)}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="column-row"
-        class:fk-highlighted={isFkHighlighted}
+        class:fk-highlighted={isFkHighlighted || isUkHighlighted}
         ondblclick={(e) => onColumnDblClick(e, col.id)}
         onmouseenter={() => {
           erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id };
@@ -189,9 +193,9 @@
         </span>
 
         <!-- Attribute badges: UQ / AI -->
-        {#if (col.unique && !col.primaryKey) || col.autoIncrement}
+        {#if ((col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey) || col.autoIncrement}
           <div class="col-attrs">
-            {#if col.unique && !col.primaryKey}
+            {#if (col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey}
               <span class="attr uq" title="Unique">U</span>
             {/if}
             {#if col.autoIncrement}
@@ -222,7 +226,7 @@
             {#if fk && refTable && refCol}
               <span class="tt-badge fk">FK → {refTable.name}.{refCol.name}</span>
             {/if}
-            {#if col.unique && !col.primaryKey}
+            {#if (col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey}
               <span class="tt-badge uq">Unique</span>
             {/if}
             {#if col.autoIncrement}
