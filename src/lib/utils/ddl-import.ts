@@ -785,7 +785,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
             id: generateId(),
             name: colName,
             type,
-            nullable,
+            nullable: isPK ? false : nullable,
             primaryKey: isPK,
             unique: isUnique,
             autoIncrement: autoInc,
@@ -821,7 +821,10 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
 
       // Apply table-level PK/UNIQUE to columns
       for (const col of columns) {
-        if (primaryKeys.includes(col.name)) col.primaryKey = true;
+        if (primaryKeys.includes(col.name)) {
+          col.primaryKey = true;
+          col.nullable = false;
+        }
         if (uniqueColumns.includes(col.name)) col.unique = true;
       }
 

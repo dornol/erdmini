@@ -281,6 +281,8 @@ class ERDStore {
   updateColumn(tableId: string, columnId: string, patch: Partial<Column>) {
     const table = this.schema.tables.find((t) => t.id === tableId);
     if (!table) return;
+    // PK implies NOT NULL
+    if (patch.primaryKey) patch.nullable = false;
     table.columns = table.columns.map((c) =>
       c.id === columnId ? { ...c, ...patch } : c
     );
