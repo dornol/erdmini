@@ -1,11 +1,13 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
   import type { TableColorId } from '$lib/constants/table-colors';
   import { themeStore } from '$lib/store/theme.svelte';
+  import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
 
   let { table }: { table: Table } = $props();
 
@@ -117,6 +119,7 @@
 <div
   class="table-card"
   class:selected={isSelected}
+  class:fk-dragging={fkDragStore.active}
   style="left: {table.position.x}px; top: {table.position.y}px; cursor: {isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}"
   onmousedown={onMouseDown}
   onmouseenter={() => (isHovered = true)}
@@ -152,7 +155,7 @@
 
   <!-- Columns -->
   <div class="column-list">
-    {#each table.columns as col (col.id)}
+    {#each table.columns as col, colIdx (col.id)}
       {@const fk = table.foreignKeys.find((f) => f.columnIds.includes(col.id))}
       {@const fkPairIdx = fk ? fk.columnIds.indexOf(col.id) : -1}
       {@const refTable = fk ? erdStore.schema.tables.find((t) => t.id === fk.referencedTableId) : undefined}
@@ -163,10 +166,14 @@
       )}
       {@const isUkHighlighted = erdStore.hoveredUkInfo?.tableId === table.id && erdStore.hoveredUkInfo.columnIds.includes(col.id)}
       {@const isIdxHighlighted = erdStore.hoveredIdxInfo?.tableId === table.id && erdStore.hoveredIdxInfo.columnIds.includes(col.id)}
+      {@const isFkDragTarget = fkDragStore.active && fkDragStore.targetTableId === table.id && fkDragStore.targetColumnId === col.id}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="column-row"
         class:fk-highlighted={isFkHighlighted || isUkHighlighted || isIdxHighlighted}
+        class:fk-drag-target={isFkDragTarget}
+        data-table-id={table.id}
+        data-column-id={col.id}
         ondblclick={(e) => onColumnDblClick(e, col.id)}
         onmouseenter={() => {
           erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id };
@@ -222,6 +229,21 @@
             {/if}
           </div>
         {/if}
+
+        <!-- FK drag handle -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="fk-handle"
+          title={m.fk_drag_hint()}
+          onmousedown={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const commentH = table.comment ? 26 : 0;
+            const sx = table.position.x + TABLE_W;
+            const sy = table.position.y + HEADER_H + commentH + colIdx * ROW_H + ROW_H / 2;
+            fkDragStore.begin(table.id, col.id, sx, sy);
+          }}
+        ></div>
 
         <!-- Tooltip (shown via CSS :hover) -->
         <div class="col-tooltip">
@@ -473,6 +495,43 @@
     font-size: 12px;
     color: var(--erd-no-col-text);
     font-style: italic;
+  }
+
+  /* ── FK drag handle ── */
+  .fk-handle {
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--erd-badge-fk-border, #93c5fd);
+    border: 1.5px solid var(--erd-badge-fk-text, #1e40af);
+    opacity: 0;
+    cursor: crosshair;
+    transition: opacity 0.12s, transform 0.12s;
+    z-index: 10;
+  }
+
+  .column-row:hover .fk-handle {
+    opacity: 0.7;
+  }
+
+  .fk-handle:hover {
+    opacity: 1 !important;
+    transform: translateY(-50%) scale(1.3);
+  }
+
+  .column-row.fk-drag-target {
+    background: var(--erd-badge-fk-bg, #dbeafe);
+    outline: 2px solid var(--erd-badge-fk-border, #93c5fd);
+    outline-offset: -2px;
+  }
+
+  /* Hide tooltips while FK dragging */
+  .table-card.fk-dragging .col-tooltip {
+    display: none !important;
   }
 
   /* ── Tooltip ── */

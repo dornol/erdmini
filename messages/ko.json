@@ -206,5 +206,6 @@
   "table_group": "그룹",
   "table_group_placeholder": "그룹명...",
   "sidebar_ungrouped": "미분류",
-  "sidebar_group_by": "그룹"
+  "sidebar_group_by": "그룹",
+  "fk_drag_hint": "FK 연결 드래그"
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
@@ -268,4 +269,43 @@
       fill={lineColors.bg}
     />
   {/each}
+
+  <!-- FK drag preview line -->
+  {#if fkDragStore.active}
+    {@const dragColor = lineColors.hover}
+    <line
+      x1={fkDragStore.startX}
+      y1={fkDragStore.startY}
+      x2={fkDragStore.currentX}
+      y2={fkDragStore.currentY}
+      stroke={dragColor}
+      stroke-width="2"
+      stroke-dasharray="6 4"
+    />
+    <circle
+      cx={fkDragStore.startX}
+      cy={fkDragStore.startY}
+      r="4"
+      fill={dragColor}
+    />
+    {#if fkDragStore.targetTableId && fkDragStore.targetColumnId}
+      {@const tgtTable = erdStore.schema.tables.find((t) => t.id === fkDragStore.targetTableId)}
+      {#if tgtTable}
+        {@const tgtColIdx = tgtTable.columns.findIndex((c) => c.id === fkDragStore.targetColumnId)}
+        {#if tgtColIdx >= 0}
+          {@const commentH = tgtTable.comment ? 26 : 0}
+          {@const snapX = tgtTable.position.x}
+          {@const snapY = tgtTable.position.y + HEADER_H + commentH + tgtColIdx * ROW_H + ROW_H / 2}
+          <circle
+            cx={snapX}
+            cy={snapY}
+            r="5"
+            fill="none"
+            stroke={dragColor}
+            stroke-width="2"
+          />
+        {/if}
+      {/if}
+    {/if}
+  {/if}
 </svg>

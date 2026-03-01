@@ -1,5 +1,6 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
+  import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
   import * as m from '$lib/paraglide/messages';
@@ -53,21 +54,65 @@
   }
 
   function onMouseMove(e: MouseEvent) {
+    if (fkDragStore.active) {
+      fkDragStore.updateCursor(e.clientX, e.clientY, viewportEl);
+      // Detect target column under cursor
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const colEl = el?.closest('[data-column-id]') as HTMLElement | null;
+      if (colEl) {
+        const tId = colEl.getAttribute('data-table-id');
+        const cId = colEl.getAttribute('data-column-id');
+        if (tId && cId && tId !== fkDragStore.sourceTableId) {
+          fkDragStore.setTarget(tId, cId);
+        } else {
+          fkDragStore.setTarget(null, null);
+        }
+      } else {
+        fkDragStore.setTarget(null, null);
+      }
+      return;
+    }
     if (!isPanning) return;
     canvasState.x = e.clientX - panStart.x;
     canvasState.y = e.clientY - panStart.y;
   }
 
   function onMouseUp() {
+    if (fkDragStore.active) {
+      const { sourceTableId, sourceColumnId, targetTableId, targetColumnId } = fkDragStore;
+      if (targetTableId && targetColumnId) {
+        // Check for duplicate FK
+        const srcTable = erdStore.schema.tables.find((t) => t.id === sourceTableId);
+        const isDuplicate = srcTable?.foreignKeys.some(
+          (fk) =>
+            fk.columnIds.includes(sourceColumnId) &&
+            fk.referencedTableId === targetTableId &&
+            fk.referencedColumnIds.includes(targetColumnId)
+        );
+        if (!isDuplicate) {
+          erdStore.addForeignKey(sourceTableId, [sourceColumnId], targetTableId, [targetColumnId]);
+        }
+      }
+      fkDragStore.cancel();
+      return;
+    }
     isPanning = false;
+  }
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && fkDragStore.active) {
+      fkDragStore.cancel();
+    }
   }
 
   $effect(() => {
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('keydown', onKeyDown);
     };
   });
 
@@ -116,7 +161,7 @@
   onmousedown={onMouseDown}
   oncontextmenu={onContextMenu}
   data-theme={themeStore.current}
-  style="cursor: {isPanning ? 'grabbing' : 'default'}"
+  style="cursor: {fkDragStore.active ? 'crosshair' : isPanning ? 'grabbing' : 'default'}"
 >
   <div
     class="canvas-world"

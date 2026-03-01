@@ -206,5 +206,6 @@
   "table_group": "Group",
   "table_group_placeholder": "Group name...",
   "sidebar_ungrouped": "Ungrouped",
-  "sidebar_group_by": "Group"
+  "sidebar_group_by": "Group",
+  "fk_drag_hint": "Drag to create FK"
 }
