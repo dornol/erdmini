@@ -263,7 +263,7 @@
     position: absolute;
     min-width: 220px;
     background: var(--erd-card-bg);
-    border: var(--erd-card-border-width) solid var(--erd-card-border);
+    border: var(--erd-card-border-width) var(--erd-card-border-style, solid) var(--erd-card-border);
     border-radius: var(--erd-card-radius);
     box-shadow: var(--erd-card-shadow);
     user-select: none;
@@ -295,6 +295,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-transform: var(--erd-header-text-transform, none);
+    letter-spacing: var(--erd-header-letter-spacing, normal);
   }
 
   .name-input {

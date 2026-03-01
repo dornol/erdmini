@@ -149,6 +149,11 @@
   .canvas-viewport[data-theme="modern"] {
     --erd-canvas-bg: #f8fafc;
     --erd-canvas-dot: #cbd5e1;
+    --erd-card-border-style: solid;
+    --erd-header-text-transform: none;
+    --erd-header-letter-spacing: normal;
+    background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+    background-size: 24px 24px;
     --erd-card-bg: white;
     --erd-card-border: #e2e8f0;
     --erd-card-border-width: 2px;
@@ -214,10 +219,18 @@
   }
 
   /* ── Theme: Classic ── */
-  /* 각진 모서리, 종이 톤, 고전 ERD 느낌 */
+  /* 각진 모서리, 종이 톤, 격자선 패턴, 이중 테두리 */
   .canvas-viewport[data-theme="classic"] {
     --erd-canvas-bg: #f5f0e4;
     --erd-canvas-dot: #d4c9b8;
+    --erd-card-border-style: double;
+    --erd-card-border-width: 3px;
+    --erd-header-text-transform: none;
+    --erd-header-letter-spacing: 0.02em;
+    background-image:
+      linear-gradient(to right, #d4c9b8 1px, transparent 1px),
+      linear-gradient(to bottom, #d4c9b8 1px, transparent 1px);
+    background-size: 32px 32px;
     --erd-card-bg: #fdfaf3;
     --erd-card-border: #b8a080;
     --erd-card-border-width: 1.5px;
@@ -283,10 +296,19 @@
   }
 
   /* ── Theme: Blueprint ── */
-  /* 직각, 얇은 윤곽선, 설계도 스타일 */
+  /* 직각, 점선 테두리, 이중 격자 패턴, 설계도 스타일 */
   .canvas-viewport[data-theme="blueprint"] {
     --erd-canvas-bg: #0c1a30;
     --erd-canvas-dot: #1a3050;
+    --erd-card-border-style: dashed;
+    --erd-header-text-transform: uppercase;
+    --erd-header-letter-spacing: 0.08em;
+    background-image:
+      linear-gradient(to right, #1a3050 1px, transparent 1px),
+      linear-gradient(to bottom, #1a3050 1px, transparent 1px),
+      linear-gradient(to right, rgba(26, 48, 80, 0.4) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(26, 48, 80, 0.4) 1px, transparent 1px);
+    background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
     --erd-card-bg: rgba(16, 36, 66, 0.85);
     --erd-card-border: #2a5a8f;
     --erd-card-border-width: 1px;
@@ -352,10 +374,15 @@
   }
 
   /* ── Theme: Minimal ── */
-  /* 약간 둥근, 최소 그림자, 깔끔한 라이트 톤 */
+  /* 패턴 없음, hairline 테두리, 그림자 없음, 울트라 클린 */
   .canvas-viewport[data-theme="minimal"] {
     --erd-canvas-bg: #fafafa;
     --erd-canvas-dot: #e5e5e5;
+    --erd-card-border-style: solid;
+    --erd-card-shadow: none;
+    --erd-header-text-transform: none;
+    --erd-header-letter-spacing: normal;
+    background-image: none;
     --erd-card-bg: white;
     --erd-card-border: #e5e5e5;
     --erd-card-border-width: 1px;
@@ -425,9 +452,6 @@
     flex: 1;
     overflow: hidden;
     background-color: var(--erd-canvas-bg);
-    background-image:
-      radial-gradient(circle, var(--erd-canvas-dot) 1px, transparent 1px);
-    background-size: 24px 24px;
   }
 
   .canvas-world {

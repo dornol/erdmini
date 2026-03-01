@@ -4,11 +4,11 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
 
-  const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string }> = {
-    modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc' },
-    classic:   { normal: '#b0a08a', hover: '#b8860b', bg: '#f5f0e4' },
-    blueprint: { normal: '#3a7ac0', hover: '#60a5fa', bg: '#0c1a30' },
-    minimal:   { normal: '#d4d4d4', hover: '#737373', bg: '#fafafa' },
+  const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string; dash: string }> = {
+    modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc', dash: '' },
+    classic:   { normal: '#b0a08a', hover: '#b8860b', bg: '#f5f0e4', dash: '' },
+    blueprint: { normal: '#3a7ac0', hover: '#60a5fa', bg: '#0c1a30', dash: '6,4' },
+    minimal:   { normal: '#d4d4d4', hover: '#737373', bg: '#fafafa', dash: '2,3' },
   };
 
   let lineColors = $derived(THEME_COLORS[themeStore.current] ?? THEME_COLORS.modern);
@@ -219,7 +219,7 @@
       fill="none"
       stroke={color}
       stroke-width={isHovered ? 3 : 2}
-      stroke-dasharray={line.isNullable ? '6 3' : 'none'}
+      stroke-dasharray={line.isNullable ? '6 3' : lineColors.dash || 'none'}
     />
 
     <!-- Cardinality label at midpoint -->
