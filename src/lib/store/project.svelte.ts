@@ -208,6 +208,29 @@ class ProjectStore {
     }
   }
 
+  createProjectWithSchema(name: string, schema: ERDSchema) {
+    // Save current project first
+    this.saveCurrentSchema();
+    const id = generateId();
+    const ts = now();
+    const meta: ProjectMeta = {
+      id,
+      name: name || 'Shared Project',
+      createdAt: ts,
+      updatedAt: ts,
+      lastOpenedAt: ts,
+    };
+    this.index.projects = [...this.index.projects, meta];
+    this.index.activeProjectId = id;
+    window.localStorage.setItem(schemaKey(id), JSON.stringify(schema));
+    this.saveIndex();
+    canvasState.x = 0;
+    canvasState.y = 0;
+    canvasState.scale = 1;
+    erdStore.clearHistory();
+    erdStore.loadSchema(schema);
+  }
+
   duplicateProject(id: string) {
     const src = this.index.projects.find((p) => p.id === id);
     if (!src) return;

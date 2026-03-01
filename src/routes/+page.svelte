@@ -270,7 +270,7 @@
     return () => window.removeEventListener('resize', handleResize);
   });
 
-  // Load shared schema from URL hash (#s=...)
+  // Load shared schema from URL hash (#s=...) as a new project
   $effect(() => {
     const shareData = getShareDataFromUrl();
     if (!shareData) return;
@@ -280,15 +280,12 @@
     (async () => {
       try {
         const schema = await shareStringToSchema(shareData);
-        if (erdStore.schema.tables.length > 0) {
-          const ok = await dialogStore.confirm(m.share_load_confirm(), {
-            title: m.share_load_title(),
-            confirmText: m.import_replace(),
-            variant: 'danger',
-          });
-          if (!ok) return;
-        }
-        erdStore.loadSchema(schema);
+        // Derive project name from table names, fallback to generic
+        const tableSummary = schema.tables.slice(0, 3).map((t) => t.name).join(', ');
+        const name = tableSummary
+          ? `Shared: ${tableSummary}${schema.tables.length > 3 ? '…' : ''}`
+          : 'Shared Project';
+        projectStore.createProjectWithSchema(name, schema);
       } catch {
         // Invalid share data — silently ignore
       }
