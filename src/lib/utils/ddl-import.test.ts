@@ -372,4 +372,56 @@ describe('importDDL — MSSQL', () => {
     expect(table.uniqueKeys.length).toBe(1);
     expect(table.uniqueKeys[0].columnIds).toHaveLength(2);
   });
+
+  it('handles SSMS-generated DDL with WITH/ON clauses on UNIQUE constraints', async () => {
+    const sql = `
+CREATE TABLE [dbo].[Users](
+	[UserId] [int] IDENTITY(1,1) NOT NULL,
+	[Email] [nvarchar](255) NOT NULL,
+	[Username] [nvarchar](100) NOT NULL,
+ CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED
+(
+	[UserId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ_Users_Email] UNIQUE NONCLUSTERED
+(
+	[Email] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    const table = result.tables[0];
+    const colNames = table.columns.map((c) => c.name);
+    expect(colNames).not.toContain('unique');
+    expect(colNames).not.toContain('UNIQUE');
+    expect(colNames).toEqual(['UserId', 'Email', 'Username']);
+    const emailCol = table.columns.find((c) => c.name === 'Email')!;
+    expect(emailCol.unique).toBe(true);
+  });
+
+  it('handles multiple tables with UNIQUE, FK, and DEFAULT', async () => {
+    const sql = `
+CREATE TABLE [dbo].[Products](
+	[ProductId] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](200) NOT NULL,
+	[Code] [nvarchar](50) NOT NULL,
+	[Status] [nvarchar](20) NOT NULL DEFAULT (N'active'),
+ CONSTRAINT [PK_Products] PRIMARY KEY CLUSTERED ([ProductId] ASC)
+ WITH (PAD_INDEX = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ_Products_Code] UNIQUE NONCLUSTERED ([Code] ASC)
+ WITH (PAD_INDEX = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ_Products_Name] UNIQUE NONCLUSTERED ([Name] ASC)
+ WITH (PAD_INDEX = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    const table = result.tables[0];
+    const colNames = table.columns.map((c) => c.name);
+    expect(colNames).not.toContain('unique');
+    expect(colNames).toEqual(['ProductId', 'Name', 'Code', 'Status']);
+    expect(table.columns.find((c) => c.name === 'Code')!.unique).toBe(true);
+    expect(table.columns.find((c) => c.name === 'Name')!.unique).toBe(true);
+  });
 });

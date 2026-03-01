@@ -450,7 +450,8 @@ function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
       cleaned = cleaned.replace(fkPattern, '');
 
       // Extract and strip table-level UNIQUE constraints (parser misparses them as columns)
-      const uqPattern = /,?\s*\bunique\s*\(([^)]+)\)/gi;
+      // Handles: UNIQUE (col), UNIQUE name (col), UNIQUE INDEX name (col), etc.
+      const uqPattern = /,?\s*\bunique\b[^(,)]*\(([^)]+)\)/gi;
       let uqMatch: RegExpExecArray | null;
       while ((uqMatch = uqPattern.exec(cleaned)) !== null) {
         if (tblName) {
@@ -461,6 +462,9 @@ function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
         }
       }
       cleaned = cleaned.replace(uqPattern, '');
+
+      // Also strip any bare UNIQUE keyword left without parens
+      cleaned = cleaned.replace(/,?\s*\bunique\s*(?=\s*[,)])/gi, '');
 
       // Also strip any remaining inline references (now that FKs are extracted)
       cleaned = cleaned.replace(/\breferences\s+\w+\s*(\([^)]*\))?\s*/gi, '');
@@ -490,8 +494,11 @@ function cleanMSSQLStatement(sql: string): string {
   // Strip all DEFAULT clauses entirely (nuclear option for stubborn expressions)
   sql = sql.replace(/\bDEFAULT\s+(?:'[^']*'|\w+\([^)]*\)|[\w.]+)/gi, '');
 
-  // Remove empty unique/pk parens: unique () / primary key ()
-  sql = sql.replace(/\b(unique|primary\s+key)\s*\(\s*\)/gi, '$1');
+  // Remove table-level UNIQUE constraints (with or without content, parser misidentifies them)
+  sql = sql.replace(/,?\s*\bunique\s*\([^)]*\)/gi, '');
+
+  // Remove bare UNIQUE keyword left as table-level entry (no parens)
+  sql = sql.replace(/,?\s*\bunique\s*(?=\s*[,)])/gi, '');
 
   // Fix trailing comma before closing paren
   sql = sql.replace(/,(\s*\n?\s*\))/g, '$1');
@@ -769,6 +776,8 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       for (const def of defs) {
         if (def.resource === 'column') {
           const colName = extractColumnName(def.column?.column);
+          // Skip false columns from parser misidentifying SQL keywords as column names
+          if (/^(unique|primary|key|foreign|constraint|check|index|references)$/i.test(colName)) continue;
           const rawType = def.definition?.dataType ?? 'VARCHAR';
           const length = def.definition?.length ?? undefined;
           const warnsBefore = _typeWarnings.length;
