@@ -1,15 +1,12 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
-  import { COLUMN_TYPES, DOMAIN_FIELDS } from '$lib/types/erd';
-  import type { Column } from '$lib/types/erd';
   import FkModal from './FkModal.svelte';
   import UniqueKeyModal from './UniqueKeyModal.svelte';
   import IndexModal from './IndexModal.svelte';
   import * as m from '$lib/paraglide/messages';
-  import SearchableSelect from './SearchableSelect.svelte';
   import { TABLE_COLOR_IDS, TABLE_COLORS } from '$lib/constants/table-colors';
-  import { themeStore } from '$lib/store/theme.svelte';
   import { now } from '$lib/utils/common';
 
   let selectedTable = $derived(erdStore.selectedTable);
@@ -26,6 +23,9 @@
   let existingGroups = $derived(
     [...new Set(erdStore.schema.tables.map((t) => t.group).filter(Boolean))] as string[]
   );
+
+  // Color & Group section collapsible (collapsed by default)
+  let colorGroupExpanded = $state(false);
 
   $effect(() => {
     if (selectedTable) {
@@ -56,33 +56,6 @@
     if (capturedTableId) {
       erdStore.updateTableGroup(capturedTableId, tableGroupInput.trim() || undefined);
     }
-  }
-
-  function onColumnChange(col: Column, field: keyof Column, value: unknown) {
-    if (!selectedTable) return;
-    const patch: Partial<Column> = { [field]: value };
-    // Unlink domain if user manually overrides a domain-managed field
-    if (col.domainId && DOMAIN_FIELDS.includes(field)) {
-      patch.domainId = undefined;
-    }
-    erdStore.updateColumn(selectedTable.id, col.id, patch);
-  }
-
-  // Domain apply — stores the domainId so future domain updates propagate
-  function applyDomain(colId: string, domainId: string) {
-    if (!selectedTable) return;
-    const domain = erdStore.schema.domains.find((d) => d.id === domainId);
-    if (!domain) return;
-    erdStore.updateColumn(selectedTable.id, colId, {
-      domainId,
-      type: domain.type,
-      length: domain.length,
-      nullable: domain.nullable,
-      primaryKey: domain.primaryKey,
-      unique: domain.unique,
-      autoIncrement: domain.autoIncrement,
-      defaultValue: domain.defaultValue,
-    });
   }
 
   // FK modal
@@ -117,8 +90,6 @@
     };
   }
 
-  let hasDomains = $derived(erdStore.schema.domains.length > 0);
-
   // Column drag reorder
   let dragColId = $state<string | null>(null);
   let dragOverIdx = $state<number | null>(null);
@@ -149,6 +120,41 @@
   function onDragEnd() {
     dragColId = null;
     dragOverIdx = null;
+  }
+
+  // Add column and immediately open popup for editing
+  let addBtnEl: HTMLButtonElement;
+
+  async function addColumnAndEdit() {
+    const newColId = erdStore.addColumn(selectedTable!.id);
+    if (!newColId) return;
+    await tick();
+    const rect = addBtnEl.getBoundingClientRect();
+    erdStore.editingColumnInfo = {
+      tableId: selectedTable!.id,
+      columnId: newColId,
+      anchorX: rect.left,
+      anchorY: rect.top,
+    };
+  }
+
+  // Open popup for existing column
+  function openColumnPopup(colId: string, e: MouseEvent) {
+    if (!selectedTable) return;
+    const row = (e.currentTarget as HTMLElement);
+    const rect = row.getBoundingClientRect();
+    erdStore.editingColumnInfo = {
+      tableId: selectedTable.id,
+      columnId: colId,
+      anchorX: rect.left,
+      anchorY: rect.top + rect.height / 2,
+    };
+  }
+
+  // Check if column is referenced by any FK
+  function isFK(colId: string): boolean {
+    if (!selectedTable) return false;
+    return selectedTable.foreignKeys.some((fk) => fk.columnIds.includes(colId));
   }
 </script>
 
@@ -193,61 +199,77 @@
       />
     </div>
 
-    <!-- Color & Group -->
+    <!-- Color & Group (collapsible) -->
     <div class="section color-group-section">
-      <!-- svelte-ignore a11y_label_has_associated_control -->
-      <label class="field-label">{m.table_color()}</label>
-      <div class="color-dots">
-        <button
-          class="color-dot color-dot-none"
-          class:active={!selectedTable.color}
-          title={m.table_color_none()}
-          onclick={() => erdStore.updateTableColor(selectedTable!.id, undefined)}
-        >
-          {#if !selectedTable.color}<span class="dot-check">✓</span>{/if}
-        </button>
-        {#each TABLE_COLOR_IDS as colorId}
-          <button
-            class="color-dot"
-            class:active={selectedTable.color === colorId}
-            style="background:{TABLE_COLORS[colorId].dot}"
-            title={colorId}
-            onclick={() => erdStore.updateTableColor(selectedTable!.id, colorId)}
-          >
-            {#if selectedTable.color === colorId}<span class="dot-check">✓</span>{/if}
-          </button>
-        {/each}
+      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
+      <div class="cg-header" onclick={() => (colorGroupExpanded = !colorGroupExpanded)}>
+        <span class="cg-toggle">{colorGroupExpanded ? '▼' : '▶'}</span>
+        <span class="cg-label">{m.table_color()} & {m.table_group()}</span>
+        {#if !colorGroupExpanded}
+          {#if selectedTable.color}
+            <span class="cg-dot" style="background:{TABLE_COLORS[selectedTable.color]?.dot ?? '#ccc'}"></span>
+          {/if}
+          {#if selectedTable.group}
+            <span class="cg-group-text">{selectedTable.group}</span>
+          {/if}
+        {/if}
       </div>
 
-      <label class="field-label" for="tbl-group" style="margin-top:8px">{m.table_group()}</label>
-      <input
-        id="tbl-group"
-        class="text-input"
-        list="group-list"
-        bind:value={tableGroupInput}
-        oninput={saveGroup}
-        onblur={saveGroup}
-        placeholder={m.table_group_placeholder()}
-      />
-      <datalist id="group-list">
-        {#each existingGroups as g}
-          <option value={g}></option>
-        {/each}
-      </datalist>
+      {#if colorGroupExpanded}
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="field-label" style="margin-top:8px">{m.table_color()}</label>
+        <div class="color-dots">
+          <button
+            class="color-dot color-dot-none"
+            class:active={!selectedTable.color}
+            title={m.table_color_none()}
+            onclick={() => erdStore.updateTableColor(selectedTable!.id, undefined)}
+          >
+            {#if !selectedTable.color}<span class="dot-check">✓</span>{/if}
+          </button>
+          {#each TABLE_COLOR_IDS as colorId}
+            <button
+              class="color-dot"
+              class:active={selectedTable.color === colorId}
+              style="background:{TABLE_COLORS[colorId].dot}"
+              title={colorId}
+              onclick={() => erdStore.updateTableColor(selectedTable!.id, colorId)}
+            >
+              {#if selectedTable.color === colorId}<span class="dot-check">✓</span>{/if}
+            </button>
+          {/each}
+        </div>
+
+        <label class="field-label" for="tbl-group" style="margin-top:8px">{m.table_group()}</label>
+        <input
+          id="tbl-group"
+          class="text-input"
+          list="group-list"
+          bind:value={tableGroupInput}
+          oninput={saveGroup}
+          onblur={saveGroup}
+          placeholder={m.table_group_placeholder()}
+        />
+        <datalist id="group-list">
+          {#each existingGroups as g}
+            <option value={g}></option>
+          {/each}
+        </datalist>
+      {/if}
     </div>
 
-    <!-- Columns -->
+    <!-- Columns (compact) -->
     <div class="section columns-section">
       <div class="section-header">
         <span class="field-label">{m.editor_columns()}</span>
-        <button class="add-col-btn" onclick={() => erdStore.addColumn(selectedTable!.id)}>
+        <button class="add-col-btn" bind:this={addBtnEl} onclick={addColumnAndEdit}>
           {m.action_add()}
         </button>
       </div>
 
       <div class="columns-list">
         {#each selectedTable.columns as col, idx (col.id)}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
           <div
             class="col-row"
             class:drag-over={dragOverIdx === idx}
@@ -258,141 +280,45 @@
             ondragover={(e) => onDragOver(e, idx)}
             ondrop={(e) => onDrop(e, idx)}
             ondragend={onDragEnd}
+            onclick={(e) => {
+              // Don't open popup if clicking drag handle or delete button
+              const target = e.target as HTMLElement;
+              if (target.closest('.drag-handle') || target.closest('.col-del-btn')) return;
+              openColumnPopup(col.id, e);
+            }}
           >
-            <!-- Drag handle + Name -->
-            <div class="col-name-row">
-              <span class="drag-handle" title={m.editor_drag_hint()}>⠿</span>
-              <input
-              class="col-input col-name"
-              value={col.name}
-              oninput={(e) => onColumnChange(col, 'name', (e.target as HTMLInputElement).value)}
-              placeholder={m.column_name()}
-            />
-            </div>
-
-            <!-- Type + Domain apply/badge -->
-            <div class="col-type-row">
-              <div class="col-type">
-                <SearchableSelect
-                  options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
-                  value={col.type}
-                  onchange={(v) => onColumnChange(col, 'type', v)}
-                  size="sm"
-                />
-              </div>
-              {#if hasDomains}
-                {#if col.domainId}
-                  {@const linkedDomain = erdStore.schema.domains.find((d) => d.id === col.domainId)}
-                  <div class="domain-badge" title={m.domain_linked_hint()}>
-                    <span class="domain-badge-name">{linkedDomain?.name ?? '?'}</span>
-                    <button
-                      class="domain-unlink"
-                      aria-label={m.domain_unlink()}
-                      onclick={() => onColumnChange(col, 'domainId', undefined)}
-                    >✕</button>
-                  </div>
-                {:else}
-                  <div class="domain-select" title={m.domain_apply()}>
-                    <SearchableSelect
-                      options={erdStore.schema.domains.map((d) => ({ value: d.id, label: d.name }))}
-                      value=""
-                      onchange={(v) => { if (v) applyDomain(col.id, v); }}
-                      placeholder={m.domain_select_placeholder()}
-                      size="sm"
-                    />
-                  </div>
-                {/if}
-              {/if}
-            </div>
-
-            <!-- Flags -->
-            <div class="col-flags">
-              <label title="Primary Key">
-                <input
-                  type="checkbox"
-                  checked={col.primaryKey}
-                  onchange={(e) => onColumnChange(col, 'primaryKey', (e.target as HTMLInputElement).checked)}
-                />
-                <span>PK</span>
-              </label>
-              <label title="Not Null">
-                <input
-                  type="checkbox"
-                  checked={!col.nullable}
-                  onchange={(e) => onColumnChange(col, 'nullable', !(e.target as HTMLInputElement).checked)}
-                />
-                <span>NN</span>
-              </label>
-              <label title="Unique">
-                <input
-                  type="checkbox"
-                  checked={col.unique}
-                  onchange={(e) => onColumnChange(col, 'unique', (e.target as HTMLInputElement).checked)}
-                />
-                <span>UQ</span>
-              </label>
-              <label title="Auto Increment">
-                <input
-                  type="checkbox"
-                  checked={col.autoIncrement}
-                  onchange={(e) => onColumnChange(col, 'autoIncrement', (e.target as HTMLInputElement).checked)}
-                />
-                <span>AI</span>
-              </label>
-            </div>
-
-            <!-- CHECK constraint -->
-            <input
-              class="col-input col-check"
-              value={col.check ?? ''}
-              oninput={(e) => onColumnChange(col, 'check', (e.target as HTMLInputElement).value || undefined)}
-              placeholder={m.column_check() + ' ' + m.optional()}
-            />
-
-            <!-- Column comment -->
-            <input
-              class="col-input col-comment"
-              value={col.comment ?? ''}
-              oninput={(e) => onColumnChange(col, 'comment', (e.target as HTMLInputElement).value || undefined)}
-              placeholder={m.column_comment() + ' ' + m.optional()}
-            />
-
-            <!-- Move up/down/delete -->
-            <div class="col-actions">
-              <button
-                class="icon-btn"
-                title={m.action_move_up()}
-                onclick={() => erdStore.moveColumnUp(selectedTable!.id, col.id)}
-              >↑</button>
-              <button
-                class="icon-btn"
-                title={m.action_move_down()}
-                onclick={() => erdStore.moveColumnDown(selectedTable!.id, col.id)}
-              >↓</button>
-              <button
-                class="icon-btn del"
-                title={m.action_delete()}
-                onclick={async () => {
-                  const table = selectedTable!;
-                  // Count FKs in this table that use this column
-                  let fkCount = table.foreignKeys.filter((fk) => fk.columnIds.includes(col.id)).length;
-                  // Count FKs in other tables that reference this column
-                  fkCount += erdStore.schema.tables
-                    .filter((t) => t.id !== table.id)
-                    .reduce((sum, t) => sum + t.foreignKeys.filter(
-                      (fk) => fk.referencedTableId === table.id && fk.referencedColumnIds.includes(col.id)
-                    ).length, 0);
-                  if (fkCount > 0) {
-                    const ok = await dialogStore.confirm(
-                      m.column_delete_fk_confirm({ count: fkCount }),
-                      { title: m.action_delete(), confirmText: m.action_delete(), variant: 'danger' }
-                    );
-                    if (!ok) return;
-                  }
-                  erdStore.deleteColumn(table.id, col.id);
-                }}
-              >✕</button>
-            </div>
+            <span class="drag-handle" title={m.editor_drag_hint()}>⠿</span>
+            {#if col.primaryKey}
+              <span class="col-badge col-badge-pk">PK</span>
+            {:else if isFK(col.id)}
+              <span class="col-badge col-badge-fk">FK</span>
+            {/if}
+            <span class="col-name">{col.name}</span>
+            <span class="col-type-badge">{col.type}{col.length ? `(${col.length}${col.scale != null ? `,${col.scale}` : ''})` : ''}</span>
+            <button
+              class="col-del-btn"
+              title={m.action_delete()}
+              onclick={async (e) => {
+                e.stopPropagation();
+                const table = selectedTable!;
+                // Count FKs in this table that use this column
+                let fkCount = table.foreignKeys.filter((fk) => fk.columnIds.includes(col.id)).length;
+                // Count FKs in other tables that reference this column
+                fkCount += erdStore.schema.tables
+                  .filter((t) => t.id !== table.id)
+                  .reduce((sum, t) => sum + t.foreignKeys.filter(
+                    (fk) => fk.referencedTableId === table.id && fk.referencedColumnIds.includes(col.id)
+                  ).length, 0);
+                if (fkCount > 0) {
+                  const ok = await dialogStore.confirm(
+                    m.column_delete_fk_confirm({ count: fkCount }),
+                    { title: m.action_delete(), confirmText: m.action_delete(), variant: 'danger' }
+                  );
+                  if (!ok) return;
+                }
+                erdStore.deleteColumn(table.id, col.id);
+              }}
+            >✕</button>
           </div>
         {:else}
           <p class="no-cols">{m.editor_no_columns()}</p>
@@ -697,18 +623,27 @@
   .columns-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 1px;
   }
 
+  /* Compact column row */
   .col-row {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 4px;
-    padding: 8px;
+    height: 26px;
+    padding: 0 6px;
     background: var(--app-panel-bg, #f8fafc);
-    border: 1px solid var(--app-border, #e2e8f0);
-    border-radius: 6px;
-    transition: opacity 0.15s, border-color 0.15s;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.15s;
+    user-select: none;
+  }
+
+  .col-row:hover {
+    background: var(--app-hover-bg, #f1f5f9);
+    border-color: var(--app-border, #e2e8f0);
   }
 
   .col-row.dragging {
@@ -720,16 +655,10 @@
     border-top: 2px solid #3b82f6;
   }
 
-  .col-name-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
   .drag-handle {
     cursor: grab;
     color: var(--app-text-faint, #94a3b8);
-    font-size: 14px;
+    font-size: 12px;
     line-height: 1;
     user-select: none;
     flex-shrink: 0;
@@ -739,109 +668,67 @@
     color: var(--app-text-secondary, #475569);
   }
 
-  .col-type-row {
-    display: flex;
-    gap: 4px;
-  }
-
-  .col-input {
-    border: 1px solid var(--app-input-border, #e2e8f0);
-    border-radius: 4px;
-    padding: 4px 7px;
-    font-size: 12px;
-    color: var(--app-text, #1e293b);
-    background: var(--app-input-bg, white);
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .col-input:focus {
-    border-color: #3b82f6;
-  }
-
-  .col-type {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .domain-select {
-    width: 80px;
+  .col-badge {
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 3px;
+    padding: 1px 4px;
     flex-shrink: 0;
+    line-height: 1.2;
   }
 
-  .domain-badge {
-    display: flex;
-    align-items: center;
-    gap: 3px;
+  .col-badge-pk {
+    color: #b45309;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+  }
+
+  .col-badge-fk {
+    color: #1d4ed8;
     background: #dbeafe;
     border: 1px solid #93c5fd;
-    border-radius: 4px;
-    padding: 2px 6px;
-    flex-shrink: 0;
-    max-width: 90px;
   }
 
-  .domain-badge-name {
-    font-size: 10px;
-    color: #1d4ed8;
-    font-weight: 600;
+  .col-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--app-text, #1e293b);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .domain-unlink {
+  .col-type-badge {
+    font-size: 10px;
+    color: var(--app-text-muted, #64748b);
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
+    border-radius: 3px;
+    padding: 1px 5px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .col-del-btn {
+    display: none;
     background: none;
     border: none;
-    font-size: 9px;
-    color: #93c5fd;
+    font-size: 10px;
+    color: var(--app-text-faint, #94a3b8);
     cursor: pointer;
-    padding: 0;
+    padding: 0 3px;
     line-height: 1;
     flex-shrink: 0;
   }
 
-  .domain-unlink:hover {
+  .col-row:hover .col-del-btn {
+    display: block;
+  }
+
+  .col-del-btn:hover {
     color: #ef4444;
-  }
-
-  .col-check {
-    font-size: 11px;
-    color: #7c3aed;
-    font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
-  }
-
-  .col-comment {
-    font-size: 11px;
-    color: var(--app-text-muted, #64748b);
-    font-style: italic;
-  }
-
-  .col-flags {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .col-flags label {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 11px;
-    color: var(--app-text-secondary, #475569);
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .col-flags input[type="checkbox"] {
-    cursor: pointer;
-  }
-
-  .col-actions {
-    display: flex;
-    gap: 4px;
-    justify-content: flex-end;
   }
 
   .icon-btn {
@@ -922,9 +809,51 @@
     flex-shrink: 0;
   }
 
+  /* Color & Group collapsible header */
   .color-group-section {
-    padding: 12px 16px;
+    padding: 8px 16px;
     border-bottom: 1px solid var(--app-border-light, #f1f5f9);
+  }
+
+  .cg-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+  }
+
+  .cg-toggle {
+    font-size: 9px;
+    color: var(--app-text-muted, #64748b);
+    flex-shrink: 0;
+    width: 10px;
+  }
+
+  .cg-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--app-text-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .cg-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .cg-group-text {
+    font-size: 11px;
+    color: var(--app-text-secondary, #475569);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
   }
 
   .color-dots {

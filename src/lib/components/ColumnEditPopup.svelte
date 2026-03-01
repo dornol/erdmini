@@ -32,9 +32,34 @@
 
   let isDecimal = $derived(col?.type === 'DECIMAL');
 
+  let hasDomains = $derived(erdStore.schema.domains.length > 0);
+
+  function applyDomain(domainId: string) {
+    const domain = erdStore.schema.domains.find((d) => d.id === domainId);
+    if (!domain) return;
+    erdStore.updateColumn(tableId, columnId, {
+      domainId,
+      type: domain.type,
+      length: domain.length,
+      nullable: domain.nullable,
+      primaryKey: domain.primaryKey,
+      unique: domain.unique,
+      autoIncrement: domain.autoIncrement,
+      defaultValue: domain.defaultValue,
+    });
+  }
+
   function onKeyDown(e: KeyboardEvent) {
     if (e.key === 'Escape') onclose();
   }
+
+  // Auto-select name for new columns (column_N pattern)
+  let nameInputEl: HTMLInputElement;
+  $effect(() => {
+    if (nameInputEl && col && /^column_\d+$/.test(col.name)) {
+      nameInputEl.select();
+    }
+  });
 
   // Adjust position so popup stays inside viewport after mount
   let popupEl: HTMLDivElement;
@@ -80,6 +105,7 @@
           <input
             id="ce-name"
             class="field-input"
+            bind:this={nameInputEl}
             value={col.name}
             oninput={(e) => onChange('name', (e.target as HTMLInputElement).value)}
           />
@@ -215,6 +241,33 @@
             placeholder={m.none_placeholder()}
           />
         </div>
+
+        <!-- Domain -->
+        {#if hasDomains}
+          <div class="field-row">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
+            <label class="field-label">Domain</label>
+            {#if col.domainId}
+              {@const linkedDomain = erdStore.schema.domains.find((d) => d.id === col.domainId)}
+              <div class="domain-badge">
+                <span class="domain-badge-name">{linkedDomain?.name ?? '?'}</span>
+                <button
+                  class="domain-unlink"
+                  aria-label={m.domain_unlink()}
+                  onclick={() => onChange('domainId', undefined)}
+                >✕</button>
+              </div>
+            {:else}
+              <SearchableSelect
+                options={erdStore.schema.domains.map((d) => ({ value: d.id, label: d.name }))}
+                value=""
+                onchange={(v) => { if (v) applyDomain(v); }}
+                placeholder={m.domain_select_placeholder()}
+                size="md"
+              />
+            {/if}
+          </div>
+        {/if}
       </div>
     {:else}
       <div class="popup-header">
@@ -352,5 +405,40 @@
     color: var(--app-text-secondary, #475569);
     cursor: pointer;
     user-select: none;
+  }
+
+  .domain-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    border-radius: 5px;
+    padding: 4px 8px;
+  }
+
+  .domain-badge-name {
+    font-size: 12px;
+    color: #1d4ed8;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .domain-unlink {
+    background: none;
+    border: none;
+    font-size: 10px;
+    color: #93c5fd;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .domain-unlink:hover {
+    color: #ef4444;
   }
 </style>

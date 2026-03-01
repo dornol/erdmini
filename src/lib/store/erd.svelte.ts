@@ -264,7 +264,7 @@ class ERDStore {
     this.schema.updatedAt = now();
   }
 
-  addColumn(tableId: string) {
+  addColumn(tableId: string): string | undefined {
     const table = this.schema.tables.find((t) => t.id === tableId);
     if (!table) return;
     const n = table.columns.length + 1;
@@ -280,6 +280,7 @@ class ERDStore {
     };
     table.columns = [...table.columns, newColumn];
     this.schema.updatedAt = now();
+    return newColumn.id;
   }
 
   updateColumn(tableId: string, columnId: string, patch: Partial<Column>) {
