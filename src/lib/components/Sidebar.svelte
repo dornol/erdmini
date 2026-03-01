@@ -2,6 +2,9 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { TABLE_COLORS } from '$lib/constants/table-colors';
+  import type { TableColorId } from '$lib/constants/table-colors';
+  import { themeStore } from '$lib/store/theme.svelte';
 
   let {
     collapsed = false,
@@ -13,6 +16,8 @@
 
   let searchQuery = $state('');
   let sortBy = $state<'creation' | 'name'>('creation');
+  let viewMode = $state<'flat' | 'group'>('flat');
+  let collapsedGroups = $state<Set<string>>(new Set());
   let sidebarWidth = $state(240);
   let resizing = $state(false);
 
@@ -49,6 +54,40 @@
 
     return tables;
   });
+
+  const groupedTables = $derived.by(() => {
+    const tables = filteredTables();
+    const groups = new Map<string, typeof tables>();
+    for (const t of tables) {
+      const g = t.group || '';
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g)!.push(t);
+    }
+    // Sort group names, with ungrouped ('') last
+    const sortedKeys = [...groups.keys()].sort((a, b) => {
+      if (a === '') return 1;
+      if (b === '') return -1;
+      return a.localeCompare(b);
+    });
+    return sortedKeys.map((key) => ({
+      name: key,
+      label: key || m.sidebar_ungrouped(),
+      tables: groups.get(key)!,
+    }));
+  });
+
+  function toggleGroup(name: string) {
+    const next = new Set(collapsedGroups);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    collapsedGroups = next;
+  }
+
+  function getColorDot(color?: string): string | null {
+    if (!color) return null;
+    const entry = TABLE_COLORS[color as TableColorId];
+    return entry?.dot ?? null;
+  }
 
   let tooltip = $state<{ text: string; x: number; y: number } | null>(null);
 
@@ -166,78 +205,154 @@
       >
         {sortBy === 'creation' ? m.sidebar_sort_creation() : m.sidebar_sort_name()}
       </button>
+      <button
+        class="sort-btn"
+        class:active-mode={viewMode === 'group'}
+        title={m.sidebar_group_by()}
+        onclick={() => (viewMode = viewMode === 'flat' ? 'group' : 'flat')}
+      >
+        {m.sidebar_group_by()}
+      </button>
     </div>
 
     <ul class="table-list">
-      {#each filteredTables() as table (table.id)}
-        {@const meta = getTableMeta(table)}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <li
-          class="table-item"
-          class:active={erdStore.selectedTableIds.has(table.id)}
-          onclick={(e) => onItemClick(e, table.id)}
-        >
-          <div class="item-info">
-            <div class="item-name-row">
-              <span class="item-name">{table.name}</span>
-              <span class="badge badge-cols">{meta.colCount}</span>
-            </div>
-            {#if meta.pkCols.length > 0 || meta.fkCount > 0 || meta.refCount > 0}
-              <div class="meta-badges">
-                {#if meta.pkCols.length > 0}
-                  <span class="badge badge-pk">{meta.pkCols.join(', ')}</span>
+      {#if viewMode === 'flat'}
+        {#each filteredTables() as table (table.id)}
+          {@const meta = getTableMeta(table)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <li
+            class="table-item"
+            class:active={erdStore.selectedTableIds.has(table.id)}
+            onclick={(e) => onItemClick(e, table.id)}
+          >
+            <div class="item-info">
+              <div class="item-name-row">
+                {#if getColorDot(table.color)}
+                  <span class="item-color-dot" style="background:{getColorDot(table.color)}"></span>
                 {/if}
-                {#if meta.fkCount > 0}
-                  <!-- svelte-ignore a11y_no_static_element_interactions -->
-                  <span class="badge badge-fk badge-hover"
-                    onmouseenter={(e) => showTooltip(e, meta.fkDetails.join('\n'))}
-                    onmouseleave={hideTooltip}
-                  >→{meta.fkCount}</span>
-                {/if}
-                {#if meta.refCount > 0}
-                  <!-- svelte-ignore a11y_no_static_element_interactions -->
-                  <span class="badge badge-ref badge-hover"
-                    onmouseenter={(e) => showTooltip(e, meta.refDetails.join('\n'))}
-                    onmouseleave={hideTooltip}
-                  >←{meta.refCount}</span>
-                {/if}
+                <span class="item-name">{table.name}</span>
+                <span class="badge badge-cols">{meta.colCount}</span>
               </div>
+              {#if meta.pkCols.length > 0 || meta.fkCount > 0 || meta.refCount > 0}
+                <div class="meta-badges">
+                  {#if meta.pkCols.length > 0}
+                    <span class="badge badge-pk">{meta.pkCols.join(', ')}</span>
+                  {/if}
+                  {#if meta.fkCount > 0}
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <span class="badge badge-fk badge-hover"
+                      onmouseenter={(e) => showTooltip(e, meta.fkDetails.join('\n'))}
+                      onmouseleave={hideTooltip}
+                    >→{meta.fkCount}</span>
+                  {/if}
+                  {#if meta.refCount > 0}
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <span class="badge badge-ref badge-hover"
+                      onmouseenter={(e) => showTooltip(e, meta.refDetails.join('\n'))}
+                      onmouseleave={hideTooltip}
+                    >←{meta.refCount}</span>
+                  {/if}
+                </div>
+              {/if}
+              {#if table.comment}
+                <span class="item-comment">{table.comment}</span>
+              {/if}
+            </div>
+            <div class="item-actions">
+              <button
+                class="item-action-btn"
+                title={m.action_duplicate()}
+                onclick={(e) => duplicateTable(e, table.id)}
+              >⧉</button>
+              <button
+                class="item-action-btn item-delete"
+                title={m.action_delete()}
+                onclick={async (e) => {
+                  e.stopPropagation();
+                  const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
+                    title: m.dialog_delete_table_title(),
+                    confirmText: m.action_delete(),
+                    variant: 'danger',
+                  });
+                  if (ok) erdStore.deleteTable(table.id);
+                }}
+              >✕</button>
+            </div>
+          </li>
+        {:else}
+          <li class="empty-hint">
+            {#if searchQuery.trim()}
+              {m.sidebar_no_results()}
+            {:else}
+              {m.sidebar_empty()}
             {/if}
-            {#if table.comment}
-              <span class="item-comment">{table.comment}</span>
-            {/if}
-          </div>
-          <div class="item-actions">
-            <button
-              class="item-action-btn"
-              title={m.action_duplicate()}
-              onclick={(e) => duplicateTable(e, table.id)}
-            >⧉</button>
-            <button
-              class="item-action-btn item-delete"
-              title={m.action_delete()}
-              onclick={async (e) => {
-                e.stopPropagation();
-                const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
-                  title: m.dialog_delete_table_title(),
-                  confirmText: m.action_delete(),
-                  variant: 'danger',
-                });
-                if (ok) erdStore.deleteTable(table.id);
-              }}
-            >✕</button>
-          </div>
-        </li>
+          </li>
+        {/each}
       {:else}
-        <li class="empty-hint">
-          {#if searchQuery.trim()}
-            {m.sidebar_no_results()}
-          {:else}
-            {m.sidebar_empty()}
+        {#each groupedTables as group (group.name)}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <li class="group-header" onclick={() => toggleGroup(group.name)}>
+            <span class="group-chevron" class:collapsed={collapsedGroups.has(group.name)}>▸</span>
+            <span class="group-label">{group.label}</span>
+            <span class="group-count">{group.tables.length}</span>
+          </li>
+          {#if !collapsedGroups.has(group.name)}
+            {#each group.tables as table (table.id)}
+              {@const meta = getTableMeta(table)}
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+              <li
+                class="table-item table-item-grouped"
+                class:active={erdStore.selectedTableIds.has(table.id)}
+                onclick={(e) => onItemClick(e, table.id)}
+              >
+                <div class="item-info">
+                  <div class="item-name-row">
+                    {#if getColorDot(table.color)}
+                      <span class="item-color-dot" style="background:{getColorDot(table.color)}"></span>
+                    {/if}
+                    <span class="item-name">{table.name}</span>
+                    <span class="badge badge-cols">{meta.colCount}</span>
+                  </div>
+                  {#if table.comment}
+                    <span class="item-comment">{table.comment}</span>
+                  {/if}
+                </div>
+                <div class="item-actions">
+                  <button
+                    class="item-action-btn"
+                    title={m.action_duplicate()}
+                    onclick={(e) => duplicateTable(e, table.id)}
+                  >⧉</button>
+                  <button
+                    class="item-action-btn item-delete"
+                    title={m.action_delete()}
+                    onclick={async (e) => {
+                      e.stopPropagation();
+                      const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
+                        title: m.dialog_delete_table_title(),
+                        confirmText: m.action_delete(),
+                        variant: 'danger',
+                      });
+                      if (ok) erdStore.deleteTable(table.id);
+                    }}
+                  >✕</button>
+                </div>
+              </li>
+            {/each}
           {/if}
-        </li>
-      {/each}
+        {:else}
+          <li class="empty-hint">
+            {#if searchQuery.trim()}
+              {m.sidebar_no_results()}
+            {:else}
+              {m.sidebar_empty()}
+            {/if}
+          </li>
+        {/each}
+      {/if}
     </ul>
     {#if tooltip}
       <div class="fixed-tooltip" style="left:{tooltip.x}px;top:{tooltip.y}px">
@@ -583,5 +698,70 @@
     text-align: center;
     line-height: 1.6;
     white-space: pre-line;
+  }
+
+  .active-mode {
+    background: #dbeafe;
+    color: #2563eb;
+    border-color: #93c5fd;
+  }
+
+  .item-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    cursor: pointer;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    user-select: none;
+  }
+
+  .group-header:hover {
+    background: #e2e8f0;
+  }
+
+  .group-chevron {
+    font-size: 10px;
+    color: #64748b;
+    transition: transform 0.15s;
+    display: inline-block;
+    transform: rotate(90deg);
+  }
+
+  .group-chevron.collapsed {
+    transform: rotate(0deg);
+  }
+
+  .group-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .group-count {
+    font-size: 10px;
+    background: #e2e8f0;
+    color: #64748b;
+    border-radius: 8px;
+    padding: 0 6px;
+  }
+
+  .table-item-grouped {
+    padding-left: 24px;
+  }
+
+  .table-item-grouped.active {
+    padding-left: 21px;
   }
 </style>

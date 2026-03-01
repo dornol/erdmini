@@ -1,5 +1,8 @@
 import type { ERDSchema, Table } from '$lib/types/erd';
 import { TABLE_W, TABLE_CARD_W, HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
+import { TABLE_COLORS } from '$lib/constants/table-colors';
+import type { TableColorId } from '$lib/constants/table-colors';
+import type { ThemeId } from '$lib/store/theme.svelte';
 
 const PAD = 40;
 
@@ -128,11 +131,23 @@ function renderBadge(
     `<text x="${x + w / 2}" y="${y + 3.5}" text-anchor="middle" fill="${color}" font-size="9" font-weight="700" font-family="system-ui,sans-serif">${text}</text>`;
 }
 
-function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: number): string {
+function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: number, themeId: ThemeId): string {
   const x = t.position.x - offsetX;
   const y = t.position.y - offsetY;
   const h = cardHeight(t);
   const r = theme.cardRadius;
+
+  // Per-table header color override
+  let hdrBg = theme.headerBg;
+  let hdrText = theme.headerText;
+  if (t.color) {
+    const entry = TABLE_COLORS[t.color as TableColorId];
+    if (entry) {
+      const mapping = entry.themes[themeId];
+      hdrBg = mapping.headerBg;
+      hdrText = mapping.headerText;
+    }
+  }
 
   const parts: string[] = [];
 
@@ -141,13 +156,13 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
 
   // Header background (clip to top radius)
   parts.push(`<clipPath id="hdr-${esc(t.id)}"><rect x="${x}" y="${y}" width="${TABLE_CARD_W}" height="${HEADER_H}" rx="${r}"/></clipPath>`);
-  parts.push(`<rect x="${x}" y="${y}" width="${TABLE_CARD_W}" height="${HEADER_H}" fill="${theme.headerBg}" clip-path="url(#hdr-${esc(t.id)})"/>`);
+  parts.push(`<rect x="${x}" y="${y}" width="${TABLE_CARD_W}" height="${HEADER_H}" fill="${hdrBg}" clip-path="url(#hdr-${esc(t.id)})"/>`);
   // Header bottom border (to cover rounded corners at bottom of header)
-  parts.push(`<rect x="${x}" y="${y + HEADER_H - 1}" width="${TABLE_CARD_W}" height="1" fill="${theme.headerBg}"/>`);
+  parts.push(`<rect x="${x}" y="${y + HEADER_H - 1}" width="${TABLE_CARD_W}" height="1" fill="${hdrBg}"/>`);
 
   // Table name
   const nameText = t.name.length > 24 ? t.name.slice(0, 23) + '\u2026' : t.name;
-  parts.push(`<text x="${x + 10}" y="${y + HEADER_H / 2 + 5}" fill="${theme.headerText}" font-size="13" font-weight="600" font-family="system-ui,sans-serif">${esc(nameText)}</text>`);
+  parts.push(`<text x="${x + 10}" y="${y + HEADER_H / 2 + 5}" fill="${hdrText}" font-size="13" font-weight="600" font-family="system-ui,sans-serif">${esc(nameText)}</text>`);
 
   let curY = y + HEADER_H;
 
@@ -315,7 +330,7 @@ export function exportSvg(schema: ERDSchema, themeId: string): string {
   const height = Math.ceil(maxY - minY + PAD * 2);
 
   const lines = renderLines(schema, theme, offsetX, offsetY);
-  const tables = schema.tables.map((t) => renderTable(t, theme, offsetX, offsetY)).join('\n');
+  const tables = schema.tables.map((t) => renderTable(t, theme, offsetX, offsetY, themeId as ThemeId)).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">

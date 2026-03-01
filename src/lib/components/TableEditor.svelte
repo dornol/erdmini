@@ -8,20 +8,29 @@
   import IndexModal from './IndexModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
+  import { TABLE_COLOR_IDS, TABLE_COLORS } from '$lib/constants/table-colors';
+  import { themeStore } from '$lib/store/theme.svelte';
 
   let selectedTable = $derived(erdStore.selectedTable);
 
   let tableNameInput = $state('');
   let tableCommentInput = $state('');
+  let tableGroupInput = $state('');
   // Plain variable (not $state) — holds the ID of the table being edited.
   // Canvas mousedown sets selectedTableId=null BEFORE blur fires, so we can't
   // rely on selectedTable in blur handlers. capturedTableId persists through that gap.
   let capturedTableId: string | null = null;
 
+  // All distinct group names for datalist autocomplete
+  let existingGroups = $derived(
+    [...new Set(erdStore.schema.tables.map((t) => t.group).filter(Boolean))] as string[]
+  );
+
   $effect(() => {
     if (selectedTable) {
       tableNameInput = selectedTable.name;
       tableCommentInput = selectedTable.comment ?? '';
+      tableGroupInput = selectedTable.group ?? '';
       capturedTableId = selectedTable.id;
     }
   });
@@ -39,6 +48,12 @@
   function saveComment() {
     if (capturedTableId) {
       erdStore.updateTableComment(capturedTableId, tableCommentInput);
+    }
+  }
+
+  function saveGroup() {
+    if (capturedTableId) {
+      erdStore.updateTableGroup(capturedTableId, tableGroupInput.trim() || undefined);
     }
   }
 
@@ -160,6 +175,49 @@
         onblur={saveComment}
         placeholder={m.optional()}
       />
+    </div>
+
+    <!-- Color & Group -->
+    <div class="section color-group-section">
+      <!-- svelte-ignore a11y_label_has_associated_control -->
+      <label class="field-label">{m.table_color()}</label>
+      <div class="color-dots">
+        <button
+          class="color-dot color-dot-none"
+          class:active={!selectedTable.color}
+          title={m.table_color_none()}
+          onclick={() => erdStore.updateTableColor(selectedTable!.id, undefined)}
+        >
+          {#if !selectedTable.color}<span class="dot-check">✓</span>{/if}
+        </button>
+        {#each TABLE_COLOR_IDS as colorId}
+          <button
+            class="color-dot"
+            class:active={selectedTable.color === colorId}
+            style="background:{TABLE_COLORS[colorId].dot}"
+            title={colorId}
+            onclick={() => erdStore.updateTableColor(selectedTable!.id, colorId)}
+          >
+            {#if selectedTable.color === colorId}<span class="dot-check">✓</span>{/if}
+          </button>
+        {/each}
+      </div>
+
+      <label class="field-label" for="tbl-group" style="margin-top:8px">{m.table_group()}</label>
+      <input
+        id="tbl-group"
+        class="text-input"
+        list="group-list"
+        bind:value={tableGroupInput}
+        oninput={saveGroup}
+        onblur={saveGroup}
+        placeholder={m.table_group_placeholder()}
+      />
+      <datalist id="group-list">
+        {#each existingGroups as g}
+          <option value={g}></option>
+        {/each}
+      </datalist>
     </div>
 
     <!-- Columns -->
@@ -818,5 +876,62 @@
     border-radius: 3px;
     padding: 0 4px;
     flex-shrink: 0;
+  }
+
+  .color-group-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .color-dots {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .color-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: border-color 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+
+  .color-dot:hover {
+    transform: scale(1.15);
+  }
+
+  .color-dot.active {
+    border-color: #1e293b;
+    box-shadow: 0 0 0 1px white inset;
+  }
+
+  .color-dot-none {
+    background: #ffffff;
+    border: 2px dashed #cbd5e1;
+  }
+
+  .color-dot-none.active {
+    border-style: solid;
+    border-color: #1e293b;
+  }
+
+  .dot-check {
+    font-size: 11px;
+    color: #ffffff;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 0 2px rgba(0,0,0,0.4);
+  }
+
+  .color-dot-none .dot-check {
+    color: #64748b;
+    text-shadow: none;
   }
 </style>

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
+  import { TABLE_COLORS } from '$lib/constants/table-colors';
+  import type { TableColorId } from '$lib/constants/table-colors';
 
   const MAP_W = 180;
   const MAP_H = 120;
@@ -81,13 +83,17 @@
   // Table positions for minimap (throttled)
   const miniTables = $derived.by(() => {
     void renderTick;
-    return erdStore.schema.tables.map((t) => ({
-      id: t.id,
-      ...worldToMap(t.position.x, t.position.y),
-      w: TABLE_W * mapScale,
-      h: (HEADER_H + t.columns.length * ROW_H) * mapScale,
-      active: erdStore.selectedTableIds.has(t.id),
-    }));
+    return erdStore.schema.tables.map((t) => {
+      const colorEntry = t.color ? TABLE_COLORS[t.color as TableColorId] : null;
+      return {
+        id: t.id,
+        ...worldToMap(t.position.x, t.position.y),
+        w: TABLE_W * mapScale,
+        h: (HEADER_H + t.columns.length * ROW_H) * mapScale,
+        active: erdStore.selectedTableIds.has(t.id),
+        dotColor: colorEntry?.dot ?? null,
+      };
+    });
   });
 
   function onMinimapClick(e: MouseEvent) {
@@ -115,7 +121,7 @@
       <div
         class="mini-table"
         class:active={mt.active}
-        style="left:{mt.x}px; top:{mt.y}px; width:{mt.w}px; height:{mt.h}px;"
+        style="left:{mt.x}px; top:{mt.y}px; width:{mt.w}px; height:{mt.h}px;{mt.dotColor ? ` background:${mt.dotColor}` : ''}"
       ></div>
     {/each}
     <div

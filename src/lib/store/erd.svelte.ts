@@ -232,6 +232,20 @@ class ERDStore {
     this.schema.updatedAt = now();
   }
 
+  updateTableColor(id: string, color: string | undefined) {
+    const table = this.schema.tables.find((t) => t.id === id);
+    if (!table) return;
+    table.color = color;
+    this.schema.updatedAt = now();
+  }
+
+  updateTableGroup(id: string, group: string | undefined) {
+    const table = this.schema.tables.find((t) => t.id === id);
+    if (!table) return;
+    table.group = group || undefined;
+    this.schema.updatedAt = now();
+  }
+
   moveTable(id: string, x: number, y: number) {
     const table = this.schema.tables.find((t) => t.id === id);
     if (!table) return;
@@ -468,6 +482,8 @@ class ERDStore {
       uniqueKeys: [],
       position: { x: src.position.x + 30, y: src.position.y + 30 },
       comment: src.comment,
+      color: src.color,
+      group: src.group,
     };
     this.schema.tables = [...this.schema.tables, newTable];
     this.schema.updatedAt = now();

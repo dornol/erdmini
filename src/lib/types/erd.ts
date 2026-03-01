@@ -79,6 +79,8 @@ export interface Table {
   indexes: TableIndex[];
   position: { x: number; y: number };
   comment?: string;
+  color?: string;
+  group?: string;
 }
 
 export interface ERDSchema {

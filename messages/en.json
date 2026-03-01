@@ -200,5 +200,11 @@
   "project_delete_confirm": "Delete project \"{name}\"? All data will be permanently deleted.",
   "project_delete_title": "Delete Project",
   "project_default_name": "My Project",
-  "toolbar_bug_report": "Bug Report"
+  "toolbar_bug_report": "Bug Report",
+  "table_color": "Color",
+  "table_color_none": "None",
+  "table_group": "Group",
+  "table_group_placeholder": "Group name...",
+  "sidebar_ungrouped": "Ungrouped",
+  "sidebar_group_by": "Group"
 }

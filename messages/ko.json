@@ -200,5 +200,11 @@
   "project_delete_confirm": "\"{name}\" 프로젝트를 삭제하시겠습니까? 모든 데이터가 영구 삭제됩니다.",
   "project_delete_title": "프로젝트 삭제",
   "project_default_name": "My Project",
-  "toolbar_bug_report": "버그 리포트"
+  "toolbar_bug_report": "버그 리포트",
+  "table_color": "색상",
+  "table_color_none": "없음",
+  "table_group": "그룹",
+  "table_group_placeholder": "그룹명...",
+  "sidebar_ungrouped": "미분류",
+  "sidebar_group_by": "그룹"
 }

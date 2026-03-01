@@ -3,6 +3,9 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
+  import { TABLE_COLORS } from '$lib/constants/table-colors';
+  import type { TableColorId } from '$lib/constants/table-colors';
+  import { themeStore } from '$lib/store/theme.svelte';
 
   let { table }: { table: Table } = $props();
 
@@ -19,6 +22,14 @@
 
   // Set of column IDs that are part of composite unique keys
   let uniqueKeyColIds = $derived(new Set((table.uniqueKeys ?? []).flatMap((uk) => uk.columnIds)));
+
+  // Per-table header color override
+  let headerColorOverride = $derived.by(() => {
+    if (!table.color) return null;
+    const entry = TABLE_COLORS[table.color as TableColorId];
+    if (!entry) return null;
+    return entry.themes[themeStore.current];
+  });
 
   function onHeaderDblClick() {
     isEditing = true;
@@ -112,7 +123,11 @@
   onmouseleave={() => (isHovered = false)}
 >
   <!-- Header -->
-  <div class="table-header" ondblclick={onHeaderDblClick}>
+  <div
+    class="table-header"
+    ondblclick={onHeaderDblClick}
+    style={headerColorOverride ? `background:${headerColorOverride.headerBg}; --erd-header-text:${headerColorOverride.headerText}` : ''}
+  >
     {#if isEditing}
       <!-- svelte-ignore a11y_autofocus -->
       <input
