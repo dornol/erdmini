@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
+  import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL } from '$lib/utils/ddl-export';
@@ -58,17 +59,22 @@
     setTimeout(() => (copyLabel = 'copy'), 1500);
   }
 
+  function sanitizeFilename(name: string): string {
+    return name.replace(/[^a-zA-Z0-9가-힣ぁ-んァ-ヶ一-龥_\-. ]/g, '_').replace(/\s+/g, '_');
+  }
+
   function downloadFile() {
+    const projName = sanitizeFilename(projectStore.activeProject?.name ?? 'schema');
     const blob = new Blob([exportText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     if (exportFormat === 'mermaid') {
-      a.download = 'erdmini.mmd';
+      a.download = `erdmini_${projName}.mmd`;
     } else if (exportFormat === 'plantuml') {
-      a.download = 'erdmini.puml';
+      a.download = `erdmini_${projName}.puml`;
     } else {
-      a.download = `erdmini_${exportDialect}.sql`;
+      a.download = `erdmini_${projName}_${exportDialect}.sql`;
     }
     a.click();
     URL.revokeObjectURL(url);

@@ -190,5 +190,15 @@
   "idx_unique": "Unique",
   "idx_no_indexes": "No indexes",
   "history_add_idx": "Add index",
-  "history_delete_idx": "Delete index"
+  "history_delete_idx": "Delete index",
+  "project_label": "Project",
+  "project_new": "+ New Project",
+  "project_new_placeholder": "Project name...",
+  "project_rename": "Rename",
+  "project_delete": "Delete project",
+  "project_duplicate": "Duplicate project",
+  "project_delete_confirm": "Delete project \"{name}\"? All data will be permanently deleted.",
+  "project_delete_title": "Delete Project",
+  "project_default_name": "My Project",
+  "toolbar_bug_report": "Bug Report"
 }

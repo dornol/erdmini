@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
   import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
@@ -33,6 +34,48 @@
   let modalMode = $state<'import' | 'export' | null>(null);
   let showDomainModal = $state(false);
 
+  // Project dropdown state
+  let projectOpen = $state(false);
+  let renamingId = $state<string | null>(null);
+  let renameValue = $state('');
+  let newProjectName = $state('');
+  let showNewProjectInput = $state(false);
+
+  function sanitizeFilename(name: string): string {
+    return name.replace(/[^a-zA-Z0-9가-힣ぁ-んァ-ヶ一-龥_\-. ]/g, '_').replace(/\s+/g, '_');
+  }
+
+  function startRename(id: string, currentName: string) {
+    renamingId = id;
+    renameValue = currentName;
+  }
+
+  function finishRename() {
+    if (renamingId && renameValue.trim()) {
+      projectStore.renameProject(renamingId, renameValue.trim());
+    }
+    renamingId = null;
+    renameValue = '';
+  }
+
+  async function handleDeleteProject(id: string, name: string) {
+    if (projectStore.index.projects.length <= 1) return;
+    const ok = await dialogStore.confirm(m.project_delete_confirm({ name }), {
+      title: m.project_delete_title(),
+      confirmText: m.action_delete(),
+      variant: 'danger',
+    });
+    if (ok) projectStore.deleteProject(id);
+  }
+
+  function handleNewProject() {
+    const name = newProjectName.trim() || m.project_default_name();
+    projectStore.createProject(name);
+    newProjectName = '';
+    showNewProjectInput = false;
+    projectOpen = false;
+  }
+
   // Auto-arrange
   function applyLayout(type: LayoutType) {
     const positions = computeLayout(erdStore.schema.tables, type);
@@ -46,7 +89,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'erdmini_schema.json';
+    a.download = `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'schema')}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -204,7 +247,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'erdmini_diagram.svg';
+    a.download = `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'diagram')}.svg`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -311,7 +354,7 @@
 
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = 'erdmini_diagram.png';
+      a.download = `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'diagram')}.png`;
       a.click();
     } finally {
       worldEl.style.transform = origTransform;
@@ -327,6 +370,95 @@
     <span class="logo-icon">◈</span>
     <span class="logo-text">erdmini</span>
   </div>
+
+  <!-- Project dropdown -->
+  <div class="dropdown-wrap project-wrap">
+    <button
+      class="btn-project"
+      onclick={() => (projectOpen = !projectOpen)}
+      aria-expanded={projectOpen}
+      aria-haspopup="menu"
+    >
+      <span class="project-name">{projectStore.activeProject?.name ?? 'Project'}</span>
+      <span class="project-chevron">▾</span>
+    </button>
+    {#if projectOpen}
+      <div
+        class="dropdown-menu project-dropdown"
+        role="menu"
+        tabindex="-1"
+        onmouseleave={() => { if (!renamingId && !showNewProjectInput) projectOpen = false; }}
+      >
+        {#each projectStore.index.projects as proj (proj.id)}
+          <div
+            class="project-item"
+            class:active={proj.id === projectStore.index.activeProjectId}
+          >
+            {#if renamingId === proj.id}
+              <input
+                class="project-rename-input"
+                type="text"
+                bind:value={renameValue}
+                onkeydown={(e) => { if (e.key === 'Enter') finishRename(); if (e.key === 'Escape') { renamingId = null; } }}
+                onblur={finishRename}
+                autofocus
+              />
+            {:else}
+              <button
+                class="project-item-name"
+                onclick={() => { projectStore.switchProject(proj.id); projectOpen = false; }}
+              >
+                {proj.name}
+              </button>
+              <div class="project-item-actions">
+                <button
+                  class="project-action-btn"
+                  title={m.project_rename()}
+                  onclick={(e) => { e.stopPropagation(); startRename(proj.id, proj.name); }}
+                >✎</button>
+                <button
+                  class="project-action-btn"
+                  title={m.project_duplicate()}
+                  onclick={(e) => { e.stopPropagation(); projectStore.duplicateProject(proj.id); projectOpen = false; }}
+                >⧉</button>
+                {#if projectStore.index.projects.length > 1}
+                  <button
+                    class="project-action-btn project-action-delete"
+                    title={m.project_delete()}
+                    onclick={(e) => { e.stopPropagation(); handleDeleteProject(proj.id, proj.name); }}
+                  >✕</button>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/each}
+        <div class="project-divider"></div>
+        {#if showNewProjectInput}
+          <div class="project-new-row">
+            <input
+              class="project-rename-input"
+              type="text"
+              placeholder={m.project_new_placeholder()}
+              bind:value={newProjectName}
+              onkeydown={(e) => { if (e.key === 'Enter') handleNewProject(); if (e.key === 'Escape') { showNewProjectInput = false; newProjectName = ''; } }}
+              onblur={() => { if (!newProjectName.trim()) showNewProjectInput = false; }}
+              autofocus
+            />
+          </div>
+        {:else}
+          <button
+            class="dropdown-item project-new-btn"
+            role="menuitem"
+            onclick={() => (showNewProjectInput = true)}
+          >
+            {m.project_new()}
+          </button>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
+  <span class="separator"></span>
 
   <div class="actions">
     <button class="btn-primary" onclick={addTable}>
@@ -554,6 +686,34 @@
         </div>
       {/if}
     </div>
+
+    <!-- Bug report -->
+    <a
+      class="btn-icon"
+      href="https://github.com/dornol/erdmini/issues"
+      target="_blank"
+      rel="noopener noreferrer"
+      title={m.toolbar_bug_report()}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+        <line x1="8" y1="4.5" x2="8" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="8" cy="11" r="0.8" fill="currentColor"/>
+      </svg>
+    </a>
+
+    <!-- GitHub -->
+    <a
+      class="btn-icon"
+      href="https://github.com/dornol/erdmini"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="GitHub"
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+    </a>
   </div>
 </header>
 
@@ -761,6 +921,25 @@
     color: white;
   }
 
+  .btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    color: #94a3b8;
+    border: 1px solid #475569;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .btn-icon:hover {
+    background: #334155;
+    color: white;
+  }
+
   .shortcuts-panel {
     position: absolute;
     top: calc(100% + 4px);
@@ -814,6 +993,151 @@
     font-size: 11px;
     font-family: inherit;
     white-space: nowrap;
+  }
+
+  /* Project dropdown */
+  .project-wrap {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .btn-project {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    max-width: 180px;
+    flex-shrink: 0;
+  }
+
+  .btn-project:hover {
+    background: #334155;
+    border-color: #60a5fa;
+  }
+
+  .project-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .project-chevron {
+    color: #94a3b8;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .project-dropdown {
+    min-width: 240px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+
+  .project-item {
+    display: flex;
+    align-items: center;
+    padding: 0 4px 0 0;
+    transition: background 0.1s;
+  }
+
+  .project-item:hover {
+    background: #334155;
+  }
+
+  .project-item.active {
+    background: #1e3a5f;
+  }
+
+  .project-item-name {
+    flex: 1;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #cbd5e1;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .project-item.active .project-item-name {
+    color: #60a5fa;
+    font-weight: 600;
+  }
+
+  .project-item-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .project-item:hover .project-item-actions {
+    opacity: 1;
+  }
+
+  .project-action-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 3px;
+    transition: background 0.1s, color 0.1s;
+    line-height: 1;
+  }
+
+  .project-action-btn:hover {
+    background: #475569;
+    color: white;
+  }
+
+  .project-action-delete:hover {
+    background: #dc2626;
+    color: white;
+  }
+
+  .project-rename-input {
+    flex: 1;
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #60a5fa;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+    outline: none;
+    margin: 4px 8px;
+    min-width: 0;
+  }
+
+  .project-divider {
+    height: 1px;
+    background: #334155;
+    margin: 4px 0;
+  }
+
+  .project-new-btn {
+    color: #60a5fa !important;
+    font-weight: 500;
+  }
+
+  .project-new-row {
+    display: flex;
+    padding: 0;
   }
 
 </style>

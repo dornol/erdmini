@@ -2,7 +2,7 @@ import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, TableIndex, Un
 
 const LS_KEY = 'erdmini_schema';
 
-function generateId(): string {
+export function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
@@ -16,7 +16,7 @@ function getNextTableName(tables: Table[]): string {
   return `table_${i}`;
 }
 
-function defaultSchema(): ERDSchema {
+export function defaultSchema(): ERDSchema {
   return {
     version: '1',
     tables: [],
@@ -149,6 +149,22 @@ class ERDStore {
     } catch {
       this.storageFull = true;
     }
+  }
+
+  saveToStorageAs(projectId: string) {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(`erdmini_schema_${projectId}`, JSON.stringify($state.snapshot(this.schema)));
+      this.storageFull = false;
+    } catch {
+      this.storageFull = true;
+    }
+  }
+
+  clearHistory() {
+    this._undoStack = [];
+    this._redoStack = [];
+    this._undoVersion++;
   }
 
   addTable(viewportWidth = 800, viewportHeight = 600) {

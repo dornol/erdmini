@@ -190,5 +190,15 @@
   "idx_unique": "唯一",
   "idx_no_indexes": "暂无索引",
   "history_add_idx": "添加索引",
-  "history_delete_idx": "删除索引"
+  "history_delete_idx": "删除索引",
+  "project_label": "项目",
+  "project_new": "+ 新建项目",
+  "project_new_placeholder": "项目名称...",
+  "project_rename": "重命名",
+  "project_delete": "删除项目",
+  "project_duplicate": "复制项目",
+  "project_delete_confirm": "确定删除项目 \"{name}\" 吗？所有数据将被永久删除。",
+  "project_delete_title": "删除项目",
+  "project_default_name": "My Project",
+  "toolbar_bug_report": "报告错误"
 }

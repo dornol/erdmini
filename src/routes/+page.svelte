@@ -9,6 +9,7 @@
   import Toolbar from '$lib/components/Toolbar.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
+  import { projectStore } from '$lib/store/project.svelte';
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
@@ -164,7 +165,7 @@
     prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
     // Debounced save — avoid writing to localStorage on every drag frame
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => erdStore.saveToStorage(), 300);
+    saveTimer = setTimeout(() => projectStore.saveCurrentSchema(), 300);
   });
 
   // Keyboard shortcuts

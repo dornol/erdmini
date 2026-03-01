@@ -190,5 +190,15 @@
   "idx_unique": "ユニーク",
   "idx_no_indexes": "インデックスがありません",
   "history_add_idx": "インデックス追加",
-  "history_delete_idx": "インデックス削除"
+  "history_delete_idx": "インデックス削除",
+  "project_label": "プロジェクト",
+  "project_new": "+ 新規プロジェクト",
+  "project_new_placeholder": "プロジェクト名...",
+  "project_rename": "名前変更",
+  "project_delete": "プロジェクト削除",
+  "project_duplicate": "プロジェクト複製",
+  "project_delete_confirm": "プロジェクト「{name}」を削除しますか？すべてのデータが永久に削除されます。",
+  "project_delete_title": "プロジェクト削除",
+  "project_default_name": "My Project",
+  "toolbar_bug_report": "バグ報告"
 }

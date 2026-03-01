@@ -90,3 +90,17 @@ export interface ERDSchema {
 }
 
 export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql';
+
+export interface ProjectMeta {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  lastOpenedAt: string;
+}
+
+export interface ProjectIndex {
+  version: string;
+  activeProjectId: string;
+  projects: ProjectMeta[];
+}
