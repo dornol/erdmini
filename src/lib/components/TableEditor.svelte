@@ -5,6 +5,7 @@
   import type { Column } from '$lib/types/erd';
   import FkModal from './FkModal.svelte';
   import UniqueKeyModal from './UniqueKeyModal.svelte';
+  import IndexModal from './IndexModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
 
@@ -79,8 +80,16 @@
   // UK modal
   let showUkModal = $state(false);
 
+  // Index modal
+  let showIdxModal = $state(false);
+
   function getUkLabel(uk: { columnIds: string[] }) {
     const colNames = uk.columnIds.map((id) => selectedTable?.columns.find((c) => c.id === id)?.name ?? '?');
+    return `(${colNames.join(', ')})`;
+  }
+
+  function getIdxLabel(idx: { columnIds: string[] }) {
+    const colNames = idx.columnIds.map((id) => selectedTable?.columns.find((c) => c.id === id)?.name ?? '?');
     return `(${colNames.join(', ')})`;
   }
 
@@ -263,6 +272,14 @@
               </label>
             </div>
 
+            <!-- CHECK constraint -->
+            <input
+              class="col-input col-check"
+              value={col.check ?? ''}
+              oninput={(e) => onColumnChange(col, 'check', (e.target as HTMLInputElement).value || undefined)}
+              placeholder={m.column_check() + ' ' + m.optional()}
+            />
+
             <!-- Column comment -->
             <input
               class="col-input col-comment"
@@ -380,6 +397,39 @@
         <p class="no-cols">{m.uq_no_keys()}</p>
       {/each}
     </div>
+
+    <!-- Indexes -->
+    <div class="section idx-section">
+      <div class="section-header">
+        <span class="field-label">{m.idx_section()}</span>
+        <button class="add-col-btn" onclick={() => (showIdxModal = true)}>{m.idx_add()}</button>
+      </div>
+
+      {#each (selectedTable.indexes ?? []) as idx (idx.id)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="fk-row"
+          onmouseenter={() => { erdStore.hoveredIdxInfo = { tableId: selectedTable!.id, columnIds: idx.columnIds }; }}
+          onmouseleave={() => { erdStore.hoveredIdxInfo = null; }}
+        >
+          <span class="fk-col">{getIdxLabel(idx)}</span>
+          {#if idx.unique}
+            <span class="idx-unique-badge">UQ</span>
+          {/if}
+          {#if idx.name}
+            <span class="fk-action">{idx.name}</span>
+          {/if}
+          <span style="flex:1"></span>
+          <button
+            class="icon-btn del"
+            title={m.idx_delete()}
+            onclick={() => erdStore.deleteIndex(selectedTable!.id, idx.id)}
+          >&#x2715;</button>
+        </div>
+      {:else}
+        <p class="no-cols">{m.idx_no_indexes()}</p>
+      {/each}
+    </div>
   </aside>
 {:else}
   <aside class="editor editor-empty">
@@ -393,6 +443,10 @@
 
 {#if showUkModal && selectedTable}
   <UniqueKeyModal tableId={selectedTable.id} onclose={() => (showUkModal = false)} />
+{/if}
+
+{#if showIdxModal && selectedTable}
+  <IndexModal tableId={selectedTable.id} onclose={() => (showIdxModal = false)} />
 {/if}
 
 <style>
@@ -466,7 +520,8 @@
   }
 
   .fk-section,
-  .uk-section {
+  .uk-section,
+  .idx-section {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -477,23 +532,27 @@
   }
 
   .fk-section::-webkit-scrollbar,
-  .uk-section::-webkit-scrollbar {
+  .uk-section::-webkit-scrollbar,
+  .idx-section::-webkit-scrollbar {
     width: 5px;
   }
 
   .fk-section::-webkit-scrollbar-track,
-  .uk-section::-webkit-scrollbar-track {
+  .uk-section::-webkit-scrollbar-track,
+  .idx-section::-webkit-scrollbar-track {
     background: transparent;
   }
 
   .fk-section::-webkit-scrollbar-thumb,
-  .uk-section::-webkit-scrollbar-thumb {
+  .uk-section::-webkit-scrollbar-thumb,
+  .idx-section::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 3px;
   }
 
   .fk-section::-webkit-scrollbar-thumb:hover,
-  .uk-section::-webkit-scrollbar-thumb:hover {
+  .uk-section::-webkit-scrollbar-thumb:hover,
+  .idx-section::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
 
@@ -650,6 +709,12 @@
     color: #ef4444;
   }
 
+  .col-check {
+    font-size: 11px;
+    color: #7c3aed;
+    font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+  }
+
   .col-comment {
     font-size: 11px;
     color: #64748b;
@@ -746,6 +811,17 @@
   .fk-action {
     color: #64748b;
     font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .idx-unique-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: #7c3aed;
+    background: #ede9fe;
+    border: 1px solid #c4b5fd;
+    border-radius: 3px;
+    padding: 0 4px;
     flex-shrink: 0;
   }
 </style>

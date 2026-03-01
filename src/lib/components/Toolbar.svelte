@@ -6,6 +6,7 @@
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType } from '$lib/utils/auto-layout';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
+  import { exportSvg } from '$lib/utils/svg-export';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -193,6 +194,19 @@
       reader.readAsText(file);
     };
     input.click();
+  }
+
+  // SVG export
+  function exportSvgFile() {
+    const svg = exportSvg(erdStore.schema, themeStore.current);
+    if (!svg) return;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'erdmini_diagram.svg';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // Share
@@ -402,7 +416,10 @@
             JSON
           </button>
           <button class="dropdown-item" role="menuitem" onclick={() => { exportImage(); exportOpen = false; }}>
-            {m.toolbar_image_export()}
+            {m.toolbar_image_export()} (PNG)
+          </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportSvgFile(); exportOpen = false; }}>
+            SVG
           </button>
         </div>
       {/if}

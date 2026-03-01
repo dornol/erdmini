@@ -175,5 +175,20 @@
   "share_copied": "リンクをクリップボードにコピーしました！",
   "share_copy_failed": "クリップボードへのコピーに失敗しました。",
   "share_load_confirm": "共有スキーマを読み込みますか？現在の作業は置き換えられます。",
-  "share_load_title": "共有スキーマ"
+  "share_load_title": "共有スキーマ",
+  "ddl_import_partial": "{total}個中{success}個のテーブルをインポートしました。{failed}個失敗。",
+  "ddl_type_normalized": "型変換：{original} → {normalized}（{table}.{column}）",
+  "column_check": "CHECK",
+  "column_check_placeholder": "例：value > 0",
+  "idx_section": "インデックス",
+  "idx_add": "+ インデックス追加",
+  "idx_delete": "インデックス削除",
+  "idx_modal_title": "インデックス追加 — {name}",
+  "idx_column_select": "カラム選択",
+  "idx_add_column": "+ カラム追加",
+  "idx_name_placeholder": "インデックス名（任意）",
+  "idx_unique": "ユニーク",
+  "idx_no_indexes": "インデックスがありません",
+  "history_add_idx": "インデックス追加",
+  "history_delete_idx": "インデックス削除"
 }

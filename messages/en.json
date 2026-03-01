@@ -175,5 +175,20 @@
   "share_copied": "Link copied to clipboard!",
   "share_copy_failed": "Failed to copy to clipboard.",
   "share_load_confirm": "Load shared schema? Your current work will be replaced.",
-  "share_load_title": "Shared Schema"
+  "share_load_title": "Shared Schema",
+  "ddl_import_partial": "Imported {success} of {total} table(s). {failed} failed.",
+  "ddl_type_normalized": "Type normalized: {original} → {normalized} ({table}.{column})",
+  "column_check": "CHECK",
+  "column_check_placeholder": "e.g. value > 0",
+  "idx_section": "Indexes",
+  "idx_add": "+ Add Index",
+  "idx_delete": "Delete index",
+  "idx_modal_title": "Add Index — {name}",
+  "idx_column_select": "Select column",
+  "idx_add_column": "+ Add column",
+  "idx_name_placeholder": "Index name (optional)",
+  "idx_unique": "Unique",
+  "idx_no_indexes": "No indexes",
+  "history_add_idx": "Add index",
+  "history_delete_idx": "Delete index"
 }

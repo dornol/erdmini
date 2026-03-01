@@ -48,6 +48,7 @@
   let importDialect = $state<Dialect>('mysql');
   let importText = $state('');
   let importErrors = $state<string[]>([]);
+  let importWarnings = $state<string[]>([]);
   let importSuccess = $state<string | null>(null);
   let importing = $state(false);
 
@@ -91,6 +92,7 @@
 
   async function doImport() {
     importErrors = [];
+    importWarnings = [];
     importSuccess = null;
     importing = true;
 
@@ -98,6 +100,9 @@
       const result = await importDDL(importText, importDialect);
       if (result.errors.length > 0) {
         importErrors = result.errors;
+      }
+      if (result.warnings.length > 0) {
+        importWarnings = result.warnings;
       }
       if (result.tables.length > 0) {
         // Build name→existing table id map
@@ -277,6 +282,13 @@
         ></textarea>
         {#if importSuccess}
           <div class="msg-success">{importSuccess}</div>
+        {/if}
+        {#if importWarnings.length > 0}
+          <div class="msg-warnings">
+            {#each importWarnings as warn}
+              <div>{warn}</div>
+            {/each}
+          </div>
         {/if}
         {#if importErrors.length > 0}
           <div class="msg-errors">
@@ -488,6 +500,20 @@
     border: 1px solid #bbf7d0;
     border-radius: 6px;
     padding: 8px 12px;
+  }
+
+  .msg-warnings {
+    font-size: 12px;
+    color: #a16207;
+    background: #fefce8;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 100px;
+    overflow-y: auto;
   }
 
   .msg-errors {

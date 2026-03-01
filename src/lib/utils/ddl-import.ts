@@ -1,9 +1,12 @@
-import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, UniqueKey } from '$lib/types/erd';
+import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
+
+/** Track type normalizations (original → normalized) */
+let _typeWarnings: { original: string; normalized: string }[] = [];
 
 export function normalizeType(raw: string): ColumnType {
   const upper = raw.toUpperCase().trim();
@@ -29,6 +32,7 @@ export function normalizeType(raw: string): ColumnType {
   if (base === 'NVARCHAR(MAX)') return 'TEXT';
 
   if ((COLUMN_TYPES as readonly string[]).includes(base)) return base as ColumnType;
+  _typeWarnings.push({ original: raw.trim(), normalized: 'VARCHAR' });
   return 'VARCHAR';
 }
 
@@ -514,19 +518,104 @@ async function getParser(dialect: Dialect): Promise<any> {
 export interface ImportResult {
   tables: Table[];
   errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Extract inline column-level CHECK constraints from raw SQL.
+ * Returns Map<tableName, Map<columnName, checkExpression>>
+ */
+function extractCheckConstraints(sql: string): Map<string, Map<string, string>> {
+  const result = new Map<string, Map<string, string>>();
+  // Match CREATE TABLE blocks
+  const tableRe = /create\s+table\s+(?:\[?\w+\]?\.)?[\[`"]?(\w+)[\]`"]?\s*\(([\s\S]*?)\)\s*(?:ENGINE|;|\))/gi;
+  let tMatch: RegExpExecArray | null;
+  while ((tMatch = tableRe.exec(sql)) !== null) {
+    const tableName = tMatch[1];
+    const body = tMatch[2];
+    // Split by top-level commas
+    const colDefs: string[] = [];
+    let depth = 0, start = 0;
+    for (let i = 0; i < body.length; i++) {
+      if (body[i] === '(') depth++;
+      else if (body[i] === ')') depth--;
+      else if (body[i] === ',' && depth === 0) {
+        colDefs.push(body.slice(start, i));
+        start = i + 1;
+      }
+    }
+    colDefs.push(body.slice(start));
+
+    for (const colDef of colDefs) {
+      const trimmed = colDef.trim();
+      // Skip table-level constraints
+      if (/^(constraint|primary|foreign|unique|check|index|key)\b/i.test(trimmed)) continue;
+      // Extract column name (first word)
+      const colNameMatch = trimmed.match(/^[\[`"]?(\w+)[\]`"]?\s+/);
+      if (!colNameMatch) continue;
+      const colName = colNameMatch[1];
+      // Find CHECK (...) in this column definition
+      const checkMatch = trimmed.match(/\bcheck\s*\(/i);
+      if (!checkMatch) continue;
+      const checkStart = checkMatch.index! + checkMatch[0].length - 1;
+      // Find matching close paren
+      let d = 1, ci = checkStart + 1;
+      while (ci < trimmed.length && d > 0) {
+        if (trimmed[ci] === '(') d++;
+        else if (trimmed[ci] === ')') d--;
+        ci++;
+      }
+      if (d === 0) {
+        const expr = trimmed.slice(checkStart + 1, ci - 1).trim();
+        if (!result.has(tableName)) result.set(tableName, new Map());
+        result.get(tableName)!.set(colName, expr);
+      }
+    }
+  }
+  return result;
+}
+
+interface ParsedIndex {
+  tableName: string;
+  columnNames: string[];
+  name?: string;
+  unique: boolean;
+}
+
+/**
+ * Extract CREATE [UNIQUE] INDEX statements from raw SQL via regex.
+ */
+function extractIndexStatements(sql: string): ParsedIndex[] {
+  const results: ParsedIndex[] = [];
+  const pattern = /create\s+(unique\s+)?(?:nonclustered\s+)?index\s+(?:\[?(\w+)\]?)\s+on\s+(?:\[?\w+\]?\.)?[\[`"]?(\w+)[\]`"]?\s*\(([^)]+)\)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(sql)) !== null) {
+    const unique = !!m[1];
+    const name = m[2];
+    const tableName = m[3];
+    const cols = m[4].split(',').map((s) => s.replace(/[\[\]`"]/g, '').replace(/\s+(ASC|DESC)/gi, '').trim()).filter(Boolean);
+    results.push({ tableName, columnNames: cols, name, unique });
+  }
+  return results;
 }
 
 export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promise<ImportResult> {
   const errors: string[] = [];
+  const warnings: string[] = [];
   const tables: Table[] = [];
   const existingNames: string[] = [];
+  _typeWarnings = [];
+  // Extract CHECK constraints from raw SQL before parsing
+  const checkConstraints = extractCheckConstraints(sql);
+  // Extract CREATE INDEX statements from raw SQL
+  const parsedIndexes = extractIndexStatements(sql);
 
   let parser;
   try {
     parser = await getParser(dialect);
   } catch (e) {
-    errors.push(`파서 로딩 실패: ${e}`);
-    return { tables, errors };
+    errors.push(`Parser load failed: ${e}`);
+    return { tables, errors, warnings };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -555,17 +644,38 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
           stmts.push(...arr);
         } catch (e) {
           const tMatch = stmtSql.match(/(?:create|alter)\s+table\s+(\w+)/i);
-          errors.push(`파싱 실패 (${tMatch?.[1] ?? 'unknown'}): ${e instanceof Error ? e.message : e}`);
+          errors.push(`Parse failed (${tMatch?.[1] ?? 'unknown'}): ${e instanceof Error ? e.message : e}`);
         }
       }
     }
   } else {
+    // Try parsing the entire SQL at once first
     try {
       const result = parser.astify(sql);
       stmts = Array.isArray(result) ? result : [result];
-    } catch (e) {
-      errors.push(`SQL 파싱 오류: ${e instanceof Error ? e.message : e}`);
-      return { tables, errors };
+    } catch {
+      // Fallback: split by semicolons and parse each statement individually
+      stmts = [];
+      const rawStmts = sql.split(/;\s*/).filter((s) => s.trim());
+      for (const rawStmt of rawStmts) {
+        const trimmed = rawStmt.trim();
+        if (!trimmed) continue;
+        try {
+          const result = parser.astify(trimmed);
+          const arr = Array.isArray(result) ? result : [result];
+          stmts.push(...arr);
+        } catch (e) {
+          const tMatch = trimmed.match(/(?:create|alter)\s+table\s+(\w+)/i);
+          if (tMatch) {
+            errors.push(`Parse failed (${tMatch[1]}): ${e instanceof Error ? e.message : e}`);
+          }
+          // Skip non-table statements silently (e.g. USE, SET, etc.)
+        }
+      }
+      if (stmts.length === 0 && errors.length === 0) {
+        errors.push('No CREATE TABLE statements found.');
+        return { tables, errors, warnings };
+      }
     }
   }
 
@@ -651,7 +761,13 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
           const colName = extractColumnName(def.column?.column);
           const rawType = def.definition?.dataType ?? 'VARCHAR';
           const length = def.definition?.length ?? undefined;
+          const warnsBefore = _typeWarnings.length;
           const type = normalizeType(rawType);
+          // Capture type normalization warnings with table/column context
+          if (_typeWarnings.length > warnsBefore) {
+            const w = _typeWarnings[_typeWarnings.length - 1];
+            warnings.push(`Type: ${w.original} → ${w.normalized} (${tableName}.${colName})`);
+          }
           const nullable = def.nullable?.type !== 'not null';
           const isPK = !!def.primary_key;
           const isUnique = !!def.unique;
@@ -737,6 +853,15 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
         }
       }
 
+      // Apply CHECK constraints extracted from raw SQL
+      const colChecks = checkConstraints.get(rawTableName);
+      if (colChecks) {
+        for (const col of columns) {
+          const check = colChecks.get(col.name);
+          if (check) col.check = check;
+        }
+      }
+
       // Merge ALTER TABLE FKs
       const alterFKs = alterFKMap.get(rawTableName) ?? [];
       foreignKeys.push(...alterFKs);
@@ -773,6 +898,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
         columns,
         foreignKeys: [],
         uniqueKeys,
+        indexes: [],
         position: { x: 40 + col * GRID_GAP_X, y: 40 + row * GRID_GAP_Y },
         comment: tableComment,
       };
@@ -788,7 +914,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
 
   if (tables.length === 0) {
     errors.push('CREATE TABLE 구문을 찾을 수 없습니다.');
-    return { tables, errors };
+    return { tables, errors, warnings };
   }
 
   // Second pass: resolve foreign keys
@@ -894,6 +1020,23 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
     }
   }
 
+  // Apply CREATE INDEX statements
+  for (const pidx of parsedIndexes) {
+    const srcTable = tables.find((t) => t.name === pidx.tableName);
+    if (!srcTable) continue;
+    const colIds = pidx.columnNames
+      .map((name) => srcTable.columns.find((c) => c.name === name)?.id)
+      .filter((id): id is string => !!id);
+    if (colIds.length === 0) continue;
+    const idx: TableIndex = {
+      id: generateId(),
+      columnIds: colIds,
+      unique: pidx.unique,
+      name: pidx.name,
+    };
+    srcTable.indexes.push(idx);
+  }
+
   // Apply MSSQL sp_addextendedproperty comments
   if (mssqlComments) {
     for (const table of tables) {
@@ -909,5 +1052,5 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
     }
   }
 
-  return { tables, errors };
+  return { tables, errors, warnings };
 }

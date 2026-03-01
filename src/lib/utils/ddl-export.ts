@@ -61,6 +61,10 @@ function columnSql(col: Column, dialect: Dialect): string {
     }
   }
 
+  if (col.check) {
+    parts.push(`CHECK (${col.check})`);
+  }
+
   if (col.comment && (dialect === 'mysql' || dialect === 'mariadb')) {
     parts.push(`COMMENT '${col.comment.replace(/'/g, "''")}'`);
   }
@@ -195,6 +199,22 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect): string {
   if (dialect === 'mssql') {
     for (const table of schema.tables) {
       sections.push(...mssqlComments(table));
+    }
+  }
+
+  // CREATE INDEX statements
+  for (const table of schema.tables) {
+    for (const idx of table.indexes ?? []) {
+      const colNames = idx.columnIds
+        .map((id) => table.columns.find((c) => c.id === id))
+        .filter((c) => c != null)
+        .map((c) => q(c.name, dialect));
+      if (colNames.length === 0) continue;
+      const uniqueKw = idx.unique ? 'UNIQUE ' : '';
+      const idxName = idx.name || `idx_${table.name}_${idx.columnIds.map((id) => table.columns.find((c) => c.id === id)?.name ?? '').join('_')}`;
+      sections.push(
+        `CREATE ${uniqueKw}INDEX ${q(idxName, dialect)} ON ${q(table.name, dialect)} (${colNames.join(', ')});`,
+      );
     }
   }
 

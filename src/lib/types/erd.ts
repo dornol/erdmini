@@ -26,6 +26,7 @@ export interface Column {
   unique: boolean;
   autoIncrement: boolean;
   defaultValue?: string;
+  check?: string;
   comment?: string;
 }
 
@@ -53,6 +54,13 @@ export interface UniqueKey {
   name?: string;
 }
 
+export interface TableIndex {
+  id: string;
+  columnIds: string[];
+  name?: string;
+  unique: boolean;
+}
+
 export interface ForeignKey {
   id: string;
   columnIds: string[];
@@ -68,6 +76,7 @@ export interface Table {
   columns: Column[];
   foreignKeys: ForeignKey[];
   uniqueKeys: UniqueKey[];
+  indexes: TableIndex[];
   position: { x: number; y: number };
   comment?: string;
 }

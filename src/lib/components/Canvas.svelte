@@ -181,6 +181,9 @@
     --erd-badge-ai-bg: #d1fae5;
     --erd-badge-ai-border: #6ee7b7;
     --erd-badge-ai-text: #065f46;
+    --erd-badge-ck-bg: #fef3c7;
+    --erd-badge-ck-border: #fbbf24;
+    --erd-badge-ck-text: #a16207;
     --erd-badge-radius: 3px;
     --erd-no-col-text: #94a3b8;
     --erd-line-color: #94a3b8;
@@ -247,6 +250,9 @@
     --erd-badge-ai-bg: #dce8d0;
     --erd-badge-ai-border: #8faa70;
     --erd-badge-ai-text: #3a5020;
+    --erd-badge-ck-bg: #f5ecd0;
+    --erd-badge-ck-border: #c9a830;
+    --erd-badge-ck-text: #7c5e10;
     --erd-badge-radius: 1px;
     --erd-no-col-text: #b0a08a;
     --erd-line-color: #b0a08a;
@@ -313,6 +319,9 @@
     --erd-badge-ai-bg: rgba(52, 211, 153, 0.12);
     --erd-badge-ai-border: #059669;
     --erd-badge-ai-text: #6ee7b7;
+    --erd-badge-ck-bg: rgba(251, 191, 36, 0.12);
+    --erd-badge-ck-border: #d97706;
+    --erd-badge-ck-text: #fbbf24;
     --erd-badge-radius: 0;
     --erd-no-col-text: #3a6a9a;
     --erd-line-color: #3a7ac0;
@@ -379,6 +388,9 @@
     --erd-badge-ai-bg: #f5f5f5;
     --erd-badge-ai-border: #d4d4d4;
     --erd-badge-ai-text: #525252;
+    --erd-badge-ck-bg: #f5f5f5;
+    --erd-badge-ck-border: #d4d4d4;
+    --erd-badge-ck-text: #525252;
     --erd-badge-radius: 2px;
     --erd-no-col-text: #d4d4d4;
     --erd-line-color: #d4d4d4;

@@ -16,6 +16,10 @@
     history_edit_domain: () => m.history_edit_domain(),
     history_layout: () => m.history_layout(),
     history_edit: () => m.history_edit(),
+    history_add_uq: () => m.history_add_uq(),
+    history_delete_uq: () => m.history_delete_uq(),
+    history_add_idx: () => m.history_add_idx(),
+    history_delete_idx: () => m.history_delete_idx(),
   };
 
   function resolveLabel(key: string): string {

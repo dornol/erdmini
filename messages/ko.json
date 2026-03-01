@@ -175,5 +175,20 @@
   "share_copied": "링크가 복사되었습니다!",
   "share_copy_failed": "클립보드 복사에 실패했습니다.",
   "share_load_confirm": "공유된 스키마를 불러오시겠습니까? 현재 작업은 교체됩니다.",
-  "share_load_title": "공유 스키마"
+  "share_load_title": "공유 스키마",
+  "ddl_import_partial": "{total}개 중 {success}개 테이블을 가져왔습니다. {failed}개 실패.",
+  "ddl_type_normalized": "타입 변환: {original} → {normalized} ({table}.{column})",
+  "column_check": "CHECK",
+  "column_check_placeholder": "예: value > 0",
+  "idx_section": "인덱스",
+  "idx_add": "+ 인덱스 추가",
+  "idx_delete": "인덱스 삭제",
+  "idx_modal_title": "인덱스 추가 — {name}",
+  "idx_column_select": "컬럼 선택",
+  "idx_add_column": "+ 컬럼 추가",
+  "idx_name_placeholder": "인덱스명 (선택)",
+  "idx_unique": "유니크",
+  "idx_no_indexes": "인덱스가 없습니다",
+  "history_add_idx": "인덱스 추가",
+  "history_delete_idx": "인덱스 삭제"
 }

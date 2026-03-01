@@ -175,5 +175,20 @@
   "share_copied": "链接已复制到剪贴板！",
   "share_copy_failed": "复制到剪贴板失败。",
   "share_load_confirm": "是否加载共享架构？当前工作将被替换。",
-  "share_load_title": "共享架构"
+  "share_load_title": "共享架构",
+  "ddl_import_partial": "共 {total} 个表中成功导入 {success} 个，{failed} 个失败。",
+  "ddl_type_normalized": "类型转换：{original} → {normalized}（{table}.{column}）",
+  "column_check": "CHECK",
+  "column_check_placeholder": "例：value > 0",
+  "idx_section": "索引",
+  "idx_add": "+ 添加索引",
+  "idx_delete": "删除索引",
+  "idx_modal_title": "添加索引 — {name}",
+  "idx_column_select": "选择列",
+  "idx_add_column": "+ 添加列",
+  "idx_name_placeholder": "索引名（可选）",
+  "idx_unique": "唯一",
+  "idx_no_indexes": "暂无索引",
+  "history_add_idx": "添加索引",
+  "history_delete_idx": "删除索引"
 }

@@ -1,4 +1,4 @@
-import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, UniqueKey } from '$lib/types/erd';
+import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 
 const LS_KEY = 'erdmini_schema';
 
@@ -51,9 +51,10 @@ function loadFromStorage(): ERDSchema {
     if (!parsed.domains) parsed.domains = [];
     // Migrate legacy single-column FK format
     migrateFK(parsed);
-    // Migrate older schemas that lack uniqueKeys
+    // Migrate older schemas that lack uniqueKeys / indexes
     for (const table of parsed.tables) {
       if (!table.uniqueKeys) table.uniqueKeys = [];
+      if (!table.indexes) table.indexes = [];
     }
     return parsed;
   } catch {
@@ -73,6 +74,7 @@ class ERDStore {
   hoveredColumnInfo = $state<{ tableId: string; columnId: string } | null>(null);
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
   hoveredUkInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
+  hoveredIdxInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
   storageFull = $state(false);
 
   // Undo/Redo
@@ -172,6 +174,7 @@ class ERDStore {
       ],
       foreignKeys: [],
       uniqueKeys: [],
+      indexes: [],
       position: { x: worldX - 100, y: worldY - 60 },
     };
     this.schema.tables = [...this.schema.tables, newTable];
@@ -360,6 +363,26 @@ class ERDStore {
     const table = this.schema.tables.find((t) => t.id === tableId);
     if (!table) return;
     table.uniqueKeys = table.uniqueKeys.filter((uk) => uk.id !== ukId);
+    this.schema.updatedAt = now();
+  }
+
+  addIndex(tableId: string, columnIds: string[], unique: boolean, name?: string) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    const idx: TableIndex = {
+      id: generateId(),
+      columnIds,
+      unique,
+      name: name || undefined,
+    };
+    table.indexes = [...(table.indexes ?? []), idx];
+    this.schema.updatedAt = now();
+  }
+
+  deleteIndex(tableId: string, indexId: string) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    table.indexes = (table.indexes ?? []).filter((idx) => idx.id !== indexId);
     this.schema.updatedAt = now();
   }
 

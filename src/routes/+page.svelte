@@ -73,6 +73,30 @@
       }
     }
 
+    // Unique key added/deleted
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (!pt2) continue;
+      if ((ct2.uniqueKeys?.length ?? 0) > (pt2.uniqueKeys?.length ?? 0)) {
+        return { label: 'history_add_uq', detail: ct2.name };
+      }
+      if ((ct2.uniqueKeys?.length ?? 0) < (pt2.uniqueKeys?.length ?? 0)) {
+        return { label: 'history_delete_uq', detail: ct2.name };
+      }
+    }
+
+    // Index added/deleted
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (!pt2) continue;
+      if ((ct2.indexes?.length ?? 0) > (pt2.indexes?.length ?? 0)) {
+        return { label: 'history_add_idx', detail: ct2.name };
+      }
+      if ((ct2.indexes?.length ?? 0) < (pt2.indexes?.length ?? 0)) {
+        return { label: 'history_delete_idx', detail: ct2.name };
+      }
+    }
+
     // Domain changes
     const prevDomains = prev.domains ?? [];
     const curDomains = cur.domains ?? [];

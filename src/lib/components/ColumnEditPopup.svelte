@@ -162,6 +162,18 @@
           />
         </div>
 
+        <!-- CHECK constraint -->
+        <div class="field-row">
+          <label for="ce-check" class="field-label">{m.column_check()}</label>
+          <input
+            id="ce-check"
+            class="field-input field-check"
+            value={col.check ?? ''}
+            oninput={(e) => onChange('check', (e.target as HTMLInputElement).value || undefined)}
+            placeholder={m.column_check_placeholder()}
+          />
+        </div>
+
         <!-- Comment -->
         <div class="field-row">
           <label for="ce-comment" class="field-label">{m.column_comment()}</label>
@@ -282,6 +294,12 @@
 
   .field-input:focus {
     border-color: #3b82f6;
+  }
+
+  .field-check {
+    font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+    color: #7c3aed;
+    font-size: 12px;
   }
 
   .field-comment {

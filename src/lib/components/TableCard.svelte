@@ -147,10 +147,11 @@
         (hfk.refTableId === table.id && hfk.refColumnIds.includes(col.id))
       )}
       {@const isUkHighlighted = erdStore.hoveredUkInfo?.tableId === table.id && erdStore.hoveredUkInfo.columnIds.includes(col.id)}
+      {@const isIdxHighlighted = erdStore.hoveredIdxInfo?.tableId === table.id && erdStore.hoveredIdxInfo.columnIds.includes(col.id)}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
         class="column-row"
-        class:fk-highlighted={isFkHighlighted || isUkHighlighted}
+        class:fk-highlighted={isFkHighlighted || isUkHighlighted || isIdxHighlighted}
         ondblclick={(e) => onColumnDblClick(e, col.id)}
         onmouseenter={() => {
           erdStore.hoveredColumnInfo = { tableId: table.id, columnId: col.id };
@@ -192,14 +193,17 @@
           {col.type}{col.length ? `(${col.length})` : ''}{col.nullable ? '?' : ''}
         </span>
 
-        <!-- Attribute badges: UQ / AI -->
-        {#if ((col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey) || col.autoIncrement}
+        <!-- Attribute badges: UQ / AI / CK -->
+        {#if ((col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey) || col.autoIncrement || col.check}
           <div class="col-attrs">
             {#if (col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey}
               <span class="attr uq" title="Unique">U</span>
             {/if}
             {#if col.autoIncrement}
               <span class="attr ai" title="Auto Increment">AI</span>
+            {/if}
+            {#if col.check}
+              <span class="attr ck" title="CHECK ({col.check})">CK</span>
             {/if}
           </div>
         {/if}
@@ -439,6 +443,12 @@
     background: var(--erd-badge-ai-bg);
     color: var(--erd-badge-ai-text);
     border: 1px solid var(--erd-badge-ai-border);
+  }
+
+  .attr.ck {
+    background: var(--erd-badge-ck-bg, #fef3c7);
+    color: var(--erd-badge-ck-text, #a16207);
+    border: 1px solid var(--erd-badge-ck-border, #fbbf24);
   }
 
   .no-columns {
