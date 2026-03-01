@@ -5,6 +5,7 @@
   import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType } from '$lib/utils/auto-layout';
+  import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -192,6 +193,20 @@
       reader.readAsText(file);
     };
     input.click();
+  }
+
+  // Share
+  let shareStatus = $state<'idle' | 'copied'>('idle');
+  async function shareLink() {
+    try {
+      const encoded = await schemaToShareString(erdStore.schema);
+      const url = buildShareUrl(encoded);
+      await navigator.clipboard.writeText(url);
+      shareStatus = 'copied';
+      setTimeout(() => (shareStatus = 'idle'), 2000);
+    } catch {
+      dialogStore.alert(m.share_copy_failed());
+    }
   }
 
   let layoutOpen = $state(false);
@@ -397,6 +412,16 @@
 
     <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
       {m.toolbar_domains()}
+    </button>
+
+    <span class="separator"></span>
+
+    <button
+      class="btn-secondary btn-share"
+      class:copied={shareStatus === 'copied'}
+      onclick={shareLink}
+    >
+      {shareStatus === 'copied' ? m.share_copied() : m.share_link()}
     </button>
   </div>
 
@@ -615,6 +640,12 @@
     transition: background 0.15s, color 0.15s;
     flex-shrink: 0;
     letter-spacing: 0.05em;
+  }
+
+  .btn-share.copied {
+    background: #166534;
+    color: #4ade80;
+    border-color: #22c55e;
   }
 
   .btn-lang:hover {

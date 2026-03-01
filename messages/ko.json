@@ -170,5 +170,10 @@
   "export_format_plantuml": "PlantUML",
   "shortcuts_zoom_in": "확대",
   "shortcuts_zoom_out": "축소",
-  "shortcuts_keyboard_zoom": "키보드 줌 (+/-)"
+  "shortcuts_keyboard_zoom": "키보드 줌 (+/-)",
+  "share_link": "공유 링크",
+  "share_copied": "링크가 복사되었습니다!",
+  "share_copy_failed": "클립보드 복사에 실패했습니다.",
+  "share_load_confirm": "공유된 스키마를 불러오시겠습니까? 현재 작업은 교체됩니다.",
+  "share_load_title": "공유 스키마"
 }

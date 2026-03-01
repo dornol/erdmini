@@ -11,6 +11,7 @@
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
 
@@ -121,14 +122,13 @@
   // prevSchemaSnap captures the state BEFORE the mutation so undo restores the correct state
   let prevUpdatedAt = $state(erdStore.schema.updatedAt);
   let prevSchemaSnap: string = JSON.stringify($state.snapshot(erdStore.schema));
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
     const cur = erdStore.schema.updatedAt;
     if (cur !== prevUpdatedAt) {
       if (erdStore._isUndoRedoing) {
-        // Undo/redo triggered this change — don't push, just reset flag
         erdStore._isUndoRedoing = false;
       } else {
-        // Normal mutation — push the PREVIOUS state (before this change)
         const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
         const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;
         const { label, detail } = deriveLabel(prevSchema, curSchema);
@@ -138,7 +138,9 @@
     }
     // Always capture current state for next mutation
     prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
-    erdStore.saveToStorage();
+    // Debounced save — avoid writing to localStorage on every drag frame
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => erdStore.saveToStorage(), 300);
   });
 
   // Keyboard shortcuts
@@ -241,6 +243,31 @@
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  });
+
+  // Load shared schema from URL hash (#s=...)
+  $effect(() => {
+    const shareData = getShareDataFromUrl();
+    if (!shareData) return;
+    // Clear hash immediately to prevent re-triggering
+    history.replaceState(null, '', window.location.pathname);
+
+    (async () => {
+      try {
+        const schema = await shareStringToSchema(shareData);
+        if (erdStore.schema.tables.length > 0) {
+          const ok = await dialogStore.confirm(m.share_load_confirm(), {
+            title: m.share_load_title(),
+            confirmText: m.import_replace(),
+            variant: 'danger',
+          });
+          if (!ok) return;
+        }
+        erdStore.loadSchema(schema);
+      } catch {
+        // Invalid share data — silently ignore
+      }
+    })();
   });
 </script>
 

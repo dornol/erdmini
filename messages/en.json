@@ -170,5 +170,10 @@
   "export_format_plantuml": "PlantUML",
   "shortcuts_zoom_in": "Zoom in",
   "shortcuts_zoom_out": "Zoom out",
-  "shortcuts_keyboard_zoom": "Keyboard zoom (+/-)"
+  "shortcuts_keyboard_zoom": "Keyboard zoom (+/-)",
+  "share_link": "Share Link",
+  "share_copied": "Link copied to clipboard!",
+  "share_copy_failed": "Failed to copy to clipboard.",
+  "share_load_confirm": "Load shared schema? Your current work will be replaced.",
+  "share_load_title": "Shared Schema"
 }

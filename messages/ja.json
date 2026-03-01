@@ -170,5 +170,10 @@
   "export_format_plantuml": "PlantUML",
   "shortcuts_zoom_in": "ズームイン",
   "shortcuts_zoom_out": "ズームアウト",
-  "shortcuts_keyboard_zoom": "キーボードズーム (+/-)"
+  "shortcuts_keyboard_zoom": "キーボードズーム (+/-)",
+  "share_link": "共有リンク",
+  "share_copied": "リンクをクリップボードにコピーしました！",
+  "share_copy_failed": "クリップボードへのコピーに失敗しました。",
+  "share_load_confirm": "共有スキーマを読み込みますか？現在の作業は置き換えられます。",
+  "share_load_title": "共有スキーマ"
 }

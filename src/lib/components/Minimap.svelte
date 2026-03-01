@@ -10,8 +10,30 @@
 
   let viewportEl: HTMLDivElement | undefined = $state(undefined);
 
-  // Compute bounding box of all tables
-  const bounds = $derived(() => {
+  // Throttled render state — updates at most once per rAF
+  let renderTick = $state(0);
+  let rafPending = false;
+
+  $effect(() => {
+    // Track reactive deps: canvas position/scale and table positions
+    void canvasState.x;
+    void canvasState.y;
+    void canvasState.scale;
+    void erdStore.schema.tables;
+    void erdStore.selectedTableIds;
+    // Schedule one update per frame
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(() => {
+        rafPending = false;
+        renderTick++;
+      });
+    }
+  });
+
+  // All minimap computations depend on renderTick (throttled)
+  const bounds = $derived.by(() => {
+    void renderTick;
     const tables = erdStore.schema.tables;
     if (tables.length === 0) return { minX: 0, minY: 0, maxX: 800, maxY: 600 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -30,22 +52,21 @@
     };
   });
 
-  const worldW = $derived(bounds().maxX - bounds().minX);
-  const worldH = $derived(bounds().maxY - bounds().minY);
+  const worldW = $derived(bounds.maxX - bounds.minX);
+  const worldH = $derived(bounds.maxY - bounds.minY);
   const mapScale = $derived(Math.min(MAP_W / worldW, MAP_H / worldH));
 
   function worldToMap(wx: number, wy: number) {
     return {
-      x: (wx - bounds().minX) * mapScale,
-      y: (wy - bounds().minY) * mapScale,
+      x: (wx - bounds.minX) * mapScale,
+      y: (wy - bounds.minY) * mapScale,
     };
   }
 
-  // Viewport rect in minimap coords
-  const viewportRect = $derived(() => {
+  const viewportRect = $derived.by(() => {
+    void renderTick;
     if (!viewportEl) return { x: 0, y: 0, w: MAP_W, h: MAP_H };
     const rect = viewportEl.parentElement?.getBoundingClientRect() ?? { width: 800, height: 600 };
-    // Viewport in world coords
     const vx = -canvasState.x / canvasState.scale;
     const vy = -canvasState.y / canvasState.scale;
     const vw = rect.width / canvasState.scale;
@@ -59,15 +80,25 @@
     };
   });
 
+  // Table positions for minimap (throttled)
+  const miniTables = $derived.by(() => {
+    void renderTick;
+    return erdStore.schema.tables.map((t) => ({
+      id: t.id,
+      ...worldToMap(t.position.x, t.position.y),
+      w: TABLE_W * mapScale,
+      h: (HEADER_H + t.columns.length * ROW_H) * mapScale,
+      active: erdStore.selectedTableIds.has(t.id),
+    }));
+  });
+
   function onMinimapClick(e: MouseEvent) {
     const el = e.currentTarget as HTMLElement;
     const rect = el.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    // Convert minimap coords to world coords
-    const wx = mx / mapScale + bounds().minX;
-    const wy = my / mapScale + bounds().minY;
-    // Center viewport on this world point
+    const wx = mx / mapScale + bounds.minX;
+    const wy = my / mapScale + bounds.minY;
     const parent = viewportEl?.parentElement?.getBoundingClientRect() ?? { width: 800, height: 600 };
     canvasState.x = -wx * canvasState.scale + parent.width / 2;
     canvasState.y = -wy * canvasState.scale + parent.height / 2;
@@ -82,18 +113,16 @@
     style="width:{MAP_W}px; height:{MAP_H}px;"
     onclick={onMinimapClick}
   >
-    {#each erdStore.schema.tables as table (table.id)}
-      {@const pos = worldToMap(table.position.x, table.position.y)}
-      {@const h = (HEADER_H + table.columns.length * ROW_H) * mapScale}
+    {#each miniTables as mt (mt.id)}
       <div
         class="mini-table"
-        class:active={erdStore.selectedTableIds.has(table.id)}
-        style="left:{pos.x}px; top:{pos.y}px; width:{TABLE_W * mapScale}px; height:{h}px;"
+        class:active={mt.active}
+        style="left:{mt.x}px; top:{mt.y}px; width:{mt.w}px; height:{mt.h}px;"
       ></div>
     {/each}
     <div
       class="mini-viewport"
-      style="left:{viewportRect().x}px; top:{viewportRect().y}px; width:{viewportRect().w}px; height:{viewportRect().h}px;"
+      style="left:{viewportRect.x}px; top:{viewportRect.y}px; width:{viewportRect.w}px; height:{viewportRect.h}px;"
     ></div>
   </div>
 </div>

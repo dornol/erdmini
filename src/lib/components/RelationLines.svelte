@@ -28,6 +28,16 @@
     toLeft: boolean;
     isUnique: boolean;
     isNullable: boolean;
+    // Precomputed
+    path: string;
+    labelX: number;
+    labelY: number;
+    labelText: string;
+    parentTick: string;
+    parentParticipation: string | null;  // null = circle
+    parentCircleCx: number;
+    childMarker: string;
+    childCircleCx: number;
   }
 
   function getColIndex(table: Table, columnId: string): number {
@@ -38,6 +48,25 @@
     return table.position.y + HEADER_HEIGHT + colIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
   }
 
+  function computeBezier(x1: number, y1: number, x2: number, y2: number, fromRight: boolean, toLeft: boolean) {
+    const dx = Math.abs(x2 - x1);
+    const dy = Math.abs(y2 - y1);
+    const straight = Math.min(20, Math.max(8, dx * 0.25));
+    const dirS = fromRight ? 1 : -1;
+    const dirT = toLeft ? -1 : 1;
+    const sx1 = x1 + dirS * straight;
+    const sx2 = x2 + dirT * straight;
+    const curveDx = Math.abs(sx2 - sx1);
+    const offset = Math.max(40, Math.min(150, Math.max(curveDx * 0.4, dy * 0.4)));
+    const cx1 = sx1 + dirS * offset;
+    const cx2 = sx2 + dirT * offset;
+    const path = `M ${x1} ${y1} L ${sx1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${sx2} ${y2} L ${x2} ${y2}`;
+    // Midpoint of cubic bezier at t=0.5
+    const labelX = (sx1 + 3 * cx1 + 3 * cx2 + sx2) / 8;
+    const labelY = (y1 + y2) / 2;
+    return { path, labelX, labelY };
+  }
+
   let lines = $derived.by((): FKLine[] => {
     const result: FKLine[] = [];
     for (const table of erdStore.schema.tables) {
@@ -45,7 +74,6 @@
         const refTable = erdStore.schema.tables.find((t) => t.id === fk.referencedTableId);
         if (!refTable) continue;
 
-        // Generate one line per column pair in composite FK
         for (let i = 0; i < fk.columnIds.length; i++) {
           const srcColIdx = getColIndex(table, fk.columnIds[i]);
           const refColIdx = getColIndex(refTable, fk.referencedColumnIds[i]);
@@ -54,7 +82,6 @@
           const srcCenterX = table.position.x + TABLE_WIDTH / 2;
           const refCenterX = refTable.position.x + TABLE_WIDTH / 2;
 
-          // Detect horizontal overlap (vertically stacked tables)
           const overlapAmount = Math.min(table.position.x + TABLE_WIDTH, refTable.position.x + TABLE_WIDTH)
             - Math.max(table.position.x, refTable.position.x);
           const overlapsX = overlapAmount > TABLE_WIDTH * 0.3;
@@ -78,74 +105,45 @@
           const isUnique = srcCol?.unique ?? false;
           const isNullable = srcCol?.nullable ?? false;
 
-          result.push({ fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable });
+          // Precompute bezier path + label midpoint
+          const { path, labelX, labelY } = computeBezier(x1, y1, x2, y2, fromRight, toLeft);
+          const labelText = isUnique ? '1:1' : '1:N';
+
+          // Precompute parent side markers
+          const pDir = toLeft ? -1 : 1;
+          const pTickX = x2 + pDir * 6;
+          const parentTick = `M ${pTickX} ${y2 - 6} L ${pTickX} ${y2 + 6}`;
+          let parentParticipation: string | null = null;
+          const parentCircleCx = x2 + pDir * 14;
+          if (!isNullable) {
+            parentParticipation = `M ${parentCircleCx} ${y2 - 6} L ${parentCircleCx} ${y2 + 6}`;
+          }
+
+          // Precompute child side markers
+          const cDir = fromRight ? 1 : -1;
+          let childMarker: string;
+          if (isUnique) {
+            const cTickX = x1 + cDir * 6;
+            childMarker = `M ${cTickX} ${y1 - 6} L ${cTickX} ${y1 + 6}`;
+          } else {
+            const tipX = x1 + cDir * 12;
+            const baseX = x1 + cDir * 4;
+            const spread = 7;
+            childMarker = `M ${tipX} ${y1} L ${baseX} ${y1} M ${tipX} ${y1} L ${baseX} ${y1 - spread} M ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
+          }
+          const childCircleCx = x1 + cDir * 18;
+
+          result.push({
+            fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable,
+            path, labelX, labelY, labelText,
+            parentTick, parentParticipation, parentCircleCx,
+            childMarker, childCircleCx,
+          });
         }
       }
     }
     return result;
   });
-
-  function bezierPath(line: FKLine): string {
-    const { x1, y1, x2, y2, fromRight, toLeft } = line;
-    const dx = Math.abs(x2 - x1);
-    const dy = Math.abs(y2 - y1);
-    // Straight horizontal segment at each end so markers sit on a flat portion
-    const straight = Math.min(20, Math.max(8, dx * 0.25));
-    const dirS = fromRight ? 1 : -1;
-    const dirT = toLeft ? -1 : 1;
-    const sx1 = x1 + dirS * straight;
-    const sx2 = x2 + dirT * straight;
-    const curveDx = Math.abs(sx2 - sx1);
-    // Use dy to ensure enough curve width for vertically stacked tables
-    const offset = Math.max(40, Math.min(150, Math.max(curveDx * 0.4, dy * 0.4)));
-    const cx1 = sx1 + dirS * offset;
-    const cx2 = sx2 + dirT * offset;
-    return `M ${x1} ${y1} L ${sx1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${sx2} ${y2} L ${x2} ${y2}`;
-  }
-
-  // === Parent (referenced/PK) side — always "one" ===
-  // Order from table: cardinality (6px) → participation (14px) → line
-
-  // Cardinality: always one tick (FK references PK/unique) — closest to table
-  function parentOneTick(line: FKLine): string {
-    const { x2, y2, toLeft } = line;
-    const dir = toLeft ? -1 : 1;
-    const tickX = x2 + dir * 6;
-    return `M ${tickX} ${y2 - 6} L ${tickX} ${y2 + 6}`;
-  }
-
-  // Participation: mandatory tick (|) when FK column is NOT NULL — further from table
-  function parentMandatoryTick(line: FKLine): string {
-    const { x2, y2, toLeft } = line;
-    const dir = toLeft ? -1 : 1;
-    const tickX = x2 + dir * 14;
-    return `M ${tickX} ${y2 - 6} L ${tickX} ${y2 + 6}`;
-  }
-
-  // === Child (source, FK holder) side ===
-  // Order from table: cardinality (4–12px) → participation (18px) → line
-
-  // Cardinality: one tick (1:1 when FK column is unique) — closest to table
-  function childOneTick(line: FKLine): string {
-    const { x1, y1, fromRight } = line;
-    const dir = fromRight ? 1 : -1;
-    const tickX = x1 + dir * 6;
-    return `M ${tickX} ${y1 - 6} L ${tickX} ${y1 + 6}`;
-  }
-
-  // Cardinality: crow's foot (1:N when FK column is not unique) — closest to table
-  function childCrowsFoot(line: FKLine): string {
-    const { x1, y1, fromRight } = line;
-    const dir = fromRight ? 1 : -1;
-    const tipX = x1 + dir * 12;  // convergence (further from table)
-    const baseX = x1 + dir * 4;  // prong tips (closer to table)
-    const spread = 7;
-    return [
-      `M ${tipX} ${y1} L ${baseX} ${y1}`,
-      `M ${tipX} ${y1} L ${baseX} ${y1 - spread}`,
-      `M ${tipX} ${y1} L ${baseX} ${y1 + spread}`,
-    ].join(' ');
-  }
 
   let hoveredId = $state<string | null>(null);
 
@@ -201,7 +199,7 @@
 
     <!-- Invisible wide hit area -->
     <path
-      d={bezierPath(line)}
+      d={line.path}
       fill="none"
       stroke="transparent"
       stroke-width="14"
@@ -215,38 +213,57 @@
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
     />
 
-    <!-- Visible bezier line (dashed if nullable FK column) -->
+    <!-- Visible bezier line -->
     <path
-      d={bezierPath(line)}
+      d={line.path}
       fill="none"
       stroke={color}
       stroke-width={isHovered ? 3 : 2}
       stroke-dasharray={line.isNullable ? '6 3' : 'none'}
     />
 
-    <!-- Parent (referenced/PK) side: cardinality (6px) + participation (14px) -->
-    <path d={parentOneTick(line)} stroke={color} stroke-width="2" fill="none" />
-    {#if line.isNullable}
+    <!-- Cardinality label at midpoint -->
+    <rect
+      x={line.labelX - 11}
+      y={line.labelY - 8}
+      width="22"
+      height="16"
+      rx="4"
+      fill={lineColors.bg}
+      stroke={color}
+      stroke-width="0.8"
+      opacity={isHovered ? 1 : 0.85}
+    />
+    <text
+      x={line.labelX}
+      y={line.labelY + 4}
+      text-anchor="middle"
+      fill={color}
+      font-size="9"
+      font-weight="700"
+      font-family="system-ui, sans-serif"
+      style="pointer-events:none"
+    >{line.labelText}</text>
+
+    <!-- Parent (referenced/PK) side markers -->
+    <path d={line.parentTick} stroke={color} stroke-width="2" fill="none" />
+    {#if line.parentParticipation}
+      <path d={line.parentParticipation} stroke={color} stroke-width="2" fill="none" />
+    {:else}
       <circle
-        cx={line.x2 + (line.toLeft ? -1 : 1) * 14}
+        cx={line.parentCircleCx}
         cy={line.y2}
         r={5}
         stroke={color}
         stroke-width="2"
         fill={lineColors.bg}
       />
-    {:else}
-      <path d={parentMandatoryTick(line)} stroke={color} stroke-width="2" fill="none" />
     {/if}
 
-    <!-- Child (source/FK) side: cardinality (4–12px) + participation (18px) -->
-    {#if line.isUnique}
-      <path d={childOneTick(line)} stroke={color} stroke-width="2" fill="none" />
-    {:else}
-      <path d={childCrowsFoot(line)} stroke={color} stroke-width="2" fill="none" />
-    {/if}
+    <!-- Child (source/FK) side markers -->
+    <path d={line.childMarker} stroke={color} stroke-width="2" fill="none" />
     <circle
-      cx={line.x1 + (line.fromRight ? 1 : -1) * 18}
+      cx={line.childCircleCx}
       cy={line.y1}
       r={5}
       stroke={color}
