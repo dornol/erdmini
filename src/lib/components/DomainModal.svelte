@@ -404,7 +404,7 @@
                   <!-- svelte-ignore a11y_click_events_have_key_events -->
                   <tr class="group-header-row" onclick={() => toggleGroup(groupKey)}>
                     <td colspan={TABLE_COLSPAN}>
-                      <span class="group-toggle">{collapsedGroups.has(groupKey) ? '&#x25B6;' : '&#x25BC;'}</span>
+                      <span class="group-toggle">{collapsedGroups.has(groupKey) ? '▶' : '▼'}</span>
                       <span class="group-name">{groupKey === UNGROUPED_KEY ? m.domain_ungrouped() : groupKey}</span>
                       <span class="group-count">{domains.length}</span>
                     </td>
@@ -461,13 +461,13 @@
                           {/if}
                         </td>
                         <td class="td-mono">{domain.type}</td>
-                        <td class="td-mono">{domain.length ?? '&mdash;'}</td>
+                        <td class="td-mono">{domain.length ?? '—'}</td>
                         <td class="td-null">{domain.nullable ? 'NULL' : 'NOT NULL'}</td>
                         <td class="td-badge">{#if domain.primaryKey}<span class="badge pk">PK</span>{/if}</td>
                         <td class="td-badge">{#if domain.unique}<span class="badge uq">UQ</span>{/if}</td>
                         <td class="td-badge">{#if domain.autoIncrement}<span class="badge ai">AI</span>{/if}</td>
-                        <td class="td-mono td-optional">{domain.defaultValue ?? '&mdash;'}</td>
-                        <td class="td-comment">{domain.comment ?? '&mdash;'}</td>
+                        <td class="td-mono td-optional">{domain.defaultValue ?? '—'}</td>
+                        <td class="td-comment">{domain.comment ?? '—'}</td>
                         <td class="td-actions">
                           <button
                             class="icon-btn del"
