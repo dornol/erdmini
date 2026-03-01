@@ -197,6 +197,42 @@ class ProjectStore {
     }
   }
 
+  async loadSharedProject(projectId: string, name: string, schema: ERDSchema) {
+    await this.saveCurrentSchema();
+    // Check if project already exists in our index
+    const existing = this.index.projects.find((p) => p.id === projectId);
+    if (existing) {
+      // Already exists — just switch to it
+      await this.switchProject(projectId);
+      return;
+    }
+    // Add as a new project entry pointing to the shared schema
+    const ts = now();
+    const meta: ProjectMeta = {
+      id: projectId,
+      name: `[shared] ${name}`,
+      createdAt: ts,
+      updatedAt: ts,
+      lastOpenedAt: ts,
+    };
+    this.index.projects = [...this.index.projects, meta];
+    this.index.activeProjectId = projectId;
+    await this.saveIndex();
+    erdStore.clearHistory();
+    erdStore.loadSchema(schema);
+    // Load canvas state if available
+    const canvas = await this.provider.loadCanvasState(projectId);
+    if (canvas) {
+      canvasState.x = canvas.x ?? 0;
+      canvasState.y = canvas.y ?? 0;
+      canvasState.scale = canvas.scale ?? 1;
+    } else {
+      canvasState.x = 0;
+      canvasState.y = 0;
+      canvasState.scale = 1;
+    }
+  }
+
   async createProjectWithSchema(name: string, schema: ERDSchema) {
     await this.saveCurrentSchema();
     const id = generateId();

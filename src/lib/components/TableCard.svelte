@@ -2,6 +2,7 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { fkDragStore } from '$lib/store/fk-drag.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
@@ -35,6 +36,7 @@
   });
 
   function onHeaderDblClick() {
+    if (permissionStore.isReadOnly) return;
     isEditing = true;
     editName = table.name;
   }
@@ -66,7 +68,7 @@
 
     // Multi-drag: if table is already in a multi-selection group
     if (erdStore.selectedTableIds.has(table.id) && erdStore.selectedTableIds.size > 1) {
-      if (!table.locked) {
+      if (!table.locked && !permissionStore.isReadOnly) {
         isDragging = true;
         dragStart = { mouseX: e.clientX, mouseY: e.clientY, tableX: 0, tableY: 0 };
         groupDragStarts = new Map();
@@ -80,7 +82,7 @@
 
     erdStore.selectedTableId = table.id;
     erdStore.selectedTableIds = new Set([table.id]);
-    if (!table.locked) isDragging = true;
+    if (!table.locked && !permissionStore.isReadOnly) isDragging = true;
     dragStart = {
       mouseX: e.clientX,
       mouseY: e.clientY,
@@ -108,6 +110,7 @@
   }
 
   function onColumnDblClick(e: MouseEvent, colId: string) {
+    if (permissionStore.isReadOnly) return;
     e.stopPropagation();
     erdStore.editingColumnInfo = {
       tableId: table.id,

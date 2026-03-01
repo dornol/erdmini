@@ -12,7 +12,10 @@
   import { TABLE_W } from '$lib/constants/layout';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
+  import ShareProjectModal from './ShareProjectModal.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { authStore } from '$lib/store/auth.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
 
   let viewportWidth = $state(800);
   let viewportHeight = $state(600);
@@ -378,6 +381,42 @@
   let themeOpen = $state(false);
   let langOpen = $state(false);
   let shortcutsOpen = $state(false);
+  let userMenuOpen = $state(false);
+  let showShareModal = $state(false);
+
+  // Shared projects
+  interface SharedProject {
+    projectId: string;
+    permission: string;
+    ownerName: string;
+    projectName: string;
+    sharedAt: string;
+  }
+  let sharedProjects = $state<SharedProject[]>([]);
+  let sharedLoading = $state(false);
+
+  async function loadSharedProjects() {
+    if (!authStore.isLoggedIn) return;
+    sharedLoading = true;
+    try {
+      const res = await fetch('/api/storage/shared');
+      if (res.ok) sharedProjects = await res.json();
+    } finally {
+      sharedLoading = false;
+    }
+  }
+
+  async function openSharedProject(proj: SharedProject) {
+    // Load the shared project schema and add it as a temporary project
+    try {
+      const res = await fetch(`/api/storage/schemas/${proj.projectId}`);
+      if (!res.ok) return;
+      const schema = await res.json();
+      // Switch to the shared project - create or load it
+      await projectStore.loadSharedProject(proj.projectId, proj.projectName, schema);
+      projectOpen = false;
+    } catch { /* ignore */ }
+  }
 
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const mod = isMac ? '⌘' : 'Ctrl';
@@ -481,7 +520,7 @@
   <div class="dropdown-wrap project-wrap">
     <button
       class="btn-project"
-      onclick={() => (projectOpen = !projectOpen)}
+      onclick={() => { projectOpen = !projectOpen; if (projectOpen) loadSharedProjects(); }}
       aria-expanded={projectOpen}
       aria-haspopup="menu"
     >
@@ -539,6 +578,28 @@
             {/if}
           </div>
         {/each}
+        {#if authStore.isLoggedIn}
+          <div class="project-divider"></div>
+          <div class="project-shared-header">
+            <span>Shared with me</span>
+            <button class="project-action-btn" title="Refresh" onclick={loadSharedProjects}>↻</button>
+          </div>
+          {#if sharedLoading}
+            <div class="project-shared-loading">Loading...</div>
+          {:else if sharedProjects.length === 0}
+            <div class="project-shared-empty">No shared projects</div>
+          {:else}
+            {#each sharedProjects as sp}
+              <button
+                class="project-item-name shared-project-item"
+                onclick={() => openSharedProject(sp)}
+              >
+                <span class="project-item-label">{sp.projectName}</span>
+                <span class="project-item-meta">{sp.ownerName} · {sp.permission}</span>
+              </button>
+            {/each}
+          {/if}
+        {/if}
         <div class="project-divider"></div>
         {#if showNewProjectInput}
           <div class="project-new-row">
@@ -568,7 +629,10 @@
   <span class="separator"></span>
 
   <div class="actions">
-    <button class="btn-primary" onclick={addTable}>
+    {#if permissionStore.isReadOnly}
+      <span class="readonly-badge">Read Only</span>
+    {/if}
+    <button class="btn-primary" onclick={addTable} disabled={permissionStore.isReadOnly}>
       {m.toolbar_add_table()}
     </button>
 
@@ -732,6 +796,15 @@
     >
       {shareStatus === 'copied' ? m.share_copied() : m.share_link()}
     </button>
+
+    {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
+      <button
+        class="btn-secondary"
+        onclick={() => (showShareModal = true)}
+      >
+        Share
+      </button>
+    {/if}
   </div>
 
   <div class="toolbar-right">
@@ -791,6 +864,49 @@
         </div>
       {/if}
     </div>
+
+    <!-- User menu (server mode only) -->
+    {#if authStore.isLoggedIn}
+      <div class="dropdown-wrap">
+        <button
+          class="btn-user"
+          onclick={() => (userMenuOpen = !userMenuOpen)}
+          aria-expanded={userMenuOpen}
+          aria-haspopup="menu"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M2 14c0-3.31 2.69-5 6-5s6 1.69 6 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+          {authStore.user?.displayName ?? ''} ▾
+        </button>
+        {#if userMenuOpen}
+          <div
+            class="dropdown-menu dropdown-right"
+            role="menu"
+            tabindex="-1"
+            onmouseleave={() => (userMenuOpen = false)}
+          >
+            <div class="dropdown-user-info">
+              <span class="dropdown-user-name">{authStore.user?.displayName}</span>
+              <span class="dropdown-user-role">{authStore.user?.role}</span>
+            </div>
+            {#if authStore.isAdmin}
+              <a href="/admin" class="dropdown-item" role="menuitem" onclick={() => (userMenuOpen = false)}>
+                Admin
+              </a>
+            {/if}
+            <button
+              class="dropdown-item dropdown-item-danger"
+              role="menuitem"
+              onclick={() => { userMenuOpen = false; authStore.logout(); }}
+            >
+              Sign out
+            </button>
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Language dropdown -->
     <div class="dropdown-wrap">
@@ -910,6 +1026,14 @@
   <DomainModal onclose={() => (showDomainModal = false)} />
 {/if}
 
+{#if showShareModal && projectStore.activeProject}
+  <ShareProjectModal
+    projectId={projectStore.activeProject.id}
+    isOwner={permissionStore.current === 'owner'}
+    onclose={() => (showShareModal = false)}
+  />
+{/if}
+
 <style>
   .toolbar {
     display: flex;
@@ -955,6 +1079,20 @@
     flex-shrink: 0;
   }
 
+  .readonly-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    background: #7c3aed20;
+    border: 1px solid #7c3aed;
+    border-radius: 4px;
+    color: #a78bfa;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
   .btn-primary {
     background: #3b82f6;
     color: white;
@@ -966,6 +1104,11 @@
     cursor: pointer;
     transition: background 0.15s;
     flex-shrink: 0;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .btn-primary:hover {
@@ -1018,6 +1161,58 @@
     height: 1px;
     background: #475569;
     margin: 4px 0;
+  }
+
+  .btn-user {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #334155;
+    color: #cbd5e1;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .btn-user:hover {
+    background: #475569;
+    color: #f1f5f9;
+  }
+
+  .dropdown-user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #475569;
+  }
+
+  .dropdown-user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+
+  .dropdown-user-role {
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .dropdown-item-danger {
+    color: #f87171 !important;
+  }
+
+  .dropdown-item-danger:hover {
+    background: rgba(248, 113, 113, 0.1) !important;
+    color: #fca5a5 !important;
   }
 
   .btn-lang {
@@ -1372,6 +1567,29 @@
   .project-new-row {
     display: flex;
     padding: 0;
+  }
+
+  .project-shared-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .project-shared-loading,
+  .project-shared-empty {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .shared-project-item {
+    padding-left: 12px;
   }
 
   .btn-dark-toggle {

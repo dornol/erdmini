@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import FkModal from './FkModal.svelte';
   import UniqueKeyModal from './UniqueKeyModal.svelte';
   import IndexModal from './IndexModal.svelte';
@@ -159,7 +160,10 @@
 </script>
 
 {#if selectedTable}
-  <aside class="editor">
+  <aside class="editor" class:readonly={permissionStore.isReadOnly}>
+    {#if permissionStore.isReadOnly}
+      <div class="readonly-notice">Read Only</div>
+    {/if}
     <div class="editor-header">
       <span class="editor-title">{m.editor_title()}</span>
       <button
@@ -458,6 +462,26 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .editor.readonly {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+
+  .editor.readonly .readonly-notice {
+    pointer-events: auto;
+  }
+
+  .readonly-notice {
+    padding: 6px 16px;
+    background: #7c3aed20;
+    border-bottom: 1px solid #7c3aed40;
+    color: #a78bfa;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-align: center;
   }
 
   .editor-empty {

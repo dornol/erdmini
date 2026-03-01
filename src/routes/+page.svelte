@@ -16,6 +16,8 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
   import { getStorageProvider } from '$lib/storage';
+  import { permissionStore } from '$lib/store/permission.svelte';
+  import { authStore } from '$lib/store/auth.svelte';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
 
@@ -30,6 +32,28 @@
     const provider = await getStorageProvider();
     await projectStore.init(provider);
   });
+
+  // Load permission when project changes (server mode only)
+  $effect(() => {
+    const projectId = projectStore.index.activeProjectId;
+    if (!projectId || !authStore.isLoggedIn) {
+      permissionStore.set(null);
+      return;
+    }
+    loadPermission(projectId);
+  });
+
+  async function loadPermission(projectId: string) {
+    try {
+      const res = await fetch(`/api/storage/projects/${projectId}/my-permission`);
+      if (res.ok) {
+        const data = await res.json();
+        permissionStore.set(data.permission);
+      }
+    } catch {
+      permissionStore.set(null);
+    }
+  }
 
   function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } {
     const pt = prev.tables;
@@ -212,7 +236,7 @@
     }
 
     // Ctrl+D: Duplicate selected table(s)
-    if ((e.ctrlKey || e.metaKey) && key === 'd' && !isEditing) {
+    if ((e.ctrlKey || e.metaKey) && key === 'd' && !isEditing && !permissionStore.isReadOnly) {
       e.preventDefault();
       const ids = [...erdStore.selectedTableIds];
       for (const id of ids) {
@@ -229,7 +253,7 @@
     }
 
     // Delete selected table(s)
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing && !permissionStore.isReadOnly) {
       const ids = [...erdStore.selectedTableIds];
       if (ids.length === 0) return;
       e.preventDefault();
