@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 
 export default defineConfig({
@@ -13,4 +13,7 @@ export default defineConfig({
       strategy: ['localStorage', 'baseLocale'],
     }),
   ],
+  test: {
+    include: ['src/**/*.test.ts'],
+  },
 });
