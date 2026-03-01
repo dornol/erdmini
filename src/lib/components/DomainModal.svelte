@@ -13,8 +13,9 @@
 
   let { onclose }: Props = $props();
 
-  // Search
+  // Search & filter
   let searchQuery = $state('');
+  let showUnusedOnly = $state(false);
 
   // Inline editing
   let editingId = $state<string | null>(null);
@@ -22,6 +23,7 @@
 
   // Form fields for inline editing
   let formName = $state('');
+  let formGroup = $state('');
   let formType = $state<ColumnType>('VARCHAR');
   let formLength = $state<number | undefined>(255);
   let formNullable = $state(false);
@@ -38,25 +40,99 @@
   // File input ref
   let fileInput: HTMLInputElement | undefined = $state();
 
+  // Collapsed groups
+  let collapsedGroups = $state(new Set<string>());
+
   let hasLength = $derived(
     formType === 'VARCHAR' || formType === 'CHAR' || formType === 'DECIMAL',
   );
 
-  let filteredDomains = $derived(
-    searchQuery.trim()
-      ? erdStore.schema.domains.filter((d) => {
-          const q = searchQuery.trim().toLowerCase();
-          return (
-            d.name.toLowerCase().includes(q) ||
-            d.type.toLowerCase().includes(q) ||
-            (d.comment ?? '').toLowerCase().includes(q)
-          );
-        })
-      : erdStore.schema.domains,
-  );
+  // Usage count map: domainId -> number of linked columns
+  let domainUsageMap = $derived.by(() => {
+    const map = new Map<string, number>();
+    for (const table of erdStore.schema.tables) {
+      for (const col of table.columns) {
+        if (col.domainId) {
+          map.set(col.domainId, (map.get(col.domainId) ?? 0) + 1);
+        }
+      }
+    }
+    return map;
+  });
+
+  // Existing group names for autocomplete
+  let existingGroups = $derived.by(() => {
+    const groups = new Set<string>();
+    for (const d of erdStore.schema.domains) {
+      if (d.group) groups.add(d.group);
+    }
+    return [...groups].sort();
+  });
+
+  let filteredDomains = $derived.by(() => {
+    let domains = erdStore.schema.domains;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      domains = domains.filter((d) =>
+        d.name.toLowerCase().includes(q) ||
+        d.type.toLowerCase().includes(q) ||
+        (d.comment ?? '').toLowerCase().includes(q) ||
+        (d.group ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    // Unused filter
+    if (showUnusedOnly) {
+      domains = domains.filter((d) => !domainUsageMap.has(d.id));
+    }
+
+    return domains;
+  });
+
+  // Group domains: Map<groupKey, ColumnDomain[]>, sorted by group name, ungrouped last
+  const UNGROUPED_KEY = '__ungrouped__';
+
+  let groupedDomains = $derived.by(() => {
+    const groups = new Map<string, ColumnDomain[]>();
+    for (const d of filteredDomains) {
+      const key = d.group || UNGROUPED_KEY;
+      const list = groups.get(key);
+      if (list) {
+        list.push(d);
+      } else {
+        groups.set(key, [d]);
+      }
+    }
+    // Sort: named groups alphabetically, ungrouped last
+    const sorted = new Map<string, ColumnDomain[]>();
+    const keys = [...groups.keys()].sort((a, b) => {
+      if (a === UNGROUPED_KEY) return 1;
+      if (b === UNGROUPED_KEY) return -1;
+      return a.localeCompare(b);
+    });
+    for (const k of keys) {
+      sorted.set(k, groups.get(k)!);
+    }
+    return sorted;
+  });
+
+  let hasMultipleGroups = $derived(groupedDomains.size > 1 || (groupedDomains.size === 1 && !groupedDomains.has(UNGROUPED_KEY)));
+
+  function toggleGroup(key: string) {
+    const next = new Set(collapsedGroups);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    collapsedGroups = next;
+  }
 
   function resetForm() {
     formName = '';
+    formGroup = '';
     formType = 'VARCHAR';
     formLength = 255;
     formNullable = false;
@@ -73,6 +149,7 @@
     editingId = domain.id;
     addingNew = false;
     formName = domain.name;
+    formGroup = domain.group ?? '';
     formType = domain.type;
     formLength = domain.length;
     formNullable = domain.nullable;
@@ -92,6 +169,7 @@
     if (!formName.trim()) return;
     const fields = {
       name: formName.trim(),
+      group: formGroup.trim() || undefined,
       type: formType,
       length: hasLength ? formLength : undefined,
       nullable: formNullable,
@@ -140,7 +218,8 @@
       (editingId || addingNew) &&
       !target.closest('.editing-row') &&
       !target.closest('.add-row') &&
-      !target.closest('.display-row')
+      !target.closest('.display-row') &&
+      !target.closest('.group-header-row')
     ) {
       saveEdit();
     }
@@ -196,6 +275,8 @@
     'autoIncrement',
     'defaultValue',
   ]);
+
+  const TABLE_COLSPAN = 11;
 </script>
 
 <svelte:window onkeydown={onKeyDown} />
@@ -222,6 +303,14 @@
           placeholder={m.domain_search_placeholder()}
           bind:value={searchQuery}
         />
+        <button
+          class="unused-toggle"
+          class:active={showUnusedOnly}
+          onclick={() => showUnusedOnly = !showUnusedOnly}
+          title={m.domain_show_unused_only()}
+        >
+          {m.domain_show_unused_only()}
+        </button>
         <button
           class="header-icon-btn"
           onclick={handleDownload}
@@ -250,7 +339,7 @@
           class="hidden-input"
           onchange={handleUpload}
         />
-        <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
+        <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>&#x2715;</button>
       </div>
     </div>
 
@@ -264,35 +353,38 @@
           <thead>
             <tr>
               <th class="th-local" title={m.domain_local_hint()}>
+                {m.domain_group()}
+              </th>
+              <th class="th-local" title={m.domain_local_hint()}>
                 {m.column_name()}
               </th>
               <th class="th-propagate" title={m.domain_propagate_hint()}>
                 <span class="th-label">{m.column_type()}</span>
-                <span class="propagate-icon">↔</span>
+                <span class="propagate-icon">&harr;</span>
               </th>
               <th class="th-propagate" title={m.domain_propagate_hint()}>
                 <span class="th-label">{m.column_length()}</span>
-                <span class="propagate-icon">↔</span>
+                <span class="propagate-icon">&harr;</span>
               </th>
               <th class="th-propagate" title={m.domain_propagate_hint()}>
                 <span class="th-label">NULL</span>
-                <span class="propagate-icon">↔</span>
+                <span class="propagate-icon">&harr;</span>
               </th>
               <th class="th-propagate" title={m.domain_propagate_hint()}>
                 <span class="th-label">PK</span>
-                <span class="propagate-icon">↔</span>
+                <span class="propagate-icon">&harr;</span>
               </th>
               <th class="th-propagate" title={m.domain_propagate_hint()}>
                 <span class="th-label">UQ</span>
-                <span class="propagate-icon">↔</span>
+                <span class="propagate-icon">&harr;</span>
               </th>
               <th class="th-propagate" title={m.domain_propagate_hint()}>
                 <span class="th-label">AI</span>
-                <span class="propagate-icon">↔</span>
+                <span class="propagate-icon">&harr;</span>
               </th>
               <th class="th-propagate" title={m.domain_propagate_hint()}>
                 <span class="th-label">{m.column_default()}</span>
-                <span class="propagate-icon">↔</span>
+                <span class="propagate-icon">&harr;</span>
               </th>
               <th class="th-local" title={m.domain_local_hint()}>
                 {m.column_description()}
@@ -301,83 +393,113 @@
             </tr>
           </thead>
           <tbody>
-            {#each filteredDomains as domain (domain.id)}
-              {#if editingId === domain.id}
-                <!-- Editing row -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <tr class="editing-row" onkeydown={handleRowKeydown}>
-                  <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
-                  <td class="td-type-cell">
-                    <SearchableSelect
-                      options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
-                      value={formType}
-                      onchange={(v) => (formType = v as ColumnType)}
-                      size="sm"
-                    />
-                  </td>
-                  <td>
-                    {#if hasLength}
-                      <input class="cell-input cell-num" type="number" bind:value={formLength} min="1" max="65535" />
-                    {:else}
-                      <span class="td-mono">—</span>
-                    {/if}
-                  </td>
-                  <td class="td-check"><input type="checkbox" bind:checked={formNullable} /></td>
-                  <td class="td-check"><input type="checkbox" bind:checked={formPrimaryKey} /></td>
-                  <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
-                  <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
-                  <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
-                  <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
-                  <td class="td-actions">
-                    <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>✓</button>
-                    <button class="icon-btn" onclick={cancelEdit}>✕</button>
-                  </td>
-                </tr>
-              {:else}
-                <!-- Display row -->
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <tr class="display-row" onclick={() => handleRowClick(domain)}>
-                  <td class="td-name">{domain.name}</td>
-                  <td class="td-mono">{domain.type}</td>
-                  <td class="td-mono">{domain.length ?? '—'}</td>
-                  <td class="td-null">{domain.nullable ? 'NULL' : 'NOT NULL'}</td>
-                  <td class="td-badge">{#if domain.primaryKey}<span class="badge pk">PK</span>{/if}</td>
-                  <td class="td-badge">{#if domain.unique}<span class="badge uq">UQ</span>{/if}</td>
-                  <td class="td-badge">{#if domain.autoIncrement}<span class="badge ai">AI</span>{/if}</td>
-                  <td class="td-mono td-optional">{domain.defaultValue ?? '—'}</td>
-                  <td class="td-comment">{domain.comment ?? '—'}</td>
-                  <td class="td-actions">
-                    <button
-                      class="icon-btn del"
-                      onclick={async (e) => {
-                        e.stopPropagation();
-                        const linkedCount = erdStore.schema.tables.reduce(
-                          (sum, t) => sum + t.columns.filter((c) => c.domainId === domain.id).length, 0
-                        );
-                        if (linkedCount > 0) {
-                          const ok = await dialogStore.confirm(
-                            m.domain_delete_confirm({ name: domain.name, count: linkedCount }),
-                            { title: m.domain_delete(), confirmText: m.action_delete(), variant: 'danger' }
-                          );
-                          if (!ok) return;
-                        }
-                        erdStore.deleteDomain(domain.id);
-                      }}
-                      aria-label={m.domain_delete()}
-                    >✕</button>
-                  </td>
-                </tr>
-              {/if}
-            {:else}
+            {#if filteredDomains.length === 0}
               <tr>
-                <td colspan="10" class="empty-cell">{m.domain_empty()}</td>
+                <td colspan={TABLE_COLSPAN} class="empty-cell">{m.domain_empty()}</td>
               </tr>
-            {/each}
+            {:else}
+              {#each [...groupedDomains] as [groupKey, domains] (groupKey)}
+                {#if hasMultipleGroups}
+                  <!-- Group header row -->
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
+                  <tr class="group-header-row" onclick={() => toggleGroup(groupKey)}>
+                    <td colspan={TABLE_COLSPAN}>
+                      <span class="group-toggle">{collapsedGroups.has(groupKey) ? '&#x25B6;' : '&#x25BC;'}</span>
+                      <span class="group-name">{groupKey === UNGROUPED_KEY ? m.domain_ungrouped() : groupKey}</span>
+                      <span class="group-count">{domains.length}</span>
+                    </td>
+                  </tr>
+                {/if}
+                {#if !hasMultipleGroups || !collapsedGroups.has(groupKey)}
+                  {#each domains as domain (domain.id)}
+                    {@const usageCount = domainUsageMap.get(domain.id) ?? 0}
+                    {#if editingId === domain.id}
+                      <!-- Editing row -->
+                      <!-- svelte-ignore a11y_no_static_element_interactions -->
+                      <tr class="editing-row" onkeydown={handleRowKeydown}>
+                        <td>
+                          <input class="cell-input cell-group" type="text" bind:value={formGroup} placeholder={m.domain_group_placeholder()} list="domain-groups-list" />
+                        </td>
+                        <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
+                        <td class="td-type-cell">
+                          <SearchableSelect
+                            options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
+                            value={formType}
+                            onchange={(v) => (formType = v as ColumnType)}
+                            size="sm"
+                          />
+                        </td>
+                        <td>
+                          {#if hasLength}
+                            <input class="cell-input cell-num" type="number" bind:value={formLength} min="1" max="65535" />
+                          {:else}
+                            <span class="td-mono">&mdash;</span>
+                          {/if}
+                        </td>
+                        <td class="td-check"><input type="checkbox" bind:checked={formNullable} /></td>
+                        <td class="td-check"><input type="checkbox" bind:checked={formPrimaryKey} /></td>
+                        <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
+                        <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
+                        <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
+                        <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
+                        <td class="td-actions">
+                          <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>&#x2713;</button>
+                          <button class="icon-btn" onclick={cancelEdit}>&#x2715;</button>
+                        </td>
+                      </tr>
+                    {:else}
+                      <!-- Display row -->
+                      <!-- svelte-ignore a11y_click_events_have_key_events -->
+                      <tr class="display-row" class:unused={usageCount === 0} onclick={() => handleRowClick(domain)}>
+                        <td class="td-group">{domain.group ?? ''}</td>
+                        <td class="td-name">
+                          {domain.name}
+                          {#if usageCount > 0}
+                            <span class="usage-badge">{m.domain_usage_count({ count: String(usageCount) })}</span>
+                          {:else}
+                            <span class="usage-badge unused-badge">{m.domain_unused()}</span>
+                          {/if}
+                        </td>
+                        <td class="td-mono">{domain.type}</td>
+                        <td class="td-mono">{domain.length ?? '&mdash;'}</td>
+                        <td class="td-null">{domain.nullable ? 'NULL' : 'NOT NULL'}</td>
+                        <td class="td-badge">{#if domain.primaryKey}<span class="badge pk">PK</span>{/if}</td>
+                        <td class="td-badge">{#if domain.unique}<span class="badge uq">UQ</span>{/if}</td>
+                        <td class="td-badge">{#if domain.autoIncrement}<span class="badge ai">AI</span>{/if}</td>
+                        <td class="td-mono td-optional">{domain.defaultValue ?? '&mdash;'}</td>
+                        <td class="td-comment">{domain.comment ?? '&mdash;'}</td>
+                        <td class="td-actions">
+                          <button
+                            class="icon-btn del"
+                            onclick={async (e) => {
+                              e.stopPropagation();
+                              const linkedCount = domainUsageMap.get(domain.id) ?? 0;
+                              if (linkedCount > 0) {
+                                const ok = await dialogStore.confirm(
+                                  m.domain_delete_confirm({ name: domain.name, count: linkedCount }),
+                                  { title: m.domain_delete(), confirmText: m.action_delete(), variant: 'danger' }
+                                );
+                                if (!ok) return;
+                              }
+                              erdStore.deleteDomain(domain.id);
+                            }}
+                            aria-label={m.domain_delete()}
+                          >&#x2715;</button>
+                        </td>
+                      </tr>
+                    {/if}
+                  {/each}
+                {/if}
+              {/each}
+            {/if}
 
             <!-- Add new row -->
             {#if addingNew}
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <tr class="editing-row add-row" onkeydown={handleRowKeydown}>
+                <td>
+                  <input class="cell-input cell-group" type="text" bind:value={formGroup} placeholder={m.domain_group_placeholder()} list="domain-groups-list" />
+                </td>
                 <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
                 <td class="td-type-cell">
                   <SearchableSelect
@@ -391,7 +513,7 @@
                   {#if hasLength}
                     <input class="cell-input cell-num" type="number" bind:value={formLength} min="1" max="65535" />
                   {:else}
-                    <span class="td-mono">—</span>
+                    <span class="td-mono">&mdash;</span>
                   {/if}
                 </td>
                 <td class="td-check"><input type="checkbox" bind:checked={formNullable} /></td>
@@ -401,14 +523,21 @@
                 <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
                 <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
                 <td class="td-actions">
-                  <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>✓</button>
-                  <button class="icon-btn" onclick={cancelEdit}>✕</button>
+                  <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>&#x2713;</button>
+                  <button class="icon-btn" onclick={cancelEdit}>&#x2715;</button>
                 </td>
               </tr>
             {/if}
           </tbody>
         </table>
       </div>
+
+      <!-- Datalist for group autocomplete -->
+      <datalist id="domain-groups-list">
+        {#each existingGroups as g}
+          <option value={g}></option>
+        {/each}
+      </datalist>
 
       {#if !addingNew}
         <button class="add-btn" onclick={startAdd}>{m.domain_add_btn()}</button>
@@ -432,7 +561,7 @@
     background: white;
     border-radius: 10px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    width: min(92vw, 860px);
+    width: min(92vw, 960px);
     max-height: 85vh;
     display: flex;
     flex-direction: column;
@@ -477,6 +606,29 @@
   .search-input:focus {
     border-color: #3b82f6;
     background: white;
+  }
+
+  .unused-toggle {
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: #94a3b8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+
+  .unused-toggle:hover {
+    border-color: #cbd5e1;
+    color: #64748b;
+  }
+
+  .unused-toggle.active {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
   }
 
   .header-icon-btn {
@@ -598,13 +750,17 @@
     border-bottom: 1px solid #f1f5f9;
   }
 
-  .domain-table tbody tr.display-row:nth-child(even) {
-    background: #f8fafc;
-  }
-
   .domain-table tbody tr.display-row:hover {
     background: #f1f5f9;
     cursor: pointer;
+  }
+
+  .domain-table tbody tr.display-row.unused {
+    opacity: 0.55;
+  }
+
+  .domain-table tbody tr.display-row.unused:hover {
+    opacity: 0.85;
   }
 
   .domain-table tbody tr.editing-row {
@@ -619,9 +775,77 @@
     vertical-align: middle;
   }
 
+  /* ── Group header row ── */
+  .group-header-row {
+    background: #f8fafc;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .group-header-row:hover {
+    background: #f1f5f9;
+  }
+
+  .group-header-row td {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .group-toggle {
+    font-size: 9px;
+    margin-right: 6px;
+    color: #94a3b8;
+  }
+
+  .group-name {
+    letter-spacing: 0.02em;
+  }
+
+  .group-count {
+    margin-left: 6px;
+    background: #e2e8f0;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 5px;
+    border-radius: 8px;
+    line-height: 1.6;
+    display: inline-block;
+    min-width: 16px;
+    text-align: center;
+  }
+
+  .td-group {
+    color: #94a3b8;
+    font-size: 11px;
+    white-space: nowrap;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .td-name {
     font-weight: 600;
     white-space: nowrap;
+  }
+
+  .usage-badge {
+    font-size: 9px;
+    font-weight: 500;
+    padding: 0 4px;
+    border-radius: 3px;
+    margin-left: 4px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    vertical-align: middle;
+  }
+
+  .unused-badge {
+    background: #f1f5f9;
+    color: #94a3b8;
   }
 
   .td-mono {
@@ -685,6 +909,11 @@
 
   .cell-num {
     width: 70px;
+  }
+
+  .cell-group {
+    width: 80px;
+    min-width: 60px;
   }
 
   .td-type-cell {

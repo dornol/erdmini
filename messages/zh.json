@@ -157,5 +157,11 @@
   "uq_name_placeholder": "约束名 (可选)",
   "uq_no_keys": "暂无复合唯一键",
   "history_add_uq": "添加复合唯一",
-  "history_delete_uq": "删除复合唯一"
+  "history_delete_uq": "删除复合唯一",
+  "domain_group": "分组",
+  "domain_ungrouped": "未分组",
+  "domain_group_placeholder": "分组名...",
+  "domain_usage_count": "{count} 个使用",
+  "domain_unused": "未使用",
+  "domain_show_unused_only": "仅未使用"
 }

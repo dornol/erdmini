@@ -40,6 +40,7 @@ export interface ColumnDomain {
   autoIncrement: boolean;
   defaultValue?: string;
   comment?: string;
+  group?: string;
 }
 
 export type ReferentialAction = 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';

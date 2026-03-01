@@ -157,5 +157,11 @@
   "uq_name_placeholder": "제약명 (선택)",
   "uq_no_keys": "복합 유니크 키가 없습니다",
   "history_add_uq": "복합 유니크 추가",
-  "history_delete_uq": "복합 유니크 삭제"
+  "history_delete_uq": "복합 유니크 삭제",
+  "domain_group": "그룹",
+  "domain_ungrouped": "미분류",
+  "domain_group_placeholder": "그룹명...",
+  "domain_usage_count": "{count}개 사용",
+  "domain_unused": "미사용",
+  "domain_show_unused_only": "미사용만"
 }

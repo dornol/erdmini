@@ -157,5 +157,11 @@
   "uq_name_placeholder": "制約名 (任意)",
   "uq_no_keys": "複合ユニークキーがありません",
   "history_add_uq": "複合ユニーク追加",
-  "history_delete_uq": "複合ユニーク削除"
+  "history_delete_uq": "複合ユニーク削除",
+  "domain_group": "グループ",
+  "domain_ungrouped": "未分類",
+  "domain_group_placeholder": "グループ名...",
+  "domain_usage_count": "{count}件使用",
+  "domain_unused": "未使用",
+  "domain_show_unused_only": "未使用のみ"
 }

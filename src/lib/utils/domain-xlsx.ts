@@ -15,6 +15,7 @@ function yToBool(v: unknown): boolean {
 
 export function exportDomainsToXlsx(domains: ColumnDomain[]) {
   const rows = domains.map((d) => ({
+    Group: d.group ?? '',
     Name: d.name,
     Type: d.type,
     Length: d.length ?? '',
@@ -34,9 +35,9 @@ export function exportDomainsToXlsx(domains: ColumnDomain[]) {
 
 export function exportDomainTemplate() {
   const example = [
-    { Name: 'user_id', Type: 'INT', Length: '', Nullable: '', PrimaryKey: 'Y', Unique: 'Y', AutoIncrement: 'Y', Default: '', Comment: 'User PK' },
-    { Name: 'username', Type: 'VARCHAR', Length: 50, Nullable: '', PrimaryKey: '', Unique: 'Y', AutoIncrement: '', Default: '', Comment: '' },
-    { Name: 'email', Type: 'VARCHAR', Length: 255, Nullable: 'Y', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Comment: '' },
+    { Group: 'User', Name: 'user_id', Type: 'INT', Length: '', Nullable: '', PrimaryKey: 'Y', Unique: 'Y', AutoIncrement: 'Y', Default: '', Comment: 'User PK' },
+    { Group: 'User', Name: 'username', Type: 'VARCHAR', Length: 50, Nullable: '', PrimaryKey: '', Unique: 'Y', AutoIncrement: '', Default: '', Comment: '' },
+    { Group: '', Name: 'email', Type: 'VARCHAR', Length: 255, Nullable: 'Y', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Comment: '' },
   ];
 
   const ws = XLSX.utils.json_to_sheet(example);
@@ -63,8 +64,11 @@ export async function importDomainsFromXlsx(
     const type: ColumnType = normalizeType(rawType);
     const length = row.Length !== undefined && row.Length !== '' ? Number(row.Length) : undefined;
 
+    const group = row.Group ? String(row.Group).trim() : undefined;
+
     results.push({
       name,
+      group: group || undefined,
       type,
       length: length && !isNaN(length) ? length : undefined,
       nullable: yToBool(row.Nullable),

@@ -569,25 +569,36 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
     }
   }
 
-  // Collect ALTER TABLE FK and COMMENT ON statements
+  // Collect ALTER TABLE FK/UQ and COMMENT ON statements
   const alterFKMap = new Map<string, ParsedFK[]>();
+  const alterUQMap = new Map<string, { columns: string[]; name?: string }[]>();
   const tableComments = new Map<string, string>();
   const colComments = new Map<string, Map<string, string>>();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const stmt of stmts) {
-    // ALTER TABLE ... ADD CONSTRAINT FOREIGN KEY
+    // ALTER TABLE ... ADD CONSTRAINT FOREIGN KEY / UNIQUE
     if (stmt.type === 'alter' && stmt.keyword === 'table') {
       const tName = stmt.table?.[0]?.table ?? '';
       if (stmt.expr) {
         for (const expr of stmt.expr) {
-          if (expr.action === 'add' && expr.create_definitions?.constraint_type === 'FOREIGN KEY') {
+          const ct = expr.create_definitions?.constraint_type?.toUpperCase() ?? '';
+          if (expr.action === 'add' && ct === 'FOREIGN KEY') {
             const fkDefs = expr.create_definitions.definition ?? [];
             const fk = extractFKFromRefDef(expr.create_definitions.reference_definition, fkDefs);
             if (fk) {
               const existing = alterFKMap.get(tName) ?? [];
               existing.push(fk);
               alterFKMap.set(tName, existing);
+            }
+          } else if (expr.action === 'add' && ct.includes('UNIQUE')) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const uqCols = (expr.create_definitions.definition ?? []).map((d: any) => extractColumnName(d.column));
+            const uqName = expr.create_definitions.constraint?.length > 0 ? expr.create_definitions.constraint : undefined;
+            if (uqCols.length >= 2) {
+              const existing = alterUQMap.get(tName) ?? [];
+              existing.push({ columns: uqCols, name: uqName });
+              alterUQMap.set(tName, existing);
             }
           }
         }
@@ -730,16 +741,24 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       const alterFKs = alterFKMap.get(rawTableName) ?? [];
       foreignKeys.push(...alterFKs);
 
+      // Merge ALTER TABLE UQs into compositeUniqueGroups
+      const alterUQs = alterUQMap.get(rawTableName) ?? [];
+      compositeUniqueGroups.push(...alterUQs);
+
       const col = tableIdx % GRID_COLS;
       const row = Math.floor(tableIdx / GRID_COLS);
 
-      // Resolve composite unique keys
+      // Resolve composite unique keys (deduplicate by sorted column set)
       const uniqueKeys: UniqueKey[] = [];
+      const seenUQColSets = new Set<string>();
       for (const group of compositeUniqueGroups) {
         const colIds = group.columns
           .map((name) => columns.find((c) => c.name === name)?.id)
           .filter((id): id is string => !!id);
         if (colIds.length >= 2) {
+          const key = [...colIds].sort().join(',');
+          if (seenUQColSets.has(key)) continue;
+          seenUQColSets.add(key);
           uniqueKeys.push({
             id: generateId(),
             columnIds: colIds,
@@ -853,7 +872,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
     });
   }
 
-  // Apply MSSQL ALTER TABLE UNIQUE constraints
+  // Apply MSSQL ALTER TABLE UNIQUE constraints (skip duplicates already in CREATE TABLE)
   for (const auq of mssqlAlterUQs) {
     const srcTable = tables.find((t) => t.name === auq.tableName);
     if (!srcTable) continue;
@@ -861,11 +880,17 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       .map((name) => srcTable.columns.find((c) => c.name === name)?.id)
       .filter((id): id is string => !!id);
     if (colIds.length >= 2) {
-      srcTable.uniqueKeys.push({
-        id: generateId(),
-        columnIds: colIds,
-        name: auq.name,
-      });
+      const key = [...colIds].sort().join(',');
+      const alreadyExists = srcTable.uniqueKeys.some(
+        (uk) => [...uk.columnIds].sort().join(',') === key,
+      );
+      if (!alreadyExists) {
+        srcTable.uniqueKeys.push({
+          id: generateId(),
+          columnIds: colIds,
+          name: auq.name,
+        });
+      }
     }
   }
 

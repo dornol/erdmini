@@ -157,5 +157,11 @@
   "uq_name_placeholder": "Constraint name (optional)",
   "uq_no_keys": "No composite unique keys",
   "history_add_uq": "Add composite unique",
-  "history_delete_uq": "Delete composite unique"
+  "history_delete_uq": "Delete composite unique",
+  "domain_group": "Group",
+  "domain_ungrouped": "Ungrouped",
+  "domain_group_placeholder": "Group name...",
+  "domain_usage_count": "{count} used",
+  "domain_unused": "Unused",
+  "domain_show_unused_only": "Unused only"
 }
