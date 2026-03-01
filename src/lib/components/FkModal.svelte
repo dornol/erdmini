@@ -96,7 +96,9 @@
           <div class="pair-row">
             <div class="pair-select">
               <SearchableSelect
-                options={(selectedTable?.columns ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                options={(selectedTable?.columns ?? [])
+                  .filter((c) => c.id === pair.srcColId || !columnPairs.some((p) => p.srcColId === c.id))
+                  .map((c) => ({ value: c.id, label: c.name }))}
                 value={pair.srcColId}
                 onchange={(v) => (pair.srcColId = v)}
                 placeholder={m.fk_source_column()}
@@ -106,7 +108,9 @@
             <span class="pair-arrow">→</span>
             <div class="pair-select">
               <SearchableSelect
-                options={refTableColumns.map((c) => ({ value: c.id, label: c.name }))}
+                options={refTableColumns
+                  .filter((c) => c.id === pair.refColId || !columnPairs.some((p) => p.refColId === c.id))
+                  .map((c) => ({ value: c.id, label: c.name }))}
                 value={pair.refColId}
                 onchange={(v) => (pair.refColId = v)}
                 placeholder={m.fk_ref_column()}
