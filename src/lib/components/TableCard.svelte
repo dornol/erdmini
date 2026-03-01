@@ -15,6 +15,7 @@
   let editName = $state('');
   let isDragging = $state(false);
   let dragStart = { mouseX: 0, mouseY: 0, tableX: 0, tableY: 0 };
+  let groupDragStarts: Map<string, { x: number; y: number }> | null = null;
 
   let isSelected = $derived(erdStore.selectedTableIds.has(table.id));
   let isHovered = $state(false);
@@ -63,6 +64,18 @@
       return;
     }
 
+    // Multi-drag: if table is already in a multi-selection group
+    if (erdStore.selectedTableIds.has(table.id) && erdStore.selectedTableIds.size > 1) {
+      isDragging = true;
+      dragStart = { mouseX: e.clientX, mouseY: e.clientY, tableX: 0, tableY: 0 };
+      groupDragStarts = new Map();
+      for (const id of erdStore.selectedTableIds) {
+        const t = erdStore.schema.tables.find((tbl) => tbl.id === id);
+        if (t) groupDragStarts.set(id, { x: t.position.x, y: t.position.y });
+      }
+      return;
+    }
+
     erdStore.selectedTableId = table.id;
     erdStore.selectedTableIds = new Set([table.id]);
     isDragging = true;
@@ -78,11 +91,18 @@
     if (!isDragging) return;
     const dx = (e.clientX - dragStart.mouseX) / canvasState.scale;
     const dy = (e.clientY - dragStart.mouseY) / canvasState.scale;
-    erdStore.moveTable(table.id, dragStart.tableX + dx, dragStart.tableY + dy);
+    if (groupDragStarts && groupDragStarts.size > 1) {
+      for (const [id, start] of groupDragStarts) {
+        erdStore.moveTable(id, start.x + dx, start.y + dy);
+      }
+    } else {
+      erdStore.moveTable(table.id, dragStart.tableX + dx, dragStart.tableY + dy);
+    }
   }
 
   function onMouseUp() {
     isDragging = false;
+    groupDragStarts = null;
   }
 
   function onColumnDblClick(e: MouseEvent, colId: string) {

@@ -2,7 +2,8 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
-  import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
+  import { TABLE_W, HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
+  import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import CanvasHistory from './CanvasHistory.svelte';
   import Minimap from './Minimap.svelte';
@@ -12,6 +13,31 @@
   let viewportEl: HTMLDivElement;
   let isPanning = $state(false);
   let panStart = { x: 0, y: 0 };
+
+  // Rubber band (marquee) selection state
+  let isMarquee = $state(false);
+  let marqueeStart = $state({ x: 0, y: 0 });
+  let marqueeEnd = $state({ x: 0, y: 0 });
+  let isSpaceHeld = $state(false);
+  let savedSelection = $state<Set<string>>(new Set());
+
+  // AABB helpers for marquee hit testing
+  function getTableBounds(t: Table) {
+    const h = HEADER_H + (t.comment ? COMMENT_H : 0) + t.columns.length * ROW_H + BOTTOM_PAD;
+    return { x: t.position.x, y: t.position.y, w: TABLE_W, h };
+  }
+
+  function getMarqueeWorld() {
+    const x1 = (Math.min(marqueeStart.x, marqueeEnd.x) - canvasState.x) / canvasState.scale;
+    const y1 = (Math.min(marqueeStart.y, marqueeEnd.y) - canvasState.y) / canvasState.scale;
+    const x2 = (Math.max(marqueeStart.x, marqueeEnd.x) - canvasState.x) / canvasState.scale;
+    const y2 = (Math.max(marqueeStart.y, marqueeEnd.y) - canvasState.y) / canvasState.scale;
+    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  }
+
+  function rectsIntersect(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
 
   function onWheel(e: WheelEvent) {
     e.preventDefault();
@@ -39,14 +65,28 @@
     }
 
     if (e.button !== 0) return;
-    // Only pan on background clicks (target is viewport or world div)
+    // Only act on background clicks (target is viewport or world div)
     const target = e.target as HTMLElement;
     if (target !== viewportEl && !target.classList.contains('canvas-world')) return;
 
-    erdStore.selectedTableId = null;
-    erdStore.selectedTableIds = new Set();
-    isPanning = true;
-    panStart = { x: e.clientX - canvasState.x, y: e.clientY - canvasState.y };
+    if (isSpaceHeld) {
+      // Space+left-click = pan
+      isPanning = true;
+      panStart = { x: e.clientX - canvasState.x, y: e.clientY - canvasState.y };
+    } else {
+      // Left-click = rubber band selection
+      if (!e.ctrlKey && !e.metaKey) {
+        erdStore.selectedTableId = null;
+        erdStore.selectedTableIds = new Set();
+        savedSelection = new Set();
+      } else {
+        savedSelection = new Set(erdStore.selectedTableIds);
+      }
+      const rect = viewportEl.getBoundingClientRect();
+      isMarquee = true;
+      marqueeStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      marqueeEnd = { ...marqueeStart };
+    }
   }
 
   function onContextMenu(e: MouseEvent) {
@@ -70,6 +110,20 @@
       } else {
         fkDragStore.setTarget(null, null);
       }
+      return;
+    }
+    if (isMarquee) {
+      const rect = viewportEl.getBoundingClientRect();
+      marqueeEnd = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      // Hit-test tables against marquee rect in world space
+      const mw = getMarqueeWorld();
+      const hits = new Set<string>();
+      for (const t of erdStore.schema.tables) {
+        if (rectsIntersect(mw, getTableBounds(t))) hits.add(t.id);
+      }
+      const merged = (e.ctrlKey || e.metaKey) ? new Set([...savedSelection, ...hits]) : hits;
+      erdStore.selectedTableIds = merged;
+      erdStore.selectedTableId = merged.size > 0 ? [...merged][0] : null;
       return;
     }
     if (!isPanning) return;
@@ -96,6 +150,10 @@
       fkDragStore.cancel();
       return;
     }
+    if (isMarquee) {
+      isMarquee = false;
+      return;
+    }
     isPanning = false;
   }
 
@@ -103,16 +161,31 @@
     if (e.key === 'Escape' && fkDragStore.active) {
       fkDragStore.cancel();
     }
+    if (e.key === 'Escape' && isMarquee) {
+      isMarquee = false;
+      erdStore.selectedTableIds = savedSelection;
+      erdStore.selectedTableId = savedSelection.size > 0 ? [...savedSelection][0] : null;
+    }
+    if (e.key === ' ') {
+      e.preventDefault();
+      isSpaceHeld = true;
+    }
+  }
+
+  function onKeyUp(e: KeyboardEvent) {
+    if (e.key === ' ') isSpaceHeld = false;
   }
 
   $effect(() => {
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
     };
   });
 
@@ -161,7 +234,7 @@
   onmousedown={onMouseDown}
   oncontextmenu={onContextMenu}
   data-theme={themeStore.current}
-  style="cursor: {fkDragStore.active ? 'crosshair' : isPanning ? 'grabbing' : 'default'}"
+  style="cursor: {fkDragStore.active ? 'crosshair' : isMarquee ? 'crosshair' : isSpaceHeld ? (isPanning ? 'grabbing' : 'grab') : isPanning ? 'grabbing' : 'default'}"
 >
   <div
     class="canvas-world"
@@ -169,6 +242,17 @@
   >
     {@render children()}
   </div>
+
+  {#if isMarquee}
+    {@const left = Math.min(marqueeStart.x, marqueeEnd.x)}
+    {@const top = Math.min(marqueeStart.y, marqueeEnd.y)}
+    {@const width = Math.abs(marqueeEnd.x - marqueeStart.x)}
+    {@const height = Math.abs(marqueeEnd.y - marqueeStart.y)}
+    <div
+      class="marquee-rect"
+      style="left:{left}px;top:{top}px;width:{width}px;height:{height}px"
+    ></div>
+  {/if}
 
   <CanvasHistory />
 
@@ -502,6 +586,14 @@
     left: 0;
     width: 0;
     height: 0;
+  }
+
+  .marquee-rect {
+    position: absolute;
+    border: 1.5px dashed var(--erd-card-selected-border, #3b82f6);
+    background: rgba(59, 130, 246, 0.08);
+    pointer-events: none;
+    z-index: 50;
   }
 
   .zoom-indicator {
