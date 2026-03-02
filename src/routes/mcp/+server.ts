@@ -49,7 +49,19 @@ export const POST: RequestHandler = async ({ request }) => {
     return session.transport.handleRequest(request, { parsedBody });
   }
 
-  // New session
+  // Stale session ID → tell client to reinitialize
+  if (sessionId) {
+    return new Response(JSON.stringify({
+      jsonrpc: '2.0',
+      error: { code: -32600, message: 'Session not found. Please reinitialize.' },
+      id: null,
+    }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // New session (no session ID — must be initialize request)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: (id) => {
