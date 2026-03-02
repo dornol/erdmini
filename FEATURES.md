@@ -66,11 +66,11 @@
 - DECIMAL 정밀도/스케일 분리 (precision + scale 별도 필드)
 - 프로젝트 전체 백업/복원 (모든 프로젝트 일괄 JSON 내보내기/가져오기)
 - 프로젝트 메타 표시 (드롭다운에 수정일/테이블 수)
-- 사이드바 너비 저장 (localStorage 유지)
+- 사이드바 너비 저장
 - 테이블 위치 잠금 (드래그 방지, 잠금 아이콘 표시)
 
 ## Phase 9: 듀얼 스토리지
-- 스토리지 모드 전환: localStorage (기본) / Server+SQLite
+- 스토리지 모드 전환: IndexedDB (기본) / Server+SQLite
 - `PUBLIC_STORAGE_MODE` 환경변수로 모드 선택
 - 서버 모드: SvelteKit API routes + SQLite (better-sqlite3, WAL)
 - Docker 지원 (Dockerfile.server + docker-compose.yml)
@@ -102,9 +102,20 @@
 - 컬럼 표시 모드 (전체 / PK&FK만 / 이름만)
 - 스키마 버전 비교 Diff (히스토리 또는 파일 업로드, 색상 코딩)
 
+## Phase 14: MCP 서버
+- MCP (Model Context Protocol) Streamable HTTP 엔드포인트 (`/mcp`)
+- SvelteKit API route로 통합 (별도 빌드/프로세스 불필요)
+- API Key 인증 (`erd_` prefix, SHA-256 해시, Admin UI에서 생성/관리)
+- 14개 도구: list_projects, get_schema, export_ddl, lint_schema, export_diagram, add/update/delete table/column, add/delete foreign_key, import_ddl
+- Claude Desktop, Claude Code, Cursor 등 AI 어시스턴트 연동
+
+## 추가 개선
+- FK 라인 스마트 라우팅 (겹침 방지, 장애물 회피, 자기참조 루프)
+- 사이드바 가상 스크롤 (1000+ 테이블 대응)
+
 ## 기타 기능
 - 다중 프로젝트 관리 (생성/이름변경/복제/삭제/전환)
-- localStorage 자동 저장 (300ms 디바운스)
+- IndexedDB 자동 저장 (300ms 디바운스)
 - 저장 용량 초과 경고 + 긴급 JSON 내보내기
 - 레거시 데이터 마이그레이션
 - 커맨드 팔레트 (Ctrl+K, 테이블/컬럼 검색)

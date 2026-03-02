@@ -2,7 +2,7 @@
 
 브라우저에서 동작하는 경량 ERD(Entity Relationship Diagram) 편집기.
 SvelteKit + Svelte 5 Runes + Tailwind CSS v4로 제작.
-로컬 모드(localStorage)와 서버 모드(SQLite + 인증 + 실시간 협업)를 모두 지원한다.
+로컬 모드(IndexedDB)와 서버 모드(SQLite + 인증 + 실시간 협업)를 모두 지원한다.
 
 > 이 프로젝트는 [Claude Code](https://claude.ai/claude-code) (Anthropic CLI)를 활용하여 개발되었습니다.
 
@@ -21,6 +21,7 @@ SvelteKit + Svelte 5 Runes + Tailwind CSS v4로 제작.
 | 레이아웃 라이브러리 | d3-force |
 | DB (서버 모드) | SQLite (better-sqlite3, WAL) |
 | 실시간 | WebSocket (ws) |
+| MCP | Streamable HTTP (`/mcp` 엔드포인트) |
 | 배포 | Docker (정적 SPA / Node.js 서버) |
 
 ---
@@ -50,7 +51,7 @@ SvelteKit + Svelte 5 Runes + Tailwind CSS v4로 제작.
 
 ### 다국어 (i18n)
 - 한국어 / English / 日本語 / 中文 전환 (툴바)
-- Paraglide JS v2 기반, localStorage에 언어 설정 저장
+- Paraglide JS v2 기반
 
 ### 테이블 관리
 - 새 테이블 추가 (뷰포트 중심에 배치)
@@ -125,7 +126,7 @@ SvelteKit + Svelte 5 Runes + Tailwind CSS v4로 제작.
 
 | 모드 | 저장소 | 인증 | 협업 |
 |---|---|---|---|
-| **Local** (기본) | localStorage | 없음 | 없음 |
+| **Local** (기본) | IndexedDB | 없음 | 없음 |
 | **Server** | SQLite (WAL) | 로컬 + OIDC | WebSocket 실시간 |
 
 `PUBLIC_STORAGE_MODE` 환경변수로 전환 (`local` / `server`).
@@ -136,6 +137,7 @@ SvelteKit + Svelte 5 Runes + Tailwind CSS v4로 제작.
 - **공유**: 사용자 검색 → 권한 부여, 읽기 전용 모드
 - **실시간 협업**: WebSocket 동기화, 접속자 커서 표시, LWW 충돌 해결
 - **관리자**: 사용자 CRUD, OIDC 프로바이더 관리, 세션 관리
+- **MCP**: Streamable HTTP 엔드포인트 (`/mcp`), API Key 인증, 14개 도구
 
 ---
 
@@ -170,8 +172,8 @@ pnpm install
 pnpm dev          # http://localhost:5173 (로컬 모드)
 pnpm dev:server   # 서버 모드 (SQLite + Auth)
 pnpm build        # build/ 에 정적 파일 출력
-pnpm build:server # 서버 빌드 (adapter-node)
-pnpm test         # vitest (210+ 테스트)
+pnpm build:server # 서버 빌드 (adapter-node, MCP 포함)
+pnpm test         # vitest (247 테스트)
 pnpm check        # svelte-check 타입 검사
 ```
 

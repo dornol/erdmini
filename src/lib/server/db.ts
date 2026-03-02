@@ -96,6 +96,19 @@ function initDb(): InstanceType<typeof Database> {
     );
   `);
 
+  // API keys table
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      key_hash TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      last_used_at TEXT,
+      expires_at TEXT
+    );
+  `);
+
   // Migrate project_index: add user_id column if missing
   const columns = _db.prepare("PRAGMA table_info(project_index)").all() as { name: string }[];
   if (!columns.some(c => c.name === 'user_id')) {

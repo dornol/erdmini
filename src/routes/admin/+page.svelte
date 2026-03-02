@@ -1,13 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { UserRow, OIDCProviderRow } from '$lib/types/auth';
+  import type { UserRow, OIDCProviderRow, ApiKeyRow } from '$lib/types/auth';
   import { authStore } from '$lib/store/auth.svelte';
 
   type UserInfo = Omit<UserRow, 'password_hash'>;
+  type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null };
 
   let users = $state<UserInfo[]>([]);
   let providers = $state<OIDCProviderRow[]>([]);
-  let activeTab = $state<'users' | 'oidc'>('users');
+  let apiKeys = $state<ApiKeyInfo[]>([]);
+  let activeTab = $state<'users' | 'oidc' | 'api-keys'>('users');
 
   // New user form
   let newUser = $state({ username: '', displayName: '', email: '', password: '', role: 'user' });
@@ -26,6 +28,13 @@
   });
   let providerError = $state('');
   let providerSuccess = $state('');
+
+  // API Key form
+  let newApiKey = $state({ name: '', expiresAt: '' });
+  let apiKeyError = $state('');
+  let apiKeySuccess = $state('');
+  let createdKey = $state<string | null>(null);
+  let keyCopied = $state(false);
 
   let adminCount = $derived(users.filter(u => u.role === 'admin').length);
 
@@ -100,7 +109,7 @@
   });
 
   onMount(async () => {
-    await Promise.all([loadUsers(), loadProviders()]);
+    await Promise.all([loadUsers(), loadProviders(), loadApiKeys()]);
   });
 
   async function loadUsers() {
@@ -129,6 +138,55 @@
     userSuccess = `User "${newUser.username}" created`;
     newUser = { username: '', displayName: '', email: '', password: '', role: 'user' };
     await loadUsers();
+  }
+
+  async function loadApiKeys() {
+    const res = await fetch('/api/admin/api-keys');
+    if (res.ok) apiKeys = await res.json();
+  }
+
+  async function createApiKey() {
+    apiKeyError = '';
+    apiKeySuccess = '';
+    createdKey = null;
+    const res = await fetch('/api/admin/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: newApiKey.name,
+        expiresAt: newApiKey.expiresAt || undefined,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json();
+      apiKeyError = body.error || 'Failed';
+      return;
+    }
+    const data = await res.json();
+    createdKey = data.key;
+    apiKeySuccess = `API key "${newApiKey.name}" created`;
+    newApiKey = { name: '', expiresAt: '' };
+    await loadApiKeys();
+  }
+
+  async function deleteApiKey(id: string, name: string) {
+    if (!confirm(`Delete API key "${name}"?`)) return;
+    apiKeyError = '';
+    const res = await fetch(`/api/admin/api-keys/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      apiKeyError = data.error || 'Failed to delete API key';
+      return;
+    }
+    apiKeySuccess = `API key "${name}" deleted`;
+    await loadApiKeys();
+  }
+
+  async function copyKey() {
+    if (!createdKey) return;
+    await navigator.clipboard.writeText(createdKey);
+    keyCopied = true;
+    setTimeout(() => (keyCopied = false), 2000);
   }
 
   async function createProvider() {
@@ -208,6 +266,9 @@
     </button>
     <button class="tab" class:active={activeTab === 'oidc'} onclick={() => (activeTab = 'oidc')}>
       OIDC Providers ({providers.length})
+    </button>
+    <button class="tab" class:active={activeTab === 'api-keys'} onclick={() => (activeTab = 'api-keys')}>
+      API Keys ({apiKeys.length})
     </button>
   </div>
 
@@ -296,7 +357,7 @@
         {#if userSuccess}<div class="msg-success">{userSuccess}</div>{/if}
       </div>
     </section>
-  {:else}
+  {:else if activeTab === 'oidc'}
     <section class="section">
       <h2>OIDC Providers</h2>
 
@@ -359,6 +420,78 @@
         </div>
         {#if providerError}<div class="msg-error">{providerError}</div>{/if}
         {#if providerSuccess}<div class="msg-success">{providerSuccess}</div>{/if}
+      </div>
+    </section>
+  {:else if activeTab === 'api-keys'}
+    <section class="section">
+      <h2>API Keys</h2>
+      <p class="section-desc">API keys allow external tools (MCP servers, CI/CD) to access erdmini on behalf of a user.</p>
+
+      {#if createdKey}
+        <div class="key-reveal">
+          <p class="key-reveal-warning">Copy this key now — it will not be shown again.</p>
+          <div class="key-reveal-row">
+            <code class="key-value">{createdKey}</code>
+            <button class="btn-sm btn-copy" onclick={copyKey}>
+              {keyCopied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          <button class="btn-sm" onclick={() => (createdKey = null)}>Dismiss</button>
+        </div>
+      {/if}
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>User</th>
+            <th>Created</th>
+            <th>Last Used</th>
+            <th>Expires</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each apiKeys as key}
+            <tr>
+              <td>{key.name}</td>
+              <td>{key.user_display_name} {key.username ? `(${key.username})` : ''}</td>
+              <td>{key.created_at ? new Date(key.created_at).toLocaleDateString() : '-'}</td>
+              <td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never'}</td>
+              <td>
+                {#if key.expires_at}
+                  <span class:expired={new Date(key.expires_at) < new Date()}>
+                    {new Date(key.expires_at).toLocaleDateString()}
+                  </span>
+                {:else}
+                  Never
+                {/if}
+              </td>
+              <td>
+                <button class="btn-sm btn-danger" onclick={() => deleteApiKey(key.id, key.name)}>
+                  Delete
+                </button>
+              </td>
+            </tr>
+          {/each}
+          {#if apiKeys.length === 0}
+            <tr><td colspan="6" style="text-align:center;color:#64748b">No API keys</td></tr>
+          {/if}
+        </tbody>
+      </table>
+
+      <div class="form-section">
+        <h3>Create API Key</h3>
+        <div class="form-grid">
+          <input placeholder="Key name (e.g. MCP Server)" bind:value={newApiKey.name} />
+          <label class="input-label">
+            <span>Expires</span>
+            <input type="date" bind:value={newApiKey.expiresAt} />
+          </label>
+          <button class="btn-primary" onclick={createApiKey}>Create Key</button>
+        </div>
+        {#if apiKeyError}<div class="msg-error">{apiKeyError}</div>{/if}
+        {#if apiKeySuccess && !createdKey}<div class="msg-success">{apiKeySuccess}</div>{/if}
       </div>
     </section>
   {/if}
@@ -682,5 +815,76 @@
     margin-top: 8px;
     font-size: 13px;
     color: #4ade80;
+  }
+
+  .section-desc {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0 0 16px;
+  }
+
+  .key-reveal {
+    background: #1a2332;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .key-reveal-warning {
+    font-size: 13px;
+    color: #fbbf24;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+
+  .key-reveal-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .key-value {
+    font-family: monospace;
+    font-size: 12px;
+    background: #0f172a;
+    padding: 8px 12px;
+    border-radius: 4px;
+    color: #4ade80;
+    word-break: break-all;
+    flex: 1;
+  }
+
+  .btn-copy {
+    background: #22c55e;
+    color: white;
+    white-space: nowrap;
+  }
+
+  .btn-copy:hover {
+    background: #16a34a;
+  }
+
+  .expired {
+    color: #f87171;
+  }
+
+  .input-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #cbd5e1;
+    white-space: nowrap;
+  }
+
+  .input-label input {
+    padding: 8px 12px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #f1f5f9;
+    font-size: 13px;
   }
 </style>

@@ -1,7 +1,18 @@
 import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
 import { generateId } from '$lib/utils/common';
-import * as m from '$lib/paraglide/messages';
+
+export interface DDLImportMessages {
+  noCreateTable: () => string;
+  tableParseError: (params: { error: string }) => string;
+  fkResolveFailed: (params: { detail: string }) => string;
+}
+
+const DEFAULT_MESSAGES: DDLImportMessages = {
+  noCreateTable: () => 'No CREATE TABLE statements found.',
+  tableParseError: ({ error }) => `Table parse error: ${error}`,
+  fkResolveFailed: ({ detail }) => `FK resolve failed: ${detail}`,
+};
 
 /** Track type normalizations (original → normalized) */
 let _typeWarnings: { original: string; normalized: string }[] = [];
@@ -618,7 +629,8 @@ function extractIndexStatements(sql: string): ParsedIndex[] {
   return results;
 }
 
-export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promise<ImportResult> {
+export async function importDDL(sql: string, dialect: Dialect = 'mysql', messages?: DDLImportMessages): Promise<ImportResult> {
+  const msg = messages ?? DEFAULT_MESSAGES;
   const errors: string[] = [];
   const warnings: string[] = [];
   const tables: Table[] = [];
@@ -692,7 +704,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
         }
       }
       if (stmts.length === 0 && errors.length === 0) {
-        errors.push(m.ddl_import_no_create_table());
+        errors.push(msg.noCreateTable());
         return { tables, errors, warnings };
       }
     }
@@ -934,12 +946,12 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
       tables.push(table);
       tableIdx++;
     } catch (e) {
-      errors.push(m.ddl_import_table_parse_error({ error: e instanceof Error ? e.message : String(e) }));
+      errors.push(msg.tableParseError({ error: e instanceof Error ? e.message : String(e) }));
     }
   }
 
   if (tables.length === 0) {
-    errors.push(m.ddl_import_no_create_table());
+    errors.push(msg.noCreateTable());
     return { tables, errors, warnings };
   }
 
@@ -951,7 +963,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
     for (const fkDef of parsedFKs) {
       const refTable = tables.find((t) => t.name === fkDef.refTableName);
       if (!refTable) {
-        errors.push(m.ddl_import_fk_resolve_failed({ detail: `${table.name}.(${fkDef.columnNames.join(', ')}) → ${fkDef.refTableName}` }));
+        errors.push(msg.fkResolveFailed({ detail: `${table.name}.(${fkDef.columnNames.join(', ')}) → ${fkDef.refTableName}` }));
         continue;
       }
       const columnIds: string[] = [];
@@ -961,7 +973,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql'): Promis
         const srcCol = table.columns.find((c) => c.name === fkDef.columnNames[i]);
         const refCol = refTable.columns.find((c) => c.name === fkDef.refColumnNames[i]);
         if (!srcCol || !refCol) {
-          errors.push(m.ddl_import_fk_resolve_failed({ detail: `${table.name}.${fkDef.columnNames[i]} → ${fkDef.refTableName}.${fkDef.refColumnNames[i]}` }));
+          errors.push(msg.fkResolveFailed({ detail: `${table.name}.${fkDef.columnNames[i]} → ${fkDef.refTableName}.${fkDef.refColumnNames[i]}` }));
           valid = false;
           break;
         }

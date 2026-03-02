@@ -13,7 +13,8 @@ try {
   const db = new Database(DB_PATH, { readonly: false });
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
-  initCollabServer(server, db);
+  const { notifySchemaChange } = initCollabServer(server, db);
+  globalThis.__erdmini_notifySchemaChange = notifySchemaChange;
   console.log('[collab] WebSocket server initialized');
 } catch (e) {
   console.warn('[collab] Could not initialize WebSocket server:', e.message);

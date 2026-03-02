@@ -36,6 +36,7 @@
 		"vitest": "^4.0.18"
 	},
 	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.27.1",
 		"@node-rs/argon2": "^2.0.2",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"better-sqlite3": "^12.6.2",
@@ -46,6 +47,7 @@
 		"openid-client": "^6.8.2",
 		"svg2pdf.js": "^2.7.0",
 		"ws": "^8.19.0",
-		"xlsx": "^0.18.5"
+		"xlsx": "^0.18.5",
+		"zod": "^4.3.6"
 	}
 }

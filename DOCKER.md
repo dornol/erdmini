@@ -4,7 +4,7 @@ erdmini는 두 가지 Docker 이미지를 제공한다.
 
 | 이미지 | Dockerfile | 설명 |
 |--------|------------|------|
-| **정적 SPA** | `Dockerfile` | Nginx로 정적 파일 서빙 (로컬 모드, localStorage) |
+| **정적 SPA** | `Dockerfile` | Nginx로 정적 파일 서빙 (로컬 모드, IndexedDB) |
 | **서버 모드** | `Dockerfile.server` | Node.js + SQLite + Auth + 실시간 협업 |
 
 ---
@@ -157,3 +157,75 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3
 ```
 
 `docker ps`에서 `healthy` 상태를 확인할 수 있다.
+
+---
+
+## MCP (Model Context Protocol) 서버
+
+erdmini 서버에 MCP Streamable HTTP 엔드포인트(`/mcp`)가 내장되어 있다. 별도 프로세스 없이 동일 서버에서 MCP를 제공한다. 서버 모드 전용.
+
+### 사전 준비
+
+1. Admin UI(`/admin`)의 **API Keys** 탭에서 API 키를 생성한다.
+2. 생성 직후 표시되는 `erd_...` 키를 안전한 곳에 복사한다 (1회만 표시됨).
+
+### 빌드
+
+```bash
+pnpm build:server     # SvelteKit 서버 빌드 (MCP 포함)
+pnpm start:server     # 서버 시작 (웹 UI + MCP 모두 제공)
+```
+
+### Claude Desktop 설정
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "erdmini": {
+      "type": "streamable-http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "x-api-key": "erd_<admin에서_생성한_키>"
+      }
+    }
+  }
+}
+```
+
+### Claude Code 설정
+
+```bash
+claude mcp add --transport http erdmini http://localhost:3000/mcp \
+  --header "x-api-key: erd_<admin에서_생성한_키>"
+```
+
+### 사용 가능한 도구
+
+| 도구 | 설명 | 최소 권한 |
+|------|------|-----------|
+| `list_projects` | 접근 가능한 프로젝트 목록 | - |
+| `get_schema` | ERD 스키마 JSON | viewer |
+| `export_ddl` | DDL SQL 생성 (4 dialect) | viewer |
+| `lint_schema` | 스키마 린트 검사 | viewer |
+| `export_diagram` | Mermaid / PlantUML | viewer |
+| `add_table` | 테이블 추가 | editor |
+| `update_table` | 테이블 수정 | editor |
+| `delete_table` | 테이블 삭제 | editor |
+| `add_column` | 컬럼 추가 | editor |
+| `update_column` | 컬럼 수정 | editor |
+| `delete_column` | 컬럼 삭제 | editor |
+| `add_foreign_key` | FK 추가 | editor |
+| `delete_foreign_key` | FK 삭제 | editor |
+| `import_ddl` | DDL SQL 임포트 | editor |
+
+### Docker에서 MCP 사용
+
+Docker 배포 시 별도 설정 없이 동일 포트에서 MCP가 제공된다:
+
+```
+http://localhost:3000/mcp   ← MCP Streamable HTTP
+http://localhost:3000/      ← 웹 UI
+ws://localhost:3000/ws      ← 실시간 협업
+```

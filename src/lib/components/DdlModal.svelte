@@ -6,7 +6,7 @@
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL, DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
-  import { importDDL } from '$lib/utils/ddl-import';
+  import { importDDL, type DDLImportMessages } from '$lib/utils/ddl-import';
   import { computeLayout } from '$lib/utils/auto-layout';
   import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
@@ -118,7 +118,12 @@
     importing = true;
 
     try {
-      const result = await importDDL(importText, importDialect);
+      const importMessages: DDLImportMessages = {
+        noCreateTable: () => m.ddl_import_no_create_table(),
+        tableParseError: (p) => m.ddl_import_table_parse_error(p),
+        fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
+      };
+      const result = await importDDL(importText, importDialect, importMessages);
       if (result.errors.length > 0) {
         importErrors = result.errors;
       }

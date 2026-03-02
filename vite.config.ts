@@ -31,7 +31,8 @@ function collabDevPlugin(): Plugin {
           // Use absolute path for dynamic import (Vite compiles config to temp dir)
           const collabServerPath = pathToFileURL(resolve('collab-server.js')).href;
           const { createCollabHandler } = await import(collabServerPath);
-          const { handleUpgrade } = createCollabHandler(db);
+          const { handleUpgrade, notifySchemaChange } = createCollabHandler(db);
+          globalThis.__erdmini_notifySchemaChange = notifySchemaChange;
 
           // Take over upgrade handling to prevent conflict with Vite's HMR WebSocket.
           // Save Vite's existing upgrade listeners, remove them, then add a single

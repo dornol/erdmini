@@ -96,6 +96,10 @@ class RoomManager {
 
 const roomManager = new RoomManager();
 
+function notifySchemaChange(projectId, schema) {
+  roomManager.broadcast(projectId, { type: 'sync', schema });
+}
+
 // ── Message Handler ──
 function handleMessage(peerId, raw, db, userId, userRole) {
   let msg;
@@ -261,7 +265,7 @@ export function createCollabHandler(db) {
     return true; // handled (accepted)
   }
 
-  return { wss, handleUpgrade };
+  return { wss, handleUpgrade, notifySchemaChange };
 }
 
 /**
@@ -272,7 +276,7 @@ export function createCollabHandler(db) {
  * @param {import('better-sqlite3').Database} db
  */
 export function initCollabServer(server, db) {
-  const { wss, handleUpgrade } = createCollabHandler(db);
+  const { wss, handleUpgrade, notifySchemaChange } = createCollabHandler(db);
 
   server.on('upgrade', (request, socket, head) => {
     // Add error handler for ALL upgrade sockets (including non-collab)
@@ -284,5 +288,5 @@ export function initCollabServer(server, db) {
     handleUpgrade(request, socket, head);
   });
 
-  return wss;
+  return { wss, notifySchemaChange };
 }

@@ -62,6 +62,16 @@ export interface ProjectPermissionRow {
   created_at: string;
 }
 
+export interface ApiKeyRow {
+  id: string;
+  user_id: string;
+  key_hash: string;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+}
+
 export interface ProjectPermission {
   id: string;
   projectId: string;

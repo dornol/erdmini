@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
 
 // Public paths that don't require auth
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/oidc', '/robots.txt', '/sitemap.xml', '/llms.txt'];
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/oidc', '/robots.txt', '/sitemap.xml', '/llms.txt', '/mcp'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname.startsWith(p));
