@@ -1,11 +1,14 @@
 import { env } from '$env/dynamic/public';
+import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { LayoutServerLoad } from './$types';
+
+const siteUrl = PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
   const isServerMode = env.PUBLIC_STORAGE_MODE === 'server';
 
   if (!isServerMode) {
-    return { user: null, isServerMode: false, oidcProviders: [] };
+    return { user: null, isServerMode: false, oidcProviders: [], siteUrl };
   }
 
   // Load enabled OIDC providers for login page
@@ -23,5 +26,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     user: locals.user,
     isServerMode: true,
     oidcProviders,
+    siteUrl,
   };
 };

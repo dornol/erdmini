@@ -1,4 +1,11 @@
-# erdmini
+import { PUBLIC_SITE_URL } from '$env/static/public';
+
+const siteUrl = PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
+
+export const prerender = true;
+
+export function GET() {
+	const body = `# erdmini
 
 > Free, open-source, browser-based Entity-Relationship Diagram (ERD) tool. No sign-up required. Design database schemas visually and export DDL for multiple dialects.
 
@@ -34,7 +41,7 @@ erdmini runs entirely in the browser with zero server dependency (local storage 
 
 ## Links
 
-- [Live App](https://dornol.github.io/erdmini): Use erdmini directly in your browser
+- [Live App](${siteUrl}): Use erdmini directly in your browser
 - [GitHub Repository](https://github.com/dornol/erdmini): Source code and documentation
 
 ## Technical Stack
@@ -43,3 +50,8 @@ erdmini runs entirely in the browser with zero server dependency (local storage 
 - TypeScript, Vite, pnpm
 - Canvas: HTML div + CSS transform (not SVG-based)
 - State management: Svelte 5 $state in reactive module classes
+`;
+	return new Response(body, {
+		headers: { 'Content-Type': 'text/plain' }
+	});
+}

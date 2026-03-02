@@ -4,7 +4,6 @@
 	import { languageStore } from '$lib/store/language.svelte';
 	import { authStore } from '$lib/store/auth.svelte';
 
-	const CANONICAL_URL = 'https://dornol.github.io/erdmini';
 	const SITE_TITLE = 'erdmini — Free Browser-Based ERD Tool';
 	const SITE_DESCRIPTION = 'Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL.';
 
@@ -25,11 +24,11 @@
 		document.documentElement.lang = languageStore.current;
 	});
 
-	const jsonLd = JSON.stringify({
+	const jsonLd = $derived(JSON.stringify({
 		'@context': 'https://schema.org',
 		'@type': 'SoftwareApplication',
 		name: 'erdmini',
-		url: CANONICAL_URL,
+		url: data.siteUrl,
 		description: SITE_DESCRIPTION,
 		applicationCategory: 'DeveloperApplication',
 		applicationSubCategory: 'Database Design Tool',
@@ -43,11 +42,11 @@
 			priceCurrency: 'USD'
 		},
 		featureList: 'Visual ERD Designer, DDL Export/Import, MySQL, PostgreSQL, MariaDB, MSSQL, Auto-Layout, Schema Linting, Real-time Collaboration, URL Sharing',
-		screenshot: `${CANONICAL_URL}/og-image.png`,
+		screenshot: `${data.siteUrl}/og-image.png`,
 		inLanguage: ['en', 'ko', 'ja', 'zh']
-	});
+	}));
 
-	const faqJsonLd = JSON.stringify({
+	const faqJsonLd = $derived(JSON.stringify({
 		'@context': 'https://schema.org',
 		'@type': 'FAQPage',
 		mainEntity: [
@@ -84,19 +83,19 @@
 				}
 			}
 		]
-	});
+	}));
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<link rel="canonical" href={CANONICAL_URL} />
+	<link rel="canonical" href={data.siteUrl} />
 
 	<!-- Open Graph -->
 	<meta property="og:type" content="website" />
 	<meta property="og:title" content={SITE_TITLE} />
 	<meta property="og:description" content={SITE_DESCRIPTION} />
-	<meta property="og:url" content={CANONICAL_URL} />
-	<meta property="og:image" content="{CANONICAL_URL}/og-image.png" />
+	<meta property="og:url" content={data.siteUrl} />
+	<meta property="og:image" content="{data.siteUrl}/og-image.png" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta property="og:site_name" content="erdmini" />
@@ -105,7 +104,7 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={SITE_TITLE} />
 	<meta name="twitter:description" content={SITE_DESCRIPTION} />
-	<meta name="twitter:image" content="{CANONICAL_URL}/og-image.png" />
+	<meta name="twitter:image" content="{data.siteUrl}/og-image.png" />
 
 	<!-- Structured Data -->
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
