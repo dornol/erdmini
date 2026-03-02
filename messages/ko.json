@@ -217,5 +217,10 @@
   "ddl_import_no_create_table": "CREATE TABLE 구문을 찾을 수 없습니다.",
   "ddl_import_fk_resolve_failed": "FK 해결 실패: {detail}",
   "toolbar_fullscreen": "전체보기",
-  "fullscreen_exit": "전체보기 종료"
+  "fullscreen_exit": "전체보기 종료",
+  "group_color_inherited": "그룹 색상 적용 중",
+  "group_color_use": "그룹 색상 사용",
+  "sidebar_new_group": "새 그룹",
+  "sidebar_new_group_placeholder": "그룹명...",
+  "sidebar_rename_group": "그룹명 수정"
 }

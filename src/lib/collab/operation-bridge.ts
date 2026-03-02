@@ -160,6 +160,14 @@ export function applyRemoteOperation(op: CollabOperation) {
         erdStore.deleteDomain(op.domainId);
         break;
       }
+      case 'update-group-color': {
+        erdStore.updateGroupColor(op.group, op.color);
+        break;
+      }
+      case 'rename-group': {
+        erdStore.renameGroup(op.oldName, op.newName);
+        break;
+      }
       case 'apply-layout': {
         const positions = new Map(op.positions.map((p) => [p.tableId, { x: p.x, y: p.y }]));
         erdStore.applyLayout(positions);

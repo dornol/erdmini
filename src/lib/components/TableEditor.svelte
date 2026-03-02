@@ -8,7 +8,9 @@
   import IndexModal from './IndexModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import { TABLE_COLOR_IDS, TABLE_COLORS } from '$lib/constants/table-colors';
+  import type { TableColorId } from '$lib/constants/table-colors';
   import { now } from '$lib/utils/common';
+  import { getEffectiveColor } from '$lib/utils/table-color';
 
   let selectedTable = $derived(erdStore.selectedTable);
 
@@ -210,8 +212,9 @@
         <span class="cg-toggle">{colorGroupExpanded ? '▼' : '▶'}</span>
         <span class="cg-label">{m.table_color()} & {m.table_group()}</span>
         {#if !colorGroupExpanded}
-          {#if selectedTable.color}
-            <span class="cg-dot" style="background:{TABLE_COLORS[selectedTable.color]?.dot ?? '#ccc'}"></span>
+          {@const effectiveId = getEffectiveColor(selectedTable, erdStore.schema)}
+          {#if effectiveId}
+            <span class="cg-dot" style="background:{TABLE_COLORS[effectiveId]?.dot ?? '#ccc'}"></span>
           {/if}
           {#if selectedTable.group}
             <span class="cg-group-text">{selectedTable.group}</span>
@@ -220,8 +223,15 @@
       </div>
 
       {#if colorGroupExpanded}
+        {@const inheritedColor = selectedTable.group ? erdStore.schema.groupColors?.[selectedTable.group] as TableColorId | undefined : undefined}
         <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="field-label" style="margin-top:8px">{m.table_color()}</label>
+        {#if !selectedTable.color && inheritedColor}
+          <div class="color-inherited-hint">
+            <span class="inherited-dot" style="background:{TABLE_COLORS[inheritedColor]?.dot ?? '#ccc'}"></span>
+            <span class="inherited-text">{m.group_color_inherited()}</span>
+          </div>
+        {/if}
         <div class="color-dots">
           <button
             class="color-dot color-dot-none"
@@ -243,6 +253,12 @@
             </button>
           {/each}
         </div>
+        {#if selectedTable.color && inheritedColor}
+          <button
+            class="reset-to-group-btn"
+            onclick={() => erdStore.updateTableColor(selectedTable!.id, undefined)}
+          >{m.group_color_use()}</button>
+        {/if}
 
         <label class="field-label" for="tbl-group" style="margin-top:8px">{m.table_group()}</label>
         <input
@@ -930,5 +946,41 @@
   .color-dot-none .dot-check {
     color: #64748b;
     text-shadow: none;
+  }
+
+  .color-inherited-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--app-text-muted, #64748b);
+  }
+
+  .inherited-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .inherited-text {
+    font-style: italic;
+  }
+
+  .reset-to-group-btn {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #3b82f6;
+    background: none;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .reset-to-group-btn:hover {
+    background: #eff6ff;
   }
 </style>

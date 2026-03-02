@@ -7,9 +7,9 @@
   import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
-  import type { TableColorId } from '$lib/constants/table-colors';
   import { themeStore } from '$lib/store/theme.svelte';
   import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
+  import { getEffectiveColor } from '$lib/utils/table-color';
 
   let { table }: { table: Table } = $props();
 
@@ -39,10 +39,11 @@
   // Set of column IDs that are part of composite unique keys
   let uniqueKeyColIds = $derived(new Set((table.uniqueKeys ?? []).flatMap((uk) => uk.columnIds)));
 
-  // Per-table header color override
+  // Per-table header color override (table.color > groupColor > none)
   let headerColorOverride = $derived.by(() => {
-    if (!table.color) return null;
-    const entry = TABLE_COLORS[table.color as TableColorId];
+    const colorId = getEffectiveColor(table, erdStore.schema);
+    if (!colorId) return null;
+    const entry = TABLE_COLORS[colorId];
     if (!entry) return null;
     return entry.themes[themeStore.current];
   });

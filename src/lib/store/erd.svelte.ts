@@ -12,6 +12,7 @@ export function defaultSchema(): ERDSchema {
     version: '1',
     tables: [],
     domains: [],
+    groupColors: {},
     createdAt: now(),
     updatedAt: now(),
   };
@@ -219,7 +220,48 @@ class ERDStore {
     if (!table) return;
     table.group = group || undefined;
     this.schema.updatedAt = now();
+    this._cleanupOrphanedGroupColors();
     this._emitOp({ kind: 'update-table-group', tableId: id, group });
+  }
+
+  updateGroupColor(group: string, color: string | undefined) {
+    if (!this.schema.groupColors) this.schema.groupColors = {};
+    if (color) {
+      this.schema.groupColors[group] = color;
+    } else {
+      delete this.schema.groupColors[group];
+    }
+    // Trigger reactivity by reassigning
+    this.schema.groupColors = { ...this.schema.groupColors };
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-group-color', group, color });
+  }
+
+  renameGroup(oldName: string, newName: string) {
+    if (!oldName || !newName || oldName === newName) return;
+    for (const table of this.schema.tables) {
+      if (table.group === oldName) table.group = newName;
+    }
+    if (this.schema.groupColors?.[oldName]) {
+      this.schema.groupColors[newName] = this.schema.groupColors[oldName];
+      delete this.schema.groupColors[oldName];
+      this.schema.groupColors = { ...this.schema.groupColors };
+    }
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'rename-group', oldName, newName });
+  }
+
+  private _cleanupOrphanedGroupColors() {
+    if (!this.schema.groupColors) return;
+    const activeGroups = new Set(this.schema.tables.map((t) => t.group).filter(Boolean));
+    let changed = false;
+    for (const g of Object.keys(this.schema.groupColors)) {
+      if (!activeGroups.has(g)) {
+        delete this.schema.groupColors[g];
+        changed = true;
+      }
+    }
+    if (changed) this.schema.groupColors = { ...this.schema.groupColors };
   }
 
   moveTable(id: string, x: number, y: number) {
@@ -534,6 +576,7 @@ class ERDStore {
 
   loadSchema(schema: ERDSchema) {
     if (!schema.domains) schema.domains = [];
+    if (!schema.groupColors) schema.groupColors = {};
     migrateFK(schema);
     for (const table of schema.tables) {
       if (!table.uniqueKeys) table.uniqueKeys = [];

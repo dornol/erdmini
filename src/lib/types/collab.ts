@@ -40,6 +40,8 @@ export type CollabOperation =
   | { kind: 'update-domain'; domainId: string; patch: Partial<Omit<ColumnDomain, 'id'>> }
   | { kind: 'delete-domain'; domainId: string }
   | { kind: 'duplicate-table'; table: Table }
+  | { kind: 'update-group-color'; group: string; color: string | undefined }
+  | { kind: 'rename-group'; oldName: string; newName: string }
   | { kind: 'apply-layout'; positions: { tableId: string; x: number; y: number }[] }
   | { kind: 'load-schema'; schema: ERDSchema };
 

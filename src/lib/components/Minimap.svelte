@@ -2,7 +2,7 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
-  import type { TableColorId } from '$lib/constants/table-colors';
+  import { getEffectiveColor } from '$lib/utils/table-color';
 
   const MAP_W = 180;
   const MAP_H = 120;
@@ -84,7 +84,8 @@
   const miniTables = $derived.by(() => {
     void renderTick;
     return erdStore.schema.tables.map((t) => {
-      const colorEntry = t.color ? TABLE_COLORS[t.color as TableColorId] : null;
+      const colorId = getEffectiveColor(t, erdStore.schema);
+      const colorEntry = colorId ? TABLE_COLORS[colorId] : null;
       return {
         id: t.id,
         ...worldToMap(t.position.x, t.position.y),

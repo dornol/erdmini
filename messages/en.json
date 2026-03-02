@@ -217,5 +217,10 @@
   "ddl_import_no_create_table": "No CREATE TABLE statements found.",
   "ddl_import_fk_resolve_failed": "FK resolve failed: {detail}",
   "toolbar_fullscreen": "Present",
-  "fullscreen_exit": "Exit Presentation"
+  "fullscreen_exit": "Exit Presentation",
+  "group_color_inherited": "Using group color",
+  "group_color_use": "Use group color",
+  "sidebar_new_group": "New Group",
+  "sidebar_new_group_placeholder": "Group name...",
+  "sidebar_rename_group": "Rename group"
 }

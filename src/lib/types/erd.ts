@@ -90,6 +90,7 @@ export interface ERDSchema {
   version: string;
   tables: Table[];
   domains: ColumnDomain[];
+  groupColors?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
