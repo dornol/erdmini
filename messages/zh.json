@@ -262,5 +262,13 @@
   "search_hint_type": "按列类型搜索",
   "search_hint_has": "具有属性的表 (pk, fk, index, comment, domain, enum...)",
   "search_hint_no": "缺少属性的表",
-  "search_hint_color": "按表颜色搜索"
+  "search_hint_color": "按表颜色搜索",
+  "auth_change_password": "修改密码",
+  "auth_current_password": "当前密码",
+  "auth_new_password": "新密码",
+  "auth_confirm_password": "确认新密码",
+  "auth_password_changed": "密码修改成功",
+  "auth_password_mismatch": "两次输入的密码不一致",
+  "auth_password_too_short": "密码至少需要4个字符",
+  "auth_wrong_current_password": "当前密码不正确"
 }

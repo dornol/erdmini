@@ -282,5 +282,13 @@
   "search_hint_type": "Search by column type",
   "search_hint_has": "Tables with attribute (pk, fk, index, comment, domain, enum...)",
   "search_hint_no": "Tables without attribute",
-  "search_hint_color": "Search by table color"
+  "search_hint_color": "Search by table color",
+  "auth_change_password": "Change Password",
+  "auth_current_password": "Current Password",
+  "auth_new_password": "New Password",
+  "auth_confirm_password": "Confirm New Password",
+  "auth_password_changed": "Password changed successfully",
+  "auth_password_mismatch": "Passwords do not match",
+  "auth_password_too_short": "Password must be at least 4 characters",
+  "auth_wrong_current_password": "Current password is incorrect"
 }

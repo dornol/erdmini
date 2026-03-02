@@ -262,5 +262,13 @@
   "search_hint_type": "カラム型で検索",
   "search_hint_has": "属性があるテーブル (pk, fk, index, comment, domain, enum...)",
   "search_hint_no": "属性がないテーブル",
-  "search_hint_color": "テーブル色で検索"
+  "search_hint_color": "テーブル色で検索",
+  "auth_change_password": "パスワード変更",
+  "auth_current_password": "現在のパスワード",
+  "auth_new_password": "新しいパスワード",
+  "auth_confirm_password": "新しいパスワード確認",
+  "auth_password_changed": "パスワードが変更されました",
+  "auth_password_mismatch": "新しいパスワードが一致しません",
+  "auth_password_too_short": "パスワードは4文字以上必要です",
+  "auth_wrong_current_password": "現在のパスワードが正しくありません"
 }
