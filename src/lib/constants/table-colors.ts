@@ -1,8 +1,8 @@
 import type { ThemeId } from '$lib/store/theme.svelte';
 
-export type TableColorId = 'red' | 'orange' | 'amber' | 'green' | 'teal' | 'blue' | 'purple' | 'pink';
+export type TableColorId = 'red' | 'orange' | 'amber' | 'green' | 'teal' | 'blue' | 'purple' | 'pink' | 'lime' | 'cyan' | 'indigo' | 'rose' | 'slate' | 'brown';
 
-export const TABLE_COLOR_IDS: TableColorId[] = ['red', 'orange', 'amber', 'green', 'teal', 'blue', 'purple', 'pink'];
+export const TABLE_COLOR_IDS: TableColorId[] = ['red', 'orange', 'amber', 'green', 'teal', 'blue', 'purple', 'pink', 'lime', 'cyan', 'indigo', 'rose', 'slate', 'brown'];
 
 interface ColorMapping {
   headerBg: string;
@@ -80,6 +80,60 @@ export const TABLE_COLORS: Record<TableColorId, { dot: string; themes: Record<Th
       classic:   { headerBg: '#6e1d45', headerText: '#fdf2f8' },
       blueprint: { headerBg: '#831843', headerText: '#f9a8d4' },
       minimal:   { headerBg: '#fbcfe8', headerText: '#9d174d' },
+    },
+  },
+  lime: {
+    dot: '#84cc16',
+    themes: {
+      modern:    { headerBg: '#65a30d', headerText: '#ffffff' },
+      classic:   { headerBg: '#3f5e15', headerText: '#f7fee7' },
+      blueprint: { headerBg: '#365314', headerText: '#bef264' },
+      minimal:   { headerBg: '#d9f99d', headerText: '#3f6212' },
+    },
+  },
+  cyan: {
+    dot: '#06b6d4',
+    themes: {
+      modern:    { headerBg: '#0891b2', headerText: '#ffffff' },
+      classic:   { headerBg: '#164e63', headerText: '#ecfeff' },
+      blueprint: { headerBg: '#164e63', headerText: '#67e8f9' },
+      minimal:   { headerBg: '#a5f3fc', headerText: '#155e75' },
+    },
+  },
+  indigo: {
+    dot: '#6366f1',
+    themes: {
+      modern:    { headerBg: '#4f46e5', headerText: '#ffffff' },
+      classic:   { headerBg: '#312e81', headerText: '#eef2ff' },
+      blueprint: { headerBg: '#312e81', headerText: '#a5b4fc' },
+      minimal:   { headerBg: '#c7d2fe', headerText: '#3730a3' },
+    },
+  },
+  rose: {
+    dot: '#f43f5e',
+    themes: {
+      modern:    { headerBg: '#e11d48', headerText: '#ffffff' },
+      classic:   { headerBg: '#6e1a35', headerText: '#fff1f2' },
+      blueprint: { headerBg: '#881337', headerText: '#fda4af' },
+      minimal:   { headerBg: '#fecdd3', headerText: '#9f1239' },
+    },
+  },
+  slate: {
+    dot: '#64748b',
+    themes: {
+      modern:    { headerBg: '#475569', headerText: '#ffffff' },
+      classic:   { headerBg: '#334155', headerText: '#f1f5f9' },
+      blueprint: { headerBg: '#1e293b', headerText: '#94a3b8' },
+      minimal:   { headerBg: '#cbd5e1', headerText: '#1e293b' },
+    },
+  },
+  brown: {
+    dot: '#a3764f',
+    themes: {
+      modern:    { headerBg: '#8b5e3c', headerText: '#ffffff' },
+      classic:   { headerBg: '#5c3d23', headerText: '#fef3e2' },
+      blueprint: { headerBg: '#4a2f1a', headerText: '#d4a574' },
+      minimal:   { headerBg: '#e8d5c0', headerText: '#5c3d23' },
     },
   },
 };

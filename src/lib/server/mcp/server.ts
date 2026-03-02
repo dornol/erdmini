@@ -66,6 +66,111 @@ export function createMcpServer(
   );
 
   server.tool(
+    'get_schema_summary',
+    'Get a high-level summary of a project schema (table/column/FK/index counts, groups, domains)',
+    { projectId: z.string().describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const tables = schema.tables;
+      const groups = [...new Set(tables.map(t => t.group || ''))];
+      const summary = {
+        tableCount: tables.length,
+        columnCount: tables.reduce((sum, t) => sum + t.columns.length, 0),
+        fkCount: tables.reduce((sum, t) => sum + t.foreignKeys.length, 0),
+        indexCount: tables.reduce((sum, t) => sum + t.indexes.length, 0),
+        groups: groups.filter(g => g !== '').sort(),
+        domains: schema.domains.map(d => ({ id: d.id, name: d.name, type: d.type })),
+      };
+      return { content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'list_tables',
+    'List tables with summary info (no full column data). Optionally filter by group.',
+    {
+      projectId: z.string().describe('Project ID'),
+      group: z.string().optional().describe('Filter by group name (exact match)'),
+    },
+    async ({ projectId, group }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      let tables = schema.tables;
+      if (group !== undefined) {
+        tables = tables.filter(t => (t.group || '') === group);
+      }
+      const result = tables.map(t => ({
+        id: t.id,
+        name: t.name,
+        comment: t.comment || null,
+        group: t.group || null,
+        color: t.color || null,
+        columnCount: t.columns.length,
+        fkCount: t.foreignKeys.length,
+        pkColumns: t.columns.filter(c => c.primaryKey).map(c => c.name),
+      }));
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'get_table',
+    'Get full details of a single table by ID or name (columns, foreignKeys, uniqueKeys, indexes)',
+    {
+      projectId: z.string().describe('Project ID'),
+      tableId: z.string().optional().describe('Table ID (provide tableId or tableName)'),
+      tableName: z.string().optional().describe('Table name (provide tableId or tableName)'),
+    },
+    async ({ projectId, tableId, tableName }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      if (!tableId && !tableName) {
+        return { content: [{ type: 'text', text: 'Provide either tableId or tableName' }], isError: true };
+      }
+      const table = tableId
+        ? schema.tables.find(t => t.id === tableId)
+        : schema.tables.find(t => t.name.toLowerCase() === tableName!.toLowerCase());
+      if (!table) {
+        return { content: [{ type: 'text', text: `Table not found: ${tableId || tableName}` }], isError: true };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(table, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'list_groups',
+    'List groups with table counts and table names',
+    { projectId: z.string().describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const groupMap = new Map<string, string[]>();
+      for (const t of schema.tables) {
+        const g = t.group || '(ungrouped)';
+        if (!groupMap.has(g)) groupMap.set(g, []);
+        groupMap.get(g)!.push(t.name);
+      }
+      const result = [...groupMap.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([group, names]) => ({ group, tableCount: names.length, tableNames: names }));
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    },
+  );
+
+  server.tool(
     'export_ddl',
     'Export DDL SQL for a project schema (supports mysql, postgresql, mariadb, mssql)',
     {

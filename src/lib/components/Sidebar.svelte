@@ -14,7 +14,17 @@
   const ROW_H_TABLE = 34;
   const ROW_H_TABLE_COMMENT = 48; // 34 + 14 for comment line
   const ROW_H_GROUP_HEADER = 28;
-  const ROW_H_COLOR_PICKER = 34;
+  const COLOR_PICKER_DOT = 18;
+  const COLOR_PICKER_GAP = 4;
+  const COLOR_PICKER_PAD_X = 28 + 14; // left + right padding
+  const COLOR_PICKER_PAD_Y = 6 + 6;   // top + bottom padding
+  const COLOR_PICKER_ITEMS = 1 + TABLE_COLOR_IDS.length; // none + colors
+  function colorPickerHeight(width: number): number {
+    const usable = width - COLOR_PICKER_PAD_X;
+    const cols = Math.max(1, Math.floor((usable + COLOR_PICKER_GAP) / (COLOR_PICKER_DOT + COLOR_PICKER_GAP)));
+    const rowCount = Math.ceil(COLOR_PICKER_ITEMS / cols);
+    return rowCount * COLOR_PICKER_DOT + (rowCount - 1) * COLOR_PICKER_GAP + COLOR_PICKER_PAD_Y;
+  }
   const ROW_H_NEW_GROUP = 36;
   const ROW_H_EMPTY = 60;
 
@@ -457,7 +467,7 @@
             rows.push({
               type: 'color-picker',
               groupName: group.name,
-              height: ROW_H_COLOR_PICKER,
+              height: colorPickerHeight(sidebarWidth),
               key: `__cp_${group.name}`,
             });
           }
@@ -1425,9 +1435,9 @@
   }
 
   .group-color-picker {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 18px);
     gap: 4px;
-    flex-wrap: wrap;
     padding: 6px 14px 6px 28px;
     background: var(--app-panel-bg, #f8fafc);
     border-bottom: 1px solid var(--app-border, #e2e8f0);

@@ -897,9 +897,9 @@
   }
 
   .color-dots {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 22px);
+    gap: 5px;
   }
 
   .color-dot {
