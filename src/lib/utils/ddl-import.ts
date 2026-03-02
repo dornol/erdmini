@@ -524,24 +524,24 @@ function cleanMSSQLStatement(sql: string): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveParser(mod: any): any {
+  // CJS modules imported via ESM: Parser may be at mod.Parser (Vite) or mod.default.Parser (Node.js)
+  const Parser = mod.Parser ?? mod.default?.Parser;
+  if (!Parser) throw new Error('Parser not found in module');
+  return new Parser();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getParser(dialect: Dialect): Promise<any> {
   switch (dialect) {
-    case 'mysql': {
-      const mod = await import('node-sql-parser/build/mysql');
-      return new mod.Parser();//
-    }
-    case 'mariadb': {
-      const mod = await import('node-sql-parser/build/mariadb');
-      return new mod.Parser();
-    }
-    case 'postgresql': {
-      const mod = await import('node-sql-parser/build/postgresql');
-      return new mod.Parser();
-    }
-    case 'mssql': {
-      const mod = await import('node-sql-parser/build/transactsql');
-      return new mod.Parser();
-    }
+    case 'mysql':
+      return resolveParser(await import('node-sql-parser/build/mysql'));
+    case 'mariadb':
+      return resolveParser(await import('node-sql-parser/build/mariadb'));
+    case 'postgresql':
+      return resolveParser(await import('node-sql-parser/build/postgresql'));
+    case 'mssql':
+      return resolveParser(await import('node-sql-parser/build/transactsql'));
   }
 }
 
