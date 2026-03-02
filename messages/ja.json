@@ -31,6 +31,7 @@
   "layout_grid": "グリッド",
   "layout_hierarchical": "階層",
   "layout_radial": "放射状",
+  "layout_by_group": "グループ別配置",
   "sidebar_title": "テーブル一覧",
   "sidebar_expand": "サイドバーを開く",
   "sidebar_collapse": "サイドバーを閉じる",

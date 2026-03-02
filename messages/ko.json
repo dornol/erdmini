@@ -35,6 +35,7 @@
   "layout_grid": "격자",
   "layout_hierarchical": "계층",
   "layout_radial": "방사형",
+  "layout_by_group": "그룹별 배치",
   "sidebar_title": "테이블 목록",
   "sidebar_expand": "사이드바 열기",
   "sidebar_collapse": "사이드바 접기",

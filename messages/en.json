@@ -35,6 +35,7 @@
   "layout_grid": "Grid",
   "layout_hierarchical": "Hierarchical",
   "layout_radial": "Radial",
+  "layout_by_group": "By Group",
   "sidebar_title": "Tables",
   "sidebar_expand": "Expand sidebar",
   "sidebar_collapse": "Collapse sidebar",

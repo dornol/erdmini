@@ -5,7 +5,7 @@
   import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
   import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
-  import type { LayoutType } from '$lib/utils/auto-layout';
+  import type { LayoutType, LayoutOptions } from '$lib/utils/auto-layout';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { exportSvg } from '$lib/utils/svg-export';
   import { sanitizeFilename, now } from '$lib/utils/common';
@@ -82,8 +82,8 @@
   }
 
   // Auto-arrange
-  function applyLayout(type: LayoutType) {
-    const positions = computeLayout(erdStore.schema.tables, type);
+  function applyLayout(type: LayoutType, options?: LayoutOptions) {
+    const positions = computeLayout(erdStore.schema.tables, type, options);
     erdStore.applyLayout(positions);
   }
 
@@ -465,11 +465,15 @@
     { id: 'minimal',   label: () => m.theme_minimal(),   dot: '#f0f0f0' },
   ];
 
-  const LAYOUT_LABELS: Record<LayoutType, () => string> = {
-    grid: () => m.layout_grid(),
-    hierarchical: () => m.layout_hierarchical(),
-    radial: () => m.layout_radial(),
-  };
+  const LAYOUT_TYPES: { type: LayoutType; label: () => string }[] = [
+    { type: 'grid', label: () => m.layout_grid() },
+    { type: 'hierarchical', label: () => m.layout_hierarchical() },
+    { type: 'radial', label: () => m.layout_radial() },
+  ];
+
+  function tablesHaveGroups(): boolean {
+    return erdStore.schema.tables.some((t) => t.group && t.group.length > 0);
+  }
 
   // Image export
   async function exportImage() {
@@ -693,15 +697,28 @@
           tabindex="-1"
           onmouseleave={() => (layoutOpen = false)}
         >
-          {#each Object.entries(LAYOUT_LABELS) as [type, label]}
+          {#each LAYOUT_TYPES as { type, label }}
             <button
               class="dropdown-item"
               role="menuitem"
-              onclick={() => { applyLayout(type as LayoutType); layoutOpen = false; }}
+              onclick={() => { applyLayout(type); layoutOpen = false; }}
             >
               {label()}
             </button>
           {/each}
+          {#if tablesHaveGroups()}
+            <div class="dropdown-divider" role="separator"></div>
+            <div class="dropdown-section-label">{m.layout_by_group()}</div>
+            {#each LAYOUT_TYPES as { type, label }}
+              <button
+                class="dropdown-item"
+                role="menuitem"
+                onclick={() => { applyLayout(type, { groupByGroup: true }); layoutOpen = false; }}
+              >
+                {label()}
+              </button>
+            {/each}
+          {/if}
         </div>
       {/if}
     </div>
@@ -1345,6 +1362,21 @@
   .dropdown-item:hover {
     background: #334155;
     color: white;
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background: #334155;
+    margin: 4px 0;
+  }
+
+  .dropdown-section-label {
+    padding: 6px 14px 2px;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   .theme-item {

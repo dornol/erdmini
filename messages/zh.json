@@ -31,6 +31,7 @@
   "layout_grid": "网格",
   "layout_hierarchical": "层级",
   "layout_radial": "放射",
+  "layout_by_group": "按组排列",
   "sidebar_title": "表列表",
   "sidebar_expand": "展开侧栏",
   "sidebar_collapse": "收起侧栏",
