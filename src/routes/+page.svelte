@@ -266,8 +266,8 @@
     const tag = (e.target as HTMLElement)?.tagName;
     const isEditing = tag === 'INPUT' || tag === 'TEXTAREA';
 
-    // F key: toggle fullscreen (when not editing)
-    if (key === 'f' && !isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    // F key: toggle fullscreen (when not editing) — use e.code for IME compatibility
+    if (e.code === 'KeyF' && !isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       if (fullscreenMode) exitFullscreen(); else enterFullscreen();
       return;
