@@ -9,7 +9,7 @@
   import Toolbar from '$lib/components/Toolbar.svelte';
   import BulkEditModal from '$lib/components/BulkEditModal.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { erdStore, canvasState, type ColumnDisplayMode } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
@@ -57,23 +57,54 @@
     }
   });
 
+  /** Measure viewport, apply state change, then compensate canvas position to keep center stable */
+  async function preserveCenter(applyChange: () => void) {
+    const vp = document.querySelector('.canvas-viewport');
+    const oldRect = vp?.getBoundingClientRect();
+    const oldW = oldRect?.width ?? 0;
+    const oldH = oldRect?.height ?? 0;
+
+    applyChange();
+    await tick();
+    // Force layout recalculation after DOM update
+    await new Promise<void>((r) => requestAnimationFrame(r));
+
+    const newVp = document.querySelector('.canvas-viewport');
+    const newRect = newVp?.getBoundingClientRect();
+    const newW = newRect?.width ?? oldW;
+    const newH = newRect?.height ?? oldH;
+
+    canvasState.x += (newW - oldW) / 2;
+    canvasState.y += (newH - oldH) / 2;
+  }
+
   function enterFullscreen() {
-    fullscreenMode = true;
-    fullscreenBarVisible = true;
-    clearTimeout(fullscreenBarTimer);
-    fullscreenBarTimer = setTimeout(() => (fullscreenBarVisible = false), 3000);
+    preserveCenter(() => {
+      fullscreenMode = true;
+      fullscreenBarVisible = true;
+      clearTimeout(fullscreenBarTimer);
+      fullscreenBarTimer = setTimeout(() => (fullscreenBarVisible = false), 3000);
+    });
   }
 
   function exitFullscreen() {
-    fullscreenMode = false;
-    fullscreenBarVisible = true;
-    clearTimeout(fullscreenBarTimer);
+    preserveCenter(() => {
+      fullscreenMode = false;
+      fullscreenBarVisible = true;
+      clearTimeout(fullscreenBarTimer);
+    });
   }
 
   function showFullscreenBar() {
     fullscreenBarVisible = true;
     clearTimeout(fullscreenBarTimer);
     fullscreenBarTimer = setTimeout(() => (fullscreenBarVisible = false), 3000);
+  }
+
+  function toggleSidebar() {
+    preserveCenter(() => {
+      sidebarCollapsed = !sidebarCollapsed;
+    });
   }
 
   // ── Collab: WebSocket lifecycle ──
@@ -593,7 +624,7 @@
       {/if}
       <Toolbar onfullscreen={enterFullscreen} />
       <div class="main">
-        <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} onbulkedit={() => (showBulkEditModal = true)} />
+        <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
         <Canvas>
           <RelationLines />
           {#each erdStore.schema.tables as table (table.id)}
