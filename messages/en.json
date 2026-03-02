@@ -215,5 +215,7 @@
   "fk_edit_title": "Edit FK — {name}",
   "ddl_import_table_parse_error": "Table parse error: {error}",
   "ddl_import_no_create_table": "No CREATE TABLE statements found.",
-  "ddl_import_fk_resolve_failed": "FK resolve failed: {detail}"
+  "ddl_import_fk_resolve_failed": "FK resolve failed: {detail}",
+  "toolbar_fullscreen": "Present",
+  "fullscreen_exit": "Exit Presentation"
 }

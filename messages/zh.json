@@ -200,5 +200,7 @@
   "project_delete_confirm": "确定删除项目 \"{name}\" 吗？所有数据将被永久删除。",
   "project_delete_title": "删除项目",
   "project_default_name": "My Project",
-  "toolbar_bug_report": "报告错误"
+  "toolbar_bug_report": "报告错误",
+  "toolbar_fullscreen": "演示",
+  "fullscreen_exit": "退出演示"
 }

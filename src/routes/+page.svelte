@@ -30,11 +30,33 @@
   let forceDesktop = $state(false);
   let isMobile = $derived(viewportWidth < 768);
   let storageBannerDismissed = $state(false);
+  let fullscreenMode = $state(false);
+  let fullscreenBarVisible = $state(true);
+  let fullscreenBarTimer: ReturnType<typeof setTimeout> | undefined;
 
   onMount(async () => {
     const provider = await getStorageProvider();
     await projectStore.init(provider);
   });
+
+  function enterFullscreen() {
+    fullscreenMode = true;
+    fullscreenBarVisible = true;
+    clearTimeout(fullscreenBarTimer);
+    fullscreenBarTimer = setTimeout(() => (fullscreenBarVisible = false), 3000);
+  }
+
+  function exitFullscreen() {
+    fullscreenMode = false;
+    fullscreenBarVisible = true;
+    clearTimeout(fullscreenBarTimer);
+  }
+
+  function showFullscreenBar() {
+    fullscreenBarVisible = true;
+    clearTimeout(fullscreenBarTimer);
+    fullscreenBarTimer = setTimeout(() => (fullscreenBarVisible = false), 3000);
+  }
 
   // ── Collab: WebSocket lifecycle ──
   const unsubCollab = collabClient.onMessage(handleServerMessage);
@@ -241,6 +263,62 @@
   // Keyboard shortcuts
   async function handleKeydown(e: KeyboardEvent) {
     const key = e.key.toLowerCase();
+    const tag = (e.target as HTMLElement)?.tagName;
+    const isEditing = tag === 'INPUT' || tag === 'TEXTAREA';
+
+    // F key: toggle fullscreen (when not editing)
+    if (key === 'f' && !isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (fullscreenMode) exitFullscreen(); else enterFullscreen();
+      return;
+    }
+
+    // ESC: exit fullscreen first, then deselect
+    if (e.key === 'Escape' && !isEditing) {
+      if (fullscreenMode) {
+        exitFullscreen();
+        return;
+      }
+      erdStore.selectedTableId = null;
+      erdStore.selectedTableIds = new Set();
+      return;
+    }
+
+    // In fullscreen mode, block all editing shortcuts
+    if (fullscreenMode) {
+      // Allow zoom (+/-), arrow pan, and Cmd+K palette
+      if ((e.ctrlKey || e.metaKey) && key === 'k') {
+        e.preventDefault();
+        commandPaletteOpen = !commandPaletteOpen;
+        return;
+      }
+      // Allow zoom keys and arrow keys to pass through
+      if (!isEditing && (key === '+' || key === '=' || key === '-')) {
+        e.preventDefault();
+        const factor = (key === '-') ? 0.9 : 1.1;
+        const newScale = Math.min(3, Math.max(0.2, canvasState.scale * factor));
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const cx = vw / 2;
+        const cy = vh / 2;
+        canvasState.x = cx - (cx - canvasState.x) * (newScale / canvasState.scale);
+        canvasState.y = cy - (cy - canvasState.y) * (newScale / canvasState.scale);
+        canvasState.scale = newScale;
+        return;
+      }
+      if (!isEditing && e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        const step = 60;
+        switch (e.key) {
+          case 'ArrowLeft':  canvasState.x += step; break;
+          case 'ArrowRight': canvasState.x -= step; break;
+          case 'ArrowUp':    canvasState.y += step; break;
+          case 'ArrowDown':  canvasState.y -= step; break;
+        }
+        return;
+      }
+      return; // Block everything else in fullscreen
+    }
 
     // Cmd+K: toggle command palette (works even when editing)
     if ((e.ctrlKey || e.metaKey) && key === 'k') {
@@ -248,9 +326,6 @@
       commandPaletteOpen = !commandPaletteOpen;
       return;
     }
-
-    const tag = (e.target as HTMLElement)?.tagName;
-    const isEditing = tag === 'INPUT' || tag === 'TEXTAREA';
 
     // Undo/Redo
     if ((e.ctrlKey || e.metaKey) && (key === 'z' || key === 'y')) {
@@ -280,13 +355,6 @@
       for (const id of ids) {
         erdStore.duplicateTable(id);
       }
-      return;
-    }
-
-    // Escape: deselect
-    if (e.key === 'Escape' && !isEditing) {
-      erdStore.selectedTableId = null;
-      erdStore.selectedTableIds = new Set();
       return;
     }
 
@@ -424,46 +492,78 @@
   </div>
 {:else}
   <div class="app" data-dark={themeStore.darkMode || undefined}>
-    {#if erdStore.storageFull && !storageBannerDismissed}
-      <div class="storage-banner">
-        <span class="storage-msg">{m.storage_full_warning()}</span>
-        <button class="storage-export-btn" onclick={() => {
-          const blob = new Blob([JSON.stringify($state.snapshot(erdStore.schema), null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'erdmini-backup.json';
-          a.click();
-          URL.revokeObjectURL(url);
-        }}>{m.storage_full_export()}</button>
-        <button class="storage-close-btn" onclick={() => (storageBannerDismissed = true)}>✕</button>
-      </div>
-    {/if}
-    <Toolbar />
-    <div class="main">
-      <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} />
-      <Canvas>
-        <RelationLines />
-        {#each erdStore.schema.tables as table (table.id)}
-          <div
-            in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
-            out:fade={{ duration: 150 }}
-          >
-            <TableCard {table} />
-          </div>
-        {/each}
-      </Canvas>
-      <TableEditor />
-    </div>
+    {#if fullscreenMode}
+      <!-- Fullscreen Presentation Mode -->
+      <div class="fullscreen-canvas">
+        <Canvas>
+          <RelationLines />
+          {#each erdStore.schema.tables as table (table.id)}
+            <div class="fullscreen-table-wrapper">
+              <TableCard {table} />
+            </div>
+          {/each}
+        </Canvas>
 
-    {#if erdStore.editingColumnInfo}
-      <ColumnEditPopup
-        tableId={erdStore.editingColumnInfo.tableId}
-        columnId={erdStore.editingColumnInfo.columnId}
-        anchorX={erdStore.editingColumnInfo.anchorX}
-        anchorY={erdStore.editingColumnInfo.anchorY}
-        onclose={() => (erdStore.editingColumnInfo = null)}
-      />
+        <!-- Top bar: project name + close button -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="fullscreen-topbar"
+          class:fullscreen-topbar-hidden={!fullscreenBarVisible}
+          onmouseenter={showFullscreenBar}
+        >
+          <span class="fullscreen-project-name">{projectStore.activeProject?.name ?? 'Project'}</span>
+          <button class="fullscreen-close-btn" onclick={exitFullscreen}>
+            {m.fullscreen_exit()} ✕
+          </button>
+        </div>
+
+        <!-- Invisible hover zone at top to reveal bar -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="fullscreen-hover-zone" onmouseenter={showFullscreenBar}></div>
+      </div>
+    {:else}
+      <!-- Normal Mode -->
+      {#if erdStore.storageFull && !storageBannerDismissed}
+        <div class="storage-banner">
+          <span class="storage-msg">{m.storage_full_warning()}</span>
+          <button class="storage-export-btn" onclick={() => {
+            const blob = new Blob([JSON.stringify($state.snapshot(erdStore.schema), null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'erdmini-backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}>{m.storage_full_export()}</button>
+          <button class="storage-close-btn" onclick={() => (storageBannerDismissed = true)}>✕</button>
+        </div>
+      {/if}
+      <Toolbar onfullscreen={enterFullscreen} />
+      <div class="main">
+        <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} />
+        <Canvas>
+          <RelationLines />
+          {#each erdStore.schema.tables as table (table.id)}
+            <div
+              in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
+              out:fade={{ duration: 150 }}
+            >
+              <TableCard {table} />
+            </div>
+          {/each}
+        </Canvas>
+        <TableEditor />
+      </div>
+
+      {#if erdStore.editingColumnInfo}
+        <ColumnEditPopup
+          tableId={erdStore.editingColumnInfo.tableId}
+          columnId={erdStore.editingColumnInfo.columnId}
+          anchorX={erdStore.editingColumnInfo.anchorX}
+          anchorY={erdStore.editingColumnInfo.anchorY}
+          onclose={() => (erdStore.editingColumnInfo = null)}
+        />
+      {/if}
     {/if}
 
     {#if commandPaletteOpen}
@@ -681,5 +781,70 @@
 
   .storage-close-btn:hover {
     background: #fde68a;
+  }
+
+  /* Fullscreen Presentation Mode */
+  .fullscreen-canvas {
+    position: relative;
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .fullscreen-table-wrapper {
+    pointer-events: none;
+  }
+
+  .fullscreen-topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .fullscreen-topbar-hidden {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+  }
+
+  .fullscreen-hover-zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 12px;
+    z-index: 99;
+  }
+
+  .fullscreen-project-name {
+    color: #e2e8f0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .fullscreen-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+    font-size: 12px;
+    padding: 5px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .fullscreen-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
   }
 </style>

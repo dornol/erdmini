@@ -19,6 +19,8 @@
   import CollabIndicator from './CollabIndicator.svelte';
   import { collabStore } from '$lib/store/collab.svelte';
 
+  let { onfullscreen }: { onfullscreen?: () => void } = $props();
+
   let viewportWidth = $state(800);
   let viewportHeight = $state(600);
 
@@ -846,6 +848,20 @@
   </div>
 
   <div class="toolbar-right">
+    <!-- Fullscreen / Present -->
+    <button
+      class="btn-icon"
+      onclick={() => onfullscreen?.()}
+      title={m.toolbar_fullscreen()}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <polyline points="1,5 1,1 5,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="11,1 15,1 15,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="15,11 15,15 11,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="5,15 1,15 1,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
     <!-- Dark mode toggle -->
     <button
       class="btn-dark-toggle"

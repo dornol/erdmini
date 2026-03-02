@@ -200,5 +200,7 @@
   "project_delete_confirm": "プロジェクト「{name}」を削除しますか？すべてのデータが永久に削除されます。",
   "project_delete_title": "プロジェクト削除",
   "project_default_name": "My Project",
-  "toolbar_bug_report": "バグ報告"
+  "toolbar_bug_report": "バグ報告",
+  "toolbar_fullscreen": "プレゼン",
+  "fullscreen_exit": "プレゼン終了"
 }
