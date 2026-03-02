@@ -120,6 +120,65 @@
     groupDragStarts = null;
   }
 
+  // ── Touch handlers (iPad/mobile) ──
+  function onTouchStartCard(e: TouchEvent) {
+    if (e.touches.length >= 2) {
+      isDragging = false;
+      groupDragStarts = null;
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    e.stopPropagation();
+    const touch = e.touches[0];
+
+    if (erdStore.selectedTableIds.has(table.id) && erdStore.selectedTableIds.size > 1) {
+      if (!table.locked && !permissionStore.isReadOnly) {
+        isDragging = true;
+        dragStart = { mouseX: touch.clientX, mouseY: touch.clientY, tableX: 0, tableY: 0 };
+        groupDragStarts = new Map();
+        for (const id of erdStore.selectedTableIds) {
+          const t = erdStore.schema.tables.find((tbl) => tbl.id === id);
+          if (t && !t.locked) groupDragStarts.set(id, { x: t.position.x, y: t.position.y });
+        }
+      }
+      return;
+    }
+
+    erdStore.selectedTableId = table.id;
+    erdStore.selectedTableIds = new Set([table.id]);
+    if (!table.locked && !permissionStore.isReadOnly) isDragging = true;
+    dragStart = {
+      mouseX: touch.clientX,
+      mouseY: touch.clientY,
+      tableX: table.position.x,
+      tableY: table.position.y,
+    };
+  }
+
+  function onTouchMoveCard(e: TouchEvent) {
+    if (!isDragging) return;
+    if (e.touches.length >= 2) {
+      isDragging = false;
+      groupDragStarts = null;
+      return;
+    }
+    e.preventDefault();
+    const touch = e.touches[0];
+    const dx = (touch.clientX - dragStart.mouseX) / canvasState.scale;
+    const dy = (touch.clientY - dragStart.mouseY) / canvasState.scale;
+    if (groupDragStarts && groupDragStarts.size > 1) {
+      const moves = [...groupDragStarts].map(([id, start]) => ({ id, x: start.x + dx, y: start.y + dy }));
+      erdStore.moveTables(moves);
+    } else {
+      erdStore.moveTable(table.id, dragStart.tableX + dx, dragStart.tableY + dy);
+    }
+  }
+
+  function onTouchEndCard() {
+    isDragging = false;
+    groupDragStarts = null;
+  }
+
   function onColumnDblClick(e: MouseEvent, colId: string) {
     if (permissionStore.isReadOnly) return;
     e.stopPropagation();
@@ -144,9 +203,13 @@
   $effect(() => {
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('touchmove', onTouchMoveCard, { passive: false });
+    window.addEventListener('touchend', onTouchEndCard);
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchmove', onTouchMoveCard);
+      window.removeEventListener('touchend', onTouchEndCard);
     };
   });
 </script>
@@ -158,6 +221,7 @@
   class:fk-dragging={fkDragStore.active}
   style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}{remoteSelectColor ? `; box-shadow: 0 0 0 2px ${remoteSelectColor}40, 0 0 8px ${remoteSelectColor}30` : ''}"
   onmousedown={onMouseDown}
+  ontouchstart={onTouchStartCard}
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}
 >

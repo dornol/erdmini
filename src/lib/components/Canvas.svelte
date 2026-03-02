@@ -24,6 +24,12 @@
   let isSpaceHeld = $state(false);
   let savedSelection = $state<Set<string>>(new Set());
 
+  // Touch gesture state (iPad/mobile)
+  let touchMode = $state<'none' | 'pan' | 'pinch'>('none');
+  let touchStartPos = { x: 0, y: 0, canvasX: 0, canvasY: 0 };
+  let pinchStart = { dist: 0, scale: 1, midX: 0, midY: 0, canvasX: 0, canvasY: 0 };
+  let touchMoved = false;
+
   // AABB helpers for marquee hit testing
   function getTableBounds(t: Table) {
     const h = HEADER_H + (t.comment ? COMMENT_H : 0) + t.columns.length * ROW_H + BOTTOM_PAD;
@@ -189,16 +195,98 @@
     if (e.key === ' ') isSpaceHeld = false;
   }
 
+  // ── Touch handlers (iPad/mobile) ──
+  function getTouchDist(t0: Touch, t1: Touch) {
+    return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+  }
+
+  function onTouchStart(e: TouchEvent) {
+    if (e.touches.length >= 2) {
+      e.preventDefault();
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const rect = viewportEl.getBoundingClientRect();
+      pinchStart = {
+        dist: getTouchDist(t0, t1),
+        scale: canvasState.scale,
+        midX: (t0.clientX + t1.clientX) / 2 - rect.left,
+        midY: (t0.clientY + t1.clientY) / 2 - rect.top,
+        canvasX: canvasState.x,
+        canvasY: canvasState.y,
+      };
+      touchMode = 'pinch';
+      return;
+    }
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const target = touch.target as HTMLElement;
+      if (target !== viewportEl && !target.classList.contains('canvas-world')) return;
+      e.preventDefault();
+      touchMode = 'pan';
+      touchMoved = false;
+      touchStartPos = {
+        x: touch.clientX, y: touch.clientY,
+        canvasX: canvasState.x, canvasY: canvasState.y,
+      };
+    }
+  }
+
+  function onTouchMoveCb(e: TouchEvent) {
+    if (touchMode === 'pinch' && e.touches.length >= 2) {
+      e.preventDefault();
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = getTouchDist(t0, t1);
+      const rect = viewportEl.getBoundingClientRect();
+      const midX = (t0.clientX + t1.clientX) / 2 - rect.left;
+      const midY = (t0.clientY + t1.clientY) / 2 - rect.top;
+      const newScale = Math.min(3, Math.max(0.2, pinchStart.scale * (dist / pinchStart.dist)));
+      canvasState.x = midX - (pinchStart.midX - pinchStart.canvasX) * (newScale / pinchStart.scale);
+      canvasState.y = midY - (pinchStart.midY - pinchStart.canvasY) * (newScale / pinchStart.scale);
+      canvasState.scale = newScale;
+      return;
+    }
+    if (touchMode === 'pan' && e.touches.length === 1) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      if (Math.abs(touch.clientX - touchStartPos.x) > 3 || Math.abs(touch.clientY - touchStartPos.y) > 3) {
+        touchMoved = true;
+      }
+      canvasState.x = touchStartPos.canvasX + (touch.clientX - touchStartPos.x);
+      canvasState.y = touchStartPos.canvasY + (touch.clientY - touchStartPos.y);
+    }
+  }
+
+  function onTouchEndCb(e: TouchEvent) {
+    if (touchMode === 'pan' && !touchMoved && e.touches.length === 0) {
+      erdStore.selectedTableId = null;
+      erdStore.selectedTableIds = new Set();
+    }
+    if (e.touches.length === 0) {
+      touchMode = 'none';
+    } else if (e.touches.length === 1 && touchMode === 'pinch') {
+      const touch = e.touches[0];
+      touchMode = 'pan';
+      touchMoved = true;
+      touchStartPos = {
+        x: touch.clientX, y: touch.clientY,
+        canvasX: canvasState.x, canvasY: canvasState.y,
+      };
+    }
+  }
+
   $effect(() => {
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('touchmove', onTouchMoveCb, { passive: false });
+    window.addEventListener('touchend', onTouchEndCb);
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('touchmove', onTouchMoveCb);
+      window.removeEventListener('touchend', onTouchEndCb);
     };
   });
 
@@ -245,6 +333,7 @@
   bind:this={viewportEl}
   onwheel={onWheel}
   onmousedown={onMouseDown}
+  ontouchstart={onTouchStart}
   oncontextmenu={onContextMenu}
   data-theme={themeStore.current}
   style="cursor: {fkDragStore.active ? 'crosshair' : isMarquee ? 'crosshair' : isSpaceHeld ? (isPanning ? 'grabbing' : 'grab') : isPanning ? 'grabbing' : 'default'}"
@@ -595,6 +684,7 @@
     flex: 1;
     overflow: hidden;
     background-color: var(--erd-canvas-bg);
+    touch-action: none;
   }
 
   .canvas-world {
