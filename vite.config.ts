@@ -4,8 +4,8 @@ import { loadEnv } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import type { Plugin } from 'vite';
-import { resolve } from 'path';
-import { pathToFileURL } from 'url';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 function collabDevPlugin(): Plugin {
   return {
@@ -76,7 +76,7 @@ function collabDevPlugin(): Plugin {
 export default defineConfig({
   server: {
     host: true,
-    port: 5174,
+    port: 3000,
     allowedHosts: [
       'localhost',
       '127.0.0.1',
