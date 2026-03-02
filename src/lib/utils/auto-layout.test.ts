@@ -170,7 +170,7 @@ describe('computeLayout — grid', () => {
       return {
         x: pos.x,
         y: pos.y,
-        w: 200, // TABLE_W
+        w: 220, // TABLE_W
         h: 37 + table.columns.length * 26 + 8,
       };
     });

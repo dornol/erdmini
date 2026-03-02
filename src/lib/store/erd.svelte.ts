@@ -1,5 +1,6 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { generateId, now } from '$lib/utils/common';
+import { TABLE_W } from '$lib/constants/layout';
 
 function getNextTableName(tables: Table[]): string {
   let i = 1;
@@ -629,9 +630,21 @@ class CanvasState {
   snapToGrid = $state(false);
   gridSize = 20;
   columnDisplayMode = $state<ColumnDisplayMode>('all');
+  tableWidths = $state<Map<string, number>>(new Map());
 
   snap(v: number): number {
     return this.snapToGrid ? Math.round(v / this.gridSize) * this.gridSize : v;
+  }
+
+  getTableW(tableId: string): number {
+    return this.tableWidths.get(tableId) ?? TABLE_W;
+  }
+
+  setTableWidth(tableId: string, width: number) {
+    if (this.tableWidths.get(tableId) !== width) {
+      this.tableWidths.set(tableId, width);
+      this.tableWidths = new Map(this.tableWidths);
+    }
   }
 }
 

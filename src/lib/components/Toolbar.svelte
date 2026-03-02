@@ -11,7 +11,6 @@
   import { exportPdf } from '$lib/utils/pdf-export';
   import { lintSchema } from '$lib/utils/schema-lint';
   import { sanitizeFilename, now } from '$lib/utils/common';
-  import { TABLE_W } from '$lib/constants/layout';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import LintPanel from './LintPanel.svelte';
@@ -106,14 +105,14 @@
     let target: number;
     switch (dir) {
       case 'left': target = Math.min(...tables.map((t) => t.position.x)); break;
-      case 'right': target = Math.max(...tables.map((t) => t.position.x + TABLE_W)); break;
+      case 'right': target = Math.max(...tables.map((t) => t.position.x + canvasState.getTableW(t.id))); break;
       case 'top': target = Math.min(...tables.map((t) => t.position.y)); break;
       case 'bottom': target = Math.max(...tables.map((t) => t.position.y)); break;
     }
     for (const t of tables) {
       switch (dir) {
         case 'left': erdStore.moveTable(t.id, target, t.position.y); break;
-        case 'right': erdStore.moveTable(t.id, target - TABLE_W, t.position.y); break;
+        case 'right': erdStore.moveTable(t.id, target - canvasState.getTableW(t.id), t.position.y); break;
         case 'top': erdStore.moveTable(t.id, t.position.x, target); break;
         case 'bottom': erdStore.moveTable(t.id, t.position.x, target); break;
       }

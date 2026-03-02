@@ -1,6 +1,6 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
-  import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
+  import { HEADER_H, ROW_H } from '$lib/constants/layout';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
   import { getEffectiveColor } from '$lib/utils/table-color';
   import type { Table } from '$lib/types/erd';
@@ -49,7 +49,7 @@
       const h = HEADER_H + getFilteredColumnCount(t) * ROW_H;
       minX = Math.min(minX, t.position.x);
       minY = Math.min(minY, t.position.y);
-      maxX = Math.max(maxX, t.position.x + TABLE_W);
+      maxX = Math.max(maxX, t.position.x + canvasState.getTableW(t.id));
       maxY = Math.max(maxY, t.position.y + h);
     }
     return {
@@ -97,7 +97,7 @@
       return {
         id: t.id,
         ...worldToMap(t.position.x, t.position.y),
-        w: TABLE_W * mapScale,
+        w: canvasState.getTableW(t.id) * mapScale,
         h: (HEADER_H + getFilteredColumnCount(t) * ROW_H) * mapScale,
         active: erdStore.selectedTableIds.has(t.id),
         dotColor: colorEntry?.dot ?? null,

@@ -100,8 +100,8 @@ function getColIndex(table: Table, columnId: string): number {
 }
 
 function colY(table: Table, colIdx: number): number {
-  // Match RelationLines: ignores comment height
-  return table.position.y + HEADER_H + colIdx * ROW_H + ROW_H / 2;
+  const commentH = table.comment ? COMMENT_H : 0;
+  return table.position.y + HEADER_H + commentH + colIdx * ROW_H + ROW_H / 2;
 }
 
 

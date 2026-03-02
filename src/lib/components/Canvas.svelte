@@ -2,7 +2,7 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
-  import { TABLE_W, HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
+  import { HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
   import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import CanvasHistory from './CanvasHistory.svelte';
@@ -41,7 +41,7 @@
 
   function getTableBounds(t: Table) {
     const h = HEADER_H + (t.comment ? COMMENT_H : 0) + getFilteredColumnCount(t) * ROW_H + BOTTOM_PAD;
-    return { x: t.position.x, y: t.position.y, w: TABLE_W, h };
+    return { x: t.position.x, y: t.position.y, w: canvasState.getTableW(t.id), h };
   }
 
   function getMarqueeWorld() {
@@ -315,7 +315,7 @@
       const h = HEADER_H + getFilteredColumnCount(t) * ROW_H;
       minX = Math.min(minX, t.position.x);
       minY = Math.min(minY, t.position.y);
-      maxX = Math.max(maxX, t.position.x + TABLE_W);
+      maxX = Math.max(maxX, t.position.x + canvasState.getTableW(t.id));
       maxY = Math.max(maxY, t.position.y + h);
     }
 

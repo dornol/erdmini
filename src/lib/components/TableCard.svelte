@@ -13,6 +13,11 @@
 
   let { table }: { table: Table } = $props();
 
+  let cardWidth = $state(TABLE_W);
+  $effect(() => {
+    canvasState.setTableWidth(table.id, cardWidth);
+  });
+
   let isEditing = $state(false);
   let editName = $state('');
   let isDragging = $state(false);
@@ -232,6 +237,7 @@
   class:selected={isSelected}
   class:locked={table.locked}
   class:fk-dragging={fkDragStore.active}
+  bind:offsetWidth={cardWidth}
   style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}{remoteSelectColor ? `; box-shadow: 0 0 0 2px ${remoteSelectColor}40, 0 0 8px ${remoteSelectColor}30` : ''}"
   onmousedown={onMouseDown}
   ontouchstart={onTouchStartCard}
@@ -358,7 +364,7 @@
             e.stopPropagation();
             e.preventDefault();
             const commentH = table.comment ? 26 : 0;
-            const sx = table.position.x + TABLE_W;
+            const sx = table.position.x + canvasState.getTableW(table.id);
             const sy = table.position.y + HEADER_H + commentH + colIdx * ROW_H + ROW_H / 2;
             fkDragStore.begin(table.id, col.id, sx, sy);
           }}
@@ -418,6 +424,8 @@
   .table-card {
     position: absolute;
     min-width: 220px;
+    max-width: 400px;
+    width: max-content;
     background: var(--erd-card-bg);
     border: var(--erd-card-border-width) var(--erd-card-border-style, solid) var(--erd-card-border);
     border-radius: var(--erd-card-radius);
@@ -574,8 +582,6 @@
   .col-name {
     flex: 1;
     color: var(--erd-col-text);
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
