@@ -4,12 +4,23 @@ services:
       context: .
       dockerfile: Dockerfile.server
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     volumes:
       - erdmini-data:/data
+    env_file: .env
     environment:
       - PUBLIC_STORAGE_MODE=server
       - DB_PATH=/data/erdmini.db
+    restart: unless-stopped
+
+  erdmini-local:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8080}:80"
+    profiles:
+      - local
 
 volumes:
   erdmini-data:

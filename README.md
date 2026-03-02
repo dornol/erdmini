@@ -179,19 +179,15 @@ pnpm check        # svelte-check 타입 검사
 
 ## Docker 배포
 
-### 정적 SPA (로컬 모드)
-```bash
-docker build -t erdmini .
-docker run -p 8080:80 erdmini
-```
-
 ### 서버 모드 (SQLite + Auth + 실시간 협업)
 ```bash
+cp .env.example .env   # ADMIN_PASSWORD 등 수정
 docker compose up -d
 ```
 
-`docker-compose.yml`에서 환경변수 설정:
-- `PUBLIC_STORAGE_MODE=server`
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD` (초기 관리자)
-- `SESSION_MAX_AGE_DAYS` (세션 만료일, 기본 30)
-- SQLite 데이터 볼륨 마운트
+### 정적 SPA (로컬 모드)
+```bash
+docker compose --profile local up -d erdmini-local
+```
+
+환경변수, 볼륨 관리, 리버스 프록시 설정 등 상세 내용은 → [DOCKER.md](DOCKER.md)

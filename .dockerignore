@@ -1,0 +1,10 @@
+node_modules
+.git
+.github
+.svelte-kit
+build
+data
+.claude
+.vscode
+.env
+.env.local

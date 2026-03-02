@@ -7,11 +7,15 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy package files and install dependencies
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
+
+ARG PUBLIC_SITE_URL=https://erdmini.dornol.dev
+ENV PUBLIC_SITE_URL=$PUBLIC_SITE_URL
+
 RUN pnpm build
 
 # ---- Serve stage ----
