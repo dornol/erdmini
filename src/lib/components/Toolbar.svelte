@@ -16,6 +16,8 @@
   import * as m from '$lib/paraglide/messages';
   import { authStore } from '$lib/store/auth.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
+  import CollabIndicator from './CollabIndicator.svelte';
+  import { collabStore } from '$lib/store/collab.svelte';
 
   let viewportWidth = $state(800);
   let viewportHeight = $state(600);
@@ -629,6 +631,9 @@
   <span class="separator"></span>
 
   <div class="actions">
+    {#if collabStore.connected || collabStore.reconnecting}
+      <CollabIndicator />
+    {/if}
     {#if permissionStore.isReadOnly}
       <span class="readonly-badge">Read Only</span>
     {/if}

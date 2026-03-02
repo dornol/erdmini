@@ -8,7 +8,7 @@
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
@@ -18,6 +18,9 @@
   import { getStorageProvider } from '$lib/storage';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { authStore } from '$lib/store/auth.svelte';
+  import { collabClient } from '$lib/collab/collab-client';
+  import { collabStore } from '$lib/store/collab.svelte';
+  import { handleServerMessage, sendPresence, sendOperation } from '$lib/collab/operation-bridge';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
 
@@ -31,6 +34,39 @@
   onMount(async () => {
     const provider = await getStorageProvider();
     await projectStore.init(provider);
+  });
+
+  // ── Collab: WebSocket lifecycle ──
+  const unsubCollab = collabClient.onMessage(handleServerMessage);
+
+  // Connect/disconnect on project change (server mode + logged in)
+  $effect(() => {
+    const projectId = projectStore.index.activeProjectId;
+    if (!projectId || !authStore.isLoggedIn) {
+      collabClient.disconnect();
+      collabStore.reset();
+      return;
+    }
+    collabClient.connect(projectId);
+  });
+
+  // Send selection presence when selected tables change
+  $effect(() => {
+    const ids = [...erdStore.selectedTableIds];
+    sendPresence({ selectedTableIds: ids });
+  });
+
+  // Send operations to peers when erdStore emits them
+  $effect(() => {
+    void erdStore._opVersion; // trigger on each new operation
+    const op = erdStore._lastOperation;
+    if (op) sendOperation(op);
+  });
+
+  onDestroy(() => {
+    unsubCollab();
+    collabClient.disconnect();
+    collabStore.reset();
   });
 
   // Load permission when project changes (server mode only)
@@ -185,6 +221,8 @@
     if (cur !== prevUpdatedAt) {
       if (erdStore._isUndoRedoing) {
         erdStore._isUndoRedoing = false;
+      } else if (erdStore._isRemoteOp) {
+        // Remote operations don't go into undo stack
       } else {
         const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
         const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;

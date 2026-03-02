@@ -7,6 +7,9 @@
   import * as m from '$lib/paraglide/messages';
   import CanvasHistory from './CanvasHistory.svelte';
   import Minimap from './Minimap.svelte';
+  import CollabCursors from './CollabCursors.svelte';
+  import { collabStore } from '$lib/store/collab.svelte';
+  import { sendPresence } from '$lib/collab/operation-bridge';
 
   let { children } = $props();
 
@@ -94,6 +97,16 @@
   }
 
   function onMouseMove(e: MouseEvent) {
+    // Send cursor presence for collaboration
+    if (collabStore.connected && viewportEl) {
+      const rect = viewportEl.getBoundingClientRect();
+      const vx = e.clientX - rect.left;
+      const vy = e.clientY - rect.top;
+      const worldX = (vx - canvasState.x) / canvasState.scale;
+      const worldY = (vy - canvasState.y) / canvasState.scale;
+      sendPresence({ cursor: { x: worldX, y: worldY } });
+    }
+
     if (fkDragStore.active) {
       fkDragStore.updateCursor(e.clientX, e.clientY, viewportEl);
       // Detect target column under cursor
@@ -252,6 +265,10 @@
       class="marquee-rect"
       style="left:{left}px;top:{top}px;width:{width}px;height:{height}px"
     ></div>
+  {/if}
+
+  {#if collabStore.connected}
+    <CollabCursors />
   {/if}
 
   <CanvasHistory />

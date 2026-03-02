@@ -52,6 +52,9 @@ class ERDStore {
   private _redoStack: HistoryEntry[] = [];
   _undoVersion = $state(0);
   _isUndoRedoing = false;
+  _isRemoteOp = false;
+  _lastOperation = $state<import('$lib/types/collab').CollabOperation | null>(null);
+  _opVersion = $state(0);
 
   get canUndo(): boolean { void this._undoVersion; return this._undoStack.length > 0; }
   get canRedo(): boolean { void this._undoVersion; return this._redoStack.length > 0; }
@@ -79,6 +82,7 @@ class ERDStore {
     this._isUndoRedoing = true;
     this.schema = JSON.parse(prev.snap);
     this._undoVersion++;
+    this._emitOp({ kind: 'load-schema', schema: this.schema });
   }
 
   redo() {
@@ -89,6 +93,7 @@ class ERDStore {
     this._isUndoRedoing = true;
     this.schema = JSON.parse(next.snap);
     this._undoVersion++;
+    this._emitOp({ kind: 'load-schema', schema: this.schema });
   }
 
   jumpToHistory(index: number) {
@@ -105,6 +110,13 @@ class ERDStore {
     this._isUndoRedoing = true;
     this.schema = JSON.parse(target.snap);
     this._undoVersion++;
+  }
+
+  private _emitOp(op: import('$lib/types/collab').CollabOperation) {
+    if (!this._isRemoteOp) {
+      this._lastOperation = op;
+      this._opVersion++;
+    }
   }
 
   get selectedTable(): Table | undefined {
@@ -146,6 +158,7 @@ class ERDStore {
     this.schema.tables = [...this.schema.tables, newTable];
     this.schema.updatedAt = now();
     this.selectedTableId = id;
+    this._emitOp({ kind: 'add-table', table: newTable });
   }
 
   deleteTable(id: string) {
@@ -160,6 +173,7 @@ class ERDStore {
     if (this.selectedTableId === id) {
       this.selectedTableId = null;
     }
+    this._emitOp({ kind: 'delete-table', tableId: id });
   }
 
   deleteTables(ids: string[]) {
@@ -173,6 +187,7 @@ class ERDStore {
     this.schema.updatedAt = now();
     if (this.selectedTableId && idSet.has(this.selectedTableId)) this.selectedTableId = null;
     this.selectedTableIds = new Set();
+    this._emitOp({ kind: 'delete-tables', tableIds: ids });
   }
 
   updateTableName(id: string, name: string) {
@@ -180,6 +195,7 @@ class ERDStore {
     if (!table) return;
     table.name = name;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-table-name', tableId: id, name });
   }
 
   updateTableComment(id: string, comment: string) {
@@ -187,6 +203,7 @@ class ERDStore {
     if (!table) return;
     table.comment = comment || undefined;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-table-comment', tableId: id, comment });
   }
 
   updateTableColor(id: string, color: string | undefined) {
@@ -194,6 +211,7 @@ class ERDStore {
     if (!table) return;
     table.color = color;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-table-color', tableId: id, color });
   }
 
   updateTableGroup(id: string, group: string | undefined) {
@@ -201,20 +219,44 @@ class ERDStore {
     if (!table) return;
     table.group = group || undefined;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-table-group', tableId: id, group });
   }
 
   moveTable(id: string, x: number, y: number) {
     const table = this.schema.tables.find((t) => t.id === id);
     if (!table) return;
-    table.position = { x: canvasState.snap(x), y: canvasState.snap(y) };
+    const sx = canvasState.snap(x);
+    const sy = canvasState.snap(y);
+    table.position = { x: sx, y: sy };
+    this._emitOp({ kind: 'move-table', tableId: id, x: sx, y: sy });
+  }
+
+  moveTables(moves: { id: string; x: number; y: number }[]) {
+    const opMoves: { tableId: string; x: number; y: number }[] = [];
+    for (const move of moves) {
+      const table = this.schema.tables.find((t) => t.id === move.id);
+      if (!table) continue;
+      const sx = canvasState.snap(move.x);
+      const sy = canvasState.snap(move.y);
+      table.position = { x: sx, y: sy };
+      opMoves.push({ tableId: move.id, x: sx, y: sy });
+    }
+    if (opMoves.length > 0) {
+      this._emitOp({ kind: 'move-tables', moves: opMoves });
+    }
   }
 
   applyLayout(positions: Map<string, { x: number; y: number }>) {
+    const moves: { tableId: string; x: number; y: number }[] = [];
     for (const table of this.schema.tables) {
       const pos = positions.get(table.id);
-      if (pos) table.position = { x: Math.round(pos.x), y: Math.round(pos.y) };
+      if (pos) {
+        table.position = { x: Math.round(pos.x), y: Math.round(pos.y) };
+        moves.push({ tableId: table.id, x: table.position.x, y: table.position.y });
+      }
     }
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'apply-layout', positions: moves });
   }
 
   addColumn(tableId: string): string | undefined {
@@ -233,6 +275,7 @@ class ERDStore {
     };
     table.columns = [...table.columns, newColumn];
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'add-column', tableId, column: newColumn });
     return newColumn.id;
   }
 
@@ -245,6 +288,7 @@ class ERDStore {
       c.id === columnId ? { ...c, ...patch } : c
     );
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-column', tableId, columnId, patch });
   }
 
   deleteColumn(tableId: string, columnId: string) {
@@ -265,6 +309,7 @@ class ERDStore {
       );
     }
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'delete-column', tableId, columnId });
   }
 
   moveColumnUp(tableId: string, columnId: string) {
@@ -276,6 +321,7 @@ class ERDStore {
     [cols[idx - 1], cols[idx]] = [cols[idx], cols[idx - 1]];
     table.columns = cols;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'move-column', tableId, columnId, toIndex: idx - 1 });
   }
 
   moveColumnDown(tableId: string, columnId: string) {
@@ -287,6 +333,7 @@ class ERDStore {
     [cols[idx], cols[idx + 1]] = [cols[idx + 1], cols[idx]];
     table.columns = cols;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'move-column', tableId, columnId, toIndex: idx + 1 });
   }
 
   moveColumnToIndex(tableId: string, columnId: string, toIndex: number) {
@@ -299,6 +346,7 @@ class ERDStore {
     cols.splice(toIndex, 0, item);
     table.columns = cols;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
   }
 
   addForeignKey(
@@ -321,6 +369,7 @@ class ERDStore {
     };
     table.foreignKeys = [...table.foreignKeys, fk];
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'add-fk', tableId, fk });
   }
 
   updateForeignKey(
@@ -342,6 +391,7 @@ class ERDStore {
     fk.onDelete = onDelete;
     fk.onUpdate = onUpdate;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-fk', tableId, fk: { ...fk } });
   }
 
   deleteForeignKey(tableId: string, fkId: string) {
@@ -349,6 +399,7 @@ class ERDStore {
     if (!table) return;
     table.foreignKeys = table.foreignKeys.filter((fk) => fk.id !== fkId);
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'delete-fk', tableId, fkId });
   }
 
   addUniqueKey(tableId: string, columnIds: string[], name?: string) {
@@ -361,6 +412,7 @@ class ERDStore {
     };
     table.uniqueKeys = [...table.uniqueKeys, uk];
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'add-uk', tableId, uk });
   }
 
   deleteUniqueKey(tableId: string, ukId: string) {
@@ -368,6 +420,7 @@ class ERDStore {
     if (!table) return;
     table.uniqueKeys = table.uniqueKeys.filter((uk) => uk.id !== ukId);
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'delete-uk', tableId, ukId });
   }
 
   addIndex(tableId: string, columnIds: string[], unique: boolean, name?: string) {
@@ -381,6 +434,7 @@ class ERDStore {
     };
     table.indexes = [...(table.indexes ?? []), idx];
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'add-index', tableId, index: idx });
   }
 
   deleteIndex(tableId: string, indexId: string) {
@@ -388,6 +442,7 @@ class ERDStore {
     if (!table) return;
     table.indexes = (table.indexes ?? []).filter((idx) => idx.id !== indexId);
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'delete-index', tableId, indexId });
   }
 
   // Domain CRUD
@@ -395,6 +450,7 @@ class ERDStore {
     const domain: ColumnDomain = { id: generateId(), ...fields };
     this.schema.domains = [...this.schema.domains, domain];
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'add-domain', domain });
   }
 
   updateDomain(id: string, patch: Partial<Omit<ColumnDomain, 'id'>>) {
@@ -421,6 +477,7 @@ class ERDStore {
       }
     }
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-domain', domainId: id, patch });
   }
 
   deleteDomain(id: string) {
@@ -432,6 +489,7 @@ class ERDStore {
       );
     }
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'delete-domain', domainId: id });
   }
 
   upsertDomains(items: Omit<ColumnDomain, 'id'>[]): { added: number; updated: number } {
@@ -470,6 +528,7 @@ class ERDStore {
     this.schema.updatedAt = now();
     this.selectedTableId = newId;
     this.selectedTableIds = new Set([newId]);
+    this._emitOp({ kind: 'duplicate-table', table: newTable });
   }
 
   loadSchema(schema: ERDSchema) {
@@ -485,6 +544,7 @@ class ERDStore {
     this.schema.updatedAt = now();
     this.selectedTableId = null;
     this.selectedTableIds = new Set();
+    this._emitOp({ kind: 'load-schema', schema });
   }
 }
 

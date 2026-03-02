@@ -3,6 +3,7 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
+  import { collabStore } from '$lib/store/collab.svelte';
   import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
@@ -20,6 +21,17 @@
 
   let isSelected = $derived(erdStore.selectedTableIds.has(table.id));
   let isHovered = $state(false);
+
+  // Remote peer selection glow
+  let remoteSelectColor = $derived.by(() => {
+    for (const [peerId, tableIds] of collabStore.remoteSelections) {
+      if (tableIds.includes(table.id)) {
+        const peer = collabStore.peers.find((p) => p.peerId === peerId);
+        if (peer) return peer.color;
+      }
+    }
+    return null;
+  });
 
   // Set of column IDs that are FK source columns
   let fkSourceIds = $derived(new Set(table.foreignKeys.flatMap((fk) => fk.columnIds)));
@@ -96,9 +108,8 @@
     const dx = (e.clientX - dragStart.mouseX) / canvasState.scale;
     const dy = (e.clientY - dragStart.mouseY) / canvasState.scale;
     if (groupDragStarts && groupDragStarts.size > 1) {
-      for (const [id, start] of groupDragStarts) {
-        erdStore.moveTable(id, start.x + dx, start.y + dy);
-      }
+      const moves = [...groupDragStarts].map(([id, start]) => ({ id, x: start.x + dx, y: start.y + dy }));
+      erdStore.moveTables(moves);
     } else {
       erdStore.moveTable(table.id, dragStart.tableX + dx, dragStart.tableY + dy);
     }
@@ -145,7 +156,7 @@
   class="table-card"
   class:selected={isSelected}
   class:fk-dragging={fkDragStore.active}
-  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}"
+  style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}{remoteSelectColor ? `; box-shadow: 0 0 0 2px ${remoteSelectColor}40, 0 0 8px ${remoteSelectColor}30` : ''}"
   onmousedown={onMouseDown}
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}

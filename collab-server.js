@@ -1,0 +1,233 @@
+// Standalone WebSocket collaboration server
+// Works independently of SvelteKit's module system
+import { WebSocketServer } from 'ws';
+import { randomBytes } from 'crypto';
+
+const PEER_COLORS = [
+  '#ef4444', '#f59e0b', '#10b981', '#3b82f6',
+  '#8b5cf6', '#ec4899', '#14b8a6', '#f97316',
+];
+
+// ── Room Manager ──
+class RoomManager {
+  constructor() {
+    /** @type {Map<string, {ws: import('ws').WebSocket, userId: string, displayName: string, color: string, projectId: string|null}>} */
+    this.peers = new Map();
+    /** @type {Map<string, Set<string>>} */
+    this.rooms = new Map();
+    /** @type {Map<string, number>} */
+    this.colorCounters = new Map();
+  }
+
+  register(peerId, ws, userId, displayName) {
+    this.peers.set(peerId, { ws, userId, displayName, color: '', projectId: null });
+  }
+
+  unregister(peerId) {
+    const peer = this.peers.get(peerId);
+    if (peer?.projectId) this.leaveRoom(peerId);
+    this.peers.delete(peerId);
+  }
+
+  joinRoom(projectId, peerId) {
+    const peer = this.peers.get(peerId);
+    if (!peer) return;
+    if (peer.projectId) this.leaveRoom(peerId);
+
+    const counter = this.colorCounters.get(projectId) ?? 0;
+    peer.color = PEER_COLORS[counter % PEER_COLORS.length];
+    this.colorCounters.set(projectId, counter + 1);
+    peer.projectId = projectId;
+
+    if (!this.rooms.has(projectId)) this.rooms.set(projectId, new Set());
+    this.rooms.get(projectId).add(peerId);
+
+    // Gather existing peers
+    const existingPeers = [];
+    for (const otherId of this.rooms.get(projectId)) {
+      if (otherId === peerId) continue;
+      const other = this.peers.get(otherId);
+      if (other) existingPeers.push({ peerId: otherId, userId: other.userId, displayName: other.displayName, color: other.color });
+    }
+
+    this.sendTo(peerId, { type: 'joined', peerId, peers: existingPeers });
+    this.broadcast(projectId, {
+      type: 'peer-joined',
+      peer: { peerId, userId: peer.userId, displayName: peer.displayName, color: peer.color },
+    }, peerId);
+  }
+
+  leaveRoom(peerId) {
+    const peer = this.peers.get(peerId);
+    if (!peer?.projectId) return;
+    const projectId = peer.projectId;
+    const room = this.rooms.get(projectId);
+    if (room) {
+      room.delete(peerId);
+      if (room.size === 0) {
+        this.rooms.delete(projectId);
+        this.colorCounters.delete(projectId);
+      }
+    }
+    peer.projectId = null;
+    this.broadcast(projectId, { type: 'peer-left', peerId });
+  }
+
+  broadcast(projectId, msg, excludePeerId) {
+    const room = this.rooms.get(projectId);
+    if (!room) return;
+    const data = JSON.stringify(msg);
+    for (const peerId of room) {
+      if (peerId === excludePeerId) continue;
+      const peer = this.peers.get(peerId);
+      if (peer?.ws.readyState === 1) peer.ws.send(data);
+    }
+  }
+
+  sendTo(peerId, msg) {
+    const peer = this.peers.get(peerId);
+    if (peer?.ws.readyState === 1) peer.ws.send(JSON.stringify(msg));
+  }
+
+  getProjectId(peerId) {
+    return this.peers.get(peerId)?.projectId ?? null;
+  }
+}
+
+const roomManager = new RoomManager();
+
+// ── Message Handler ──
+function handleMessage(peerId, raw, db, userId, userRole) {
+  let msg;
+  try { msg = JSON.parse(raw); } catch {
+    roomManager.sendTo(peerId, { type: 'error', message: 'Invalid JSON' });
+    return;
+  }
+
+  switch (msg.type) {
+    case 'join': {
+      if (!hasProjectAccess(db, msg.projectId, userId, userRole, 'viewer')) {
+        roomManager.sendTo(peerId, { type: 'error', message: 'No access to project' });
+        return;
+      }
+      roomManager.joinRoom(msg.projectId, peerId);
+      break;
+    }
+    case 'leave': {
+      roomManager.leaveRoom(peerId);
+      break;
+    }
+    case 'operation': {
+      const projectId = roomManager.getProjectId(peerId);
+      if (!projectId) { roomManager.sendTo(peerId, { type: 'error', message: 'Not in a room' }); return; }
+      if (!hasProjectAccess(db, projectId, userId, userRole, 'editor')) {
+        roomManager.sendTo(peerId, { type: 'error', message: 'Insufficient permission' });
+        return;
+      }
+      roomManager.broadcast(projectId, { type: 'operation', op: msg.op, fromPeerId: peerId }, peerId);
+      break;
+    }
+    case 'presence': {
+      const projectId = roomManager.getProjectId(peerId);
+      if (!projectId) return;
+      roomManager.broadcast(projectId, { type: 'presence', data: msg.data, fromPeerId: peerId }, peerId);
+      break;
+    }
+    case 'request-sync': {
+      const projectId = roomManager.getProjectId(peerId);
+      if (!projectId) { roomManager.sendTo(peerId, { type: 'error', message: 'Not in a room' }); return; }
+      const row = db.prepare('SELECT data FROM schemas WHERE project_id = ?').get(projectId);
+      if (row) {
+        roomManager.sendTo(peerId, { type: 'sync', schema: JSON.parse(row.data) });
+      } else {
+        roomManager.sendTo(peerId, { type: 'error', message: 'Schema not found' });
+      }
+      break;
+    }
+  }
+}
+
+// ── Permission check (minimal, matches src/lib/server/auth/permissions.ts) ──
+const PERM_HIERARCHY = { viewer: 0, editor: 1, owner: 2 };
+
+function hasProjectAccess(db, projectId, userId, userRole, minLevel) {
+  if (userRole === 'admin') return true;
+  const row = db.prepare('SELECT permission FROM project_permissions WHERE project_id = ? AND user_id = ?').get(projectId, userId);
+  if (!row) return false;
+  return (PERM_HIERARCHY[row.permission] ?? -1) >= PERM_HIERARCHY[minLevel];
+}
+
+// ── Session validation (minimal, matches src/lib/server/auth/session.ts) ──
+function validateSession(db, sessionId) {
+  const row = db.prepare(`
+    SELECT s.id as session_id, s.user_id, s.expires_at,
+           u.id as uid, u.display_name, u.role
+    FROM sessions s JOIN users u ON s.user_id = u.id
+    WHERE s.id = ?
+  `).get(sessionId);
+  if (!row) return null;
+  if (new Date(row.expires_at) <= new Date()) {
+    db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
+    return null;
+  }
+  return { user: { id: row.uid, displayName: row.display_name, role: row.role } };
+}
+
+// ── Cookie parser ──
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  for (const part of (cookieHeader || '').split(';')) {
+    const [key, ...rest] = part.trim().split('=');
+    if (key) cookies[key] = rest.join('=');
+  }
+  return cookies;
+}
+
+// ── Main init function ──
+/**
+ * @param {import('http').Server} server
+ * @param {import('better-sqlite3').Database} db
+ */
+export function initCollabServer(server, db) {
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (request, socket, head) => {
+    const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
+    if (url.pathname !== '/collab') {
+      // Not our endpoint — ignore (don't destroy; Vite HMR uses upgrade too)
+      return;
+    }
+
+    const cookies = parseCookies(request.headers.cookie);
+    const sessionId = cookies['erdmini_session'];
+    if (!sessionId) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    const result = validateSession(db, sessionId);
+    if (!result) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    const { user } = result;
+
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      const peerId = randomBytes(8).toString('hex');
+      roomManager.register(peerId, ws, user.id, user.displayName);
+
+      ws.on('message', (rawData) => {
+        const raw = typeof rawData === 'string' ? rawData : rawData.toString();
+        handleMessage(peerId, raw, db, user.id, user.role);
+      });
+
+      ws.on('close', () => roomManager.unregister(peerId));
+      ws.on('error', () => roomManager.unregister(peerId));
+    });
+  });
+
+  return wss;
+}
