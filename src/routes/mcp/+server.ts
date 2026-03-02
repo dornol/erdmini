@@ -1,16 +1,8 @@
-import { randomUUID } from 'crypto';
 import type { RequestHandler } from './$types';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { resolveApiKey } from '$lib/server/auth/api-key';
 import { createMcpServer } from '$lib/server/mcp/server';
 import db from '$lib/server/db';
-
-interface McpSession {
-  transport: WebStandardStreamableHTTPServerTransport;
-  server: ReturnType<typeof createMcpServer>;
-}
-
-const sessions = new Map<string, McpSession>();
 
 function authenticate(request: Request) {
   const apiKey = request.headers.get('x-api-key');
@@ -30,7 +22,6 @@ export const POST: RequestHandler = async ({ request }) => {
   const auth = authenticate(request);
   if ('error' in auth) return auth.error;
 
-  // Parse body before passing to transport (SvelteKit may consume the stream)
   let parsedBody: unknown;
   try {
     parsedBody = await request.json();
@@ -41,67 +32,22 @@ export const POST: RequestHandler = async ({ request }) => {
     });
   }
 
-  const sessionId = request.headers.get('mcp-session-id');
-
-  // Route to existing session
-  if (sessionId && sessions.has(sessionId)) {
-    const session = sessions.get(sessionId)!;
-    return session.transport.handleRequest(request, { parsedBody });
-  }
-
-  // Stale session ID → tell client to reinitialize
-  if (sessionId) {
-    return new Response(JSON.stringify({
-      jsonrpc: '2.0',
-      error: { code: -32600, message: 'Session not found. Please reinitialize.' },
-      id: null,
-    }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  // New session (no session ID — must be initialize request)
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-    onsessioninitialized: (id) => {
-      sessions.set(id, { transport, server: mcpServer });
-    },
-    onsessionclosed: (id) => {
-      sessions.delete(id);
-    },
-  });
+  // Stateless: create fresh transport + server per request
+  const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const mcpServer = createMcpServer(db, auth.keyInfo);
   await mcpServer.connect(transport);
   return transport.handleRequest(request, { parsedBody });
 };
 
-export const GET: RequestHandler = async ({ request }) => {
-  const auth = authenticate(request);
-  if ('error' in auth) return auth.error;
-
-  const sessionId = request.headers.get('mcp-session-id');
-  if (sessionId && sessions.has(sessionId)) {
-    return sessions.get(sessionId)!.transport.handleRequest(request);
-  }
-
-  return new Response(JSON.stringify({ error: 'Invalid or missing session' }), {
-    status: 400,
+export const GET: RequestHandler = async () => {
+  // SSE streaming not needed in stateless mode
+  return new Response(JSON.stringify({ error: 'SSE not supported in stateless mode' }), {
+    status: 405,
     headers: { 'Content-Type': 'application/json' },
   });
 };
 
-export const DELETE: RequestHandler = async ({ request }) => {
-  const auth = authenticate(request);
-  if ('error' in auth) return auth.error;
-
-  const sessionId = request.headers.get('mcp-session-id');
-  if (sessionId && sessions.has(sessionId)) {
-    return sessions.get(sessionId)!.transport.handleRequest(request);
-  }
-
-  return new Response(JSON.stringify({ error: 'Invalid or missing session' }), {
-    status: 400,
-    headers: { 'Content-Type': 'application/json' },
-  });
+export const DELETE: RequestHandler = async () => {
+  // No sessions to close in stateless mode
+  return new Response(null, { status: 200 });
 };
