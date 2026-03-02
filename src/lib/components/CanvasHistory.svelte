@@ -46,7 +46,7 @@
   {#if panelOpen}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="history-backdrop" onclick={() => (panelOpen = false)}></div>
-    <div class="history-panel">
+    <div class="history-panel" onwheel={(e) => e.stopPropagation()}>
       <div class="history-panel-header">{m.history_title()}</div>
       <div class="history-panel-list">
         <div class="history-item current">
