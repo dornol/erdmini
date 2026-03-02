@@ -229,5 +229,11 @@
   "shortcuts_arrow_pan": "Arrow key pan",
   "shortcuts_space_drag": "Pan canvas",
   "fk_warn_set_null_not_nullable": "Using SET NULL on NOT NULL column(s) may cause referential integrity errors.",
-  "column_duplicate": "Duplicate column"
+  "column_duplicate": "Duplicate column",
+  "bulk_edit_title": "Bulk Edit",
+  "bulk_edit_count": "{count} table(s)",
+  "bulk_edit_apply": "Apply",
+  "bulk_edit_color": "Change color",
+  "bulk_edit_group": "Change group",
+  "bulk_edit_comment": "Change comment"
 }

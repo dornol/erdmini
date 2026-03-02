@@ -11,9 +11,11 @@
   let {
     collapsed = false,
     ontoggle,
+    onbulkedit,
   }: {
     collapsed?: boolean;
     ontoggle?: () => void;
+    onbulkedit?: () => void;
   } = $props();
 
   let searchQuery = $state('');
@@ -346,6 +348,11 @@
       <span>{m.sidebar_title()}</span>
       <div class="header-right">
         {#if erdStore.selectedTableIds.size >= 2}
+          {#if !permissionStore.isReadOnly}
+            <button class="bulk-edit-btn" onclick={() => onbulkedit?.()}>
+              {m.bulk_edit_title()}({erdStore.selectedTableIds.size})
+            </button>
+          {/if}
           <button class="bulk-delete-btn" onclick={bulkDelete}>
             {m.sidebar_bulk_delete({ count: erdStore.selectedTableIds.size })}
           </button>
@@ -772,6 +779,22 @@
   .sort-btn:hover {
     background: var(--app-hover-bg, #e2e8f0);
     color: var(--app-text, #1e293b);
+  }
+
+  .bulk-edit-btn {
+    background: #dbeafe;
+    color: #2563eb;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .bulk-edit-btn:hover {
+    background: #bfdbfe;
   }
 
   .bulk-delete-btn {

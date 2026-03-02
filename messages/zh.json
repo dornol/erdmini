@@ -209,5 +209,11 @@
   "shortcuts_arrow_pan": "方向键移动",
   "shortcuts_space_drag": "平移画布",
   "fk_warn_set_null_not_nullable": "在 NOT NULL 列上使用 SET NULL 可能导致引用完整性错误。",
-  "column_duplicate": "复制列"
+  "column_duplicate": "复制列",
+  "bulk_edit_title": "批量编辑",
+  "bulk_edit_count": "{count} 个表",
+  "bulk_edit_apply": "应用",
+  "bulk_edit_color": "更改颜色",
+  "bulk_edit_group": "更改分组",
+  "bulk_edit_comment": "更改备注"
 }

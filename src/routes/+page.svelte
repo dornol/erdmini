@@ -7,6 +7,7 @@
   import TableEditor from '$lib/components/TableEditor.svelte';
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
+  import BulkEditModal from '$lib/components/BulkEditModal.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { onMount, onDestroy } from 'svelte';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
@@ -26,6 +27,7 @@
 
   let sidebarCollapsed = $state(false);
   let commandPaletteOpen = $state(false);
+  let showBulkEditModal = $state(false);
   let viewportWidth = $state(768);
   let forceDesktop = $state(false);
   let isMobile = $derived(viewportWidth < 768);
@@ -540,7 +542,7 @@
       {/if}
       <Toolbar onfullscreen={enterFullscreen} />
       <div class="main">
-        <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} />
+        <Sidebar collapsed={sidebarCollapsed} ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)} onbulkedit={() => (showBulkEditModal = true)} />
         <Canvas>
           <RelationLines />
           {#each erdStore.schema.tables as table (table.id)}
@@ -564,6 +566,13 @@
           onclose={() => (erdStore.editingColumnInfo = null)}
         />
       {/if}
+    {/if}
+
+    {#if showBulkEditModal && erdStore.selectedTableIds.size >= 2}
+      <BulkEditModal
+        tableIds={[...erdStore.selectedTableIds]}
+        onclose={() => (showBulkEditModal = false)}
+      />
     {/if}
 
     {#if commandPaletteOpen}
