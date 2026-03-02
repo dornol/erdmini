@@ -425,3 +425,60 @@ GO
     expect(table.columns.find((c) => c.name === 'Name')!.unique).toBe(true);
   });
 });
+
+describe('importDDL — MariaDB', () => {
+  it('parses basic CREATE TABLE with ENGINE=InnoDB', async () => {
+    const sql = `
+      CREATE TABLE \`users\` (
+        \`id\` INT NOT NULL AUTO_INCREMENT,
+        \`name\` VARCHAR(100) NOT NULL,
+        \`email\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`),
+        UNIQUE (\`email\`)
+      ) ENGINE=InnoDB;
+    `;
+    const result = await importDDL(sql, 'mariadb');
+    expect(result.tables).toHaveLength(1);
+    const table = result.tables[0];
+    expect(table.name).toBe('users');
+    expect(table.columns).toHaveLength(3);
+    expect(table.columns[0].autoIncrement).toBe(true);
+    expect(table.columns[0].primaryKey).toBe(true);
+    expect(table.columns[2].unique).toBe(true);
+  });
+
+  it('parses inline FK with ON DELETE/UPDATE', async () => {
+    const sql = `
+      CREATE TABLE \`parent\` (
+        \`id\` INT NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB;
+
+      CREATE TABLE \`child\` (
+        \`id\` INT NOT NULL,
+        \`parent_id\` INT NOT NULL,
+        PRIMARY KEY (\`id\`),
+        FOREIGN KEY (\`parent_id\`) REFERENCES \`parent\` (\`id\`) ON DELETE CASCADE ON UPDATE RESTRICT
+      ) ENGINE=InnoDB;
+    `;
+    const result = await importDDL(sql, 'mariadb');
+    expect(result.tables).toHaveLength(2);
+    const child = result.tables.find((t) => t.name === 'child')!;
+    expect(child.foreignKeys).toHaveLength(1);
+    expect(child.foreignKeys[0].onDelete).toBe('CASCADE');
+    expect(child.foreignKeys[0].onUpdate).toBe('RESTRICT');
+  });
+
+  it('parses table and column comments', async () => {
+    const sql = `
+      CREATE TABLE \`items\` (
+        \`id\` INT NOT NULL COMMENT 'Primary key',
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB COMMENT='Item table';
+    `;
+    const result = await importDDL(sql, 'mariadb');
+    const table = result.tables[0];
+    expect(table.comment).toBe('Item table');
+    expect(table.columns[0].comment).toBe('Primary key');
+  });
+});

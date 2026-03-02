@@ -331,4 +331,127 @@ describe('exportDDL — Common features', () => {
     const ddl = exportDDL(schema, 'mysql');
     expect(ddl).toBe('');
   });
+
+  it('generates ENUM type for MySQL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'status', type: 'ENUM', enumValues: ['active', 'inactive'], nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain("ENUM('active', 'inactive')");
+  });
+
+  it('generates DECIMAL with precision and scale', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'price', type: 'DECIMAL', length: 12, scale: 4, nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('DECIMAL(12,4)');
+  });
+
+  it('generates composite FK with multiple columns', () => {
+    const col1 = makeColumn({ id: 'c1', name: 'a_id', type: 'INT', nullable: false });
+    const col2 = makeColumn({ id: 'c2', name: 'b_id', type: 'INT', nullable: false });
+    const refCol1 = makeColumn({ id: 'r1', name: 'a', type: 'INT', primaryKey: true, nullable: false });
+    const refCol2 = makeColumn({ id: 'r2', name: 'b', type: 'INT', primaryKey: true, nullable: false });
+    const schema = makeSchema([
+      makeTable({ id: 'ref', name: 'ref_table', columns: [refCol1, refCol2] }),
+      makeTable({
+        name: 'child',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }), col1, col2],
+        foreignKeys: [{
+          id: 'fk_comp', columnIds: ['c1', 'c2'], referencedTableId: 'ref',
+          referencedColumnIds: ['r1', 'r2'], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
+        }],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('FOREIGN KEY (`a_id`, `b_id`) REFERENCES `ref_table` (`a`, `b`)');
+  });
+
+  it('generates composite UNIQUE KEY without name', () => {
+    const col1 = makeColumn({ name: 'x', type: 'INT', nullable: false });
+    const col2 = makeColumn({ name: 'y', type: 'INT', nullable: false });
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [col1, col2],
+        uniqueKeys: [{ id: 'uk_no_name', columnIds: [col1.id, col2.id] }],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('UNIQUE (`x`, `y`)');
+    expect(ddl).not.toContain('CONSTRAINT');
+  });
+
+  it('generates ENUM fallback to VARCHAR(255) for PostgreSQL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'status', type: 'ENUM', enumValues: ['a', 'b'], nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain('VARCHAR(255)');
+    expect(ddl).not.toContain('ENUM');
+  });
+
+  it('generates ENUM fallback to NVARCHAR(255) for MSSQL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'status', type: 'ENUM', enumValues: ['a', 'b'], nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mssql');
+    expect(ddl).toContain('NVARCHAR(255)');
+  });
+
+  it('generates MSSQL type mappings (DATETIME→DATETIME2, VARCHAR→NVARCHAR, JSON→NVARCHAR(MAX))', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'created', type: 'DATETIME', nullable: true }),
+          makeColumn({ name: 'name', type: 'VARCHAR', length: 50, nullable: false }),
+          makeColumn({ name: 'data', type: 'JSON', nullable: true }),
+          makeColumn({ name: 'rate', type: 'DOUBLE', nullable: true }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mssql');
+    expect(ddl).toContain('DATETIME2');
+    expect(ddl).toContain('NVARCHAR(50)');
+    expect(ddl).toContain('NVARCHAR(MAX)');
+    expect(ddl).toContain('FLOAT');
+  });
+
+  it('generates auto-generated index name when name is omitted', () => {
+    const col = makeColumn({ name: 'email', type: 'VARCHAR', nullable: false });
+    const schema = makeSchema([
+      makeTable({
+        name: 'users',
+        columns: [col],
+        indexes: [{ id: 'idx1', columnIds: [col.id], unique: false }],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('idx_users_email');
+  });
+
+  it('generates UUID as CHAR(36) for MySQL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'uid', type: 'UUID', nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('CHAR(36)');
+  });
 });

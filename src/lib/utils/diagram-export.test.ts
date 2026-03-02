@@ -132,4 +132,29 @@ describe('exportPlantUML', () => {
     const result = exportPlantUML(sampleSchema());
     expect(result).toContain('--');
   });
+
+  it('handles empty schema', () => {
+    const result = exportPlantUML(makeSchema([]));
+    expect(result).toContain('@startuml');
+    expect(result).toContain('@enduml');
+  });
+
+  it('marks nullable FK with o{ instead of |{', () => {
+    const schema = sampleSchema();
+    const postUserCol = schema.tables[1].columns.find((c) => c.name === 'user_id')!;
+    postUserCol.nullable = true;
+    const result = exportPlantUML(schema);
+    expect(result).toContain('users ||--o{ posts');
+  });
+
+  it('sanitizes special characters in table names', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'order-items',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      }),
+    ]);
+    const result = exportPlantUML(schema);
+    expect(result).toContain('entity "order-items" as order_items');
+  });
 });

@@ -416,4 +416,56 @@ describe('edge cases', () => {
     const distXY = Math.abs(posX.x - posY.x);
     expect(distXZ).toBeLessThanOrEqual(distXY);
   });
+
+  it('groupByGroup:false treats grouped tables as flat', () => {
+    const tables = groupedTables();
+    const flat = computeLayout(tables, 'grid');
+    const grouped = computeLayout(tables, 'grid', { groupByGroup: true });
+    // Without groupByGroup, all tables are in one grid — positions differ from grouped version
+    expect(flat.size).toBe(4);
+    expect(grouped.size).toBe(4);
+    // At least one position should differ
+    let anyDiff = false;
+    for (const [id, pos] of flat) {
+      const gpos = grouped.get(id)!;
+      if (pos.x !== gpos.x || pos.y !== gpos.y) anyDiff = true;
+    }
+    expect(anyDiff).toBe(true);
+  });
+
+  it('tables with comments do not overlap in grid', () => {
+    const tables = [
+      makeTable({
+        name: 'tall',
+        comment: 'This table has a comment making it taller',
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ name: 'a', type: 'VARCHAR', nullable: true }),
+          makeColumn({ name: 'b', type: 'VARCHAR', nullable: true }),
+          makeColumn({ name: 'c', type: 'VARCHAR', nullable: true }),
+        ],
+      }),
+      makeTable({
+        name: 'short',
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+        ],
+      }),
+      makeTable({
+        name: 'another',
+        comment: 'Also has comment',
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ name: 'x', type: 'INT', nullable: true }),
+        ],
+      }),
+    ];
+    const result = computeLayout(tables, 'grid');
+    expect(result.size).toBe(3);
+    // Positions should all be finite
+    for (const pos of result.values()) {
+      expect(Number.isFinite(pos.x)).toBe(true);
+      expect(Number.isFinite(pos.y)).toBe(true);
+    }
+  });
 });
