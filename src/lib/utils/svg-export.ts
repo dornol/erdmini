@@ -3,6 +3,7 @@ import { TABLE_W, TABLE_CARD_W, HEADER_H, ROW_H, COMMENT_H } from '$lib/constant
 import { TABLE_COLORS } from '$lib/constants/table-colors';
 import type { TableColorId } from '$lib/constants/table-colors';
 import type { ThemeId } from '$lib/store/theme.svelte';
+import { routeFKLines, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
 
 const PAD = 40;
 
@@ -103,23 +104,6 @@ function colY(table: Table, colIdx: number): number {
   return table.position.y + HEADER_H + colIdx * ROW_H + ROW_H / 2;
 }
 
-function computeBezier(x1: number, y1: number, x2: number, y2: number, fromRight: boolean, toLeft: boolean) {
-  const dx = Math.abs(x2 - x1);
-  const dy = Math.abs(y2 - y1);
-  const straight = Math.min(20, Math.max(8, dx * 0.25));
-  const dirS = fromRight ? 1 : -1;
-  const dirT = toLeft ? -1 : 1;
-  const sx1 = x1 + dirS * straight;
-  const sx2 = x2 + dirT * straight;
-  const curveDx = Math.abs(sx2 - sx1);
-  const offset = Math.max(40, Math.min(150, Math.max(curveDx * 0.4, dy * 0.4)));
-  const cx1 = sx1 + dirS * offset;
-  const cx2 = sx2 + dirT * offset;
-  const path = `M ${x1} ${y1} L ${sx1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${sx2} ${y2} L ${x2} ${y2}`;
-  const labelX = (sx1 + 3 * cx1 + 3 * cx2 + sx2) / 8;
-  const labelY = (y1 + y2) / 2;
-  return { path, labelX, labelY };
-}
 
 function renderBadge(
   x: number, y: number, text: string,
@@ -240,6 +224,20 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
   const color = theme.lineColor;
   const bg = theme.lineBg;
 
+  // Build AABBs (offset-adjusted) for obstacle avoidance
+  const aabbs: AABB[] = schema.tables.map((t) => ({
+    id: t.id,
+    x: t.position.x - offsetX,
+    y: t.position.y - offsetY,
+    w: TABLE_W,
+    h: cardHeight(t),
+  }));
+
+  // Collect all FK line inputs
+  interface FKMeta { fromRight: boolean; toLeft: boolean; isUnique: boolean; isNullable: boolean; x1: number; y1: number; x2: number; y2: number }
+  const inputs: FKLineInput[] = [];
+  const metas: FKMeta[] = [];
+
   for (const table of schema.tables) {
     for (const fk of table.foreignKeys) {
       const refTable = schema.tables.find((t) => t.id === fk.referencedTableId);
@@ -269,41 +267,61 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
         const isUnique = srcCol?.unique ?? false;
         const isNullable = srcCol?.nullable ?? false;
 
-        const { path, labelX, labelY } = computeBezier(x1, y1, x2, y2, fromRight, toLeft);
-
-        // Bezier line
-        parts.push(`<path d="${path}" fill="none" stroke="${color}" stroke-width="2"${isNullable ? ' stroke-dasharray="6 3"' : ''}/>`);
-
-        // Cardinality label
-        const labelText = isUnique ? '1:1' : '1:N';
-        parts.push(`<rect x="${labelX - 11}" y="${labelY - 8}" width="22" height="16" rx="4" fill="${bg}" stroke="${color}" stroke-width="0.8" opacity="0.85"/>`);
-        parts.push(`<text x="${labelX}" y="${labelY + 4}" text-anchor="middle" fill="${color}" font-size="9" font-weight="700" font-family="system-ui,sans-serif">${labelText}</text>`);
-
-        // Parent side markers
-        const pDir = toLeft ? -1 : 1;
-        const pTickX = x2 + pDir * 6;
-        parts.push(`<path d="M ${pTickX} ${y2 - 6} L ${pTickX} ${y2 + 6}" stroke="${color}" stroke-width="2" fill="none"/>`);
-        const parentCircleCx = x2 + pDir * 14;
-        if (!isNullable) {
-          parts.push(`<path d="M ${parentCircleCx} ${y2 - 6} L ${parentCircleCx} ${y2 + 6}" stroke="${color}" stroke-width="2" fill="none"/>`);
-        } else {
-          parts.push(`<circle cx="${parentCircleCx}" cy="${y2}" r="5" stroke="${color}" stroke-width="2" fill="${bg}"/>`);
-        }
-
-        // Child side markers
-        const cDir = fromRight ? 1 : -1;
-        if (isUnique) {
-          const cTickX = x1 + cDir * 6;
-          parts.push(`<path d="M ${cTickX} ${y1 - 6} L ${cTickX} ${y1 + 6}" stroke="${color}" stroke-width="2" fill="none"/>`);
-        } else {
-          const tipX = x1 + cDir * 12;
-          const baseX = x1 + cDir * 4;
-          parts.push(`<path d="M ${tipX} ${y1} L ${baseX} ${y1} M ${tipX} ${y1} L ${baseX} ${y1 - 7} M ${tipX} ${y1} L ${baseX} ${y1 + 7}" stroke="${color}" stroke-width="2" fill="none"/>`);
-        }
-        const childCircleCx = x1 + cDir * 18;
-        parts.push(`<circle cx="${childCircleCx}" cy="${y1}" r="5" stroke="${color}" stroke-width="2" fill="${bg}"/>`);
+        inputs.push({
+          id: `${fk.id}:${i}`,
+          sourceTableId: table.id,
+          targetTableId: fk.referencedTableId,
+          x1, y1, x2, y2,
+          fromRight, toLeft,
+        });
+        metas.push({ fromRight, toLeft, isUnique, isNullable, x1, y1, x2, y2 });
       }
     }
+  }
+
+  // Route all lines
+  const routes = routeFKLines(inputs, aabbs);
+
+  // Render each line
+  for (let idx = 0; idx < inputs.length; idx++) {
+    const input = inputs[idx];
+    const meta = metas[idx];
+    const route = routes.get(input.id);
+    if (!route) continue;
+
+    const { x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable } = meta;
+
+    // Bezier line
+    parts.push(`<path d="${route.path}" fill="none" stroke="${color}" stroke-width="2"${isNullable ? ' stroke-dasharray="6 3"' : ''}/>`);
+
+    // Cardinality label
+    const labelText = isUnique ? '1:1' : '1:N';
+    parts.push(`<rect x="${route.labelX - 11}" y="${route.labelY - 8}" width="22" height="16" rx="4" fill="${bg}" stroke="${color}" stroke-width="0.8" opacity="0.85"/>`);
+    parts.push(`<text x="${route.labelX}" y="${route.labelY + 4}" text-anchor="middle" fill="${color}" font-size="9" font-weight="700" font-family="system-ui,sans-serif">${labelText}</text>`);
+
+    // Parent side markers
+    const pDir = toLeft ? -1 : 1;
+    const pTickX = x2 + pDir * 6;
+    parts.push(`<path d="M ${pTickX} ${y2 - 6} L ${pTickX} ${y2 + 6}" stroke="${color}" stroke-width="2" fill="none"/>`);
+    const parentCircleCx = x2 + pDir * 14;
+    if (!isNullable) {
+      parts.push(`<path d="M ${parentCircleCx} ${y2 - 6} L ${parentCircleCx} ${y2 + 6}" stroke="${color}" stroke-width="2" fill="none"/>`);
+    } else {
+      parts.push(`<circle cx="${parentCircleCx}" cy="${y2}" r="5" stroke="${color}" stroke-width="2" fill="${bg}"/>`);
+    }
+
+    // Child side markers
+    const cDir = fromRight ? 1 : -1;
+    if (isUnique) {
+      const cTickX = x1 + cDir * 6;
+      parts.push(`<path d="M ${cTickX} ${y1 - 6} L ${cTickX} ${y1 + 6}" stroke="${color}" stroke-width="2" fill="none"/>`);
+    } else {
+      const tipX = x1 + cDir * 12;
+      const baseX = x1 + cDir * 4;
+      parts.push(`<path d="M ${tipX} ${y1} L ${baseX} ${y1} M ${tipX} ${y1} L ${baseX} ${y1 - 7} M ${tipX} ${y1} L ${baseX} ${y1 + 7}" stroke="${color}" stroke-width="2" fill="none"/>`);
+    }
+    const childCircleCx = x1 + cDir * 18;
+    parts.push(`<circle cx="${childCircleCx}" cy="${y1}" r="5" stroke="${color}" stroke-width="2" fill="${bg}"/>`);
   }
 
   return parts.join('\n');

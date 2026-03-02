@@ -5,6 +5,7 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
   import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
+  import { routeFKLines, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
 
   const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string; dash: string }> = {
     modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc', dash: '' },
@@ -54,27 +55,28 @@
     return table.position.y + HEADER_H + colIdx * ROW_H + ROW_H / 2;
   }
 
-  function computeBezier(x1: number, y1: number, x2: number, y2: number, fromRight: boolean, toLeft: boolean) {
-    const dx = Math.abs(x2 - x1);
-    const dy = Math.abs(y2 - y1);
-    const straight = Math.min(20, Math.max(8, dx * 0.25));
-    const dirS = fromRight ? 1 : -1;
-    const dirT = toLeft ? -1 : 1;
-    const sx1 = x1 + dirS * straight;
-    const sx2 = x2 + dirT * straight;
-    const curveDx = Math.abs(sx2 - sx1);
-    const offset = Math.max(40, Math.min(150, Math.max(curveDx * 0.4, dy * 0.4)));
-    const cx1 = sx1 + dirS * offset;
-    const cx2 = sx2 + dirT * offset;
-    const path = `M ${x1} ${y1} L ${sx1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${sx2} ${y2} L ${x2} ${y2}`;
-    // Midpoint of cubic bezier at t=0.5
-    const labelX = (sx1 + 3 * cx1 + 3 * cx2 + sx2) / 8;
-    const labelY = (y1 + y2) / 2;
-    return { path, labelX, labelY };
+  function cardHeight(table: Table): number {
+    const cols = getFilteredColumns(table);
+    const colH = Math.max(cols.length, 1) * ROW_H;
+    return HEADER_H + colH + 8;
   }
 
   let lines = $derived.by((): FKLine[] => {
-    const result: FKLine[] = [];
+    // Step 1: Collect FKLineInputs and AABBs
+    const inputs: (FKLineInput & { _tableId: string; _fk: ForeignKey; _isUnique: boolean; _isNullable: boolean })[] = [];
+    const aabbs: AABB[] = [];
+
+    // Build AABBs for all tables
+    for (const table of erdStore.schema.tables) {
+      aabbs.push({
+        id: table.id,
+        x: table.position.x,
+        y: table.position.y,
+        w: TABLE_W,
+        h: cardHeight(table),
+      });
+    }
+
     for (const table of erdStore.schema.tables) {
       for (const fk of table.foreignKeys) {
         const refTable = erdStore.schema.tables.find((t) => t.id === fk.referencedTableId);
@@ -111,42 +113,63 @@
           const isUnique = srcCol?.unique ?? false;
           const isNullable = srcCol?.nullable ?? false;
 
-          // Precompute bezier path + label midpoint
-          const { path, labelX, labelY } = computeBezier(x1, y1, x2, y2, fromRight, toLeft);
-          const labelText = isUnique ? '1:1' : '1:N';
-
-          // Precompute parent side markers
-          const pDir = toLeft ? -1 : 1;
-          const pTickX = x2 + pDir * 6;
-          const parentTick = `M ${pTickX} ${y2 - 6} L ${pTickX} ${y2 + 6}`;
-          let parentParticipation: string | null = null;
-          const parentCircleCx = x2 + pDir * 14;
-          if (!isNullable) {
-            parentParticipation = `M ${parentCircleCx} ${y2 - 6} L ${parentCircleCx} ${y2 + 6}`;
-          }
-
-          // Precompute child side markers
-          const cDir = fromRight ? 1 : -1;
-          let childMarker: string;
-          if (isUnique) {
-            const cTickX = x1 + cDir * 6;
-            childMarker = `M ${cTickX} ${y1 - 6} L ${cTickX} ${y1 + 6}`;
-          } else {
-            const tipX = x1 + cDir * 12;
-            const baseX = x1 + cDir * 4;
-            const spread = 7;
-            childMarker = `M ${tipX} ${y1} L ${baseX} ${y1} M ${tipX} ${y1} L ${baseX} ${y1 - spread} M ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
-          }
-          const childCircleCx = x1 + cDir * 18;
-
-          result.push({
-            fk, tableId: table.id, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable,
-            path, labelX, labelY, labelText,
-            parentTick, parentParticipation, parentCircleCx,
-            childMarker, childCircleCx,
+          inputs.push({
+            id: `${fk.id}:${i}`,
+            sourceTableId: table.id,
+            targetTableId: fk.referencedTableId,
+            x1, y1, x2, y2,
+            fromRight, toLeft,
+            _tableId: table.id,
+            _fk: fk,
+            _isUnique: isUnique,
+            _isNullable: isNullable,
           });
         }
       }
+    }
+
+    // Step 2: Route all lines
+    const routes = routeFKLines(inputs, aabbs);
+
+    // Step 3: Map routes back to FKLine objects
+    const result: FKLine[] = [];
+    for (const input of inputs) {
+      const route = routes.get(input.id);
+      if (!route) continue;
+
+      const { x1, y1, x2, y2, fromRight, toLeft, _fk: fk, _tableId: tableId, _isUnique: isUnique, _isNullable: isNullable } = input;
+      const labelText = isUnique ? '1:1' : '1:N';
+
+      // Parent side markers (unchanged — use original endpoints)
+      const pDir = toLeft ? -1 : 1;
+      const pTickX = x2 + pDir * 6;
+      const parentTick = `M ${pTickX} ${y2 - 6} L ${pTickX} ${y2 + 6}`;
+      let parentParticipation: string | null = null;
+      const parentCircleCx = x2 + pDir * 14;
+      if (!isNullable) {
+        parentParticipation = `M ${parentCircleCx} ${y2 - 6} L ${parentCircleCx} ${y2 + 6}`;
+      }
+
+      // Child side markers (unchanged)
+      const cDir = fromRight ? 1 : -1;
+      let childMarker: string;
+      if (isUnique) {
+        const cTickX = x1 + cDir * 6;
+        childMarker = `M ${cTickX} ${y1 - 6} L ${cTickX} ${y1 + 6}`;
+      } else {
+        const tipX = x1 + cDir * 12;
+        const baseX = x1 + cDir * 4;
+        const spread = 7;
+        childMarker = `M ${tipX} ${y1} L ${baseX} ${y1} M ${tipX} ${y1} L ${baseX} ${y1 - spread} M ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
+      }
+      const childCircleCx = x1 + cDir * 18;
+
+      result.push({
+        fk, tableId, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable,
+        path: route.path, labelX: route.labelX, labelY: route.labelY, labelText,
+        parentTick, parentParticipation, parentCircleCx,
+        childMarker, childCircleCx,
+      });
     }
     return result;
   });
