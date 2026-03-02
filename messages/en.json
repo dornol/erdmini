@@ -235,5 +235,7 @@
   "bulk_edit_apply": "Apply",
   "bulk_edit_color": "Change color",
   "bulk_edit_group": "Change group",
-  "bulk_edit_comment": "Change comment"
+  "bulk_edit_comment": "Change comment",
+  "sidebar_bulk_lock": "Lock ({count})",
+  "sidebar_bulk_unlock": "Unlock ({count})"
 }

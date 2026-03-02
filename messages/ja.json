@@ -215,5 +215,7 @@
   "bulk_edit_apply": "適用",
   "bulk_edit_color": "色を変更",
   "bulk_edit_group": "グループを変更",
-  "bulk_edit_comment": "コメントを変更"
+  "bulk_edit_comment": "コメントを変更",
+  "sidebar_bulk_lock": "ロック({count})",
+  "sidebar_bulk_unlock": "ロック解除({count})"
 }

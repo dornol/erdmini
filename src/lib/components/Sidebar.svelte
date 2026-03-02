@@ -7,6 +7,7 @@
   import type { TableColorId } from '$lib/constants/table-colors';
   import { themeStore } from '$lib/store/theme.svelte';
   import { getEffectiveColor } from '$lib/utils/table-color';
+  import { now } from '$lib/utils/common';
 
   let {
     collapsed = false,
@@ -292,6 +293,23 @@
     if (ok) erdStore.deleteTables(ids);
   }
 
+  let allSelectedLocked = $derived.by(() => {
+    const ids = erdStore.selectedTableIds;
+    if (ids.size < 2) return false;
+    return [...ids].every(id => erdStore.schema.tables.find(t => t.id === id)?.locked);
+  });
+
+  function bulkToggleLock() {
+    const ids = [...erdStore.selectedTableIds];
+    if (ids.length < 2) return;
+    const newLocked = !allSelectedLocked;
+    for (const id of ids) {
+      const table = erdStore.schema.tables.find(t => t.id === id);
+      if (table) table.locked = newLocked;
+    }
+    erdStore.schema.updatedAt = now();
+  }
+
   function onTableDragStart(e: DragEvent, tableId: string) {
     if (permissionStore.isReadOnly) { e.preventDefault(); return; }
     dragTableId = tableId;
@@ -351,6 +369,9 @@
           {#if !permissionStore.isReadOnly}
             <button class="bulk-edit-btn" onclick={() => onbulkedit?.()}>
               {m.bulk_edit_title()}({erdStore.selectedTableIds.size})
+            </button>
+            <button class="bulk-lock-btn" class:locked={allSelectedLocked} onclick={bulkToggleLock}>
+              {allSelectedLocked ? m.sidebar_bulk_unlock({ count: erdStore.selectedTableIds.size }) : m.sidebar_bulk_lock({ count: erdStore.selectedTableIds.size })}
             </button>
           {/if}
           <button class="bulk-delete-btn" onclick={bulkDelete}>
@@ -795,6 +816,32 @@
 
   .bulk-edit-btn:hover {
     background: #bfdbfe;
+  }
+
+  .bulk-lock-btn {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .bulk-lock-btn:hover {
+    background: #fde68a;
+  }
+
+  .bulk-lock-btn.locked {
+    background: #d1fae5;
+    color: #047857;
+    border-color: #6ee7b7;
+  }
+
+  .bulk-lock-btn.locked:hover {
+    background: #a7f3d0;
   }
 
   .bulk-delete-btn {
