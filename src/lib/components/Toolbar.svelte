@@ -1098,6 +1098,7 @@
     background: #1e293b;
     border-bottom: 1px solid #334155;
     flex-shrink: 0;
+    overflow: hidden;
   }
 
   .logo {
@@ -1123,6 +1124,15 @@
     display: flex;
     gap: 6px;
     align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;          /* Firefox */
+    -ms-overflow-style: none;       /* IE/Edge */
+    min-width: 0;
+  }
+
+  .actions::-webkit-scrollbar {
+    display: none;                  /* Chrome/Safari */
   }
 
   .toolbar-right {
