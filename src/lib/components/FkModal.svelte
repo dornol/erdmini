@@ -14,7 +14,7 @@
   let { tableId, editFkId, onclose }: Props = $props();
 
   let selectedTable = $derived(erdStore.schema.tables.find((t) => t.id === tableId));
-  let otherTables = $derived(erdStore.schema.tables.filter((t) => t.id !== tableId));
+  let allTables = $derived(erdStore.schema.tables);
 
   let fkRefTableId = $state('');
   let fkOnDelete = $state<ReferentialAction>('RESTRICT');
@@ -101,7 +101,7 @@
       <div class="form-row">
         <label for="fkm-ref-table">{m.fk_ref_table()}</label>
         <SearchableSelect
-          options={otherTables.map((t) => ({ value: t.id, label: t.name }))}
+          options={allTables.map((t) => ({ value: t.id, label: t.name }))}
           value={fkRefTableId}
           onchange={(v) => (fkRefTableId = v)}
           placeholder={m.select_placeholder()}
