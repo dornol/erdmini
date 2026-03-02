@@ -42,17 +42,20 @@
 <div class="login-page">
   <div class="login-card">
     <div class="login-header">
-      <svg class="login-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="10" width="35" height="30" rx="4" fill="none" stroke="#60a5fa" stroke-width="2.5"/>
-        <line x1="5" y1="20" x2="40" y2="20" stroke="#60a5fa" stroke-width="2" opacity="0.5"/>
-        <rect x="60" y="10" width="35" height="24" rx="4" fill="none" stroke="#34d399" stroke-width="2.5"/>
-        <line x1="60" y1="20" x2="95" y2="20" stroke="#34d399" stroke-width="2" opacity="0.5"/>
-        <rect x="30" y="60" width="40" height="30" rx="4" fill="none" stroke="#f472b6" stroke-width="2.5"/>
-        <line x1="30" y1="70" x2="70" y2="70" stroke="#f472b6" stroke-width="2" opacity="0.5"/>
-        <line x1="40" y1="40" x2="68" y2="60" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 2"/>
-        <line x1="22" y1="40" x2="42" y2="60" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 2"/>
-        <circle cx="68" cy="60" r="3" fill="#94a3b8"/>
-        <circle cx="42" cy="60" r="3" fill="#94a3b8"/>
+      <svg class="login-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+        <rect width="32" height="32" rx="7" fill="#1e293b"/>
+        <path d="M16 5 L25 10.5 L25 21.5 L16 27 L7 21.5 L7 10.5 Z" fill="none" stroke="url(#lg)" stroke-width="2" stroke-linejoin="round"/>
+        <line x1="16" y1="5" x2="16" y2="27" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+        <line x1="7" y1="10.5" x2="25" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+        <line x1="25" y1="10.5" x2="7" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+        <circle cx="16" cy="5" r="2.2" fill="#60a5fa"/>
+        <circle cx="25" cy="10.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="25" cy="21.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="16" cy="27" r="2.2" fill="#60a5fa"/>
+        <circle cx="7" cy="21.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="7" cy="10.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="16" cy="16" r="2.8" fill="#60a5fa"/>
       </svg>
       <h1>erdmini</h1>
     </div>
