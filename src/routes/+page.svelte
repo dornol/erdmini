@@ -512,7 +512,9 @@
   });
 
   // Load shared schema from URL hash (#s=...) as a new project
+  // Must wait for projectStore to be initialized before importing
   $effect(() => {
+    if (!projectStore.initialized) return;
     const shareData = getShareDataFromUrl();
     if (!shareData) return;
     // Clear hash immediately to prevent re-triggering
@@ -521,7 +523,6 @@
     (async () => {
       try {
         const { schema, projectName } = await shareStringToSchema(shareData);
-        // Use embedded project name if available, otherwise derive from table names
         let name: string;
         if (projectName) {
           name = `shared: ${projectName}`;
