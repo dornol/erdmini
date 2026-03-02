@@ -219,6 +219,9 @@ export function initCollabServer(server, db) {
       const peerId = randomBytes(8).toString('hex');
       roomManager.register(peerId, ws, user.id, user.displayName);
 
+      ws.isAlive = true;
+      ws.on('pong', () => { ws.isAlive = true; });
+
       ws.on('message', (rawData) => {
         const raw = typeof rawData === 'string' ? rawData : rawData.toString();
         handleMessage(peerId, raw, db, user.id, user.role);
@@ -228,6 +231,20 @@ export function initCollabServer(server, db) {
       ws.on('error', () => roomManager.unregister(peerId));
     });
   });
+
+  // Ping/pong keepalive — detect dead connections every 30s
+  const pingInterval = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (ws.isAlive === false) {
+        ws.terminate();
+        continue;
+      }
+      ws.isAlive = false;
+      ws.ping();
+    }
+  }, 30000);
+
+  wss.on('close', () => clearInterval(pingInterval));
 
   return wss;
 }

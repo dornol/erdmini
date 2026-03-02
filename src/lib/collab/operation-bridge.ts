@@ -9,7 +9,7 @@ let moveThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingMoveOp: CollabOperation | null = null;
 
 export function sendOperation(op: CollabOperation) {
-  if (erdStore._isRemoteOp || !collabStore.connected) return;
+  if (erdStore._isRemoteOp || !collabClient.connected) return;
 
   // Throttle move operations (50ms)
   if (op.kind === 'move-table' || op.kind === 'move-tables') {
@@ -220,7 +220,7 @@ let presenceTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingPresence: { cursor?: { x: number; y: number }; selectedTableIds?: string[] } | null = null;
 
 export function sendPresence(data: { cursor?: { x: number; y: number }; selectedTableIds?: string[] }) {
-  if (!collabStore.connected) return;
+  if (!collabClient.connected) return;
 
   pendingPresence = { ...pendingPresence, ...data };
   if (!presenceTimer) {

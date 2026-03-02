@@ -14,8 +14,7 @@ function collabDevPlugin(): Plugin {
       const httpServer = server.httpServer;
       if (!httpServer) return;
 
-      // Wait for server to be ready, then init collab
-      httpServer.once('listening', async () => {
+      const initCollab = async () => {
         try {
           const Database = (await import('better-sqlite3')).default;
           const dbPath = process.env.DB_PATH || 'data/erdmini.db';
@@ -30,7 +29,14 @@ function collabDevPlugin(): Plugin {
           const msg = e instanceof Error ? e.message : String(e);
           console.warn('[collab] Dev WebSocket init failed:', msg);
         }
-      });
+      };
+
+      // Init immediately if already listening, otherwise wait
+      if (httpServer.listening) {
+        initCollab();
+      } else {
+        httpServer.once('listening', initCollab);
+      }
     },
   };
 }

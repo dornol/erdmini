@@ -267,7 +267,7 @@
     ></div>
   {/if}
 
-  {#if collabStore.connected}
+  {#if collabStore.remoteCursors.size > 0}
     <CollabCursors />
   {/if}
 

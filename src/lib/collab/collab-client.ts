@@ -11,9 +11,15 @@ export class CollabClient {
   private maxReconnectDelay = 30000;
   private intentionalClose = false;
   private hasConnectedBefore = false;
+  /** Tracks which projectId this connection was opened for */
+  private connectingForProject: string | null = null;
 
   get connected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  get currentProjectId(): string | null {
+    return this.projectId;
   }
 
   onMessage(handler: MessageHandler): () => void {
@@ -24,8 +30,12 @@ export class CollabClient {
   }
 
   connect(projectId: string) {
+    // Skip if already connected to the same project
+    if (this.projectId === projectId && this.ws?.readyState === WebSocket.OPEN) return;
+
     this.intentionalClose = false;
     this.projectId = projectId;
+    this.connectingForProject = projectId;
     this.reconnectDelay = 1000;
     this.hasConnectedBefore = false;
     this.createConnection();
@@ -34,6 +44,7 @@ export class CollabClient {
   disconnect() {
     this.intentionalClose = true;
     this.projectId = null;
+    this.connectingForProject = null;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -67,22 +78,33 @@ export class CollabClient {
     }
 
     this.ws.onopen = () => {
+      // Guard: if project changed during connection, abort
+      if (this.projectId !== this.connectingForProject || !this.projectId) {
+        this.ws?.close();
+        return;
+      }
+
       const isReconnect = this.hasConnectedBefore;
       this.reconnectDelay = 1000;
       this.hasConnectedBefore = true;
+
       // Join the project room
-      if (this.projectId) {
-        this.send({ type: 'join', projectId: this.projectId });
-        // On reconnect, request full schema sync
-        if (isReconnect) {
-          this.send({ type: 'request-sync' });
-        }
+      this.send({ type: 'join', projectId: this.projectId });
+      // On reconnect, request full schema sync
+      if (isReconnect) {
+        this.send({ type: 'request-sync' });
       }
     };
 
     this.ws.onmessage = (event) => {
       try {
         const msg: ServerMessage = JSON.parse(event.data);
+
+        // Guard: if we got a 'joined' for a project we've since left, ignore
+        if (msg.type === 'joined' && this.projectId !== this.connectingForProject) {
+          return;
+        }
+
         for (const handler of this.handlers) {
           handler(msg);
         }
@@ -112,6 +134,7 @@ export class CollabClient {
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       if (this.projectId && !this.intentionalClose) {
+        this.connectingForProject = this.projectId;
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
         this.createConnection();
       }
