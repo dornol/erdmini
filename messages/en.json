@@ -223,5 +223,11 @@
   "group_color_use": "Use group color",
   "sidebar_new_group": "New Group",
   "sidebar_new_group_placeholder": "Group name...",
-  "sidebar_rename_group": "Rename group"
+  "sidebar_rename_group": "Rename group",
+  "shortcuts_select_all": "Select all",
+  "shortcuts_duplicate": "Duplicate selected",
+  "shortcuts_arrow_pan": "Arrow key pan",
+  "shortcuts_space_drag": "Pan canvas",
+  "fk_warn_set_null_not_nullable": "Using SET NULL on NOT NULL column(s) may cause referential integrity errors.",
+  "column_duplicate": "Duplicate column"
 }

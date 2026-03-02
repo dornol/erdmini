@@ -223,5 +223,11 @@
   "group_color_use": "그룹 색상 사용",
   "sidebar_new_group": "새 그룹",
   "sidebar_new_group_placeholder": "그룹명...",
-  "sidebar_rename_group": "그룹명 수정"
+  "sidebar_rename_group": "그룹명 수정",
+  "shortcuts_select_all": "전체 선택",
+  "shortcuts_duplicate": "선택 복제",
+  "shortcuts_arrow_pan": "방향키 이동",
+  "shortcuts_space_drag": "캔버스 이동",
+  "fk_warn_set_null_not_nullable": "NOT NULL 컬럼에 SET NULL을 사용하면 참조 무결성 오류가 발생할 수 있습니다.",
+  "column_duplicate": "컬럼 복제"
 }

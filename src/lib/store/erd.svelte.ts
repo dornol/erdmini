@@ -550,6 +550,27 @@ class ERDStore {
     return { added, updated };
   }
 
+  duplicateColumn(tableId: string, columnId: string) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    const src = table.columns.find((c) => c.id === columnId);
+    if (!src) return;
+    const newCol: Column = {
+      ...src,
+      id: generateId(),
+      name: `${src.name}_copy`,
+      primaryKey: false,
+      autoIncrement: false,
+      domainId: undefined,
+    };
+    const idx = table.columns.findIndex((c) => c.id === columnId);
+    const cols = [...table.columns];
+    cols.splice(idx + 1, 0, newCol);
+    table.columns = cols;
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'add-column', tableId, column: newCol });
+  }
+
   duplicateTable(id: string) {
     const src = this.schema.tables.find((t) => t.id === id);
     if (!src) return;

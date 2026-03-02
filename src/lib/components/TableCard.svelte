@@ -219,6 +219,7 @@
 <div
   class="table-card"
   class:selected={isSelected}
+  class:locked={table.locked}
   class:fk-dragging={fkDragStore.active}
   style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}{remoteSelectColor ? `; box-shadow: 0 0 0 2px ${remoteSelectColor}40, 0 0 8px ${remoteSelectColor}30` : ''}"
   onmousedown={onMouseDown}
@@ -412,6 +413,11 @@
   .table-card.selected {
     border-color: var(--erd-card-selected-border);
     box-shadow: var(--erd-card-selected-glow), var(--erd-card-shadow);
+  }
+
+  .table-card.locked {
+    opacity: 0.8;
+    border-style: dashed;
   }
 
   /* ── Header ── */

@@ -34,6 +34,32 @@
 
   let hasDomains = $derived(erdStore.schema.domains.length > 0);
 
+  const DEFAULT_VALUE_PRESETS: Record<string, string[]> = {
+    INT: ['0', '1', 'NULL'],
+    BIGINT: ['0', '1', 'NULL'],
+    SMALLINT: ['0', '1', 'NULL'],
+    TINYINT: ['0', '1', 'NULL'],
+    MEDIUMINT: ['0', '1', 'NULL'],
+    VARCHAR: ["''", 'NULL'],
+    CHAR: ["''", 'NULL'],
+    TEXT: ["''", 'NULL'],
+    BOOLEAN: ['TRUE', 'FALSE', 'NULL'],
+    BIT: ['TRUE', 'FALSE', 'NULL'],
+    DATE: ['CURRENT_TIMESTAMP', 'NOW()', 'NULL'],
+    DATETIME: ['CURRENT_TIMESTAMP', 'NOW()', 'NULL'],
+    TIMESTAMP: ['CURRENT_TIMESTAMP', 'NOW()', 'NULL'],
+    DECIMAL: ['0', '0.0', 'NULL'],
+    FLOAT: ['0', '0.0', 'NULL'],
+    DOUBLE: ['0', '0.0', 'NULL'],
+    NUMERIC: ['0', '0.0', 'NULL'],
+    UUID: ['UUID()', 'GEN_RANDOM_UUID()', 'NULL'],
+  };
+
+  let presetOpen = $state(false);
+  let currentPresets = $derived(
+    col ? (DEFAULT_VALUE_PRESETS[col.type] ?? ['NULL']) : ['NULL']
+  );
+
   function applyDomain(domainId: string) {
     const domain = erdStore.schema.domains.find((d) => d.id === domainId);
     if (!domain) return;
@@ -95,6 +121,11 @@
     {#if col}
       <div class="popup-header">
         <span class="popup-title">{col.name}</span>
+        <button
+          class="duplicate-btn"
+          title={m.column_duplicate()}
+          onclick={() => { erdStore.duplicateColumn(tableId, columnId); onclose(); }}
+        >⧉</button>
         <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
       </div>
 
@@ -191,13 +222,32 @@
         <!-- Default value -->
         <div class="field-row">
           <label for="ce-default" class="field-label">{m.column_default()}</label>
-          <input
-            id="ce-default"
-            class="field-input"
-            value={col.defaultValue ?? ''}
-            oninput={(e) => onChange('defaultValue', (e.target as HTMLInputElement).value || undefined)}
-            placeholder={m.none_placeholder()}
-          />
+          <div class="default-value-row">
+            <input
+              id="ce-default"
+              class="field-input"
+              value={col.defaultValue ?? ''}
+              oninput={(e) => onChange('defaultValue', (e.target as HTMLInputElement).value || undefined)}
+              placeholder={m.none_placeholder()}
+            />
+            <div class="preset-wrap">
+              <button
+                class="preset-btn"
+                onclick={() => (presetOpen = !presetOpen)}
+                title="Presets"
+              >▼</button>
+              {#if presetOpen}
+                <div class="preset-dropdown">
+                  {#each currentPresets as preset}
+                    <button
+                      class="preset-item"
+                      onclick={() => { onChange('defaultValue', preset === 'NULL' ? undefined : preset); presetOpen = false; }}
+                    >{preset}</button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </div>
         </div>
 
         <!-- ENUM values (only when type is ENUM) -->
@@ -319,6 +369,23 @@
     flex: 1;
   }
 
+  .duplicate-btn {
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 3px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .duplicate-btn:hover {
+    color: #93c5fd;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
   .close-btn {
     background: none;
     border: none;
@@ -405,6 +472,70 @@
     color: var(--app-text-secondary, #475569);
     cursor: pointer;
     user-select: none;
+  }
+
+  .default-value-row {
+    display: flex;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .default-value-row .field-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .preset-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .preset-btn {
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
+    border-radius: 5px;
+    padding: 5px 6px;
+    font-size: 10px;
+    color: var(--app-text-muted, #64748b);
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .preset-btn:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+  }
+
+  .preset-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 2px;
+    background: var(--app-popup-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 130px;
+    z-index: 10;
+    padding: 4px 0;
+  }
+
+  .preset-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+    color: var(--app-text, #1e293b);
+    cursor: pointer;
+  }
+
+  .preset-item:hover {
+    background: #eff6ff;
+    color: #2563eb;
   }
 
   .domain-badge {

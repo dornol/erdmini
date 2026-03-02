@@ -1037,12 +1037,17 @@
             <div class="shortcut-row"><kbd>Delete / Backspace</kbd><span>{m.shortcuts_delete()}</span></div>
             <div class="shortcut-row"><kbd>Esc</kbd><span>{m.shortcuts_deselect()}</span></div>
             <div class="shortcut-row"><kbd>{mod}+K</kbd><span>{m.cmd_palette_open()}</span></div>
+            <div class="shortcut-row"><kbd>{mod}+A</kbd><span>{m.shortcuts_select_all()}</span></div>
+            <div class="shortcut-row"><kbd>{mod}+D</kbd><span>{m.shortcuts_duplicate()}</span></div>
           </div>
 
           <div class="shortcuts-group">
             <div class="shortcuts-group-title">{m.shortcuts_canvas()}</div>
             <div class="shortcut-row"><kbd>Scroll</kbd><span>{m.shortcuts_zoom()}</span></div>
+            <div class="shortcut-row"><kbd>+/-</kbd><span>{m.shortcuts_keyboard_zoom()}</span></div>
             <div class="shortcut-row"><kbd>Drag</kbd><span>{m.shortcuts_pan()}</span></div>
+            <div class="shortcut-row"><kbd>Space+Drag</kbd><span>{m.shortcuts_space_drag()}</span></div>
+            <div class="shortcut-row"><kbd>Arrow</kbd><span>{m.shortcuts_arrow_pan()}</span></div>
           </div>
 
           <div class="shortcuts-group">

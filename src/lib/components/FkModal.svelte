@@ -53,6 +53,15 @@
     columnPairs = columnPairs.filter((_, i) => i !== idx);
   }
 
+  let setNullWarning = $derived.by(() => {
+    if (fkOnDelete !== 'SET NULL' && fkOnUpdate !== 'SET NULL') return false;
+    if (!selectedTable) return false;
+    return columnPairs.some((p) => {
+      const col = selectedTable!.columns.find((c) => c.id === p.srcColId);
+      return col && !col.nullable;
+    });
+  });
+
   let canSubmit = $derived(
     fkRefTableId !== '' &&
     columnPairs.length > 0 &&
@@ -169,6 +178,12 @@
         </div>
       </div>
     </div>
+
+    {#if setNullWarning}
+      <div class="set-null-warning">
+        ⚠ {m.fk_warn_set_null_not_nullable()}
+      </div>
+    {/if}
 
     <div class="modal-footer">
       <button class="btn-cancel" onclick={onclose}>{m.action_cancel()}</button>
@@ -331,6 +346,17 @@
     background: #fee2e2;
     color: #ef4444;
     border-color: #fca5a5;
+  }
+
+  .set-null-warning {
+    margin: 0 18px;
+    padding: 8px 12px;
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #92400e;
+    line-height: 1.4;
   }
 
   .modal-footer {

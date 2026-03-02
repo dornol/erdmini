@@ -19,7 +19,15 @@
   let searchQuery = $state('');
   let sortBy = $state<'creation' | 'name'>('creation');
   let viewMode = $state<'flat' | 'group'>('flat');
-  let collapsedGroups = $state<Set<string>>(new Set());
+  let collapsedGroups = $state<Set<string>>(
+    typeof localStorage !== 'undefined'
+      ? new Set(JSON.parse(localStorage.getItem('erdmini_collapsed_groups') || '[]'))
+      : new Set()
+  );
+
+  $effect(() => {
+    localStorage.setItem('erdmini_collapsed_groups', JSON.stringify([...collapsedGroups]));
+  });
   let sidebarWidth = $state(
     typeof localStorage !== 'undefined'
       ? Number(localStorage.getItem('erdmini_sidebar_width')) || 240
@@ -59,14 +67,39 @@
   const filteredTables = $derived(() => {
     let tables = erdStore.schema.tables;
 
-    // Search filter (matches table name or column names)
     if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      tables = tables.filter((t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.columns.some((c) => c.name.toLowerCase().includes(q)) ||
-        (t.comment && t.comment.toLowerCase().includes(q))
-      );
+      const raw = searchQuery.trim();
+      const lower = raw.toLowerCase();
+
+      // Prefix filters
+      if (lower.startsWith('fk:')) {
+        const fkQ = lower.slice(3).trim();
+        tables = tables.filter((t) =>
+          t.foreignKeys.some((fk) => {
+            const refTable = erdStore.schema.tables.find((rt) => rt.id === fk.referencedTableId);
+            return refTable && refTable.name.toLowerCase().includes(fkQ);
+          })
+        );
+      } else if (lower.startsWith('group:')) {
+        const groupQ = lower.slice(6).trim();
+        tables = tables.filter((t) =>
+          (t.group || '').toLowerCase().includes(groupQ)
+        );
+      } else if (lower.startsWith('locked:')) {
+        tables = tables.filter((t) => t.locked);
+      } else {
+        // Default: search table name, column names, comment, FK ref table names, group
+        tables = tables.filter((t) =>
+          t.name.toLowerCase().includes(lower) ||
+          t.columns.some((c) => c.name.toLowerCase().includes(lower)) ||
+          (t.comment && t.comment.toLowerCase().includes(lower)) ||
+          t.foreignKeys.some((fk) => {
+            const refTable = erdStore.schema.tables.find((rt) => rt.id === fk.referencedTableId);
+            return refTable && refTable.name.toLowerCase().includes(lower);
+          }) ||
+          (t.group && t.group.toLowerCase().includes(lower))
+        );
+      }
     }
 
     // Sort
@@ -368,6 +401,7 @@
                   <span class="item-color-dot" style="background:{getColorDot(table)}"></span>
                 {/if}
                 <span class="item-name">{table.name}</span>
+                {#if table.locked}<span class="item-lock" title="Locked">🔒</span>{/if}
                 <span class="badge badge-cols">{table.columns.length}</span>
               </div>
               {#if table.comment}
@@ -509,6 +543,7 @@
                       <span class="item-color-dot" style="background:{getColorDot(table)}"></span>
                     {/if}
                     <span class="item-name">{table.name}</span>
+                    {#if table.locked}<span class="item-lock" title="Locked">🔒</span>{/if}
                     <span class="badge badge-cols">{table.columns.length}</span>
                   </div>
                   {#if table.comment}
@@ -830,6 +865,12 @@
     white-space: nowrap;
     flex-shrink: 1;
     min-width: 0;
+  }
+
+  .item-lock {
+    font-size: 10px;
+    flex-shrink: 0;
+    opacity: 0.6;
   }
 
   .badge {
