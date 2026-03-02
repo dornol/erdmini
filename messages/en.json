@@ -274,5 +274,13 @@
   "diff_summary": "{added} added, {removed} removed, {modified} modified",
   "diff_select_history": "Select history...",
   "diff_columns": "Columns",
-  "diff_compare": "Compare"
+  "diff_compare": "Compare",
+  "search_hint_title": "Search filters",
+  "search_hint_fk": "Search by FK reference",
+  "search_hint_group": "Search by group",
+  "search_hint_locked": "Show locked tables",
+  "search_hint_type": "Search by column type",
+  "search_hint_has": "Tables with attribute (pk, fk, index, comment, domain, enum...)",
+  "search_hint_no": "Tables without attribute",
+  "search_hint_color": "Search by table color"
 }

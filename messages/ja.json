@@ -254,5 +254,13 @@
   "diff_summary": "{added}件追加、{removed}件削除、{modified}件変更",
   "diff_select_history": "履歴を選択...",
   "diff_columns": "カラム",
-  "diff_compare": "比較"
+  "diff_compare": "比較",
+  "search_hint_title": "検索フィルター",
+  "search_hint_fk": "FK参照テーブルで検索",
+  "search_hint_group": "グループ名で検索",
+  "search_hint_locked": "ロック中のテーブルのみ表示",
+  "search_hint_type": "カラム型で検索",
+  "search_hint_has": "属性があるテーブル (pk, fk, index, comment, domain, enum...)",
+  "search_hint_no": "属性がないテーブル",
+  "search_hint_color": "テーブル色で検索"
 }

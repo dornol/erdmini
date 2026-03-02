@@ -274,5 +274,13 @@
   "diff_summary": "{added}개 추가, {removed}개 삭제, {modified}개 수정",
   "diff_select_history": "히스토리 선택...",
   "diff_columns": "컬럼",
-  "diff_compare": "비교"
+  "diff_compare": "비교",
+  "search_hint_title": "검색 필터",
+  "search_hint_fk": "FK 참조 테이블로 검색",
+  "search_hint_group": "그룹명으로 검색",
+  "search_hint_locked": "잠긴 테이블만 표시",
+  "search_hint_type": "컬럼 타입으로 검색",
+  "search_hint_has": "속성이 있는 테이블 (pk, fk, index, comment, domain, enum...)",
+  "search_hint_no": "속성이 없는 테이블",
+  "search_hint_color": "테이블 컬러로 검색"
 }
