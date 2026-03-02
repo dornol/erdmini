@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --host",
-		"dev:server": "PUBLIC_STORAGE_MODE=server vite dev",
+		"dev:server": "PUBLIC_STORAGE_MODE=server vite dev --host",
 		"build": "PUBLIC_STORAGE_MODE=local vite build",
 		"build:server": "PUBLIC_STORAGE_MODE=server vite build",
 		"start:server": "node server.js",
