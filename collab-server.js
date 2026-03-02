@@ -183,56 +183,42 @@ function parseCookies(cookieHeader) {
   return cookies;
 }
 
-// ── Main init function ──
-/**
- * @param {import('http').Server} server
- * @param {import('better-sqlite3').Database} db
- */
-export function initCollabServer(server, db) {
-  const wss = new WebSocketServer({ noServer: true });
+// ── Shared: set up a WS connection after upgrade ──
+function setupConnection(ws, db, user) {
+  const peerId = randomBytes(8).toString('hex');
+  roomManager.register(peerId, ws, user.id, user.displayName);
 
-  server.on('upgrade', (request, socket, head) => {
-    const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
-    if (url.pathname !== '/collab') {
-      // Not our endpoint — ignore (don't destroy; Vite HMR uses upgrade too)
-      return;
-    }
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
 
-    const cookies = parseCookies(request.headers.cookie);
-    const sessionId = cookies['erdmini_session'];
-    if (!sessionId) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    const result = validateSession(db, sessionId);
-    if (!result) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    const { user } = result;
-
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      const peerId = randomBytes(8).toString('hex');
-      roomManager.register(peerId, ws, user.id, user.displayName);
-
-      ws.isAlive = true;
-      ws.on('pong', () => { ws.isAlive = true; });
-
-      ws.on('message', (rawData) => {
-        const raw = typeof rawData === 'string' ? rawData : rawData.toString();
-        handleMessage(peerId, raw, db, user.id, user.role);
-      });
-
-      ws.on('close', () => roomManager.unregister(peerId));
-      ws.on('error', () => roomManager.unregister(peerId));
-    });
+  ws.on('message', (rawData) => {
+    const raw = typeof rawData === 'string' ? rawData : rawData.toString();
+    handleMessage(peerId, raw, db, user.id, user.role);
   });
 
-  // Ping/pong keepalive — detect dead connections every 30s
+  ws.on('close', () => roomManager.unregister(peerId));
+  ws.on('error', () => roomManager.unregister(peerId));
+}
+
+// ── Shared: authenticate an upgrade request ──
+function authenticateUpgrade(request, db) {
+  const cookies = parseCookies(request.headers.cookie);
+  const sessionId = cookies['erdmini_session'];
+  if (!sessionId) return null;
+  return validateSession(db, sessionId);
+}
+
+/**
+ * Create a collab WebSocket handler (for use in Vite dev plugin).
+ * Returns the wss instance and a handleUpgrade function.
+ * The caller is responsible for wiring up the 'upgrade' event.
+ *
+ * @param {import('better-sqlite3').Database} db
+ */
+export function createCollabHandler(db) {
+  const wss = new WebSocketServer({ noServer: true });
+
+  // Ping/pong keepalive
   const pingInterval = setInterval(() => {
     for (const ws of wss.clients) {
       if (ws.isAlive === false) {
@@ -245,6 +231,58 @@ export function initCollabServer(server, db) {
   }, 30000);
 
   wss.on('close', () => clearInterval(pingInterval));
+
+  /**
+   * Handle a WebSocket upgrade for /collab.
+   * Returns true if handled, false if not (wrong path or auth failure).
+   */
+  function handleUpgrade(request, socket, head) {
+    // Always add error handler to prevent unhandled crash
+    socket.on('error', (err) => {
+      console.warn('[collab] Socket error during upgrade:', err.message);
+    });
+
+    const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
+    if (url.pathname !== '/collab') {
+      return false;
+    }
+
+    const result = authenticateUpgrade(request, db);
+    if (!result) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return true; // handled (rejected)
+    }
+
+    const { user } = result;
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      setupConnection(ws, db, user);
+    });
+    return true; // handled (accepted)
+  }
+
+  return { wss, handleUpgrade };
+}
+
+/**
+ * Initialize collab WebSocket on an HTTP server (for production use in server.js).
+ * Uses server.on('upgrade') directly — no Vite conflict in production.
+ *
+ * @param {import('http').Server} server
+ * @param {import('better-sqlite3').Database} db
+ */
+export function initCollabServer(server, db) {
+  const { wss, handleUpgrade } = createCollabHandler(db);
+
+  server.on('upgrade', (request, socket, head) => {
+    // Add error handler for ALL upgrade sockets (including non-collab)
+    if (!socket.listenerCount('error')) {
+      socket.on('error', (err) => {
+        console.warn('[collab] Socket error:', err.message);
+      });
+    }
+    handleUpgrade(request, socket, head);
+  });
 
   return wss;
 }

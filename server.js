@@ -20,6 +20,16 @@ try {
   console.warn('[collab] Real-time collaboration will be disabled');
 }
 
+// Prevent unhandled socket errors from crashing the server
+process.on('uncaughtException', (err) => {
+  if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+    console.warn('[server] Connection reset:', err.message);
+  } else {
+    console.error('[server] Uncaught exception:', err);
+    process.exit(1);
+  }
+});
+
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });

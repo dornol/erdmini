@@ -10,7 +10,6 @@ function collabDevPlugin(): Plugin {
     configureServer(server) {
       if (process.env.PUBLIC_STORAGE_MODE !== 'server') return;
 
-      // Lazy init: attach WebSocket to the Vite dev server's HTTP server
       const httpServer = server.httpServer;
       if (!httpServer) return;
 
@@ -22,8 +21,33 @@ function collabDevPlugin(): Plugin {
           db.pragma('journal_mode = WAL');
           db.pragma('foreign_keys = ON');
 
-          const { initCollabServer } = await import('./collab-server.js');
-          initCollabServer(httpServer, db);
+          const { createCollabHandler } = await import('./collab-server.js');
+          const { handleUpgrade } = createCollabHandler(db);
+
+          // Take over upgrade handling to prevent conflict with Vite's HMR WebSocket.
+          // Save Vite's existing upgrade listeners, remove them, then add a single
+          // unified handler that dispatches /collab to our handler and everything
+          // else to Vite's original handlers.
+          const viteListeners = httpServer.listeners('upgrade').slice();
+          httpServer.removeAllListeners('upgrade');
+
+          httpServer.on('upgrade', (request, socket, head) => {
+            // Always add error handler to prevent crash on ECONNRESET etc.
+            if (!socket.listenerCount('error')) {
+              socket.on('error', (err) => {
+                console.warn('[collab] Socket error:', (err as Error).message);
+              });
+            }
+
+            const handled = handleUpgrade(request, socket, head);
+            if (!handled) {
+              // Not /collab — delegate to Vite's original handlers (HMR etc.)
+              for (const listener of viteListeners) {
+                listener.call(httpServer, request, socket, head);
+              }
+            }
+          });
+
           console.log('[collab] WebSocket dev server initialized');
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -31,7 +55,7 @@ function collabDevPlugin(): Plugin {
         }
       };
 
-      // Init immediately if already listening, otherwise wait
+      // Init after server starts listening (when Vite has registered its handlers)
       if (httpServer.listening) {
         initCollab();
       } else {
