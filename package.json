@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "vite dev --host",
 		"dev:server": "PUBLIC_STORAGE_MODE=server vite dev --host",
-		"build": "PUBLIC_STORAGE_MODE=local vite build",
+		"build": "PUBLIC_STORAGE_MODE=local vite build && cp build/index.html build/404.html",
 		"build:server": "PUBLIC_STORAGE_MODE=server vite build",
 		"start:server": "node server.js",
 		"preview": "vite preview",
