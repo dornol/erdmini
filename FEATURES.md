@@ -109,7 +109,7 @@
 - 14개 도구: list_projects, get_schema, export_ddl, lint_schema, export_diagram, add/update/delete table/column, add/delete foreign_key, import_ddl
 - Claude Desktop, Claude Code, Cursor 등 AI 어시스턴트 연동
 
-## 추가 개선
+## 향후 개선 후보
 - FK 라인 스마트 라우팅 (겹침 방지, 장애물 회피, 자기참조 루프)
 - 사이드바 가상 스크롤 (1000+ 테이블 대응)
 

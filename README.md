@@ -136,8 +136,8 @@ SvelteKit + Svelte 5 Runes + Tailwind CSS v4로 제작.
 - **권한**: 프로젝트별 역할 (owner / editor / viewer)
 - **공유**: 사용자 검색 → 권한 부여, 읽기 전용 모드
 - **실시간 협업**: WebSocket 동기화, 접속자 커서 표시, LWW 충돌 해결
-- **관리자**: 사용자 CRUD, OIDC 프로바이더 관리, 세션 관리
-- **MCP**: Streamable HTTP 엔드포인트 (`/mcp`), API Key 인증, 14개 도구
+- **관리자**: 사용자 CRUD, OIDC 프로바이더 관리, API Key 관리
+- **MCP**: Streamable HTTP 엔드포인트 (`/mcp`), API Key 인증, 14개 도구, Collab 연동
 
 ---
 
@@ -192,4 +192,6 @@ docker compose up -d
 docker compose --profile local up -d erdmini-local
 ```
 
-환경변수, 볼륨 관리, 리버스 프록시 설정 등 상세 내용은 → [DOCKER.md](DOCKER.md)
+환경변수, 볼륨 관리, 리버스 프록시, MCP 설정 등 상세 내용은 → [DOCKER.md](DOCKER.md)
+
+전체 기능 목록은 → [FEATURES.md](FEATURES.md)
