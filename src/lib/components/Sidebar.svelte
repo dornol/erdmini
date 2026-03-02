@@ -51,7 +51,8 @@
       const q = searchQuery.trim().toLowerCase();
       tables = tables.filter((t) =>
         t.name.toLowerCase().includes(q) ||
-        t.columns.some((c) => c.name.toLowerCase().includes(q))
+        t.columns.some((c) => c.name.toLowerCase().includes(q)) ||
+        (t.comment && t.comment.toLowerCase().includes(q))
       );
     }
 
@@ -97,15 +98,17 @@
     return entry?.dot ?? null;
   }
 
-  let tooltip = $state<{ text: string; x: number; y: number } | null>(null);
+  import type { Table } from '$lib/types/erd';
 
-  function showTooltip(e: MouseEvent, text: string) {
+  let richTooltip = $state<{ table: Table; top: number } | null>(null);
+
+  function showRichTooltip(e: MouseEvent, table: Table) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    tooltip = { text, x: rect.left, y: rect.bottom + 4 };
+    richTooltip = { table, top: rect.top };
   }
 
-  function hideTooltip() {
-    tooltip = null;
+  function hideRichTooltip() {
+    richTooltip = null;
   }
 
   function getTableMeta(table: typeof erdStore.schema.tables[0]) {
@@ -226,13 +229,14 @@
     <ul class="table-list">
       {#if viewMode === 'flat'}
         {#each filteredTables() as table (table.id)}
-          {@const meta = getTableMeta(table)}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
           <li
             class="table-item"
             class:active={erdStore.selectedTableIds.has(table.id)}
             onclick={(e) => onItemClick(e, table.id)}
+            onmouseenter={(e) => showRichTooltip(e, table)}
+            onmouseleave={hideRichTooltip}
           >
             <div class="item-info">
               <div class="item-name-row">
@@ -240,29 +244,8 @@
                   <span class="item-color-dot" style="background:{getColorDot(table.color)}"></span>
                 {/if}
                 <span class="item-name">{table.name}</span>
-                <span class="badge badge-cols">{meta.colCount}</span>
+                <span class="badge badge-cols">{table.columns.length}</span>
               </div>
-              {#if meta.pkCols.length > 0 || meta.fkCount > 0 || meta.refCount > 0}
-                <div class="meta-badges">
-                  {#if meta.pkCols.length > 0}
-                    <span class="badge badge-pk">{meta.pkCols.join(', ')}</span>
-                  {/if}
-                  {#if meta.fkCount > 0}
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <span class="badge badge-fk badge-hover"
-                      onmouseenter={(e) => showTooltip(e, meta.fkDetails.join('\n'))}
-                      onmouseleave={hideTooltip}
-                    >→{meta.fkCount}</span>
-                  {/if}
-                  {#if meta.refCount > 0}
-                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                    <span class="badge badge-ref badge-hover"
-                      onmouseenter={(e) => showTooltip(e, meta.refDetails.join('\n'))}
-                      onmouseleave={hideTooltip}
-                    >←{meta.refCount}</span>
-                  {/if}
-                </div>
-              {/if}
               {#if table.comment}
                 <span class="item-comment">{table.comment}</span>
               {/if}
@@ -308,13 +291,14 @@
           </li>
           {#if !collapsedGroups.has(group.name)}
             {#each group.tables as table (table.id)}
-              {@const meta = getTableMeta(table)}
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
               <li
                 class="table-item table-item-grouped"
                 class:active={erdStore.selectedTableIds.has(table.id)}
                 onclick={(e) => onItemClick(e, table.id)}
+                onmouseenter={(e) => showRichTooltip(e, table)}
+                onmouseleave={hideRichTooltip}
               >
                 <div class="item-info">
                   <div class="item-name-row">
@@ -322,7 +306,7 @@
                       <span class="item-color-dot" style="background:{getColorDot(table.color)}"></span>
                     {/if}
                     <span class="item-name">{table.name}</span>
-                    <span class="badge badge-cols">{meta.colCount}</span>
+                    <span class="badge badge-cols">{table.columns.length}</span>
                   </div>
                   {#if table.comment}
                     <span class="item-comment">{table.comment}</span>
@@ -362,9 +346,58 @@
         {/each}
       {/if}
     </ul>
-    {#if tooltip}
-      <div class="fixed-tooltip" style="left:{tooltip.x}px;top:{tooltip.y}px">
-        {tooltip.text}
+    {#if richTooltip}
+      {@const tt = richTooltip}
+      {@const meta = getTableMeta(tt.table)}
+      {@const tooltipTop = Math.min(tt.top, (typeof window !== 'undefined' ? window.innerHeight : 600) - 300)}
+      <div class="rich-tooltip" style="left:{sidebarWidth + 4}px;top:{tooltipTop}px">
+        <div class="rt-header">
+          {#if getColorDot(tt.table.color)}
+            <span class="item-color-dot" style="background:{getColorDot(tt.table.color)}"></span>
+          {/if}
+          <span class="rt-name">{tt.table.name}</span>
+        </div>
+        {#if tt.table.comment}
+          <div class="rt-comment">{tt.table.comment}</div>
+        {/if}
+        <div class="rt-columns">
+          {#each tt.table.columns as col}
+            <div class="rt-col-row">
+              <span class="rt-badges">
+                {#if col.primaryKey}<span class="rt-badge rt-badge-pk">PK</span>{/if}
+                {#if tt.table.foreignKeys.some(fk => fk.columnIds.includes(col.id))}<span class="rt-badge rt-badge-fk">FK</span>{/if}
+                {#if col.unique || tt.table.uniqueKeys.some(uk => uk.columnIds.includes(col.id))}<span class="rt-badge rt-badge-uq">UQ</span>{/if}
+                {#if col.autoIncrement}<span class="rt-badge rt-badge-ai">AI</span>{/if}
+              </span>
+              <span class="rt-col-name">{col.name}</span>
+              <span class="rt-col-type">{col.type}{#if col.length}({col.length}{#if col.scale},{col.scale}{/if}){/if}{#if col.nullable}?{/if}</span>
+            </div>
+          {/each}
+        </div>
+        {#if meta.fkDetails.length > 0}
+          <div class="rt-fk-section">
+            <span class="rt-fk-label">FK →</span>
+            {#each meta.fkDetails as detail}
+              <div class="rt-fk-row">{detail}</div>
+            {/each}
+          </div>
+        {/if}
+        {#if meta.refDetails.length > 0}
+          <div class="rt-fk-section">
+            <span class="rt-fk-label">Ref ←</span>
+            {#each meta.refDetails as detail}
+              <div class="rt-fk-row">{detail}</div>
+            {/each}
+          </div>
+        {/if}
+        {#if tt.table.uniqueKeys.length > 0}
+          <div class="rt-fk-section">
+            <span class="rt-fk-label">Unique</span>
+            {#each tt.table.uniqueKeys as uk}
+              <div class="rt-fk-row">{uk.name ? uk.name + ': ' : ''}{uk.columnIds.map(id => tt.table.columns.find(c => c.id === id)?.name ?? '?').join(', ')}</div>
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -596,13 +629,6 @@
     min-width: 0;
   }
 
-  .meta-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 3px;
-  }
-
   .badge {
     font-size: 10px;
     padding: 1px 5px;
@@ -613,46 +639,126 @@
     line-height: 1.4;
   }
 
-  .badge-pk {
-    background: #fef3c7;
-    border-color: #f59e0b;
-    color: #92400e;
-  }
-
   .badge-cols {
     background: var(--app-badge-bg, #f1f5f9);
     border-color: var(--app-badge-border, #e2e8f0);
     color: var(--app-text-muted, #64748b);
   }
 
-  .badge-fk {
-    background: #dbeafe;
-    border-color: #93c5fd;
-    color: #1e40af;
-  }
-
-  .badge-ref {
-    background: #ccfbf1;
-    border-color: #5eead4;
-    color: #0f766e;
-  }
-
-  .badge-hover {
-    cursor: default;
-  }
-
-  .fixed-tooltip {
+  .rich-tooltip {
     position: fixed;
     background: #1e293b;
     color: #f1f5f9;
-    font-size: 11px;
-    font-weight: 400;
-    padding: 6px 8px;
-    border-radius: 4px;
-    white-space: pre;
+    font-size: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
     z-index: 9999;
     pointer-events: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    min-width: 200px;
+    max-width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .rt-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .rt-name {
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .rt-comment {
+    font-size: 11px;
+    font-style: italic;
+    color: #94a3b8;
+    margin-bottom: 6px;
+  }
+
+  .rt-columns {
+    display: grid;
+    grid-template-columns: max-content auto 1fr;
+    gap: 1px 4px;
+    border-top: 1px solid #334155;
+    padding-top: 6px;
+    font-size: 11px;
+    line-height: 1.6;
+    align-items: center;
+  }
+
+  .rt-col-row {
+    display: contents;
+  }
+
+  .rt-badges {
+    display: flex;
+    gap: 2px;
+    justify-content: flex-end;
+  }
+
+  .rt-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 0 3px;
+    border-radius: 2px;
+    line-height: 1.5;
+  }
+
+  .rt-badge-pk {
+    background: #f59e0b;
+    color: #451a03;
+  }
+
+  .rt-badge-fk {
+    background: #3b82f6;
+    color: #fff;
+  }
+
+  .rt-badge-uq {
+    background: #8b5cf6;
+    color: #fff;
+  }
+
+  .rt-badge-ai {
+    background: #10b981;
+    color: #fff;
+  }
+
+  .rt-col-name {
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .rt-col-type {
+    color: #94a3b8;
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rt-fk-section {
+    border-top: 1px solid #334155;
+    margin-top: 6px;
+    padding-top: 4px;
+  }
+
+  .rt-fk-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+  }
+
+  .rt-fk-row {
+    font-size: 11px;
+    color: #cbd5e1;
+    padding-left: 4px;
   }
 
   .item-comment {
