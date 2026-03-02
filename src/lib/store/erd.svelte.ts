@@ -66,6 +66,11 @@ class ERDStore {
     return [...this._undoStack];
   }
 
+  get redoEntries(): HistoryEntry[] {
+    void this._undoVersion;
+    return [...this._redoStack];
+  }
+
   pushSnapshotRaw(snap: string, label: string, detail: string = '') {
     // Avoid duplicate snapshots
     if (this._undoStack.length > 0 && this._undoStack[this._undoStack.length - 1].snap === snap) return;
@@ -615,12 +620,15 @@ class ERDStore {
 
 export const erdStore = new ERDStore();
 
+export type ColumnDisplayMode = 'all' | 'pk-fk-only' | 'names-only';
+
 class CanvasState {
   x = $state(0);
   y = $state(0);
   scale = $state(1);
   snapToGrid = $state(false);
   gridSize = 20;
+  columnDisplayMode = $state<ColumnDisplayMode>('all');
 
   snap(v: number): number {
     return this.snapToGrid ? Math.round(v / this.gridSize) * this.gridSize : v;

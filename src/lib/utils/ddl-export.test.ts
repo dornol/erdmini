@@ -455,3 +455,101 @@ describe('exportDDL — Common features', () => {
     expect(ddl).toContain('CHAR(36)');
   });
 });
+
+describe('exportDDL — DDL Export Options', () => {
+  it('uses 4-space indent', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'mysql', { indent: '4spaces' });
+    expect(ddl).toContain('    `id`');
+  });
+
+  it('uses tab indent', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'mysql', { indent: 'tab' });
+    expect(ddl).toContain('\t`id`');
+  });
+
+  it('uses double-quote style on MySQL', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'mysql', { quoteStyle: 'double' });
+    expect(ddl).toContain('CREATE TABLE "users"');
+    expect(ddl).toContain('"id"');
+  });
+
+  it('uses no quoting', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'postgresql', { quoteStyle: 'none' });
+    expect(ddl).toContain('CREATE TABLE users');
+    expect(ddl).not.toContain('"users"');
+  });
+
+  it('uses bracket quoting on PostgreSQL', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'postgresql', { quoteStyle: 'bracket' });
+    expect(ddl).toContain('CREATE TABLE [users]');
+  });
+
+  it('generates lowercase keywords', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'mysql', { upperCaseKeywords: false });
+    expect(ddl).toContain('create table');
+    expect(ddl).toContain('not null');
+    expect(ddl).toContain('primary key');
+  });
+
+  it('excludes comments when includeComments is false', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'col', type: 'INT', nullable: false, comment: 'My column' })],
+        comment: 'Test table',
+      }),
+    ]);
+    const ddlMysql = exportDDL(schema, 'mysql', { includeComments: false });
+    expect(ddlMysql).not.toContain("COMMENT");
+
+    const ddlPg = exportDDL(schema, 'postgresql', { includeComments: false });
+    expect(ddlPg).not.toContain('COMMENT ON');
+
+    const ddlMssql = exportDDL(schema, 'mssql', { includeComments: false });
+    expect(ddlMssql).not.toContain('sp_addextendedproperty');
+  });
+
+  it('excludes indexes when includeIndexes is false', () => {
+    const col = makeColumn({ name: 'email', type: 'VARCHAR', nullable: false });
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [col],
+        indexes: [{ id: 'idx1', columnIds: [col.id], unique: false, name: 'idx_email' }],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql', { includeIndexes: false });
+    expect(ddl).not.toContain('CREATE INDEX');
+    expect(ddl).not.toContain('idx_email');
+  });
+
+  it('excludes foreign keys when includeForeignKeys is false', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'mysql', { includeForeignKeys: false });
+    expect(ddl).not.toContain('ALTER TABLE');
+    expect(ddl).not.toContain('FOREIGN KEY');
+  });
+
+  it('combines multiple options together', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'mysql', {
+      indent: 'tab',
+      quoteStyle: 'double',
+      upperCaseKeywords: false,
+      includeForeignKeys: false,
+    });
+    expect(ddl).toContain('\t"id"');
+    expect(ddl).toContain('create table "users"');
+    expect(ddl).toContain('not null');
+    expect(ddl).not.toContain('ALTER TABLE');
+  });
+
+  it('defaults to dialect-appropriate quote style when not specified', () => {
+    const ddlMysql = exportDDL(usersOrdersSchema(), 'mysql');
+    expect(ddlMysql).toContain('`users`');
+
+    const ddlPg = exportDDL(usersOrdersSchema(), 'postgresql');
+    expect(ddlPg).toContain('"users"');
+
+    const ddlMssql = exportDDL(usersOrdersSchema(), 'mssql');
+    expect(ddlMssql).toContain('[users]');
+  });
+});

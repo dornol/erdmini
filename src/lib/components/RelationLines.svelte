@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { erdStore } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
@@ -38,8 +38,16 @@
     childCircleCx: number;
   }
 
+  function getFilteredColumns(table: Table) {
+    const mode = canvasState.columnDisplayMode;
+    if (mode === 'all' || mode === 'names-only') return table.columns;
+    // pk-fk-only
+    const fkColIds = new Set(table.foreignKeys.flatMap((fk) => fk.columnIds));
+    return table.columns.filter((c) => c.primaryKey || fkColIds.has(c.id));
+  }
+
   function getColIndex(table: Table, columnId: string): number {
-    return table.columns.findIndex((c) => c.id === columnId);
+    return getFilteredColumns(table).findIndex((c) => c.id === columnId);
   }
 
   function colY(table: Table, colIdx: number): number {

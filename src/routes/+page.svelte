@@ -10,7 +10,7 @@
   import BulkEditModal from '$lib/components/BulkEditModal.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { onMount, onDestroy } from 'svelte';
-  import { erdStore, canvasState } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState, type ColumnDisplayMode } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ERDSchema } from '$lib/types/erd';
@@ -39,6 +39,22 @@
   onMount(async () => {
     const provider = await getStorageProvider();
     await projectStore.init(provider);
+
+    // Restore column display mode
+    const savedMode = localStorage.getItem('erdmini_column_display_mode');
+    if (savedMode === 'pk-fk-only' || savedMode === 'names-only') {
+      canvasState.columnDisplayMode = savedMode as ColumnDisplayMode;
+    }
+  });
+
+  // Persist column display mode
+  $effect(() => {
+    const mode = canvasState.columnDisplayMode;
+    if (mode === 'all') {
+      localStorage.removeItem('erdmini_column_display_mode');
+    } else {
+      localStorage.setItem('erdmini_column_display_mode', mode);
+    }
   });
 
   function enterFullscreen() {
@@ -224,12 +240,47 @@
       }
     }
 
+    // FK property edit (same count but different content)
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (!pt2) continue;
+      for (const cfk of ct2.foreignKeys) {
+        const pfk = pt2.foreignKeys.find((f) => f.id === cfk.id);
+        if (pfk && JSON.stringify(pfk) !== JSON.stringify(cfk)) {
+          return { label: 'history_edit_fk', detail: ct2.name };
+        }
+      }
+    }
+
+    // Table property edit (comment, color, group, locked)
+    for (const ct2 of ct) {
+      const pt2 = pt.find((t) => t.id === ct2.id);
+      if (!pt2) continue;
+      if ((pt2.comment ?? '') !== (ct2.comment ?? '')) {
+        return { label: 'history_edit_table', detail: ct2.name };
+      }
+      if ((pt2.color ?? '') !== (ct2.color ?? '')) {
+        return { label: 'history_edit_table', detail: ct2.name };
+      }
+      if ((pt2.group ?? '') !== (ct2.group ?? '')) {
+        return { label: 'history_edit_table', detail: ct2.name };
+      }
+      if ((pt2.locked ?? false) !== (ct2.locked ?? false)) {
+        return { label: 'history_edit_table', detail: ct2.name };
+      }
+    }
+
     // Position changes (layout)
     for (const ct2 of ct) {
       const pt2 = pt.find((t) => t.id === ct2.id);
       if (pt2 && (pt2.position.x !== ct2.position.x || pt2.position.y !== ct2.position.y)) {
         return { label: 'history_layout', detail: '' };
       }
+    }
+
+    // groupColors change
+    if (JSON.stringify(prev.groupColors ?? {}) !== JSON.stringify(cur.groupColors ?? {})) {
+      return { label: 'history_edit_table', detail: '' };
     }
 
     return { label: 'history_edit', detail: '' };

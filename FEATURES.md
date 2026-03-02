@@ -38,8 +38,8 @@
 - URL 공유 (스키마 압축 → URL 해시, 프로젝트명 포함)
 
 ## Phase 5: 국제화
-- Paraglide i18n (한국어 / 영어 토글)
-- ~65개 메시지 키
+- Paraglide i18n (한국어 / 영어 / 일본어 / 중국어)
+- ~270개 메시지 키
 
 ## Phase 6: 테마
 - 4개 테마: Modern (기본), Classic (세피아), Blueprint (설계도), Minimal (그레이스케일)
@@ -69,6 +69,39 @@
 - 사이드바 너비 저장 (localStorage 유지)
 - 테이블 위치 잠금 (드래그 방지, 잠금 아이콘 표시)
 
+## Phase 9: 듀얼 스토리지
+- 스토리지 모드 전환: localStorage (기본) / Server+SQLite
+- `PUBLIC_STORAGE_MODE` 환경변수로 모드 선택
+- 서버 모드: SvelteKit API routes + SQLite (better-sqlite3, WAL)
+- Docker 지원 (Dockerfile.server + docker-compose.yml)
+
+## Phase 10: 인증 시스템
+- 로컬 인증 (username/password) + 다중 OIDC 프로바이더
+- 서버 모드 전용 (로컬 모드에서는 인증 없음)
+- 관리자 UI (사용자 CRUD, OIDC 프로바이더 관리)
+- 세션 관리 (HttpOnly 쿠키, 30일 기본)
+
+## Phase 11: 권한 관리
+- 프로젝트별 역할: owner / editor / viewer
+- 공유 UI (사용자 검색 → 권한 부여)
+- 읽기 전용 모드 (viewer 역할)
+
+## Phase 12: 실시간 협업
+- WebSocket 기반 실시간 동기화
+- LWW (Last-Writer-Wins) 충돌 해결
+- 접속자 커서 표시 (presence)
+- 연결 끊김 시 자동 재접속 + 스키마 동기화
+
+## Phase 13: 추가 도구
+- 스키마 검증/린팅 (8가지 규칙, LintPanel, 클릭으로 테이블 이동)
+- PDF 내보내기 (jsPDF + svg2pdf.js)
+- 테이블 일괄 편집 (다중 선택 → color, group, comment 일괄 수정)
+- 테이블 일괄 잠금/해제
+- DDL 내보내기 포맷 옵션 (들여쓰기, 따옴표, 키워드 대소문자, 포함 항목 선택)
+- 실행취소 히스토리 패널 (시각적 타임라인, 클릭 점프)
+- 컬럼 표시 모드 (전체 / PK&FK만 / 이름만)
+- 스키마 버전 비교 Diff (히스토리 또는 파일 업로드, 색상 코딩)
+
 ## 기타 기능
 - 다중 프로젝트 관리 (생성/이름변경/복제/삭제/전환)
 - localStorage 자동 저장 (300ms 디바운스)
@@ -79,3 +112,4 @@
 - 컬럼 호버 시 툴팁 (타입, nullable, 배지, 코멘트)
 - FK 호버 시 관련 컬럼 하이라이트
 - 키보드 줌 (+/- 키) / 화살표 팬
+- 다이어그램 내보내기 (Mermaid, PlantUML)

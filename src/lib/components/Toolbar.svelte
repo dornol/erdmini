@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { erdStore, canvasState } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState, type ColumnDisplayMode } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
@@ -15,6 +15,8 @@
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import LintPanel from './LintPanel.svelte';
+  import HistoryPanel from './HistoryPanel.svelte';
+  import SchemaDiffModal from './SchemaDiffModal.svelte';
   import ShareProjectModal from './ShareProjectModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import { authStore } from '$lib/store/auth.svelte';
@@ -436,6 +438,15 @@
   let shortcutsOpen = $state(false);
   let userMenuOpen = $state(false);
   let showShareModal = $state(false);
+  let viewModeOpen = $state(false);
+  let showHistoryPanel = $state(false);
+  let showDiffModal = $state(false);
+
+  const VIEW_MODES: { mode: ColumnDisplayMode; label: () => string }[] = [
+    { mode: 'all', label: () => m.view_mode_all() },
+    { mode: 'pk-fk-only', label: () => m.view_mode_pk_fk() },
+    { mode: 'names-only', label: () => m.view_mode_names_only() },
+  ];
 
   // Shared projects
   interface SharedProject {
@@ -874,6 +885,63 @@
       {/if}
     </button>
 
+    <!-- Column display mode dropdown -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-secondary btn-view-mode"
+        class:view-active={canvasState.columnDisplayMode !== 'all'}
+        onclick={() => (viewModeOpen = !viewModeOpen)}
+        title={m.view_mode_title()}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/>
+        </svg>
+      </button>
+      {#if viewModeOpen}
+        <div class="dropdown-menu" role="menu" tabindex="-1" onmouseleave={() => (viewModeOpen = false)}>
+          {#each VIEW_MODES as vm}
+            <button
+              class="dropdown-item"
+              class:active={canvasState.columnDisplayMode === vm.mode}
+              role="menuitem"
+              onclick={() => { canvasState.columnDisplayMode = vm.mode; viewModeOpen = false; }}
+            >
+              {vm.label()}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <!-- History panel toggle -->
+    <button
+      class="btn-secondary btn-history"
+      class:history-active={showHistoryPanel}
+      onclick={() => (showHistoryPanel = !showHistoryPanel)}
+      title={m.history_title()}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+        <polyline points="8,4 8,8 11,10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <!-- Schema diff button -->
+    <button
+      class="btn-secondary"
+      onclick={() => (showDiffModal = !showDiffModal)}
+      title={m.diff_title()}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="1" width="5" height="14" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
+        <rect x="10" y="1" width="5" height="14" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
+        <line x1="7" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="7" y1="8" x2="9" y2="8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="7" y1="11" x2="9" y2="11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+
     <span class="separator"></span>
 
     <button
@@ -1142,6 +1210,14 @@
 
 {#if showLintPanel}
   <LintPanel onclose={() => (showLintPanel = false)} />
+{/if}
+
+{#if showHistoryPanel}
+  <HistoryPanel onclose={() => (showHistoryPanel = false)} />
+{/if}
+
+{#if showDiffModal}
+  <SchemaDiffModal onclose={() => (showDiffModal = false)} />
 {/if}
 
 <style>
@@ -1765,6 +1841,13 @@
     font-size: 10px;
     font-weight: 700;
     line-height: 1;
+  }
+
+  .btn-view-mode.view-active,
+  .btn-history.history-active {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #93c5fd;
   }
 
 </style>

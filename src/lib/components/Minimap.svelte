@@ -3,6 +3,14 @@
   import { TABLE_W, HEADER_H, ROW_H } from '$lib/constants/layout';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
   import { getEffectiveColor } from '$lib/utils/table-color';
+  import type { Table } from '$lib/types/erd';
+
+  function getFilteredColumnCount(t: Table): number {
+    const mode = canvasState.columnDisplayMode;
+    if (mode === 'all' || mode === 'names-only') return t.columns.length;
+    const fkColIds = new Set(t.foreignKeys.flatMap((fk) => fk.columnIds));
+    return t.columns.filter((c) => c.primaryKey || fkColIds.has(c.id)).length;
+  }
 
   const MAP_W = 180;
   const MAP_H = 120;
@@ -38,7 +46,7 @@
     if (tables.length === 0) return { minX: 0, minY: 0, maxX: 800, maxY: 600 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const t of tables) {
-      const h = HEADER_H + t.columns.length * ROW_H;
+      const h = HEADER_H + getFilteredColumnCount(t) * ROW_H;
       minX = Math.min(minX, t.position.x);
       minY = Math.min(minY, t.position.y);
       maxX = Math.max(maxX, t.position.x + TABLE_W);
@@ -90,7 +98,7 @@
         id: t.id,
         ...worldToMap(t.position.x, t.position.y),
         w: TABLE_W * mapScale,
-        h: (HEADER_H + t.columns.length * ROW_H) * mapScale,
+        h: (HEADER_H + getFilteredColumnCount(t) * ROW_H) * mapScale,
         active: erdStore.selectedTableIds.has(t.id),
         dotColor: colorEntry?.dot ?? null,
       };

@@ -4,7 +4,7 @@
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Dialect } from '$lib/types/erd';
-  import { exportDDL } from '$lib/utils/ddl-export';
+  import { exportDDL, DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { importDDL } from '$lib/utils/ddl-import';
   import { computeLayout } from '$lib/utils/auto-layout';
@@ -40,10 +40,27 @@
   // Export state
   let exportFormat = $state<ExportFormat>('ddl');
   let exportDialect = $state<Dialect>('mysql');
+  let showDdlOptions = $state(false);
+
+  // Load saved DDL options from localStorage
+  function loadDdlOptions(): DDLExportOptions {
+    try {
+      const saved = localStorage.getItem('erdmini_ddl_options');
+      if (saved) return { ...DEFAULT_DDL_OPTIONS, ...JSON.parse(saved) };
+    } catch { /* ignore */ }
+    return { ...DEFAULT_DDL_OPTIONS };
+  }
+  let ddlOptions = $state<DDLExportOptions>(loadDdlOptions());
+
+  // Save DDL options when changed
+  $effect(() => {
+    localStorage.setItem('erdmini_ddl_options', JSON.stringify(ddlOptions));
+  });
+
   let exportText = $derived.by(() => {
     if (exportFormat === 'mermaid') return exportMermaid(erdStore.schema);
     if (exportFormat === 'plantuml') return exportPlantUML(erdStore.schema);
-    return exportDDL(erdStore.schema, exportDialect);
+    return exportDDL(erdStore.schema, exportDialect, { ...ddlOptions, quoteStyle: ddlOptions.quoteStyle === 'none' ? 'none' : ddlOptions.quoteStyle || getDefaultQuoteStyle(exportDialect) });
   });
   let copyLabel = $state<'copy' | 'copied'>('copy');
 
@@ -257,6 +274,14 @@
             </div>
           {/if}
           <div class="spacer"></div>
+          {#if exportFormat === 'ddl'}
+            <button class="btn-secondary btn-options" class:options-active={showDdlOptions} onclick={() => (showDdlOptions = !showDdlOptions)}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M6.5 1h3l.4 2.3a5.5 5.5 0 011.3.7l2.2-.9 1.5 2.6-1.8 1.4a5.6 5.6 0 010 1.8l1.8 1.4-1.5 2.6-2.2-.9a5.5 5.5 0 01-1.3.7L9.5 15h-3l-.4-2.3a5.5 5.5 0 01-1.3-.7l-2.2.9-1.5-2.6 1.8-1.4a5.6 5.6 0 010-1.8L1.1 5.7l1.5-2.6 2.2.9a5.5 5.5 0 011.3-.7z" stroke="currentColor" stroke-width="1.3"/>
+                <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/>
+              </svg>
+            </button>
+          {/if}
           <button class="btn-secondary" onclick={copyToClipboard}>
             {copyLabel === 'copy' ? m.ddl_copy() : m.ddl_copied()}
           </button>
@@ -264,6 +289,43 @@
             {exportFormat === 'mermaid' ? '.mmd' : exportFormat === 'plantuml' ? '.puml' : m.ddl_download()}
           </button>
         </div>
+        {#if exportFormat === 'ddl' && showDdlOptions}
+          <div class="ddl-options">
+            <div class="opt-row">
+              <span class="opt-label">{m.ddl_options_indent()}</span>
+              <select class="opt-select" bind:value={ddlOptions.indent}>
+                <option value="2spaces">2 spaces</option>
+                <option value="4spaces">4 spaces</option>
+                <option value="tab">Tab</option>
+              </select>
+            </div>
+            <div class="opt-row">
+              <span class="opt-label">{m.ddl_options_quote()}</span>
+              <select class="opt-select" bind:value={ddlOptions.quoteStyle}>
+                <option value="backtick">`backtick`</option>
+                <option value="double">"double"</option>
+                <option value="bracket">[bracket]</option>
+                <option value="none">none</option>
+              </select>
+            </div>
+            <label class="opt-check">
+              <input type="checkbox" bind:checked={ddlOptions.upperCaseKeywords} />
+              {m.ddl_options_uppercase()}
+            </label>
+            <label class="opt-check">
+              <input type="checkbox" bind:checked={ddlOptions.includeComments} />
+              {m.ddl_options_comments()}
+            </label>
+            <label class="opt-check">
+              <input type="checkbox" bind:checked={ddlOptions.includeIndexes} />
+              {m.ddl_options_indexes()}
+            </label>
+            <label class="opt-check">
+              <input type="checkbox" bind:checked={ddlOptions.includeForeignKeys} />
+              {m.ddl_options_fk()}
+            </label>
+          </div>
+        {/if}
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>
       {:else}
         <div class="import-controls">
@@ -534,5 +596,66 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
+  }
+
+  .btn-options {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+  }
+
+  .btn-options.options-active {
+    background: var(--app-active-bg, #eff6ff);
+    border-color: #3b82f6;
+    color: #3b82f6;
+  }
+
+  .ddl-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 8px 10px;
+    background: var(--app-badge-bg, #f1f5f9);
+    border: 1px solid var(--app-border, #e2e8f0);
+    border-radius: 6px;
+    align-items: center;
+  }
+
+  .opt-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .opt-label {
+    font-size: 11px;
+    color: var(--app-text-muted, #64748b);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .opt-select {
+    font-size: 11px;
+    padding: 2px 6px;
+    border: 1px solid var(--app-input-border, #e2e8f0);
+    border-radius: 4px;
+    background: var(--app-input-bg, white);
+    color: var(--app-text, #1e293b);
+    outline: none;
+  }
+
+  .opt-check {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--app-text-secondary, #475569);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .opt-check input {
+    margin: 0;
+    accent-color: #3b82f6;
   }
 </style>

@@ -39,6 +39,17 @@
   // Set of column IDs that are part of composite unique keys
   let uniqueKeyColIds = $derived(new Set((table.uniqueKeys ?? []).flatMap((uk) => uk.columnIds)));
 
+  // Filtered columns based on display mode
+  let displayColumns = $derived.by(() => {
+    const mode = canvasState.columnDisplayMode;
+    if (mode === 'all') return table.columns;
+    if (mode === 'pk-fk-only') {
+      return table.columns.filter((c) => c.primaryKey || fkSourceIds.has(c.id));
+    }
+    return table.columns; // names-only still shows all columns
+  });
+  let isFiltered = $derived(displayColumns.length < table.columns.length);
+
   // Per-table header color override (table.color > groupColor > none)
   let headerColorOverride = $derived.by(() => {
     const colorId = getEffectiveColor(table, erdStore.schema);
@@ -258,7 +269,10 @@
 
   <!-- Columns -->
   <div class="column-list">
-    {#each table.columns as col, colIdx (col.id)}
+    {#if isFiltered}
+      <div class="col-filter-hint">({displayColumns.length}/{table.columns.length})</div>
+    {/if}
+    {#each displayColumns as col, colIdx (col.id)}
       {@const fk = table.foreignKeys.find((f) => f.columnIds.includes(col.id))}
       {@const fkPairIdx = fk ? fk.columnIds.indexOf(col.id) : -1}
       {@const refTable = fk ? erdStore.schema.tables.find((t) => t.id === fk.referencedTableId) : undefined}
@@ -314,23 +328,25 @@
         <span class="col-name">{col.name}</span>
 
         <!-- Type + nullable indicator -->
-        <span class="col-type">
-          {col.type}{col.length ? `(${col.length})` : ''}{col.nullable ? '?' : ''}
-        </span>
+        {#if canvasState.columnDisplayMode !== 'names-only'}
+          <span class="col-type">
+            {col.type}{col.length ? `(${col.length})` : ''}{col.nullable ? '?' : ''}
+          </span>
 
-        <!-- Attribute badges: UQ / AI / CK -->
-        {#if ((col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey) || col.autoIncrement || col.check}
-          <div class="col-attrs">
-            {#if (col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey}
-              <span class="attr uq" title="Unique">U</span>
-            {/if}
-            {#if col.autoIncrement}
-              <span class="attr ai" title="Auto Increment">AI</span>
-            {/if}
-            {#if col.check}
-              <span class="attr ck" title="CHECK ({col.check})">CK</span>
-            {/if}
-          </div>
+          <!-- Attribute badges: UQ / AI / CK -->
+          {#if ((col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey) || col.autoIncrement || col.check}
+            <div class="col-attrs">
+              {#if (col.unique || uniqueKeyColIds.has(col.id)) && !col.primaryKey}
+                <span class="attr uq" title="Unique">U</span>
+              {/if}
+              {#if col.autoIncrement}
+                <span class="attr ai" title="Auto Increment">AI</span>
+              {/if}
+              {#if col.check}
+                <span class="attr ck" title="CHECK ({col.check})">CK</span>
+              {/if}
+            </div>
+          {/if}
         {/if}
 
         <!-- FK drag handle -->
@@ -392,7 +408,7 @@
 
       </div>
     {/each}
-    {#if table.columns.length === 0}
+    {#if displayColumns.length === 0}
       <div class="no-columns">{m.card_no_columns()}</div>
     {/if}
   </div>
@@ -602,6 +618,14 @@
     background: var(--erd-badge-ck-bg, #fef3c7);
     color: var(--erd-badge-ck-text, #a16207);
     border: 1px solid var(--erd-badge-ck-border, #fbbf24);
+  }
+
+  .col-filter-hint {
+    padding: 1px 8px;
+    font-size: 10px;
+    color: var(--erd-col-type, #64748b);
+    text-align: right;
+    opacity: 0.7;
   }
 
   .no-columns {

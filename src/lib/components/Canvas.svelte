@@ -31,8 +31,16 @@
   let touchMoved = false;
 
   // AABB helpers for marquee hit testing
+  function getFilteredColumnCount(t: Table): number {
+    const mode = canvasState.columnDisplayMode;
+    if (mode === 'all' || mode === 'names-only') return t.columns.length;
+    // pk-fk-only
+    const fkColIds = new Set(t.foreignKeys.flatMap((fk) => fk.columnIds));
+    return t.columns.filter((c) => c.primaryKey || fkColIds.has(c.id)).length;
+  }
+
   function getTableBounds(t: Table) {
-    const h = HEADER_H + (t.comment ? COMMENT_H : 0) + t.columns.length * ROW_H + BOTTOM_PAD;
+    const h = HEADER_H + (t.comment ? COMMENT_H : 0) + getFilteredColumnCount(t) * ROW_H + BOTTOM_PAD;
     return { x: t.position.x, y: t.position.y, w: TABLE_W, h };
   }
 
@@ -304,7 +312,7 @@
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const t of tables) {
-      const h = HEADER_H + t.columns.length * ROW_H;
+      const h = HEADER_H + getFilteredColumnCount(t) * ROW_H;
       minX = Math.min(minX, t.position.x);
       minY = Math.min(minY, t.position.y);
       maxX = Math.max(maxX, t.position.x + TABLE_W);
