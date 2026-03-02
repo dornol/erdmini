@@ -1,14 +1,20 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vitest/config';
+import { defineConfig, loadEnv } from 'vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import type { Plugin } from 'vite';
+import { resolve } from 'path';
+import { pathToFileURL } from 'url';
 
 function collabDevPlugin(): Plugin {
   return {
     name: 'collab-ws-dev',
     configureServer(server) {
-      if (process.env.PUBLIC_STORAGE_MODE !== 'server') return;
+      // Read .env file via Vite's loadEnv (process.env alone misses .env values)
+      const env = loadEnv(server.config.mode, process.cwd(), '');
+      const storageMode = env.PUBLIC_STORAGE_MODE || process.env.PUBLIC_STORAGE_MODE;
+
+      if (storageMode !== 'server') return;
 
       const httpServer = server.httpServer;
       if (!httpServer) return;
@@ -16,26 +22,27 @@ function collabDevPlugin(): Plugin {
       const initCollab = async () => {
         try {
           const Database = (await import('better-sqlite3')).default;
-          const dbPath = process.env.DB_PATH || 'data/erdmini.db';
+          const dbPath = env.DB_PATH || process.env.DB_PATH || 'data/erdmini.db';
           const db = new Database(dbPath, { readonly: false });
           db.pragma('journal_mode = WAL');
           db.pragma('foreign_keys = ON');
 
-          const { createCollabHandler } = await import('./collab-server.js');
+          // Use absolute path for dynamic import (Vite compiles config to temp dir)
+          const collabServerPath = pathToFileURL(resolve('collab-server.js')).href;
+          const { createCollabHandler } = await import(collabServerPath);
           const { handleUpgrade } = createCollabHandler(db);
 
           // Take over upgrade handling to prevent conflict with Vite's HMR WebSocket.
           // Save Vite's existing upgrade listeners, remove them, then add a single
           // unified handler that dispatches /collab to our handler and everything
           // else to Vite's original handlers.
-          const viteListeners = httpServer.listeners('upgrade').slice();
+          const viteListeners = httpServer.listeners('upgrade').slice() as Function[];
           httpServer.removeAllListeners('upgrade');
 
-          httpServer.on('upgrade', (request, socket, head) => {
-            // Always add error handler to prevent crash on ECONNRESET etc.
+          httpServer.on('upgrade', (request: import('http').IncomingMessage, socket: import('stream').Duplex, head: Buffer) => {
             if (!socket.listenerCount('error')) {
-              socket.on('error', (err) => {
-                console.warn('[collab] Socket error:', (err as Error).message);
+              socket.on('error', (err: Error) => {
+                // Suppress expected connection reset errors
               });
             }
 
