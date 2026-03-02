@@ -270,5 +270,13 @@
   "auth_password_changed": "パスワードが変更されました",
   "auth_password_mismatch": "新しいパスワードが一致しません",
   "auth_password_too_short": "パスワードは4文字以上必要です",
-  "auth_wrong_current_password": "現在のパスワードが正しくありません"
+  "auth_wrong_current_password": "現在のパスワードが正しくありません",
+  "toolbar_backup_all": "全体バックアップ",
+  "toolbar_restore_all": "全体復元",
+  "backup_restore_success": "バックアップが復元されました。",
+  "backup_restore_failed": "バックアップ復元に失敗しました",
+  "toolbar_file": "ファイル",
+  "toolbar_tools": "ツール",
+  "toolbar_settings": "設定",
+  "toolbar_help": "ヘルプ"
 }

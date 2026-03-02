@@ -290,5 +290,9 @@
   "auth_password_changed": "Password changed successfully",
   "auth_password_mismatch": "Passwords do not match",
   "auth_password_too_short": "Password must be at least 4 characters",
-  "auth_wrong_current_password": "Current password is incorrect"
+  "auth_wrong_current_password": "Current password is incorrect",
+  "toolbar_file": "File",
+  "toolbar_tools": "Tools",
+  "toolbar_settings": "Settings",
+  "toolbar_help": "Help"
 }

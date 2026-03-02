@@ -430,10 +430,9 @@
   }
 
   let layoutOpen = $state(false);
-  let importOpen = $state(false);
-  let exportOpen = $state(false);
-  let themeOpen = $state(false);
-  let langOpen = $state(false);
+  let fileOpen = $state(false);
+  let toolsOpen = $state(false);
+  let settingsOpen = $state(false);
   let shortcutsOpen = $state(false);
   let userMenuOpen = $state(false);
   let showChangePassword = $state(false);
@@ -495,7 +494,6 @@
   }
 
   let showShareModal = $state(false);
-  let viewModeOpen = $state(false);
   let showHistoryPanel = $state(false);
   let showDiffModal = $state(false);
 
@@ -868,150 +866,111 @@
 
     <span class="separator"></span>
 
-    <!-- Import dropdown -->
+    <!-- File dropdown (Import + Export merged) -->
     <div class="dropdown-wrap">
       <button
         class="btn-secondary"
-        onclick={() => (importOpen = !importOpen)}
-        aria-expanded={importOpen}
+        onclick={() => (fileOpen = !fileOpen)}
+        aria-expanded={fileOpen}
         aria-haspopup="menu"
       >
-        {m.toolbar_import()} ▾
+        {m.toolbar_file()} ▾
       </button>
-      {#if importOpen}
+      {#if fileOpen}
         <div
           class="dropdown-menu"
           role="menu"
           tabindex="-1"
-          onmouseleave={() => (importOpen = false)}
+          onmouseleave={() => (fileOpen = false)}
         >
-          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'import'; importOpen = false; }}>
+          <div class="dropdown-section-label">{m.toolbar_import()}</div>
+          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'import'; fileOpen = false; }}>
             DDL
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { importJson(); importOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { importJson(); fileOpen = false; }}>
             JSON
           </button>
-          <div class="dropdown-sep"></div>
-          <button class="dropdown-item" role="menuitem" onclick={() => { importBackup(); importOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { importBackup(); fileOpen = false; }}>
             {m.toolbar_restore_all()}
           </button>
-        </div>
-      {/if}
-    </div>
-
-    <!-- Export dropdown -->
-    <div class="dropdown-wrap">
-      <button
-        class="btn-secondary"
-        onclick={() => (exportOpen = !exportOpen)}
-        aria-expanded={exportOpen}
-        aria-haspopup="menu"
-      >
-        {m.toolbar_export()} ▾
-      </button>
-      {#if exportOpen}
-        <div
-          class="dropdown-menu"
-          role="menu"
-          tabindex="-1"
-          onmouseleave={() => (exportOpen = false)}
-        >
-          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'export'; exportOpen = false; }}>
+          <div class="dropdown-sep"></div>
+          <div class="dropdown-section-label">{m.toolbar_export()}</div>
+          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'export'; fileOpen = false; }}>
             DDL
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportJson(); exportOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportJson(); fileOpen = false; }}>
             JSON
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportImage(); exportOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportImage(); fileOpen = false; }}>
             {m.toolbar_image_export()} (PNG)
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportSvgFile(); exportOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportSvgFile(); fileOpen = false; }}>
             SVG
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportPdfFile(); exportOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportPdfFile(); fileOpen = false; }}>
             {m.toolbar_pdf_export()}
           </button>
           <div class="dropdown-sep"></div>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportBackup(); exportOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportBackup(); fileOpen = false; }}>
             {m.toolbar_backup_all()}
           </button>
         </div>
       {/if}
     </div>
 
-    <span class="separator"></span>
-
-    <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
-      {m.toolbar_domains()}
-    </button>
-
-    <button
-      class="btn-secondary btn-lint"
-      class:lint-active={showLintPanel}
-      onclick={() => (showLintPanel = !showLintPanel)}
-    >
-      {m.toolbar_lint()}
-      {#if lintIssueCount > 0}
-        <span class="lint-badge">{lintIssueCount}</span>
-      {/if}
-    </button>
-
-    <!-- Column display mode dropdown -->
+    <!-- Tools dropdown (Domains, Lint, View Mode, History, Diff merged) -->
     <div class="dropdown-wrap">
       <button
-        class="btn-secondary btn-view-mode"
-        class:view-active={canvasState.columnDisplayMode !== 'all'}
-        onclick={() => (viewModeOpen = !viewModeOpen)}
-        title={m.view_mode_title()}
+        class="btn-secondary btn-tools"
+        class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showDomainModal || canvasState.columnDisplayMode !== 'all'}
+        onclick={() => (toolsOpen = !toolsOpen)}
+        aria-expanded={toolsOpen}
+        aria-haspopup="menu"
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-          <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/>
-        </svg>
+        {m.toolbar_tools()}
+        {#if lintIssueCount > 0}
+          <span class="lint-badge">{lintIssueCount}</span>
+        {/if}
+        ▾
       </button>
-      {#if viewModeOpen}
-        <div class="dropdown-menu" role="menu" tabindex="-1" onmouseleave={() => (viewModeOpen = false)}>
+      {#if toolsOpen}
+        <div
+          class="dropdown-menu"
+          role="menu"
+          tabindex="-1"
+          onmouseleave={() => (toolsOpen = false)}
+        >
+          <button class="dropdown-item" role="menuitem" onclick={() => { showDomainModal = true; toolsOpen = false; }}>
+            {m.toolbar_domains()}
+          </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showLintPanel = !showLintPanel; toolsOpen = false; }}>
+            {m.toolbar_lint()}
+            {#if lintIssueCount > 0}
+              <span class="lint-badge">{lintIssueCount}</span>
+            {/if}
+          </button>
+          <div class="dropdown-sep"></div>
+          <div class="dropdown-section-label">{m.view_mode_title()}</div>
           {#each VIEW_MODES as vm}
             <button
               class="dropdown-item"
               class:active={canvasState.columnDisplayMode === vm.mode}
               role="menuitem"
-              onclick={() => { canvasState.columnDisplayMode = vm.mode; viewModeOpen = false; }}
+              onclick={() => { canvasState.columnDisplayMode = vm.mode; toolsOpen = false; }}
             >
               {vm.label()}
             </button>
           {/each}
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showHistoryPanel = !showHistoryPanel; toolsOpen = false; }}>
+            {m.history_title()}
+          </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showDiffModal = !showDiffModal; toolsOpen = false; }}>
+            {m.diff_title()}
+          </button>
         </div>
       {/if}
     </div>
-
-    <!-- History panel toggle -->
-    <button
-      class="btn-secondary btn-history"
-      class:history-active={showHistoryPanel}
-      onclick={() => (showHistoryPanel = !showHistoryPanel)}
-      title={m.history_title()}
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
-        <polyline points="8,4 8,8 11,10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
-
-    <!-- Schema diff button -->
-    <button
-      class="btn-secondary"
-      onclick={() => (showDiffModal = !showDiffModal)}
-      title={m.diff_title()}
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <rect x="1" y="1" width="5" height="14" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
-        <rect x="10" y="1" width="5" height="14" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
-        <line x1="7" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="7" y1="8" x2="9" y2="8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="7" y1="11" x2="9" y2="11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-      </svg>
-    </button>
 
     <span class="separator"></span>
 
@@ -1073,34 +1032,122 @@
       {/if}
     </button>
 
-    <!-- Theme dropdown -->
+    <!-- Settings dropdown (Theme + Language merged) -->
     <div class="dropdown-wrap">
       <button
-        class="btn-secondary"
-        onclick={() => (themeOpen = !themeOpen)}
-        aria-expanded={themeOpen}
+        class="btn-icon"
+        onclick={() => (settingsOpen = !settingsOpen)}
+        aria-expanded={settingsOpen}
         aria-haspopup="menu"
+        title={m.toolbar_settings()}
       >
-        {m.toolbar_theme()} ▾
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
       </button>
-      {#if themeOpen}
+      {#if settingsOpen}
         <div
-          class="dropdown-menu dropdown-right"
+          class="dropdown-menu dropdown-right settings-dropdown"
           role="menu"
           tabindex="-1"
-          onmouseleave={() => (themeOpen = false)}
+          onmouseleave={() => (settingsOpen = false)}
         >
+          <div class="dropdown-section-label">{m.toolbar_theme()}</div>
           {#each THEMES as t}
             <button
               class="dropdown-item theme-item"
               class:active={themeStore.current === t.id}
               role="menuitem"
-              onclick={() => { themeStore.set(t.id); themeOpen = false; }}
+              onclick={() => { themeStore.set(t.id); }}
             >
               <span class="theme-dot" style="background:{t.dot}"></span>
               {t.label()}
             </button>
           {/each}
+          <div class="dropdown-sep"></div>
+          <div class="dropdown-section-label">{languageStore.current.toUpperCase()}</div>
+          {#each Object.entries(LOCALE_LABELS) as [locale, label]}
+            <button
+              class="dropdown-item"
+              class:active={languageStore.current === locale}
+              role="menuitem"
+              onclick={() => { languageStore.set(locale as Locale); }}
+            >
+              {label}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Help (shortcuts + links) -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-help"
+        onclick={() => (shortcutsOpen = !shortcutsOpen)}
+        aria-expanded={shortcutsOpen}
+        aria-haspopup="dialog"
+        title={m.shortcuts_title()}
+      >
+        ?
+      </button>
+      {#if shortcutsOpen}
+        <div
+          class="shortcuts-panel"
+          role="dialog"
+          tabindex="-1"
+          onmouseleave={() => (shortcutsOpen = false)}
+        >
+          <div class="shortcuts-header">{m.shortcuts_title()}</div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_general()}</div>
+            <div class="shortcut-row"><kbd>{mod}+Z</kbd><span>{m.shortcuts_undo()}</span></div>
+            <div class="shortcut-row"><kbd>{mod}+Shift+Z</kbd><span>{m.shortcuts_redo()}</span></div>
+            <div class="shortcut-row"><kbd>Delete / Backspace</kbd><span>{m.shortcuts_delete()}</span></div>
+            <div class="shortcut-row"><kbd>Esc</kbd><span>{m.shortcuts_deselect()}</span></div>
+            <div class="shortcut-row"><kbd>{mod}+K</kbd><span>{m.cmd_palette_open()}</span></div>
+            <div class="shortcut-row"><kbd>{mod}+A</kbd><span>{m.shortcuts_select_all()}</span></div>
+            <div class="shortcut-row"><kbd>{mod}+D</kbd><span>{m.shortcuts_duplicate()}</span></div>
+          </div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_canvas()}</div>
+            <div class="shortcut-row"><kbd>Scroll</kbd><span>{m.shortcuts_zoom()}</span></div>
+            <div class="shortcut-row"><kbd>+/-</kbd><span>{m.shortcuts_keyboard_zoom()}</span></div>
+            <div class="shortcut-row"><kbd>Drag</kbd><span>{m.shortcuts_pan()}</span></div>
+            <div class="shortcut-row"><kbd>Space+Drag</kbd><span>{m.shortcuts_space_drag()}</span></div>
+            <div class="shortcut-row"><kbd>Arrow</kbd><span>{m.shortcuts_arrow_pan()}</span></div>
+          </div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_selection()}</div>
+            <div class="shortcut-row"><kbd>{mod}+Click</kbd><span>{m.shortcuts_multi_select()}</span></div>
+          </div>
+
+          <div class="shortcuts-group">
+            <div class="shortcuts-group-title">{m.shortcuts_editing()}</div>
+            <div class="shortcut-row"><kbd>Double-click header</kbd><span>{m.shortcuts_rename_table()}</span></div>
+            <div class="shortcut-row"><kbd>Double-click column</kbd><span>{m.shortcuts_edit_column()}</span></div>
+          </div>
+
+          <div class="shortcuts-links">
+            <a class="shortcuts-link" href="https://github.com/dornol/erdmini/issues" target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+                <line x1="8" y1="4.5" x2="8" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                <circle cx="8" cy="11" r="0.8" fill="currentColor"/>
+              </svg>
+              {m.toolbar_bug_report()}
+            </a>
+            <a class="shortcuts-link" href="https://github.com/dornol/erdmini" target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
+              </svg>
+              GitHub
+            </a>
+          </div>
         </div>
       {/if}
     </div>
@@ -1156,119 +1203,6 @@
         {/if}
       </div>
     {/if}
-
-    <!-- Language dropdown -->
-    <div class="dropdown-wrap">
-      <button
-        class="btn-lang"
-        onclick={() => (langOpen = !langOpen)}
-        aria-expanded={langOpen}
-        aria-haspopup="menu"
-      >
-        {languageStore.current.toUpperCase()} ▾
-      </button>
-      {#if langOpen}
-        <div
-          class="dropdown-menu dropdown-right"
-          role="menu"
-          tabindex="-1"
-          onmouseleave={() => (langOpen = false)}
-        >
-          {#each Object.entries(LOCALE_LABELS) as [locale, label]}
-            <button
-              class="dropdown-item"
-              class:active={languageStore.current === locale}
-              role="menuitem"
-              onclick={() => { languageStore.set(locale as Locale); langOpen = false; }}
-            >
-              {label}
-            </button>
-          {/each}
-        </div>
-      {/if}
-    </div>
-
-    <!-- Shortcuts help -->
-    <div class="dropdown-wrap">
-      <button
-        class="btn-help"
-        onclick={() => (shortcutsOpen = !shortcutsOpen)}
-        aria-expanded={shortcutsOpen}
-        aria-haspopup="dialog"
-        title={m.shortcuts_title()}
-      >
-        ?
-      </button>
-      {#if shortcutsOpen}
-        <div
-          class="shortcuts-panel"
-          role="dialog"
-          tabindex="-1"
-          onmouseleave={() => (shortcutsOpen = false)}
-        >
-          <div class="shortcuts-header">{m.shortcuts_title()}</div>
-
-          <div class="shortcuts-group">
-            <div class="shortcuts-group-title">{m.shortcuts_general()}</div>
-            <div class="shortcut-row"><kbd>{mod}+Z</kbd><span>{m.shortcuts_undo()}</span></div>
-            <div class="shortcut-row"><kbd>{mod}+Shift+Z</kbd><span>{m.shortcuts_redo()}</span></div>
-            <div class="shortcut-row"><kbd>Delete / Backspace</kbd><span>{m.shortcuts_delete()}</span></div>
-            <div class="shortcut-row"><kbd>Esc</kbd><span>{m.shortcuts_deselect()}</span></div>
-            <div class="shortcut-row"><kbd>{mod}+K</kbd><span>{m.cmd_palette_open()}</span></div>
-            <div class="shortcut-row"><kbd>{mod}+A</kbd><span>{m.shortcuts_select_all()}</span></div>
-            <div class="shortcut-row"><kbd>{mod}+D</kbd><span>{m.shortcuts_duplicate()}</span></div>
-          </div>
-
-          <div class="shortcuts-group">
-            <div class="shortcuts-group-title">{m.shortcuts_canvas()}</div>
-            <div class="shortcut-row"><kbd>Scroll</kbd><span>{m.shortcuts_zoom()}</span></div>
-            <div class="shortcut-row"><kbd>+/-</kbd><span>{m.shortcuts_keyboard_zoom()}</span></div>
-            <div class="shortcut-row"><kbd>Drag</kbd><span>{m.shortcuts_pan()}</span></div>
-            <div class="shortcut-row"><kbd>Space+Drag</kbd><span>{m.shortcuts_space_drag()}</span></div>
-            <div class="shortcut-row"><kbd>Arrow</kbd><span>{m.shortcuts_arrow_pan()}</span></div>
-          </div>
-
-          <div class="shortcuts-group">
-            <div class="shortcuts-group-title">{m.shortcuts_selection()}</div>
-            <div class="shortcut-row"><kbd>{mod}+Click</kbd><span>{m.shortcuts_multi_select()}</span></div>
-          </div>
-
-          <div class="shortcuts-group">
-            <div class="shortcuts-group-title">{m.shortcuts_editing()}</div>
-            <div class="shortcut-row"><kbd>Double-click header</kbd><span>{m.shortcuts_rename_table()}</span></div>
-            <div class="shortcut-row"><kbd>Double-click column</kbd><span>{m.shortcuts_edit_column()}</span></div>
-          </div>
-        </div>
-      {/if}
-    </div>
-
-    <!-- Bug report -->
-    <a
-      class="btn-icon"
-      href="https://github.com/dornol/erdmini/issues"
-      target="_blank"
-      rel="noopener noreferrer"
-      title={m.toolbar_bug_report()}
-    >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
-        <line x1="8" y1="4.5" x2="8" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <circle cx="8" cy="11" r="0.8" fill="currentColor"/>
-      </svg>
-    </a>
-
-    <!-- GitHub -->
-    <a
-      class="btn-icon"
-      href="https://github.com/dornol/erdmini"
-      target="_blank"
-      rel="noopener noreferrer"
-      title="GitHub"
-    >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
-      </svg>
-    </a>
   </div>
 </header>
 
@@ -1522,30 +1456,10 @@
     color: #fca5a5 !important;
   }
 
-  .btn-lang {
-    background: #334155;
-    color: #60a5fa;
-    border: 1px solid #475569;
-    border-radius: 6px;
-    padding: 5px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    flex-shrink: 0;
-    letter-spacing: 0.05em;
-  }
-
   .btn-share.copied {
     background: #166534;
     color: #4ade80;
     border-color: #22c55e;
-  }
-
-  .btn-lang:hover {
-    background: #3b82f6;
-    color: white;
-    border-color: #3b82f6;
   }
 
   .separator {
@@ -1934,13 +1848,13 @@
     color: #fcd34d;
   }
 
-  .btn-lint {
+  .btn-tools {
     display: inline-flex;
     align-items: center;
     gap: 5px;
   }
 
-  .btn-lint.lint-active {
+  .btn-tools.tools-active {
     background: #1e3a5f;
     border-color: #3b82f6;
     color: #93c5fd;
@@ -1961,11 +1875,31 @@
     line-height: 1;
   }
 
-  .btn-view-mode.view-active,
-  .btn-history.history-active {
-    background: #1e3a5f;
-    border-color: #3b82f6;
-    color: #93c5fd;
+  .settings-dropdown {
+    min-width: 150px;
+  }
+
+  .shortcuts-links {
+    border-top: 1px solid #334155;
+    margin-top: 4px;
+    padding: 8px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .shortcuts-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 12px;
+    transition: color 0.15s;
+  }
+
+  .shortcuts-link:hover {
+    color: #e2e8f0;
   }
 
   /* Change password modal */

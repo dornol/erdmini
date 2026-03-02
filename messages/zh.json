@@ -270,5 +270,13 @@
   "auth_password_changed": "密码修改成功",
   "auth_password_mismatch": "两次输入的密码不一致",
   "auth_password_too_short": "密码至少需要4个字符",
-  "auth_wrong_current_password": "当前密码不正确"
+  "auth_wrong_current_password": "当前密码不正确",
+  "toolbar_backup_all": "全部备份",
+  "toolbar_restore_all": "全部恢复",
+  "backup_restore_success": "备份恢复成功。",
+  "backup_restore_failed": "备份恢复失败",
+  "toolbar_file": "文件",
+  "toolbar_tools": "工具",
+  "toolbar_settings": "设置",
+  "toolbar_help": "帮助"
 }
