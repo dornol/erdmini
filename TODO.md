@@ -65,9 +65,10 @@
 - ~~같은 테이블 쌍 FK 자동 분산, 중간 테이블 장애물 회피, 자기참조 루프~~
 - ~~`fk-routing.ts` 모듈로 분리, RelationLines + svg-export 공유~~
 
-### 16. 사이드바 대규모 스키마 가상 스크롤
-- 1000+ 테이블 시 DOM 렌더링 최적화
-- 난이도: 중
+### ~~16. 사이드바 대규모 스키마 가상 스크롤~~ ✅
+- ~~1000+ 테이블 시 DOM 렌더링 최적화~~
+- ~~VirtualList.svelte 제네릭 컴포넌트 (binary search, overscan, scrollToIndex)~~
+- ~~Sidebar: VirtualRow 평탄화 + 가상 스크롤 적용~~
 
 ### 17. 접근성 (A11y) 개선
 - ARIA 레이블, 키보드 네비게이션, 스크린 리더 지원

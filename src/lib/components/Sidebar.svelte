@@ -8,6 +8,24 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import { getEffectiveColor } from '$lib/utils/table-color';
   import { now } from '$lib/utils/common';
+  import VirtualList from './VirtualList.svelte';
+
+  // Height constants for virtual rows
+  const ROW_H_TABLE = 34;
+  const ROW_H_TABLE_COMMENT = 48; // 34 + 14 for comment line
+  const ROW_H_GROUP_HEADER = 28;
+  const ROW_H_COLOR_PICKER = 34;
+  const ROW_H_NEW_GROUP = 36;
+  const ROW_H_EMPTY = 60;
+
+  type GroupData = { name: string; label: string; tables: import('$lib/types/erd').Table[] };
+
+  type VirtualRow =
+    | { type: 'table'; table: import('$lib/types/erd').Table; grouped: boolean; groupName: string; height: number; key: string }
+    | { type: 'group-header'; group: GroupData; height: number; key: string }
+    | { type: 'color-picker'; groupName: string; height: number; key: string }
+    | { type: 'new-group'; height: number; key: string }
+    | { type: 'empty-hint'; searching: boolean; height: number; key: string };
 
   let {
     collapsed = false,
@@ -398,6 +416,98 @@
     e.stopPropagation();
     erdStore.duplicateTable(tableId);
   }
+
+  let virtualListRef = $state<ReturnType<typeof VirtualList> | null>(null);
+
+  const virtualRows = $derived.by((): VirtualRow[] => {
+    const rows: VirtualRow[] = [];
+    if (viewMode === 'flat') {
+      const tables = filteredTables();
+      if (tables.length === 0) {
+        rows.push({ type: 'empty-hint', searching: !!searchQuery.trim(), height: ROW_H_EMPTY, key: '__empty__' });
+      } else {
+        for (const table of tables) {
+          rows.push({
+            type: 'table',
+            table,
+            grouped: false,
+            groupName: '',
+            height: table.comment ? ROW_H_TABLE_COMMENT : ROW_H_TABLE,
+            key: table.id,
+          });
+        }
+      }
+    } else {
+      // Group view
+      if (!permissionStore.isReadOnly) {
+        rows.push({ type: 'new-group', height: ROW_H_NEW_GROUP, key: '__new_group__' });
+      }
+      const groups = groupedTables;
+      if (groups.length === 0) {
+        rows.push({ type: 'empty-hint', searching: !!searchQuery.trim(), height: ROW_H_EMPTY, key: '__empty__' });
+      } else {
+        for (const group of groups) {
+          rows.push({
+            type: 'group-header',
+            group,
+            height: ROW_H_GROUP_HEADER,
+            key: `__gh_${group.name}`,
+          });
+          if (groupColorPicker === group.name) {
+            rows.push({
+              type: 'color-picker',
+              groupName: group.name,
+              height: ROW_H_COLOR_PICKER,
+              key: `__cp_${group.name}`,
+            });
+          }
+          if (!collapsedGroups.has(group.name)) {
+            for (const table of group.tables) {
+              rows.push({
+                type: 'table',
+                table,
+                grouped: true,
+                groupName: group.name,
+                height: table.comment ? ROW_H_TABLE_COMMENT : ROW_H_TABLE,
+                key: table.id,
+              });
+            }
+          }
+        }
+      }
+    }
+    return rows;
+  });
+
+  // Scroll reset on search/view/sort change
+  $effect(() => {
+    void searchQuery; void viewMode; void sortBy;
+    virtualListRef?.scrollToTop();
+  });
+
+  // Canvas selection → sidebar scroll
+  let internalClick = false;
+  $effect(() => {
+    const id = erdStore.selectedTableId;
+    if (!id || internalClick) { internalClick = false; return; }
+    const idx = virtualRows.findIndex(r => r.type === 'table' && r.table.id === id);
+    if (idx >= 0) virtualListRef?.scrollToIndex(idx, 'smooth');
+  });
+
+  // Auto-scroll during drag near edges
+  function onDragOverContainer(e: DragEvent) {
+    if (!dragTableId) return;
+    const container = virtualListRef?.getContainer();
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const edge = 40;
+    if (y < edge) {
+      container.scrollTop -= 8;
+    } else if (y > rect.height - edge) {
+      container.scrollTop += 8;
+    }
+  }
 </script>
 
 {#if collapsed}
@@ -499,64 +609,125 @@
       </button>
     </div>
 
-    <ul class="table-list">
-      {#if viewMode === 'flat'}
-        {#each filteredTables() as table (table.id)}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <VirtualList bind:this={virtualListRef} items={virtualRows} class="table-list" ondragover={onDragOverContainer}>
+      {#snippet children(row: VirtualRow, _index: number)}
+        {#if row.type === 'table'}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <li
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
             class="table-item"
-            class:active={erdStore.selectedTableIds.has(table.id)}
-            onclick={(e) => onItemClick(e, table.id)}
-            onmouseenter={(e) => showRichTooltip(e, table)}
+            class:table-item-grouped={row.grouped}
+            class:active={erdStore.selectedTableIds.has(row.table.id)}
+            class:dragging={dragTableId === row.table.id}
+            draggable={row.grouped && !permissionStore.isReadOnly}
+            onclick={(e) => { internalClick = true; onItemClick(e, row.table.id); }}
+            ondragstart={(e) => onTableDragStart(e, row.table.id)}
+            ondragend={onTableDragEnd}
+            ondragover={row.grouped ? (e) => onGroupDragOver(e, row.groupName) : undefined}
+            ondrop={row.grouped ? (e) => onGroupDrop(e, row.groupName) : undefined}
+            onmouseenter={(e) => showRichTooltip(e, row.table)}
             onmouseleave={hideRichTooltip}
           >
             <div class="item-info">
               <div class="item-name-row">
-                {#if getColorDot(table)}
-                  <span class="item-color-dot" style="background:{getColorDot(table)}"></span>
+                {#if getColorDot(row.table)}
+                  <span class="item-color-dot" style="background:{getColorDot(row.table)}"></span>
                 {/if}
-                <span class="item-name">{table.name}</span>
-                {#if table.locked}<span class="item-lock" title="Locked">🔒</span>{/if}
-                <span class="badge badge-cols">{table.columns.length}</span>
+                <span class="item-name">{row.table.name}</span>
+                {#if row.table.locked}<span class="item-lock" title="Locked">🔒</span>{/if}
+                <span class="badge badge-cols">{row.table.columns.length}</span>
               </div>
-              {#if table.comment}
-                <span class="item-comment">{table.comment}</span>
+              {#if row.table.comment}
+                <span class="item-comment">{row.table.comment}</span>
               {/if}
             </div>
             <div class="item-actions">
               <button
                 class="item-action-btn"
                 title={m.action_duplicate()}
-                onclick={(e) => duplicateTable(e, table.id)}
+                onclick={(e) => duplicateTable(e, row.table.id)}
               >⧉</button>
               <button
                 class="item-action-btn item-delete"
                 title={m.action_delete()}
                 onclick={async (e) => {
                   e.stopPropagation();
-                  const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
+                  const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: row.table.name }), {
                     title: m.dialog_delete_table_title(),
                     confirmText: m.action_delete(),
                     variant: 'danger',
                   });
-                  if (ok) erdStore.deleteTable(table.id);
+                  if (ok) erdStore.deleteTable(row.table.id);
                 }}
               >✕</button>
             </div>
-          </li>
-        {:else}
-          <li class="empty-hint">
-            {#if searchQuery.trim()}
-              {m.sidebar_no_results()}
-            {:else}
-              {m.sidebar_empty()}
+          </div>
+        {:else if row.type === 'group-header'}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="group-header"
+            class:drag-target={dragOverGroup === row.group.name}
+            onclick={() => toggleGroup(row.group.name)}
+            ondragover={(e) => onGroupDragOver(e, row.group.name)}
+            ondragleave={onGroupDragLeave}
+            ondrop={(e) => onGroupDrop(e, row.group.name)}
+          >
+            <span class="group-chevron" class:collapsed={collapsedGroups.has(row.group.name)}>▸</span>
+            {#if row.group.name}
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span
+                class="group-color-dot"
+                style="background:{getGroupColorDot(row.group.name) ?? 'transparent'};{getGroupColorDot(row.group.name) ? '' : 'border:1.5px dashed #94a3b8'}"
+                onclick={(e) => toggleGroupColorPicker(e, row.group.name)}
+                title={m.table_color()}
+              ></span>
             {/if}
-          </li>
-        {/each}
-      {:else}
-        {#if !permissionStore.isReadOnly}
-          <li class="new-group-row">
+            {#if editingGroup === row.group.name && row.group.name}
+              <input
+                class="group-edit-input"
+                type="text"
+                bind:value={editingGroupName}
+                onkeydown={(e) => { if (e.key === 'Enter') confirmEditGroup(); if (e.key === 'Escape') cancelEditGroup(); }}
+                onblur={confirmEditGroup}
+                onclick={(e) => e.stopPropagation()}
+                autofocus
+              />
+            {:else}
+              <span class="group-label">{row.group.label}</span>
+              {#if row.group.name && !permissionStore.isReadOnly}
+                <button
+                  class="group-edit-btn"
+                  title={m.sidebar_rename_group()}
+                  onclick={(e) => startEditGroup(e, row.group.name)}
+                >✎</button>
+              {/if}
+            {/if}
+            <span class="group-count">{row.group.tables.length}</span>
+          </div>
+        {:else if row.type === 'color-picker'}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="group-color-picker" onclick={(e) => e.stopPropagation()}>
+            <button
+              class="gc-dot gc-dot-none"
+              class:active={!erdStore.schema.groupColors?.[row.groupName]}
+              title={m.table_color_none()}
+              onclick={() => setGroupColor(row.groupName, undefined)}
+            >{#if !erdStore.schema.groupColors?.[row.groupName]}✓{/if}</button>
+            {#each TABLE_COLOR_IDS as colorId}
+              <button
+                class="gc-dot"
+                class:active={erdStore.schema.groupColors?.[row.groupName] === colorId}
+                style="background:{TABLE_COLORS[colorId].dot}"
+                title={colorId}
+                onclick={() => setGroupColor(row.groupName, colorId)}
+              >{#if erdStore.schema.groupColors?.[row.groupName] === colorId}✓{/if}</button>
+            {/each}
+          </div>
+        {:else if row.type === 'new-group'}
+          <div class="new-group-row">
             {#if newGroupInput}
               <input
                 class="new-group-input"
@@ -570,136 +741,18 @@
             {:else}
               <button class="new-group-btn" onclick={startNewGroup}>+ {m.sidebar_new_group()}</button>
             {/if}
-          </li>
-        {/if}
-        {#each groupedTables as group (group.name)}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <li
-            class="group-header"
-            class:drag-target={dragOverGroup === group.name}
-            onclick={() => toggleGroup(group.name)}
-            ondragover={(e) => onGroupDragOver(e, group.name)}
-            ondragleave={onGroupDragLeave}
-            ondrop={(e) => onGroupDrop(e, group.name)}
-          >
-            <span class="group-chevron" class:collapsed={collapsedGroups.has(group.name)}>▸</span>
-            {#if group.name}
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <span
-                class="group-color-dot"
-                style="background:{getGroupColorDot(group.name) ?? 'transparent'};{getGroupColorDot(group.name) ? '' : 'border:1.5px dashed #94a3b8'}"
-                onclick={(e) => toggleGroupColorPicker(e, group.name)}
-                title={m.table_color()}
-              ></span>
-            {/if}
-            {#if editingGroup === group.name && group.name}
-              <input
-                class="group-edit-input"
-                type="text"
-                bind:value={editingGroupName}
-                onkeydown={(e) => { if (e.key === 'Enter') confirmEditGroup(); if (e.key === 'Escape') cancelEditGroup(); }}
-                onblur={confirmEditGroup}
-                onclick={(e) => e.stopPropagation()}
-                autofocus
-              />
-            {:else}
-              <span class="group-label">{group.label}</span>
-              {#if group.name && !permissionStore.isReadOnly}
-                <button
-                  class="group-edit-btn"
-                  title={m.sidebar_rename_group()}
-                  onclick={(e) => startEditGroup(e, group.name)}
-                >✎</button>
-              {/if}
-            {/if}
-            <span class="group-count">{group.tables.length}</span>
-          </li>
-          {#if groupColorPicker === group.name}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <li class="group-color-picker" onclick={(e) => e.stopPropagation()}>
-              <button
-                class="gc-dot gc-dot-none"
-                class:active={!erdStore.schema.groupColors?.[group.name]}
-                title={m.table_color_none()}
-                onclick={() => setGroupColor(group.name, undefined)}
-              >{#if !erdStore.schema.groupColors?.[group.name]}✓{/if}</button>
-              {#each TABLE_COLOR_IDS as colorId}
-                <button
-                  class="gc-dot"
-                  class:active={erdStore.schema.groupColors?.[group.name] === colorId}
-                  style="background:{TABLE_COLORS[colorId].dot}"
-                  title={colorId}
-                  onclick={() => setGroupColor(group.name, colorId)}
-                >{#if erdStore.schema.groupColors?.[group.name] === colorId}✓{/if}</button>
-              {/each}
-            </li>
-          {/if}
-          {#if !collapsedGroups.has(group.name)}
-            {#each group.tables as table (table.id)}
-              <!-- svelte-ignore a11y_click_events_have_key_events -->
-              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-              <li
-                class="table-item table-item-grouped"
-                class:active={erdStore.selectedTableIds.has(table.id)}
-                class:dragging={dragTableId === table.id}
-                draggable={!permissionStore.isReadOnly}
-                onclick={(e) => onItemClick(e, table.id)}
-                ondragstart={(e) => onTableDragStart(e, table.id)}
-                ondragend={onTableDragEnd}
-                ondragover={(e) => onGroupDragOver(e, group.name)}
-                ondrop={(e) => onGroupDrop(e, group.name)}
-                onmouseenter={(e) => showRichTooltip(e, table)}
-                onmouseleave={hideRichTooltip}
-              >
-                <div class="item-info">
-                  <div class="item-name-row">
-                    {#if getColorDot(table)}
-                      <span class="item-color-dot" style="background:{getColorDot(table)}"></span>
-                    {/if}
-                    <span class="item-name">{table.name}</span>
-                    {#if table.locked}<span class="item-lock" title="Locked">🔒</span>{/if}
-                    <span class="badge badge-cols">{table.columns.length}</span>
-                  </div>
-                  {#if table.comment}
-                    <span class="item-comment">{table.comment}</span>
-                  {/if}
-                </div>
-                <div class="item-actions">
-                  <button
-                    class="item-action-btn"
-                    title={m.action_duplicate()}
-                    onclick={(e) => duplicateTable(e, table.id)}
-                  >⧉</button>
-                  <button
-                    class="item-action-btn item-delete"
-                    title={m.action_delete()}
-                    onclick={async (e) => {
-                      e.stopPropagation();
-                      const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
-                        title: m.dialog_delete_table_title(),
-                        confirmText: m.action_delete(),
-                        variant: 'danger',
-                      });
-                      if (ok) erdStore.deleteTable(table.id);
-                    }}
-                  >✕</button>
-                </div>
-              </li>
-            {/each}
-          {/if}
-        {:else}
-          <li class="empty-hint">
-            {#if searchQuery.trim()}
+          </div>
+        {:else if row.type === 'empty-hint'}
+          <div class="empty-hint">
+            {#if row.searching}
               {m.sidebar_no_results()}
             {:else}
               {m.sidebar_empty()}
             {/if}
-          </li>
-        {/each}
-      {/if}
-    </ul>
+          </div>
+        {/if}
+      {/snippet}
+    </VirtualList>
     {#if richTooltip}
       {@const tt = richTooltip}
       {@const meta = getTableMeta(tt.table)}
@@ -1025,30 +1078,28 @@
     font-size: 11px;
   }
 
-  .table-list {
-    list-style: none;
+  :global(.table-list) {
     padding: 0;
     margin: 0;
-    overflow-y: auto;
     flex: 1;
     scrollbar-width: thin;
     scrollbar-color: var(--app-scrollbar, #cbd5e1) transparent;
   }
 
-  .table-list::-webkit-scrollbar {
+  :global(.table-list::-webkit-scrollbar) {
     width: 6px;
   }
 
-  .table-list::-webkit-scrollbar-track {
+  :global(.table-list::-webkit-scrollbar-track) {
     background: transparent;
   }
 
-  .table-list::-webkit-scrollbar-thumb {
+  :global(.table-list::-webkit-scrollbar-thumb) {
     background: var(--app-scrollbar, #cbd5e1);
     border-radius: 3px;
   }
 
-  .table-list::-webkit-scrollbar-thumb:hover {
+  :global(.table-list::-webkit-scrollbar-thumb:hover) {
     background: var(--app-text-faint, #94a3b8);
   }
 
