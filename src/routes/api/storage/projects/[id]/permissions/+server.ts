@@ -53,8 +53,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
   if (!userId || !permission) {
     return json({ error: 'userId and permission required' }, { status: 400 });
   }
-  if (!['editor', 'viewer'].includes(permission)) {
-    return json({ error: 'Permission must be editor or viewer' }, { status: 400 });
+  if (!['owner', 'editor', 'viewer'].includes(permission)) {
+    return json({ error: 'Permission must be owner, editor, or viewer' }, { status: 400 });
   }
 
   // Check target user exists
@@ -74,8 +74,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
   ).get(params.id, userId) as Pick<ProjectPermissionRow, 'id' | 'permission'> | undefined;
 
   if (existing) {
-    if (existing.permission === 'owner') {
-      return json({ error: 'Cannot change owner permission' }, { status: 400 });
+    if (existing.permission === 'owner' && permission !== 'owner') {
+      // Prevent demoting the last owner
+      const ownerCount = (db.prepare(
+        "SELECT COUNT(*) as cnt FROM project_permissions WHERE project_id = ? AND permission = 'owner'"
+      ).get(params.id) as { cnt: number }).cnt;
+      if (ownerCount <= 1) {
+        return json({ error: 'Cannot demote last owner' }, { status: 400 });
+      }
     }
     // Update existing permission
     db.prepare('UPDATE project_permissions SET permission = ? WHERE id = ?').run(permission, existing.id);
@@ -103,12 +109,17 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
     return json({ error: 'userId required' }, { status: 400 });
   }
 
-  // Cannot remove owner
+  // Cannot remove last owner
   const perm = db.prepare(
     'SELECT permission FROM project_permissions WHERE project_id = ? AND user_id = ?'
   ).get(params.id, userId) as Pick<ProjectPermissionRow, 'permission'> | undefined;
   if (perm?.permission === 'owner') {
-    return json({ error: 'Cannot remove owner' }, { status: 400 });
+    const ownerCount = (db.prepare(
+      "SELECT COUNT(*) as cnt FROM project_permissions WHERE project_id = ? AND permission = 'owner'"
+    ).get(params.id) as { cnt: number }).cnt;
+    if (ownerCount <= 1) {
+      return json({ error: 'Cannot remove last owner' }, { status: 400 });
+    }
   }
 
   db.prepare(

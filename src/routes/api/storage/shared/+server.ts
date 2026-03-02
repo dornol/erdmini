@@ -11,10 +11,11 @@ export const GET: RequestHandler = ({ locals }) => {
   // Find projects shared with this user (not owned by them)
   const rows = db.prepare(`
     SELECT pp.project_id, pp.permission, pp.created_at,
-           u.display_name as owner_name
+           (SELECT u2.display_name FROM project_permissions op
+            JOIN users u2 ON u2.id = op.user_id
+            WHERE op.project_id = pp.project_id AND op.permission = 'owner'
+            ORDER BY op.created_at LIMIT 1) as owner_name
     FROM project_permissions pp
-    JOIN project_permissions owner_pp ON owner_pp.project_id = pp.project_id AND owner_pp.permission = 'owner'
-    JOIN users u ON u.id = owner_pp.user_id
     WHERE pp.user_id = ? AND pp.permission != 'owner'
     ORDER BY pp.created_at DESC
   `).all(locals.user.id) as (Pick<ProjectPermissionRow, 'project_id' | 'permission' | 'created_at'> & { owner_name: string })[];

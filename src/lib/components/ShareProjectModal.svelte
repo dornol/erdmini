@@ -16,8 +16,9 @@
   let searchQuery = $state('');
   let searchResults = $state<{ id: string; username: string | null; displayName: string; email: string | null }[]>([]);
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
-  let newPermission = $state<'editor' | 'viewer'>('viewer');
+  let newPermission = $state<ProjectPermissionLevel>('viewer');
 
+  let ownerCount = $derived(permissions.filter(p => p.permission === 'owner').length);
   let error = $state('');
   let success = $state('');
 
@@ -118,8 +119,9 @@
             oninput={handleSearch}
           />
           <select class="perm-select" bind:value={newPermission}>
-            <option value="viewer">Viewer</option>
+            <option value="owner">Owner</option>
             <option value="editor">Editor</option>
+            <option value="viewer">Viewer</option>
           </select>
         </div>
         {#if searchResults.length > 0}
@@ -149,7 +151,7 @@
               <span class="perm-name">{perm.displayName}</span>
               <span class="perm-detail">{perm.username ?? ''} {perm.email ? `· ${perm.email}` : ''}</span>
             </div>
-            {#if perm.permission === 'owner'}
+            {#if perm.permission === 'owner' && ownerCount <= 1}
               <span class="perm-badge owner">Owner</span>
             {:else if isOwner}
               <select
@@ -157,8 +159,9 @@
                 value={perm.permission}
                 onchange={(e) => updatePermission(perm.userId, (e.target as HTMLSelectElement).value as ProjectPermissionLevel)}
               >
-                <option value="viewer">Viewer</option>
+                <option value="owner">Owner</option>
                 <option value="editor">Editor</option>
+                <option value="viewer">Viewer</option>
               </select>
               <button class="remove-btn" onclick={() => removeShare(perm.userId)} title="Remove">✕</button>
             {:else}
