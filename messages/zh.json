@@ -217,5 +217,17 @@
   "bulk_edit_group": "更改分组",
   "bulk_edit_comment": "更改备注",
   "sidebar_bulk_lock": "锁定({count})",
-  "sidebar_bulk_unlock": "解锁({count})"
+  "sidebar_bulk_unlock": "解锁({count})",
+  "lint_title": "架构验证",
+  "lint_no_issues": "未发现问题",
+  "lint_no_pk": "表缺少主键",
+  "lint_fk_target_missing": "FK引用的表/列不存在",
+  "lint_set_null_not_nullable": "NOT NULL列使用SET NULL",
+  "lint_duplicate_column": "重复列名",
+  "lint_duplicate_table": "重复表名",
+  "lint_duplicate_index": "重复索引",
+  "lint_circular_fk": "循环FK引用",
+  "lint_empty_table": "空表（无列）",
+  "toolbar_lint": "验证",
+  "toolbar_pdf_export": "PDF"
 }

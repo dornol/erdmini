@@ -8,10 +8,13 @@
   import type { LayoutType, LayoutOptions } from '$lib/utils/auto-layout';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { exportSvg } from '$lib/utils/svg-export';
+  import { exportPdf } from '$lib/utils/pdf-export';
+  import { lintSchema } from '$lib/utils/schema-lint';
   import { sanitizeFilename, now } from '$lib/utils/common';
   import { TABLE_W } from '$lib/constants/layout';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
+  import LintPanel from './LintPanel.svelte';
   import ShareProjectModal from './ShareProjectModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import { authStore } from '$lib/store/auth.svelte';
@@ -42,6 +45,9 @@
 
   let modalMode = $state<'import' | 'export' | null>(null);
   let showDomainModal = $state(false);
+  let showLintPanel = $state(false);
+
+  let lintIssueCount = $derived(lintSchema(erdStore.schema).length);
 
   // Project dropdown state
   let projectOpen = $state(false);
@@ -340,6 +346,16 @@
     a.download = `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'diagram')}.svg`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  // PDF export
+  async function exportPdfFile() {
+    if (erdStore.schema.tables.length === 0) return;
+    await exportPdf(
+      erdStore.schema,
+      themeStore.current,
+      `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'diagram')}`,
+    );
   }
 
   // Share
@@ -830,6 +846,9 @@
           <button class="dropdown-item" role="menuitem" onclick={() => { exportSvgFile(); exportOpen = false; }}>
             SVG
           </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportPdfFile(); exportOpen = false; }}>
+            {m.toolbar_pdf_export()}
+          </button>
           <div class="dropdown-sep"></div>
           <button class="dropdown-item" role="menuitem" onclick={() => { exportBackup(); exportOpen = false; }}>
             {m.toolbar_backup_all()}
@@ -842,6 +861,17 @@
 
     <button class="btn-secondary" onclick={() => (showDomainModal = true)}>
       {m.toolbar_domains()}
+    </button>
+
+    <button
+      class="btn-secondary btn-lint"
+      class:lint-active={showLintPanel}
+      onclick={() => (showLintPanel = !showLintPanel)}
+    >
+      {m.toolbar_lint()}
+      {#if lintIssueCount > 0}
+        <span class="lint-badge">{lintIssueCount}</span>
+      {/if}
     </button>
 
     <span class="separator"></span>
@@ -1108,6 +1138,10 @@
     isOwner={permissionStore.current === 'owner'}
     onclose={() => (showShareModal = false)}
   />
+{/if}
+
+{#if showLintPanel}
+  <LintPanel onclose={() => (showLintPanel = false)} />
 {/if}
 
 <style>
@@ -1704,6 +1738,33 @@
   .btn-dark-toggle:hover {
     background: #334155;
     color: #fcd34d;
+  }
+
+  .btn-lint {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .btn-lint.lint-active {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #93c5fd;
+  }
+
+  .lint-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #f59e0b;
+    color: #1e293b;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
   }
 
 </style>

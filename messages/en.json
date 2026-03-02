@@ -237,5 +237,17 @@
   "bulk_edit_group": "Change group",
   "bulk_edit_comment": "Change comment",
   "sidebar_bulk_lock": "Lock ({count})",
-  "sidebar_bulk_unlock": "Unlock ({count})"
+  "sidebar_bulk_unlock": "Unlock ({count})",
+  "lint_title": "Schema Validation",
+  "lint_no_issues": "No issues found",
+  "lint_no_pk": "Table has no primary key",
+  "lint_fk_target_missing": "FK references missing table/column",
+  "lint_set_null_not_nullable": "SET NULL on NOT NULL column",
+  "lint_duplicate_column": "Duplicate column name",
+  "lint_duplicate_table": "Duplicate table name",
+  "lint_duplicate_index": "Duplicate index",
+  "lint_circular_fk": "Circular FK reference",
+  "lint_empty_table": "Empty table (no columns)",
+  "toolbar_lint": "Validate",
+  "toolbar_pdf_export": "PDF"
 }

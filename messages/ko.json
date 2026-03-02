@@ -237,5 +237,17 @@
   "bulk_edit_group": "그룹 변경",
   "bulk_edit_comment": "코멘트 변경",
   "sidebar_bulk_lock": "잠금({count})",
-  "sidebar_bulk_unlock": "잠금해제({count})"
+  "sidebar_bulk_unlock": "잠금해제({count})",
+  "lint_title": "스키마 검증",
+  "lint_no_issues": "문제가 없습니다",
+  "lint_no_pk": "PK가 없는 테이블",
+  "lint_fk_target_missing": "FK 참조 대상이 존재하지 않음",
+  "lint_set_null_not_nullable": "NOT NULL 컬럼에 SET NULL 사용",
+  "lint_duplicate_column": "중복 컬럼명",
+  "lint_duplicate_table": "중복 테이블명",
+  "lint_duplicate_index": "중복 인덱스",
+  "lint_circular_fk": "순환 FK 참조",
+  "lint_empty_table": "빈 테이블 (컬럼 없음)",
+  "toolbar_lint": "검증",
+  "toolbar_pdf_export": "PDF"
 }

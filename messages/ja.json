@@ -217,5 +217,17 @@
   "bulk_edit_group": "グループを変更",
   "bulk_edit_comment": "コメントを変更",
   "sidebar_bulk_lock": "ロック({count})",
-  "sidebar_bulk_unlock": "ロック解除({count})"
+  "sidebar_bulk_unlock": "ロック解除({count})",
+  "lint_title": "スキーマ検証",
+  "lint_no_issues": "問題はありません",
+  "lint_no_pk": "主キーのないテーブル",
+  "lint_fk_target_missing": "FK参照先が存在しません",
+  "lint_set_null_not_nullable": "NOT NULLカラムにSET NULL使用",
+  "lint_duplicate_column": "重複カラム名",
+  "lint_duplicate_table": "重複テーブル名",
+  "lint_duplicate_index": "重複インデックス",
+  "lint_circular_fk": "循環FK参照",
+  "lint_empty_table": "空テーブル（カラムなし）",
+  "toolbar_lint": "検証",
+  "toolbar_pdf_export": "PDF"
 }
