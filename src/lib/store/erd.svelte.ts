@@ -519,6 +519,7 @@ class ERDStore {
       columns: src.columns.map((c) => ({ ...c, id: generateId() })),
       foreignKeys: [],
       uniqueKeys: [],
+      indexes: [],
       position: { x: src.position.x + 30, y: src.position.y + 30 },
       comment: src.comment,
       color: src.color,
