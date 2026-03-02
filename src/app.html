@@ -1,12 +1,43 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL." />
+		<meta name="theme-color" content="#1e293b" />
 		<title>erdmini</title>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
+		<noscript>
+			<div style="max-width:800px;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;color:#e2e8f0">
+				<h1>erdmini — Free Browser-Based ERD Tool</h1>
+				<p>erdmini is a free, open-source Entity-Relationship Diagram (ERD) tool that runs entirely in your browser. Design database schemas visually with drag-and-drop, then export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL.</p>
+				<h2>Key Features</h2>
+				<ul>
+					<li>Visual drag-and-drop ERD canvas with zoom, pan, and minimap</li>
+					<li>Table, column, foreign key, and index management</li>
+					<li>DDL export/import for MySQL, PostgreSQL, MariaDB, MSSQL</li>
+					<li>Diagram export to Mermaid, PlantUML, SVG, PNG</li>
+					<li>Auto-layout: grid, hierarchical, and radial algorithms</li>
+					<li>Undo/redo, schema linting, and schema diff</li>
+					<li>URL-based schema sharing — no server needed</li>
+					<li>4 themes with dark mode, 4 languages (EN/KO/JA/ZH)</li>
+				</ul>
+				<h2>Frequently Asked Questions</h2>
+				<dl>
+					<dt>Is erdmini free?</dt>
+					<dd>Yes. erdmini is completely free and open-source. No sign-up or payment required.</dd>
+					<dt>What databases does erdmini support?</dt>
+					<dd>erdmini exports DDL for MySQL, PostgreSQL, MariaDB, and Microsoft SQL Server (MSSQL).</dd>
+					<dt>Does erdmini require a server?</dt>
+					<dd>No. erdmini runs entirely in the browser using local storage. An optional server mode with SQLite, Docker, and real-time collaboration is also available.</dd>
+					<dt>Can I share my ERD with others?</dt>
+					<dd>Yes. You can share schemas via URL (compressed, no server needed) or export as DDL, Mermaid, PlantUML, SVG, or PNG.</dd>
+				</dl>
+				<p>Please enable JavaScript to use erdmini.</p>
+			</div>
+		</noscript>
 	</body>
 </html>

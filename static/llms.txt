@@ -1,0 +1,45 @@
+# erdmini
+
+> Free, open-source, browser-based Entity-Relationship Diagram (ERD) tool. No sign-up required. Design database schemas visually and export DDL for multiple dialects.
+
+erdmini runs entirely in the browser with zero server dependency (local storage mode). It also supports a self-hosted server mode with SQLite, Docker, authentication, and real-time collaboration.
+
+## Core Features
+
+- Visual drag-and-drop ERD canvas with zoom, pan, minimap, and grid snap
+- Table and column CRUD with primary keys, foreign keys, indexes, and domains
+- DDL export and import for MySQL, PostgreSQL, MariaDB, and MSSQL
+- Diagram export to Mermaid, PlantUML, SVG, and PNG
+- Auto-layout: grid, hierarchical, and radial (force-directed) algorithms
+- Undo/redo history with visual timeline
+- Schema linting (8 rules) and schema diff comparison
+- Multi-select, rubber band selection, group drag, align and distribute
+- URL-based schema sharing (compressed, no server needed)
+- Internationalization: English, Korean, Japanese, Chinese
+- 4 themes: modern, classic, blueprint, minimal (each with dark mode)
+
+## Server Mode Features
+
+- Self-hosted with Docker and SQLite storage
+- Local authentication + multi-OIDC provider support
+- User roles and project permissions (owner/editor/viewer)
+- Real-time collaboration via WebSocket with presence cursors
+
+## Supported DDL Dialects
+
+- MySQL
+- PostgreSQL
+- MariaDB
+- Microsoft SQL Server (MSSQL)
+
+## Links
+
+- [Live App](https://dornol.github.io/erdmini): Use erdmini directly in your browser
+- [GitHub Repository](https://github.com/dornol/erdmini): Source code and documentation
+
+## Technical Stack
+
+- SvelteKit + Svelte 5 (runes) + Tailwind CSS v4
+- TypeScript, Vite, pnpm
+- Canvas: HTML div + CSS transform (not SVG-based)
+- State management: Svelte 5 $state in reactive module classes

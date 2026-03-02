@@ -4,6 +4,10 @@
 	import { languageStore } from '$lib/store/language.svelte';
 	import { authStore } from '$lib/store/auth.svelte';
 
+	const CANONICAL_URL = 'https://dornol.github.io/erdmini';
+	const SITE_TITLE = 'erdmini — Free Browser-Based ERD Tool';
+	const SITE_DESCRIPTION = 'Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL.';
+
 	let { data, children } = $props();
 
 	// Hydrate auth store from server data
@@ -15,9 +19,98 @@
 			authStore.setProviders(data.oidcProviders);
 		}
 	});
+
+	// Sync document lang attribute with language store
+	$effect(() => {
+		document.documentElement.lang = languageStore.current;
+	});
+
+	const jsonLd = JSON.stringify({
+		'@context': 'https://schema.org',
+		'@type': 'SoftwareApplication',
+		name: 'erdmini',
+		url: CANONICAL_URL,
+		description: SITE_DESCRIPTION,
+		applicationCategory: 'DeveloperApplication',
+		applicationSubCategory: 'Database Design Tool',
+		operatingSystem: 'Any',
+		availableOnDevice: 'Web Browser',
+		permissions: 'none',
+		isAccessibleForFree: true,
+		offers: {
+			'@type': 'Offer',
+			price: '0',
+			priceCurrency: 'USD'
+		},
+		featureList: 'Visual ERD Designer, DDL Export/Import, MySQL, PostgreSQL, MariaDB, MSSQL, Auto-Layout, Schema Linting, Real-time Collaboration, URL Sharing',
+		screenshot: `${CANONICAL_URL}/og-image.png`,
+		inLanguage: ['en', 'ko', 'ja', 'zh']
+	});
+
+	const faqJsonLd = JSON.stringify({
+		'@context': 'https://schema.org',
+		'@type': 'FAQPage',
+		mainEntity: [
+			{
+				'@type': 'Question',
+				name: 'Is erdmini free?',
+				acceptedAnswer: {
+					'@type': 'Answer',
+					text: 'Yes. erdmini is completely free and open-source. No sign-up or payment required.'
+				}
+			},
+			{
+				'@type': 'Question',
+				name: 'What databases does erdmini support?',
+				acceptedAnswer: {
+					'@type': 'Answer',
+					text: 'erdmini exports DDL for MySQL, PostgreSQL, MariaDB, and Microsoft SQL Server (MSSQL).'
+				}
+			},
+			{
+				'@type': 'Question',
+				name: 'Does erdmini require a server?',
+				acceptedAnswer: {
+					'@type': 'Answer',
+					text: 'No. erdmini runs entirely in the browser using local storage. An optional server mode with SQLite, Docker, and real-time collaboration is also available.'
+				}
+			},
+			{
+				'@type': 'Question',
+				name: 'Can I share my ERD with others?',
+				acceptedAnswer: {
+					'@type': 'Answer',
+					text: 'Yes. You can share schemas via URL (compressed, no server needed) or export as DDL, Mermaid, PlantUML, SVG, or PNG.'
+				}
+			}
+		]
+	});
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head>
+	<link rel="icon" href={favicon} />
+	<link rel="canonical" href={CANONICAL_URL} />
+
+	<!-- Open Graph -->
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content={SITE_TITLE} />
+	<meta property="og:description" content={SITE_DESCRIPTION} />
+	<meta property="og:url" content={CANONICAL_URL} />
+	<meta property="og:image" content="{CANONICAL_URL}/og-image.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:site_name" content="erdmini" />
+
+	<!-- Twitter Card -->
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={SITE_TITLE} />
+	<meta name="twitter:description" content={SITE_DESCRIPTION} />
+	<meta name="twitter:image" content="{CANONICAL_URL}/og-image.png" />
+
+	<!-- Structured Data -->
+	{@html `<script type="application/ld+json">${jsonLd}</script>`}
+	{@html `<script type="application/ld+json">${faqJsonLd}</script>`}
+</svelte:head>
 {#key languageStore.current}
   {@render children()}
 {/key}
