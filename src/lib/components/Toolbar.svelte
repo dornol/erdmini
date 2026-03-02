@@ -1091,14 +1091,14 @@
 <style>
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
-    padding: 0 16px;
-    height: 48px;
+    gap: 6px 12px;
+    padding: 6px 16px;
+    min-height: 48px;
     background: #1e293b;
     border-bottom: 1px solid #334155;
     flex-shrink: 0;
-    overflow: hidden;
   }
 
   .logo {
@@ -1122,22 +1122,15 @@
 
   .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     align-items: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;          /* Firefox */
-    -ms-overflow-style: none;       /* IE/Edge */
-    min-width: 0;
-  }
-
-  .actions::-webkit-scrollbar {
-    display: none;                  /* Chrome/Safari */
   }
 
   .toolbar-right {
     margin-left: auto;
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     align-items: center;
     flex-shrink: 0;
