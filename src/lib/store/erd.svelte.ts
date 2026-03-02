@@ -77,8 +77,8 @@ class ERDStore {
   undo() {
     if (this._undoStack.length === 0) return;
     const current = JSON.stringify($state.snapshot(this.schema));
-    this._redoStack.push({ snap: current, label: '', time: Date.now() });
     const prev = this._undoStack.pop()!;
+    this._redoStack.push({ snap: current, label: prev.label, detail: prev.detail, time: Date.now() });
     this._isUndoRedoing = true;
     this.schema = JSON.parse(prev.snap);
     this._undoVersion++;
@@ -88,8 +88,8 @@ class ERDStore {
   redo() {
     if (this._redoStack.length === 0) return;
     const current = JSON.stringify($state.snapshot(this.schema));
-    this._undoStack.push({ snap: current, label: '', time: Date.now() });
     const next = this._redoStack.pop()!;
+    this._undoStack.push({ snap: current, label: next.label, detail: next.detail, time: Date.now() });
     this._isUndoRedoing = true;
     this.schema = JSON.parse(next.snap);
     this._undoVersion++;
@@ -103,9 +103,9 @@ class ERDStore {
     for (let i = this._undoStack.length - 1; i > index; i--) {
       this._redoStack.push(this._undoStack[i]);
     }
-    this._redoStack.push({ snap: current, label: '', time: Date.now() });
-    // Restore the target snapshot
     const target = this._undoStack[index];
+    this._redoStack.push({ snap: current, label: target.label, detail: target.detail, time: Date.now() });
+    // Restore the target snapshot
     this._undoStack = this._undoStack.slice(0, index);
     this._isUndoRedoing = true;
     this.schema = JSON.parse(target.snap);
