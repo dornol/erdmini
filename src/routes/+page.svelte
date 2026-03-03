@@ -511,32 +511,43 @@
     return () => window.removeEventListener('resize', handleResize);
   });
 
-  // Load shared schema from URL hash (#s=...) as a new project
-  // Must wait for projectStore to be initialized before importing
-  $effect(() => {
-    if (!projectStore.initialized) return;
+  // Load shared schema from URL hash (#s=...)
+  async function loadShareFromHash() {
     const shareData = getShareDataFromUrl();
     if (!shareData) return;
     // Clear hash immediately to prevent re-triggering
     history.replaceState(null, '', window.location.pathname);
-
-    (async () => {
-      try {
-        const { schema, projectName } = await shareStringToSchema(shareData);
-        let name: string;
-        if (projectName) {
-          name = `shared: ${projectName}`;
-        } else {
-          const tableSummary = schema.tables.slice(0, 3).map((t) => t.name).join(', ');
-          name = tableSummary
-            ? `Shared: ${tableSummary}${schema.tables.length > 3 ? '…' : ''}`
-            : 'Shared Project';
-        }
-        await projectStore.createProjectWithSchema(name, schema);
-      } catch {
-        // Invalid share data — silently ignore
+    try {
+      const { schema, projectName } = await shareStringToSchema(shareData);
+      let name: string;
+      if (projectName) {
+        name = `shared: ${projectName}`;
+      } else {
+        const tableSummary = schema.tables.slice(0, 3).map((t) => t.name).join(', ');
+        name = tableSummary
+          ? `Shared: ${tableSummary}${schema.tables.length > 3 ? '…' : ''}`
+          : 'Shared Project';
       }
-    })();
+      await projectStore.createProjectWithSchema(name, schema);
+    } catch {
+      dialogStore.alert(m.share_load_failed());
+    }
+  }
+
+  // Load shared schema from URL hash on init
+  // Must wait for projectStore to be initialized before importing
+  $effect(() => {
+    if (!projectStore.initialized) return;
+    loadShareFromHash();
+  });
+
+  // Also handle hashchange (user navigates to share URL while app is already open)
+  onMount(() => {
+    const handleHashChange = () => {
+      if (projectStore.initialized) loadShareFromHash();
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   });
 </script>
 

@@ -30,8 +30,12 @@ export async function schemaToShareString(schema: ERDSchema, projectName: string
     offset += chunk.length;
   }
 
-  // base64url encoding
-  let b64 = btoa(String.fromCharCode(...merged));
+  // base64url encoding (loop instead of spread to avoid stack overflow for large arrays)
+  let binary = '';
+  for (let i = 0; i < merged.length; i++) {
+    binary += String.fromCharCode(merged[i]);
+  }
+  let b64 = btoa(binary);
   b64 = b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return b64;
 }

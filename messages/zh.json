@@ -176,6 +176,7 @@
   "share_link": "分享链接",
   "share_copied": "链接已复制到剪贴板！",
   "share_copy_failed": "复制到剪贴板失败。",
+  "share_load_failed": "加载共享架构失败。链接可能无效或已损坏。",
   "share_load_confirm": "是否加载共享架构？当前工作将被替换。",
   "share_load_title": "共享架构",
   "ddl_import_partial": "共 {total} 个表中成功导入 {success} 个，{failed} 个失败。",
