@@ -37,11 +37,14 @@ export interface ColumnDomain {
   name: string;
   type: ColumnType;
   length?: number;
+  scale?: number;
   nullable: boolean;
   primaryKey: boolean;
   unique: boolean;
   autoIncrement: boolean;
   defaultValue?: string;
+  check?: string;
+  enumValues?: string[];
   comment?: string;
   group?: string;
 }
@@ -107,7 +110,7 @@ export interface ERDSchema {
 }
 
 export const DOMAIN_FIELDS: (keyof Column)[] = [
-  'type', 'length', 'scale', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue',
+  'type', 'length', 'scale', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue', 'check', 'enumValues',
 ];
 
 export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql';

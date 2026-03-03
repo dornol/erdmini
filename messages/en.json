@@ -262,6 +262,7 @@
   "ddl_options_comments": "Include Comments",
   "ddl_options_indexes": "Include Indexes",
   "ddl_options_fk": "Include FK",
+  "ddl_options_domains": "Include Domains",
   "ddl_options_uppercase": "Uppercase Keywords",
   "diff_title": "Schema Diff",
   "diff_source": "Compare Source",

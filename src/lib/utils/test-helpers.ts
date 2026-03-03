@@ -1,4 +1,4 @@
-import type { Column, ColumnType, ERDSchema, ForeignKey, Memo, Table } from '$lib/types/erd';
+import type { Column, ColumnDomain, ColumnType, ERDSchema, ForeignKey, Memo, Table } from '$lib/types/erd';
 
 let _idCounter = 0;
 
@@ -44,7 +44,7 @@ export function makeMemo(overrides: Partial<Memo> = {}): Memo {
   };
 }
 
-export function makeSchema(tables: Table[], domains: [] = []): ERDSchema {
+export function makeSchema(tables: Table[], domains: ColumnDomain[] = []): ERDSchema {
   return {
     version: '1.0',
     tables,

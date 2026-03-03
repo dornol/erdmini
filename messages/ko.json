@@ -262,6 +262,7 @@
   "ddl_options_comments": "코멘트 포함",
   "ddl_options_indexes": "인덱스 포함",
   "ddl_options_fk": "FK 포함",
+  "ddl_options_domains": "도메인 포함",
   "ddl_options_uppercase": "키워드 대문자",
   "diff_title": "스키마 비교",
   "diff_source": "비교 대상",

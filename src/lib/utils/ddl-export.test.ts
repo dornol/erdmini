@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { exportDDL } from './ddl-export';
+import type { ColumnDomain } from '$lib/types/erd';
 import { makeColumn, makeTable, makeSchema, resetIdCounter } from './test-helpers';
 
 beforeEach(() => resetIdCounter());
@@ -551,5 +552,66 @@ describe('exportDDL — DDL Export Options', () => {
 
     const ddlMssql = exportDDL(usersOrdersSchema(), 'mssql');
     expect(ddlMssql).toContain('[users]');
+  });
+});
+
+describe('exportDDL — Domain comments', () => {
+  function makeDomain(overrides: Partial<ColumnDomain> & { id: string; name: string }): ColumnDomain {
+    return {
+      type: 'VARCHAR',
+      nullable: true,
+      primaryKey: false,
+      unique: false,
+      autoIncrement: false,
+      ...overrides,
+    };
+  }
+
+  it('appends domain comment for column with domainId', () => {
+    const domain = makeDomain({ id: 'd1', name: 'email_type' });
+    const col = makeColumn({ name: 'email', type: 'VARCHAR', nullable: false, domainId: 'd1' });
+    const schema = makeSchema([makeTable({ name: 'users', columns: [col] })], [domain]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('-- domain: email_type');
+  });
+
+  it('does not append domain comment for column without domainId', () => {
+    const domain = makeDomain({ id: 'd1', name: 'email_type' });
+    const col = makeColumn({ name: 'email', type: 'VARCHAR', nullable: false });
+    const schema = makeSchema([makeTable({ name: 'users', columns: [col] })], [domain]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).not.toContain('-- domain:');
+  });
+
+  it('does not append domain comment when includeDomains is false', () => {
+    const domain = makeDomain({ id: 'd1', name: 'email_type' });
+    const col = makeColumn({ name: 'email', type: 'VARCHAR', nullable: false, domainId: 'd1' });
+    const schema = makeSchema([makeTable({ name: 'users', columns: [col] })], [domain]);
+    const ddl = exportDDL(schema, 'mysql', { includeDomains: false });
+    expect(ddl).not.toContain('-- domain:');
+  });
+
+  it('works with PostgreSQL dialect', () => {
+    const domain = makeDomain({ id: 'd1', name: 'user_id' });
+    const col = makeColumn({ name: 'id', type: 'INT', nullable: false, primaryKey: true, domainId: 'd1' });
+    const schema = makeSchema([makeTable({ name: 'users', columns: [col] })], [domain]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain('-- domain: user_id');
+  });
+
+  it('works with MSSQL dialect', () => {
+    const domain = makeDomain({ id: 'd1', name: 'status_type' });
+    const col = makeColumn({ name: 'status', type: 'VARCHAR', nullable: false, domainId: 'd1' });
+    const schema = makeSchema([makeTable({ name: 'test', columns: [col] })], [domain]);
+    const ddl = exportDDL(schema, 'mssql');
+    expect(ddl).toContain('-- domain: status_type');
+  });
+
+  it('works with MariaDB dialect', () => {
+    const domain = makeDomain({ id: 'd1', name: 'amount_type' });
+    const col = makeColumn({ name: 'amount', type: 'DECIMAL', length: 10, scale: 2, nullable: false, domainId: 'd1' });
+    const schema = makeSchema([makeTable({ name: 'orders', columns: [col] })], [domain]);
+    const ddl = exportDDL(schema, 'mariadb');
+    expect(ddl).toContain('-- domain: amount_type');
   });
 });

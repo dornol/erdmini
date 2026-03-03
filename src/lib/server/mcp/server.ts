@@ -4,12 +4,12 @@ import type Database from 'better-sqlite3';
 
 import type { ResolvedApiKey } from '$lib/server/auth/api-key';
 import { checkAccess, getSchema, saveSchema, listUserProjects } from './db-helpers';
-import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo } from './schema-ops';
+import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo, addDomain, updateDomain, deleteDomain, suggestDomains } from './schema-ops';
 import { exportDDL, type DDLExportOptions } from '$lib/utils/ddl-export';
 import { lintSchema } from '$lib/utils/schema-lint';
 import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
 import { importDDL } from '$lib/utils/ddl-import';
-import type { Dialect, ERDSchema, ReferentialAction } from '$lib/types/erd';
+import type { ColumnDomain, Dialect, ERDSchema, ReferentialAction } from '$lib/types/erd';
 import { TABLE_COLOR_IDS } from '$lib/constants/table-colors';
 import { notifyCollabSchemaChange } from '$lib/server/collab-notify';
 
@@ -179,6 +179,7 @@ export function createMcpServer(
       includeComments: z.boolean().optional().describe('Include comments in DDL'),
       includeForeignKeys: z.boolean().optional().describe('Include FK constraints'),
       includeIndexes: z.boolean().optional().describe('Include indexes'),
+      includeDomains: z.boolean().optional().describe('Include domain comments on columns'),
       upperCaseKeywords: z.boolean().optional().describe('Uppercase SQL keywords'),
     },
     async ({ projectId, dialect, ...opts }) => {
@@ -191,6 +192,7 @@ export function createMcpServer(
       if (opts.includeComments !== undefined) options.includeComments = opts.includeComments;
       if (opts.includeForeignKeys !== undefined) options.includeForeignKeys = opts.includeForeignKeys;
       if (opts.includeIndexes !== undefined) options.includeIndexes = opts.includeIndexes;
+      if (opts.includeDomains !== undefined) options.includeDomains = opts.includeDomains;
       if (opts.upperCaseKeywords !== undefined) options.upperCaseKeywords = opts.upperCaseKeywords;
 
       const ddl = exportDDL(schema, dialect as Dialect, options);
@@ -647,6 +649,196 @@ export function createMcpServer(
       const updated = deleteMemo(schema, memoId);
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Memo deleted' }] };
+    },
+  );
+
+  // ==================
+  // DOMAIN TOOLS
+  // ==================
+
+  server.tool(
+    'list_domains',
+    'List all column domains in a project with usage counts',
+    { projectId: z.string().max(256).describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      // Compute usage count per domain
+      const usageMap = new Map<string, number>();
+      for (const t of schema.tables) {
+        for (const c of t.columns) {
+          if (c.domainId) usageMap.set(c.domainId, (usageMap.get(c.domainId) ?? 0) + 1);
+        }
+      }
+      const result = (schema.domains ?? []).map(d => ({
+        ...d,
+        usageCount: usageMap.get(d.id) ?? 0,
+      }));
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'get_domain',
+    'Get full details of a domain by ID or name, including linked columns',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      domainId: z.string().max(256).optional().describe('Domain ID (provide domainId or domainName)'),
+      domainName: z.string().max(256).optional().describe('Domain name (provide domainId or domainName)'),
+    },
+    async ({ projectId, domainId, domainName }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      if (!domainId && !domainName) {
+        return { content: [{ type: 'text', text: 'Provide either domainId or domainName' }], isError: true };
+      }
+      const domain = domainId
+        ? (schema.domains ?? []).find(d => d.id === domainId)
+        : (schema.domains ?? []).find(d => d.name.toLowerCase() === domainName!.toLowerCase());
+      if (!domain) {
+        return { content: [{ type: 'text', text: `Domain not found: ${domainId || domainName}` }], isError: true };
+      }
+      // Find linked columns
+      const linkedColumns: { tableName: string; columnName: string; columnId: string }[] = [];
+      for (const t of schema.tables) {
+        for (const c of t.columns) {
+          if (c.domainId === domain.id) {
+            linkedColumns.push({ tableName: t.name, columnName: c.name, columnId: c.id });
+          }
+        }
+      }
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ ...domain, linkedColumns }, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
+    'add_domain',
+    'Add a new column domain (reusable column template)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      name: z.string().max(256).describe('Domain name'),
+      type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).describe('Column type'),
+      length: z.number().optional().describe('Column length'),
+      scale: z.number().optional().describe('Decimal scale'),
+      nullable: z.boolean().optional().describe('Allow NULL (default: false)'),
+      primaryKey: z.boolean().optional().describe('Primary key (default: false)'),
+      unique: z.boolean().optional().describe('Unique constraint (default: false)'),
+      autoIncrement: z.boolean().optional().describe('Auto increment (default: false)'),
+      defaultValue: z.string().max(1024).optional().describe('Default value expression'),
+      check: z.string().max(1024).optional().describe('CHECK constraint expression'),
+      enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
+      comment: z.string().max(4096).optional().describe('Domain comment'),
+      group: z.string().max(256).optional().describe('Domain group name'),
+    },
+    async ({ projectId, name, type, ...opts }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const domainFields: Omit<ColumnDomain, 'id'> = {
+        name,
+        type: type as any,
+        nullable: opts.nullable ?? false,
+        primaryKey: opts.primaryKey ?? false,
+        unique: opts.unique ?? false,
+        autoIncrement: opts.autoIncrement ?? false,
+        length: opts.length,
+        scale: opts.scale,
+        defaultValue: opts.defaultValue,
+        check: opts.check,
+        enumValues: opts.enumValues,
+        comment: opts.comment,
+        group: opts.group,
+      };
+      const result = addDomain(schema, domainFields);
+      saveAndNotify(projectId, result.schema);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ domainId: result.domainId, name }) }],
+      };
+    },
+  );
+
+  server.tool(
+    'update_domain',
+    'Update domain properties and propagate changes to linked columns',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      domainId: z.string().max(256).describe('Domain ID'),
+      name: z.string().max(256).optional().describe('New domain name'),
+      type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).optional().describe('New column type'),
+      length: z.number().optional().describe('New length'),
+      scale: z.number().optional().describe('New decimal scale'),
+      nullable: z.boolean().optional().describe('Allow NULL'),
+      primaryKey: z.boolean().optional().describe('Primary key'),
+      unique: z.boolean().optional().describe('Unique'),
+      autoIncrement: z.boolean().optional().describe('Auto increment'),
+      defaultValue: z.string().max(1024).optional().describe('Default value expression'),
+      check: z.string().max(1024).optional().describe('CHECK constraint expression'),
+      enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
+      comment: z.string().max(4096).optional().describe('Domain comment'),
+      group: z.string().max(256).optional().describe('Domain group name'),
+    },
+    async ({ projectId, domainId, ...patch }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      if (!(schema.domains ?? []).find(d => d.id === domainId)) {
+        return { content: [{ type: 'text', text: `Domain ${domainId} not found` }], isError: true };
+      }
+      const updated = updateDomain(schema, domainId, patch as any);
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Domain updated (changes propagated to linked columns)' }] };
+    },
+  );
+
+  server.tool(
+    'delete_domain',
+    'Delete a domain and unlink all columns that reference it',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      domainId: z.string().max(256).describe('Domain ID to delete'),
+    },
+    async ({ projectId, domainId }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      if (!(schema.domains ?? []).find(d => d.id === domainId)) {
+        return { content: [{ type: 'text', text: `Domain ${domainId} not found` }], isError: true };
+      }
+      const updated = deleteDomain(schema, domainId);
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Domain deleted (linked columns unlinked)' }] };
+    },
+  );
+
+  server.tool(
+    'suggest_domains',
+    'Analyze unlinked columns and suggest potential domain candidates based on type/name similarity',
+    { projectId: z.string().max(256).describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const suggestions = suggestDomains(schema);
+      if (suggestions.length === 0) {
+        return { content: [{ type: 'text', text: 'No domain suggestions — all columns are unique or already linked to domains.' }] };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(suggestions, null, 2) }] };
     },
   );
 

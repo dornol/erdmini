@@ -329,6 +329,10 @@
               <input type="checkbox" bind:checked={ddlOptions.includeForeignKeys} />
               {m.ddl_options_fk()}
             </label>
+            <label class="opt-check">
+              <input type="checkbox" bind:checked={ddlOptions.includeDomains} />
+              {m.ddl_options_domains()}
+            </label>
           </div>
         {/if}
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>

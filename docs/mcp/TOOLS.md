@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-22 tools available. Read tools require `viewer` permission, write tools require `editor`.
+28 tools available. Read tools require `viewer` permission, write tools require `editor`.
 
 ---
 
@@ -120,6 +120,7 @@ Export DDL SQL for a project schema.
 | `includeComments` | boolean | No | Include comments in DDL |
 | `includeForeignKeys` | boolean | No | Include FK constraints |
 | `includeIndexes` | boolean | No | Include indexes |
+| `includeDomains` | boolean | No | Include domain comments on columns |
 | `upperCaseKeywords` | boolean | No | Uppercase SQL keywords |
 
 **Returns**: DDL SQL string.
@@ -390,6 +391,117 @@ Delete a memo from the ERD canvas.
 |---|---|---|---|
 | `projectId` | string | Yes | Project ID |
 | `memoId` | string | Yes | Memo ID to delete |
+
+---
+
+## Domain Tools
+
+### list_domains
+
+List all column domains in a project with usage counts.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `projectId` | string | Yes | Project ID |
+
+**Returns**: Array of domain objects with `usageCount` (number of linked columns).
+
+---
+
+### get_domain
+
+Get full details of a domain by ID or name, including linked columns.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `projectId` | string | Yes | Project ID |
+| `domainId` | string | No | Domain ID (provide either `domainId` or `domainName`) |
+| `domainName` | string | No | Domain name (case-insensitive match) |
+
+**Returns**: Domain object with `linkedColumns` array of `{ tableName, columnName, columnId }`.
+
+---
+
+### add_domain
+
+Add a new column domain (reusable column template).
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `projectId` | string | Yes | Project ID |
+| `name` | string | Yes | Domain name |
+| `type` | enum | Yes | Column type (same options as `add_column`) |
+| `length` | number | No | Column length |
+| `scale` | number | No | Decimal scale |
+| `nullable` | boolean | No | Allow NULL (default: false) |
+| `primaryKey` | boolean | No | Primary key (default: false) |
+| `unique` | boolean | No | Unique constraint (default: false) |
+| `autoIncrement` | boolean | No | Auto increment (default: false) |
+| `defaultValue` | string | No | Default value expression |
+| `check` | string | No | CHECK constraint expression |
+| `enumValues` | string[] | No | ENUM values |
+| `comment` | string | No | Domain comment |
+| `group` | string | No | Domain group name |
+
+**Returns**: `{ domainId, name }`
+
+---
+
+### update_domain
+
+Update domain properties and propagate changes to all linked columns.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `projectId` | string | Yes | Project ID |
+| `domainId` | string | Yes | Domain ID |
+| `name` | string | No | New domain name |
+| `type` | enum | No | New column type |
+| `length` | number | No | New length |
+| `scale` | number | No | New decimal scale |
+| `nullable` | boolean | No | Allow NULL |
+| `primaryKey` | boolean | No | Primary key |
+| `unique` | boolean | No | Unique |
+| `autoIncrement` | boolean | No | Auto increment |
+| `defaultValue` | string | No | Default value expression |
+| `check` | string | No | CHECK constraint expression |
+| `enumValues` | string[] | No | ENUM values |
+| `comment` | string | No | Domain comment |
+| `group` | string | No | Domain group name |
+
+---
+
+### delete_domain
+
+Delete a domain and unlink all columns that reference it.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `projectId` | string | Yes | Project ID |
+| `domainId` | string | Yes | Domain ID to delete |
+
+---
+
+### suggest_domains
+
+Analyze unlinked columns and suggest potential domain candidates based on type/name similarity. Only suggests groups with 2+ matching columns.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `projectId` | string | Yes | Project ID |
+
+**Returns**: Array of suggestions:
+```json
+{
+  "suggestedName": "email",
+  "type": "VARCHAR",
+  "length": 255,
+  "columns": [
+    { "tableName": "users", "columnName": "email" },
+    { "tableName": "contacts", "columnName": "email" }
+  ]
+}
+```
 
 ---
 

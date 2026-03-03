@@ -242,6 +242,7 @@
   "ddl_options_comments": "包含注释",
   "ddl_options_indexes": "包含索引",
   "ddl_options_fk": "包含FK",
+  "ddl_options_domains": "包含域",
   "ddl_options_uppercase": "关键词大写",
   "diff_title": "架构对比",
   "diff_source": "比较源",

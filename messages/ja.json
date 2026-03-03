@@ -242,6 +242,7 @@
   "ddl_options_comments": "コメント含む",
   "ddl_options_indexes": "インデックス含む",
   "ddl_options_fk": "FK含む",
+  "ddl_options_domains": "ドメイン含む",
   "ddl_options_uppercase": "キーワード大文字",
   "diff_title": "スキーマ比較",
   "diff_source": "比較元",

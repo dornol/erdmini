@@ -523,11 +523,14 @@ class ERDStore {
             ...c,
             type: updated.type,
             length: updated.length,
+            scale: updated.scale,
             nullable: updated.nullable,
             primaryKey: updated.primaryKey,
             unique: updated.unique,
             autoIncrement: updated.autoIncrement,
             defaultValue: updated.defaultValue,
+            check: updated.check,
+            enumValues: updated.enumValues,
           };
         });
       }

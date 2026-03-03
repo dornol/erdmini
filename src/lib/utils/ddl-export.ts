@@ -1,4 +1,4 @@
-import type { Column, Dialect, ERDSchema, Table } from '$lib/types/erd';
+import type { Column, ColumnDomain, Dialect, ERDSchema, Table } from '$lib/types/erd';
 
 export interface DDLExportOptions {
   indent: '2spaces' | '4spaces' | 'tab';
@@ -6,6 +6,7 @@ export interface DDLExportOptions {
   includeComments: boolean;
   includeIndexes: boolean;
   includeForeignKeys: boolean;
+  includeDomains: boolean;
   upperCaseKeywords: boolean;
 }
 
@@ -21,6 +22,7 @@ export const DEFAULT_DDL_OPTIONS: DDLExportOptions = {
   includeComments: true,
   includeIndexes: true,
   includeForeignKeys: true,
+  includeDomains: true,
   upperCaseKeywords: true,
 };
 
@@ -81,7 +83,7 @@ function columnTypeSql(col: Column, dialect: Dialect, upper: boolean): string {
   return kw(col.type, upper);
 }
 
-function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions): string {
+function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[]): string {
   const ind = getIndent(opts.indent);
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
@@ -115,10 +117,18 @@ function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions): strin
     parts.push(`${kw('COMMENT', up)} '${col.comment.replace(/'/g, "''")}'`);
   }
 
+  // Domain comment
+  if (opts.includeDomains && col.domainId && domains) {
+    const domain = domains.find(d => d.id === col.domainId);
+    if (domain) {
+      parts.push(`-- domain: ${domain.name}`);
+    }
+  }
+
   return parts.join(' ');
 }
 
-function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions): string {
+function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[]): string {
   const ind = getIndent(opts.indent);
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
@@ -126,7 +136,7 @@ function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions):
   const tq = q(table.name, qs);
 
   for (const col of table.columns) {
-    lines.push(columnSql(col, dialect, opts));
+    lines.push(columnSql(col, dialect, opts, domains));
   }
 
   const pkCols = table.columns.filter((c) => c.primaryKey);
@@ -243,9 +253,11 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
   };
   const sections: string[] = [];
 
+  const domains = schema.domains ?? [];
+
   // CREATE TABLE statements
   for (const table of schema.tables) {
-    sections.push(createTableSql(table, dialect, opts));
+    sections.push(createTableSql(table, dialect, opts, domains));
   }
 
   // PostgreSQL COMMENT ON statements

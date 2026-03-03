@@ -19,11 +19,14 @@ export function exportDomainsToXlsx(domains: ColumnDomain[]) {
     Name: d.name,
     Type: d.type,
     Length: d.length ?? '',
+    Scale: d.scale ?? '',
     Nullable: boolToY(d.nullable),
     PrimaryKey: boolToY(d.primaryKey),
     Unique: boolToY(d.unique),
     AutoIncrement: boolToY(d.autoIncrement),
     Default: d.defaultValue ?? '',
+    Check: d.check ?? '',
+    EnumValues: d.enumValues?.join(', ') ?? '',
     Comment: d.comment ?? '',
   }));
 
@@ -35,9 +38,10 @@ export function exportDomainsToXlsx(domains: ColumnDomain[]) {
 
 export function exportDomainTemplate() {
   const example = [
-    { Group: 'User', Name: 'user_id', Type: 'INT', Length: '', Nullable: '', PrimaryKey: 'Y', Unique: 'Y', AutoIncrement: 'Y', Default: '', Comment: 'User PK' },
-    { Group: 'User', Name: 'username', Type: 'VARCHAR', Length: 50, Nullable: '', PrimaryKey: '', Unique: 'Y', AutoIncrement: '', Default: '', Comment: '' },
-    { Group: '', Name: 'email', Type: 'VARCHAR', Length: 255, Nullable: 'Y', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Comment: '' },
+    { Group: 'User', Name: 'user_id', Type: 'INT', Length: '', Scale: '', Nullable: '', PrimaryKey: 'Y', Unique: 'Y', AutoIncrement: 'Y', Default: '', Check: '', EnumValues: '', Comment: 'User PK' },
+    { Group: 'User', Name: 'username', Type: 'VARCHAR', Length: 50, Scale: '', Nullable: '', PrimaryKey: '', Unique: 'Y', AutoIncrement: '', Default: '', Check: '', EnumValues: '', Comment: '' },
+    { Group: '', Name: 'price', Type: 'DECIMAL', Length: 10, Scale: 2, Nullable: '', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Check: 'price >= 0', EnumValues: '', Comment: '' },
+    { Group: '', Name: 'status', Type: 'ENUM', Length: '', Scale: '', Nullable: 'Y', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Check: '', EnumValues: 'active, inactive, pending', Comment: '' },
   ];
 
   const ws = XLSX.utils.json_to_sheet(example);
@@ -63,19 +67,26 @@ export async function importDomainsFromXlsx(
     const rawType = String(row.Type ?? 'VARCHAR').trim();
     const type: ColumnType = normalizeType(rawType);
     const length = row.Length !== undefined && row.Length !== '' ? Number(row.Length) : undefined;
+    const scale = row.Scale !== undefined && row.Scale !== '' ? Number(row.Scale) : undefined;
 
     const group = row.Group ? String(row.Group).trim() : undefined;
+
+    const enumValuesRaw = row.EnumValues ? String(row.EnumValues).trim() : '';
+    const enumValues = enumValuesRaw ? enumValuesRaw.split(',').map((v: string) => v.trim()).filter(Boolean) : undefined;
 
     results.push({
       name,
       group: group || undefined,
       type,
       length: length && !isNaN(length) ? length : undefined,
+      scale: scale != null && !isNaN(scale) ? scale : undefined,
       nullable: yToBool(row.Nullable),
       primaryKey: yToBool(row.PrimaryKey),
       unique: yToBool(row.Unique),
       autoIncrement: yToBool(row.AutoIncrement),
       defaultValue: row.Default ? String(row.Default) : undefined,
+      check: row.Check ? String(row.Check).trim() : undefined,
+      enumValues,
       comment: row.Comment ? String(row.Comment) : undefined,
     });
   }

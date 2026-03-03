@@ -1,4 +1,5 @@
-import type { Column, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table } from '$lib/types/erd';
+import type { Column, ColumnDomain, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table } from '$lib/types/erd';
+import { DOMAIN_FIELDS } from '$lib/types/erd';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -325,4 +326,114 @@ export function deleteMemo(schema: ERDSchema, memoId: string): ERDSchema {
     memos: memos.filter(m => m.id !== memoId),
     updatedAt: now(),
   };
+}
+
+// ---- Domain operations ----
+
+export function addDomain(
+  schema: ERDSchema,
+  options: Omit<ColumnDomain, 'id'>,
+): { schema: ERDSchema; domainId: string } {
+  const id = generateId();
+  const domain: ColumnDomain = { id, ...options };
+  return {
+    schema: {
+      ...schema,
+      domains: [...(schema.domains ?? []), domain],
+      updatedAt: now(),
+    },
+    domainId: id,
+  };
+}
+
+export function updateDomain(
+  schema: ERDSchema,
+  domainId: string,
+  patch: Partial<Omit<ColumnDomain, 'id'>>,
+): ERDSchema {
+  const domains = (schema.domains ?? []).map(d =>
+    d.id === domainId ? { ...d, ...patch } : d
+  );
+  const updated = domains.find(d => d.id === domainId);
+  if (!updated) return schema;
+
+  // Propagate domain fields to linked columns
+  const tables = schema.tables.map(t => ({
+    ...t,
+    columns: t.columns.map(c => {
+      if (c.domainId !== domainId) return c;
+      const propagated: Partial<Column> = {};
+      for (const field of DOMAIN_FIELDS) {
+        (propagated as any)[field] = (updated as any)[field];
+      }
+      return { ...c, ...propagated };
+    }),
+  }));
+
+  return { ...schema, domains, tables, updatedAt: now() };
+}
+
+export function deleteDomain(schema: ERDSchema, domainId: string): ERDSchema {
+  return {
+    ...schema,
+    domains: (schema.domains ?? []).filter(d => d.id !== domainId),
+    tables: schema.tables.map(t => ({
+      ...t,
+      columns: t.columns.map(c =>
+        c.domainId === domainId ? { ...c, domainId: undefined } : c
+      ),
+    })),
+    updatedAt: now(),
+  };
+}
+
+export interface DomainSuggestion {
+  suggestedName: string;
+  type: ColumnType;
+  length?: number;
+  scale?: number;
+  columns: { tableName: string; columnName: string }[];
+}
+
+export function suggestDomains(schema: ERDSchema): DomainSuggestion[] {
+  const linkedDomainIds = new Set((schema.domains ?? []).map(d => d.id));
+
+  // Group unlinked columns by (type, length, scale, baseName)
+  type Key = string;
+  const groups = new Map<Key, { type: ColumnType; length?: number; scale?: number; baseName: string; columns: { tableName: string; columnName: string }[] }>();
+
+  for (const table of schema.tables) {
+    for (const col of table.columns) {
+      if (col.domainId && linkedDomainIds.has(col.domainId)) continue;
+
+      // Normalize column name to a base name (strip table-specific prefix)
+      const baseName = col.name.replace(/^(fk_|id_)/, '').toLowerCase();
+      const key = `${col.type}|${col.length ?? ''}|${col.scale ?? ''}|${baseName}`;
+
+      const existing = groups.get(key);
+      if (existing) {
+        existing.columns.push({ tableName: table.name, columnName: col.name });
+      } else {
+        groups.set(key, {
+          type: col.type,
+          length: col.length,
+          scale: col.scale,
+          baseName,
+          columns: [{ tableName: table.name, columnName: col.name }],
+        });
+      }
+    }
+  }
+
+  // Only suggest groups with 2+ columns
+  return [...groups.values()]
+    .filter(g => g.columns.length >= 2)
+    .map(g => ({
+      suggestedName: g.baseName,
+      type: g.type,
+      length: g.length,
+      scale: g.scale,
+      columns: g.columns,
+    }))
+    .sort((a, b) => b.columns.length - a.columns.length);
 }
