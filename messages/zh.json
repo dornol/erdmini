@@ -265,6 +265,8 @@
   "search_hint_has": "具有属性的表 (pk, fk, index, comment, domain, enum...)",
   "search_hint_no": "缺少属性的表",
   "search_hint_color": "按表颜色搜索",
+  "nav_admin": "管理设置",
+  "nav_sign_out": "退出登录",
   "auth_error_auto_registration": "自动注册已禁用，请联系管理员。",
   "auth_error_failed": "认证失败。",
   "auth_change_password": "修改密码",

@@ -856,7 +856,12 @@
       </div>
     {/if}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="resize-handle" onmousedown={onResizeStart}></div>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="resize-handle" onmousedown={onResizeStart}>
+      <div class="resize-grip">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
   </aside>
 {/if}
 
@@ -878,24 +883,41 @@
   .resize-handle {
     position: absolute;
     top: 0;
-    right: -4px;
-    width: 8px;
+    right: -5px;
+    width: 10px;
     height: 100%;
     cursor: col-resize;
     z-index: 10;
   }
 
-  .resize-handle::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 2px;
-    width: 4px;
-    height: 100%;
+  .resize-handle:hover,
+  .resize-handle:active {
+    background: rgba(147, 197, 253, 0.3);
   }
 
-  .resize-handle:hover::after {
-    background: #93c5fd;
+  .resize-grip {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    opacity: 0.4;
+    transition: opacity 0.15s;
+  }
+
+  .resize-handle:hover .resize-grip,
+  .resize-handle:active .resize-grip {
+    opacity: 1;
+  }
+
+  .resize-grip span {
+    display: block;
+    width: 4px;
+    height: 1px;
+    background: #94a3b8;
+    border-radius: 1px;
   }
 
   .sidebar-header {

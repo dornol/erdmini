@@ -109,9 +109,19 @@
     return HEADER_H + (t.comment ? COMMENT_H : 0) + t.columns.length * ROW_H + BOTTOM_PAD;
   }
 
+  const ALIGN_GAP = 20;
+
   function alignTables(dir: 'left' | 'right' | 'top' | 'bottom') {
     const tables = getSelectedTables();
     if (tables.length < 2) return;
+
+    // Sort by perpendicular axis to preserve relative order
+    const isHorizontal = dir === 'left' || dir === 'right';
+    const sorted = [...tables].sort((a, b) =>
+      isHorizontal ? a.position.y - b.position.y : a.position.x - b.position.x
+    );
+
+    // Calculate alignment target
     let target: number;
     switch (dir) {
       case 'left': target = Math.min(...tables.map((t) => t.position.x)); break;
@@ -119,13 +129,22 @@
       case 'top': target = Math.min(...tables.map((t) => t.position.y)); break;
       case 'bottom': target = Math.max(...tables.map((t) => t.position.y + tableHeight(t))); break;
     }
-    for (const t of tables) {
+
+    // Align and distribute along perpendicular axis to prevent overlap
+    let cursor = isHorizontal
+      ? Math.min(...sorted.map((t) => t.position.y))
+      : Math.min(...sorted.map((t) => t.position.x));
+
+    for (const t of sorted) {
+      let x: number, y: number;
       switch (dir) {
-        case 'left': erdStore.moveTable(t.id, target, t.position.y); break;
-        case 'right': erdStore.moveTable(t.id, target - canvasState.getTableW(t.id), t.position.y); break;
-        case 'top': erdStore.moveTable(t.id, t.position.x, target); break;
-        case 'bottom': erdStore.moveTable(t.id, t.position.x, target - tableHeight(t)); break;
+        case 'left': x = target; y = cursor; break;
+        case 'right': x = target - canvasState.getTableW(t.id); y = cursor; break;
+        case 'top': x = cursor; y = target; break;
+        case 'bottom': x = cursor; y = target - tableHeight(t); break;
       }
+      erdStore.moveTable(t.id, x, y);
+      cursor += (isHorizontal ? tableHeight(t) : canvasState.getTableW(t.id)) + ALIGN_GAP;
     }
     erdStore.schema.updatedAt = now();
   }

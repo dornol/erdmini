@@ -167,7 +167,7 @@
     }
   }
 
-  function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } {
+  function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } | null {
     const pt = prev.tables;
     const ct = cur.tables;
     const prevIds = new Set(pt.map((t) => t.id));
@@ -260,6 +260,10 @@
     const pm = prev.memos ?? [];
     const cm = cur.memos ?? [];
     if (cm.length > pm.length) {
+      // Skip snapshot for empty memo creation (will be captured on first edit)
+      const prevIds = new Set(pm.map((mm) => mm.id));
+      const newMemo = cm.find((mm) => !prevIds.has(mm.id));
+      if (newMemo && !newMemo.content) return null;
       return { label: 'history_add_memo', detail: '' };
     }
     if (cm.length < pm.length) {
@@ -356,8 +360,10 @@
       } else {
         const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
         const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;
-        const { label, detail } = deriveLabel(prevSchema, curSchema);
-        erdStore.pushSnapshotRaw(prevSchemaSnap, label, detail);
+        const result = deriveLabel(prevSchema, curSchema);
+        if (result) {
+          erdStore.pushSnapshotRaw(prevSchemaSnap, result.label, result.detail);
+        }
       }
       prevUpdatedAt = cur;
     }
