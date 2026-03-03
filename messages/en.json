@@ -285,6 +285,8 @@
   "search_hint_has": "Tables with attribute (pk, fk, index, comment, domain, enum...)",
   "search_hint_no": "Tables without attribute",
   "search_hint_color": "Search by table color",
+  "auth_error_auto_registration": "Auto-registration is disabled. Please contact an administrator.",
+  "auth_error_failed": "Authentication failed.",
   "auth_change_password": "Change Password",
   "auth_current_password": "Current Password",
   "auth_new_password": "New Password",

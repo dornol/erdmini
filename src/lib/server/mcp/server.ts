@@ -33,7 +33,7 @@ export function createMcpServer(
 
   function saveAndNotify(projectId: string, schema: ERDSchema): void {
     saveSchema(db, projectId, schema);
-    notifyCollabSchemaChange(projectId, schema);
+    notifyCollabSchemaChange(projectId, schema, 'mcp');
   }
 
   // ==================

@@ -529,9 +529,19 @@
 {:else}
   <aside class="sidebar" class:resizing style="width:{sidebarWidth}px">
     <div class="sidebar-header">
-      <span>{m.sidebar_title()}</span>
-      <div class="header-right">
-        {#if erdStore.selectedTableIds.size >= 2}
+      <div class="header-top-row">
+        <span>{m.sidebar_title()}</span>
+        <div class="header-right">
+          <span class="count">{erdStore.schema.tables.length}</span>
+          <button class="collapse-btn" onclick={ontoggle} title={m.sidebar_collapse()}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      {#if erdStore.selectedTableIds.size >= 2}
+        <div class="header-bulk-actions">
           {#if !permissionStore.isReadOnly}
             <button class="bulk-edit-btn" onclick={() => onbulkedit?.()}>
               {m.bulk_edit_title()}({erdStore.selectedTableIds.size})
@@ -543,14 +553,8 @@
           <button class="bulk-delete-btn" onclick={bulkDelete}>
             {m.sidebar_bulk_delete({ count: erdStore.selectedTableIds.size })}
           </button>
-        {/if}
-        <span class="count">{erdStore.schema.tables.length}</span>
-        <button class="collapse-btn" onclick={ontoggle} title={m.sidebar_collapse()}>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
+        </div>
+      {/if}
     </div>
 
     <div class="search-bar">
@@ -874,21 +878,29 @@
   .resize-handle {
     position: absolute;
     top: 0;
-    right: 0;
-    width: 4px;
+    right: -4px;
+    width: 8px;
     height: 100%;
     cursor: col-resize;
     z-index: 10;
   }
 
-  .resize-handle:hover {
+  .resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 2px;
+    width: 4px;
+    height: 100%;
+  }
+
+  .resize-handle:hover::after {
     background: #93c5fd;
   }
 
   .sidebar-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     padding: 10px 14px;
     font-size: 12px;
     font-weight: 600;
@@ -899,10 +911,23 @@
     gap: 6px;
   }
 
+  .header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
   .header-right {
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+
+  .header-bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
   }
 
   .collapse-btn {

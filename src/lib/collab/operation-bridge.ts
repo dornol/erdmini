@@ -241,6 +241,9 @@ export function handleServerMessage(msg: ServerMessage) {
     case 'sync':
       applyFullSync(msg.schema);
       break;
+    case 'mcp-sync':
+      applyMcpSync(msg.schema);
+      break;
     case 'error':
       if (msg.message === '__disconnected__') {
         collabStore.setConnected(false);
@@ -258,6 +261,12 @@ function applyFullSync(schema: ERDSchema) {
   } finally {
     erdStore._isRemoteOp = false;
   }
+}
+
+function applyMcpSync(schema: ERDSchema) {
+  // MCP changes are applied WITHOUT _isRemoteOp so the $effect in +page.svelte
+  // creates a history entry, making MCP changes visible in the undo/history panel.
+  erdStore.loadSchema(schema);
 }
 
 // ── Presence throttle ──

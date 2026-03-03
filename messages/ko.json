@@ -285,6 +285,8 @@
   "search_hint_has": "속성이 있는 테이블 (pk, fk, index, comment, domain, enum...)",
   "search_hint_no": "속성이 없는 테이블",
   "search_hint_color": "테이블 컬러로 검색",
+  "auth_error_auto_registration": "자동 가입이 비활성화되어 있습니다. 관리자에게 문의하세요.",
+  "auth_error_failed": "인증에 실패했습니다.",
   "auth_change_password": "비밀번호 변경",
   "auth_current_password": "현재 비밀번호",
   "auth_new_password": "새 비밀번호",

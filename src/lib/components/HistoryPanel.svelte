@@ -24,6 +24,9 @@
     'history_delete_uq': () => m.history_delete_uq(),
     'history_add_idx': () => m.history_add_idx(),
     'history_delete_idx': () => m.history_delete_idx(),
+    'history_add_memo': () => m.history_add_memo(),
+    'history_delete_memo': () => m.history_delete_memo(),
+    'history_edit_memo': () => m.history_edit_memo(),
   };
 
   function labelText(label: string): string {

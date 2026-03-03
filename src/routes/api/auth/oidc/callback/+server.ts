@@ -10,12 +10,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const error = url.searchParams.get('error');
 
   if (error) {
-    const desc = url.searchParams.get('error_description') || error;
-    return new Response(`OIDC Error: ${desc}`, { status: 400 });
+    throw redirect(303, '/login?error=auth_failed');
   }
 
   if (!state) {
-    return new Response('Missing state parameter', { status: 400 });
+    throw redirect(303, '/login?error=auth_failed');
   }
 
   // Look up state to find provider
@@ -24,7 +23,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   ).get(state) as OIDCStateRow | undefined;
 
   if (!stateRow) {
-    return new Response('Invalid or expired state', { status: 400 });
+    throw redirect(303, '/login?error=auth_failed');
   }
 
   const provider = db.prepare(
@@ -32,7 +31,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   ).get(stateRow.provider_id) as OIDCProviderRow | undefined;
 
   if (!provider) {
-    return new Response('Provider not found', { status: 400 });
+    throw redirect(303, '/login?error=auth_failed');
   }
 
   try {
@@ -48,7 +47,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     );
 
     if (!userId) {
-      return new Response('Auto-registration disabled. Contact admin.', { status: 403 });
+      throw redirect(303, '/login?error=auto_registration_disabled');
     }
 
     const session = createSession(db, userId);
@@ -66,11 +65,14 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
     throw redirect(302, '/');
   } catch (e) {
-    // Re-throw redirects
-    if (e && typeof e === 'object' && 'status' in e && (e as { status: number }).status === 302) {
-      throw e;
+    // Re-throw redirects (302, 303, etc.)
+    if (e && typeof e === 'object' && 'status' in e) {
+      const status = (e as { status: number }).status;
+      if (status >= 300 && status < 400) {
+        throw e;
+      }
     }
     console.error('OIDC callback error:', e);
-    return new Response('Authentication failed', { status: 400 });
+    throw redirect(303, '/login?error=auth_failed');
   }
 };

@@ -67,4 +67,5 @@ export type ServerMessage =
   | { type: 'operation'; op: CollabOperation; fromPeerId: string }
   | { type: 'presence'; data: PresenceData; fromPeerId: string }
   | { type: 'sync'; schema: ERDSchema }
+  | { type: 'mcp-sync'; schema: ERDSchema }
   | { type: 'error'; message: string };

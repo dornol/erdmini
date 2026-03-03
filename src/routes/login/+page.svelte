@@ -1,5 +1,6 @@
 <script lang="ts">
   import { authStore } from '$lib/store/auth.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   let { data } = $props();
 
@@ -9,6 +10,13 @@
   let loading = $state(false);
 
   const providers = $derived(data.oidcProviders ?? []);
+
+  const oidcError = $derived.by(() => {
+    const code = data.errorCode;
+    if (code === 'auto_registration_disabled') return m.auth_error_auto_registration();
+    if (code === 'auth_failed') return m.auth_error_failed();
+    return '';
+  });
 
   async function handleLogin(e: Event) {
     e.preventDefault();
@@ -59,6 +67,10 @@
       </svg>
       <h1>erdmini</h1>
     </div>
+
+    {#if oidcError}
+      <div class="error-banner">{oidcError}</div>
+    {/if}
 
     <form onsubmit={handleLogin}>
       <div class="field">
@@ -185,6 +197,17 @@
 
   input:disabled {
     opacity: 0.6;
+  }
+
+  .error-banner {
+    font-size: 13px;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    line-height: 1.5;
   }
 
   .error {

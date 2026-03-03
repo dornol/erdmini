@@ -265,6 +265,8 @@
   "search_hint_has": "属性があるテーブル (pk, fk, index, comment, domain, enum...)",
   "search_hint_no": "属性がないテーブル",
   "search_hint_color": "テーブル色で検索",
+  "auth_error_auto_registration": "自動登録が無効です。管理者にお問い合わせください。",
+  "auth_error_failed": "認証に失敗しました。",
   "auth_change_password": "パスワード変更",
   "auth_current_password": "現在のパスワード",
   "auth_new_password": "新しいパスワード",

@@ -96,8 +96,9 @@ class RoomManager {
 
 const roomManager = new RoomManager();
 
-function notifySchemaChange(projectId, schema) {
-  roomManager.broadcast(projectId, { type: 'sync', schema });
+function notifySchemaChange(projectId, schema, source) {
+  const type = source === 'mcp' ? 'mcp-sync' : 'sync';
+  roomManager.broadcast(projectId, { type, schema });
 }
 
 // ── Rate Limiting ──

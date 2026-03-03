@@ -6,6 +6,7 @@
   import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType, LayoutOptions } from '$lib/utils/auto-layout';
+  import { HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { exportSvg } from '$lib/utils/svg-export';
   import { exportPdf } from '$lib/utils/pdf-export';
@@ -104,6 +105,10 @@
     return erdStore.schema.tables.filter((t) => erdStore.selectedTableIds.has(t.id));
   }
 
+  function tableHeight(t: { columns: { length: number }; comment?: string }): number {
+    return HEADER_H + (t.comment ? COMMENT_H : 0) + t.columns.length * ROW_H + BOTTOM_PAD;
+  }
+
   function alignTables(dir: 'left' | 'right' | 'top' | 'bottom') {
     const tables = getSelectedTables();
     if (tables.length < 2) return;
@@ -112,14 +117,14 @@
       case 'left': target = Math.min(...tables.map((t) => t.position.x)); break;
       case 'right': target = Math.max(...tables.map((t) => t.position.x + canvasState.getTableW(t.id))); break;
       case 'top': target = Math.min(...tables.map((t) => t.position.y)); break;
-      case 'bottom': target = Math.max(...tables.map((t) => t.position.y)); break;
+      case 'bottom': target = Math.max(...tables.map((t) => t.position.y + tableHeight(t))); break;
     }
     for (const t of tables) {
       switch (dir) {
         case 'left': erdStore.moveTable(t.id, target, t.position.y); break;
         case 'right': erdStore.moveTable(t.id, target - canvasState.getTableW(t.id), t.position.y); break;
         case 'top': erdStore.moveTable(t.id, t.position.x, target); break;
-        case 'bottom': erdStore.moveTable(t.id, t.position.x, target); break;
+        case 'bottom': erdStore.moveTable(t.id, t.position.x, target - tableHeight(t)); break;
       }
     }
     erdStore.schema.updatedAt = now();
@@ -1189,7 +1194,7 @@
             </div>
             {#if authStore.isAdmin}
               <a href="/admin" class="dropdown-item" role="menuitem" onclick={() => (userMenuOpen = false)}>
-                Admin
+                {m.nav_admin()}
               </a>
             {/if}
             {#if authStore.user?.username}
@@ -1213,7 +1218,7 @@
               role="menuitem"
               onclick={() => { userMenuOpen = false; authStore.logout(); }}
             >
-              Sign out
+              {m.nav_sign_out()}
             </button>
           </div>
         {/if}
