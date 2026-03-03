@@ -284,7 +284,7 @@
                           }}
                         >
                           {#each projectStore.index.projects as p}
-                            <option value={p.id}>{p.name}</option>
+                            <option value={p.id} disabled={p.id !== scope.projectId && editScopes.some(s => s.projectId === p.id)}>{p.name}</option>
                           {/each}
                         </select>
                         <select
@@ -356,7 +356,7 @@
                   }}
                 >
                   {#each projectStore.index.projects as p}
-                    <option value={p.id}>{p.name}</option>
+                    <option value={p.id} disabled={p.id !== scope.projectId && selectedScopes.some(s => s.projectId === p.id)}>{p.name}</option>
                   {/each}
                 </select>
                 <select
