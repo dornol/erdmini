@@ -116,6 +116,7 @@
   }
 
   function onTextareaKeyDown(e: KeyboardEvent) {
+    e.stopPropagation();
     if (e.key === 'Escape') {
       isEditing = false;
     }
@@ -171,7 +172,12 @@
 
   <!-- Content area -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="memo-content" ondblclick={onContentDblClick} style="color:{colors.text}">
+  <div
+    class="memo-content"
+    ondblclick={onContentDblClick}
+    onmousedown={(e) => e.stopPropagation()}
+    style="color:{colors.text}"
+  >
     {#if isEditing}
       <!-- svelte-ignore a11y_autofocus -->
       <textarea
@@ -179,7 +185,6 @@
         bind:value={editContent}
         onblur={commitContent}
         onkeydown={onTextareaKeyDown}
-        onmousedown={(e) => e.stopPropagation()}
         autofocus
         style="color:{colors.text}"
       ></textarea>
