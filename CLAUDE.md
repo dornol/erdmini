@@ -21,10 +21,10 @@ pnpm build            # Static SPA build (adapter-static → build/)
 pnpm build:server     # Server mode build (adapter-node → build/)
 pnpm start:server     # Run production server (after build:server)
 
-# Type checking
+# Type checking (no linter/formatter configured — svelte-check is the only code quality tool)
 pnpm check            # svelte-check with strict TypeScript
 
-# Testing (vitest)
+# Testing (vitest, configured in vite.config.ts)
 pnpm test             # Run all tests once
 pnpm test:watch       # Watch mode
 npx vitest run src/lib/utils/ddl-export.test.ts          # Single test file
@@ -63,7 +63,7 @@ Only loaded in server mode. Includes:
 - **`migrate.ts`**: Flyway-style migration runner. Auto-discovers `migrations/*.sql` via `import.meta.glob`, tracks versions in `schema_migrations` table with SHA-256 checksums, supports baseline detection for existing DBs.
 - **`migrations/`**: Versioned SQL files (`V001__initial_schema.sql`, etc.). Add new `V###__description.sql` files for schema changes — never modify applied migrations.
 - **`auth/`**: Password hashing (argon2), sessions (30-day, cookie-based), API keys (`erd_` prefix + SHA-256), OIDC (PKCE flow via openid-client), permission hierarchy (viewer < editor < owner, admin bypasses).
-- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. Read tools (list/get/export) and write tools (add/update/delete tables/columns/FKs/memos). Write ops call `notifyCollabSchemaChange()`.
+- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. 31 tools: CRUD for tables/columns/FKs/memos/domains, schema read/export/lint/diagram/DDL, domain analysis/coverage/dictionary. Write ops call `notifyCollabSchemaChange()`.
 
 ### Real-time Collaboration
 
@@ -78,16 +78,20 @@ Tables and memos are DOM `div` elements with CSS `transform` (not Canvas/WebGL).
 
 ### i18n
 
-Paraglide JS v2 with four languages: Korean, English, Japanese, Chinese. Message files in `messages/`. Auto-generated code in `src/lib/paraglide/` (excluded from TypeScript).
+Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Chinese. Message files in `messages/`. Auto-generated code in `src/lib/paraglide/` (excluded from TypeScript). Locale strategy: `localStorage` → browser preference → Korean fallback.
 
 ## Key Patterns
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure and have corresponding `.test.ts` files
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (15 test files, 334 tests)
 - 34 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts
+- **Layout constants** in `src/lib/constants/layout.ts`: `TABLE_W=220`, `HEADER_H=37`, `ROW_H=26` — used for FK line routing, auto-layout, and SVG export
+- **ID generation** uses 8-char alphanumeric (`Math.random().toString(36).slice(2,10)`), not UUIDs
+- **Tailwind CSS v4** — config via CSS (no `tailwind.config.js`)
+- **Migration system** is checksum-verified on startup — never modify applied SQL migration files, only add new `V###__description.sql` files
 
 ## Environment Variables
 
@@ -100,3 +104,5 @@ Paraglide JS v2 with four languages: Korean, English, Japanese, Chinese. Message
 | `ADMIN_PASSWORD` | auto-generated | Initial admin password |
 | `BASE_PATH` | — | Subdirectory deployment path |
 | `PUBLIC_SITE_URL` | — | Canonical URL for SEO |
+| `PUBLIC_APP_URL` | `http://localhost:5173` | App URL for OIDC redirect URIs |
+| `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry in days |

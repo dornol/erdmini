@@ -145,7 +145,7 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 - **Sharing**: User search → grant permissions, read-only mode
 - **Real-time collaboration**: WebSocket sync, connected user cursor display, LWW conflict resolution
 - **Admin**: User CRUD, OIDC provider management, API key management
-- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 22 tools (tables, columns, FKs, memos, DDL, diagrams, linting), collab integration
+- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 31 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary), collab integration
 
 ---
 
@@ -185,7 +185,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (258 tests)
+pnpm test         # vitest (334 tests)
 pnpm check        # svelte-check type checking
 ```
 
