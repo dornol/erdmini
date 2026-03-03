@@ -63,7 +63,7 @@ Only loaded in server mode. Includes:
 - **`migrate.ts`**: Flyway-style migration runner. Auto-discovers `migrations/*.sql` via `import.meta.glob`, tracks versions in `schema_migrations` table with SHA-256 checksums, supports baseline detection for existing DBs.
 - **`migrations/`**: Versioned SQL files (`V001__initial_schema.sql`, etc.). Add new `V###__description.sql` files for schema changes — never modify applied migrations.
 - **`auth/`**: Password hashing (argon2), sessions (30-day, cookie-based), API keys (`erd_` prefix + SHA-256), OIDC (PKCE flow via openid-client), permission hierarchy (viewer < editor < owner, admin bypasses).
-- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. Read tools (list/get/export) and write tools (add/update/delete tables/columns/FKs). Write ops call `notifyCollabSchemaChange()`.
+- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. Read tools (list/get/export) and write tools (add/update/delete tables/columns/FKs/memos). Write ops call `notifyCollabSchemaChange()`.
 
 ### Real-time Collaboration
 
@@ -74,7 +74,7 @@ Only loaded in server mode. Includes:
 
 ### Canvas Rendering
 
-Tables are DOM `div` elements with CSS `transform` (not Canvas/WebGL). FK lines are SVG overlaid on the canvas. This makes drag/selection/editing straightforward.
+Tables and memos are DOM `div` elements with CSS `transform` (not Canvas/WebGL). FK lines are SVG overlaid on the canvas. Memos are sticky note cards (`MemoCard.svelte`) with drag, resize, inline editing, and color selection. This makes drag/selection/editing straightforward.
 
 ### i18n
 
@@ -85,7 +85,7 @@ Paraglide JS v2 with four languages: Korean, English, Japanese, Chinese. Message
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
 - All utility functions in `src/lib/utils/` are pure and have corresponding `.test.ts` files
-- 28 collab operation types in `src/lib/types/collab.ts` covering all schema mutations
+- 34 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts
 

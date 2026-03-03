@@ -97,8 +97,16 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - **Schema version diff**: compare against history or uploaded file, color-coded
 - **URL sharing**: compress schema → share via URL hash
 
+### Sticky Memos
+- Canvas sticky notes (add / edit / delete / drag / resize)
+- 6 color options (yellow, blue, green, pink, purple, orange)
+- Inline editing (double-click → textarea)
+- Multi-select, group drag, lock support
+- Visible in sidebar, minimap, and image exports
+
 ### Sidebar
 - Table list search (name + column name + comment)
+- Memos section (color dot + content preview)
 - Sort (by name / by creation order)
 - Collapse / expand by group
 - Table summary info (column count, FK count)
@@ -137,7 +145,7 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 - **Sharing**: User search → grant permissions, read-only mode
 - **Real-time collaboration**: WebSocket sync, connected user cursor display, LWW conflict resolution
 - **Admin**: User CRUD, OIDC provider management, API key management
-- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 14 tools, collab integration
+- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 22 tools (tables, columns, FKs, memos, DDL, diagrams, linting), collab integration
 
 ---
 
@@ -160,6 +168,10 @@ ERDSchema
 │   ├── uniqueKeys: UniqueKey[]
 │   └── indexes: TableIndex[]
 ├── domains: ColumnDomain[]
+├── memos: Memo[]
+│   ├── id, content, color?, locked?
+│   ├── position: { x, y }
+│   └── width, height
 └── groupColors?: Record<string, string>
 ```
 
@@ -173,7 +185,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (247 tests)
+pnpm test         # vitest (258 tests)
 pnpm check        # svelte-check type checking
 ```
 

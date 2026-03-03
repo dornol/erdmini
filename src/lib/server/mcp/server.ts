@@ -4,7 +4,7 @@ import type Database from 'better-sqlite3';
 
 import type { ResolvedApiKey } from '$lib/server/auth/api-key';
 import { checkAccess, getSchema, saveSchema, listUserProjects } from './db-helpers';
-import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey } from './schema-ops';
+import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo } from './schema-ops';
 import { exportDDL, type DDLExportOptions } from '$lib/utils/ddl-export';
 import { lintSchema } from '$lib/utils/schema-lint';
 import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
@@ -515,6 +515,112 @@ export function createMcpServer(
       if (result.errors.length > 0) summary.push(`Errors: ${result.errors.join('; ')}`);
       if (result.warnings.length > 0) summary.push(`Warnings: ${result.warnings.join('; ')}`);
       return { content: [{ type: 'text', text: summary.join('\n') }] };
+    },
+  );
+
+  // ==================
+  // MEMO TOOLS
+  // ==================
+
+  server.tool(
+    'list_memos',
+    'List all memos in a project with summary info',
+    { projectId: z.string().max(256).describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const memos = (schema.memos ?? []).map(m => ({
+        id: m.id,
+        content: m.content.length > 100 ? m.content.slice(0, 100) + '...' : m.content,
+        color: m.color ?? 'yellow',
+        locked: m.locked ?? false,
+        position: m.position,
+        width: m.width,
+        height: m.height,
+      }));
+      return { content: [{ type: 'text', text: JSON.stringify(memos, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'add_memo',
+    'Add a new sticky memo to the ERD canvas',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      content: z.string().max(10000).optional().describe('Memo text content'),
+      color: z.enum(['yellow', 'blue', 'green', 'pink', 'purple', 'orange']).optional().describe('Memo color'),
+      x: z.number().optional().describe('X position on canvas'),
+      y: z.number().optional().describe('Y position on canvas'),
+      width: z.number().optional().describe('Memo width (default: 200)'),
+      height: z.number().optional().describe('Memo height (default: 150)'),
+    },
+    async ({ projectId, ...opts }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const result = addMemo(schema, opts);
+      saveAndNotify(projectId, result.schema);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ memoId: result.memoId }) }],
+      };
+    },
+  );
+
+  server.tool(
+    'update_memo',
+    'Update memo properties (content, color, position, size, locked)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      memoId: z.string().max(256).describe('Memo ID'),
+      content: z.string().max(10000).optional().describe('New memo text content'),
+      color: z.enum(['yellow', 'blue', 'green', 'pink', 'purple', 'orange', '']).optional().describe('New color (empty string to reset to yellow)'),
+      x: z.number().optional().describe('New X position'),
+      y: z.number().optional().describe('New Y position'),
+      width: z.number().optional().describe('New width'),
+      height: z.number().optional().describe('New height'),
+      locked: z.boolean().optional().describe('Lock/unlock the memo'),
+    },
+    async ({ projectId, memoId, ...patch }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const memos = schema.memos ?? [];
+      if (!memos.find(m => m.id === memoId)) {
+        return { content: [{ type: 'text', text: `Memo ${memoId} not found` }], isError: true };
+      }
+      const updated = updateMemo(schema, memoId, patch);
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Memo updated' }] };
+    },
+  );
+
+  server.tool(
+    'delete_memo',
+    'Delete a memo from the ERD canvas',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      memoId: z.string().max(256).describe('Memo ID to delete'),
+    },
+    async ({ projectId, memoId }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const memos = schema.memos ?? [];
+      if (!memos.find(m => m.id === memoId)) {
+        return { content: [{ type: 'text', text: `Memo ${memoId} not found` }], isError: true };
+      }
+      const updated = deleteMemo(schema, memoId);
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Memo deleted' }] };
     },
   );
 

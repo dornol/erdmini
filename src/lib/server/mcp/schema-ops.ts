@@ -1,4 +1,4 @@
-import type { Column, ColumnType, ERDSchema, ForeignKey, ReferentialAction, Table } from '$lib/types/erd';
+import type { Column, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table } from '$lib/types/erd';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -264,6 +264,65 @@ export function deleteForeignKey(
         foreignKeys: t.foreignKeys.filter(fk => fk.id !== fkId),
       };
     }),
+    updatedAt: now(),
+  };
+}
+
+// ---- Memo operations ----
+
+export function addMemo(
+  schema: ERDSchema,
+  options?: { content?: string; color?: string; x?: number; y?: number; width?: number; height?: number },
+): { schema: ERDSchema; memoId: string } {
+  const id = generateId();
+  const memos = schema.memos ?? [];
+
+  const newMemo: Memo = {
+    id,
+    content: options?.content ?? '',
+    position: { x: options?.x ?? 0, y: options?.y ?? 0 },
+    width: options?.width ?? 200,
+    height: options?.height ?? 150,
+    color: options?.color,
+  };
+
+  return {
+    schema: { ...schema, memos: [...memos, newMemo], updatedAt: now() },
+    memoId: id,
+  };
+}
+
+export function updateMemo(
+  schema: ERDSchema,
+  memoId: string,
+  patch: { content?: string; color?: string; x?: number; y?: number; width?: number; height?: number; locked?: boolean },
+): ERDSchema {
+  const memos = schema.memos ?? [];
+  return {
+    ...schema,
+    memos: memos.map(m => {
+      if (m.id !== memoId) return m;
+      return {
+        ...m,
+        ...(patch.content !== undefined && { content: patch.content }),
+        ...(patch.color !== undefined && { color: patch.color || undefined }),
+        ...(patch.x !== undefined || patch.y !== undefined
+          ? { position: { x: patch.x ?? m.position.x, y: patch.y ?? m.position.y } }
+          : {}),
+        ...(patch.width !== undefined && { width: patch.width }),
+        ...(patch.height !== undefined && { height: patch.height }),
+        ...(patch.locked !== undefined && { locked: patch.locked || undefined }),
+      };
+    }),
+    updatedAt: now(),
+  };
+}
+
+export function deleteMemo(schema: ERDSchema, memoId: string): ERDSchema {
+  const memos = schema.memos ?? [];
+  return {
+    ...schema,
+    memos: memos.filter(m => m.id !== memoId),
     updatedAt: now(),
   };
 }

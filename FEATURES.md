@@ -102,11 +102,24 @@
 - Column display mode (all / PK & FK only / name only)
 - Schema version diff comparison (history or file upload, color-coded)
 
+## Phase 15: Sticky Memos
+- Canvas sticky memo cards (add / edit / delete / drag / resize)
+- 6 memo colors (yellow, blue, green, pink, purple, orange)
+- Inline editing (double-click content → textarea, Escape / blur to commit)
+- Multi-select support (Ctrl+click, rubber band selection)
+- Group drag for multiple selected memos
+- Memo lock (disable drag / resize / edit)
+- Sidebar memos section (color dot + content preview, click to select)
+- Minimap memo rendering (colored rectangles)
+- SVG / PNG / PDF export includes memos
+- Real-time collaboration sync (6 collab operation types)
+- Undo / redo support
+
 ## Phase 14: MCP Server
 - MCP (Model Context Protocol) Streamable HTTP endpoint (`/mcp`)
 - Integrated as a SvelteKit API route (no separate build or process required)
 - `Authorization: Bearer` token authentication (`erd_` prefix API Key, SHA-256 hash, generated and managed in Admin UI)
-- 14 tools: list_projects, get_schema, export_ddl, lint_schema, export_diagram, add / update / delete table / column, add / delete foreign_key, import_ddl
+- 18 tools: list_projects, get_schema, get_schema_summary, list_tables, get_table, list_groups, export_ddl, lint_schema, export_diagram, add / update / delete table / column, add / delete foreign_key, import_ddl, list / add / update / delete memo
 - Integration with AI assistants such as Claude Desktop, Claude Code, and Cursor
 
 ## Future Improvement Candidates

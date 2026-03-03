@@ -1,4 +1,4 @@
-import type { Column, ColumnType, ERDSchema, ForeignKey, Table } from '$lib/types/erd';
+import type { Column, ColumnType, ERDSchema, ForeignKey, Memo, Table } from '$lib/types/erd';
 
 let _idCounter = 0;
 
@@ -29,6 +29,17 @@ export function makeTable(overrides: Partial<Table> & { name: string; columns: C
     uniqueKeys: [],
     indexes: [],
     position: { x: 0, y: 0 },
+    ...overrides,
+  };
+}
+
+export function makeMemo(overrides: Partial<Memo> = {}): Memo {
+  return {
+    id: testId(),
+    content: '',
+    position: { x: 0, y: 0 },
+    width: 200,
+    height: 150,
     ...overrides,
   };
 }

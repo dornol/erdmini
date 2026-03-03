@@ -157,10 +157,23 @@ A web application for visually authoring ERDs (Entity-Relationship Diagrams) in 
 
 - [x] MCP (Model Context Protocol) Streamable HTTP endpoint (`/mcp`)
 - [x] API key authentication (`erd_` prefix + SHA-256 hash, CRUD in Admin UI)
-- [x] 14 tools: list_projects, get_schema, export_ddl, lint_schema, export_diagram, add/update/delete table/column, add/delete foreign_key, import_ddl
+- [x] 22 tools: list_projects, get_schema, get_schema_summary, list_tables, get_table, list_groups, export_ddl, lint_schema, export_diagram, add/update/delete table/column, add/delete foreign_key, import_ddl, list/add/update/delete memo
 - [x] `createMcpServer(db, keyInfo)` factory pattern
 - [x] SvelteKit API route (`src/routes/mcp/+server.ts`), no separate bundle required
 - [x] Collab server integration (WebSocket notification on schema change)
+
+### ✅ Phase 15 — Sticky Memos
+
+- [x] Canvas sticky memo cards (MemoCard.svelte) with drag, resize, inline editing
+- [x] 6 color options (yellow, blue, green, pink, purple, orange)
+- [x] Multi-select and group drag support
+- [x] Memo lock (disable drag/resize/edit)
+- [x] Sidebar memos section (color dot + content preview)
+- [x] Minimap memo rendering
+- [x] SVG/PNG/PDF export includes memos
+- [x] 6 collab operation types (add/delete/move/update memo, bulk delete/move)
+- [x] Undo/redo support
+- [x] MCP memo tools (list/add/update/delete)
 
 ---
 
@@ -207,10 +220,21 @@ interface Table {
   locked?: boolean;
 }
 
+interface Memo {
+  id: string;
+  content: string;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  color?: string;
+  locked?: boolean;
+}
+
 interface ERDSchema {
   version: string;
   tables: Table[];
   domains: ColumnDomain[];
+  memos: Memo[];
   groupColors?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
@@ -359,7 +383,7 @@ Monolithic SvelteKit structure — authentication, API, and MCP are all handled 
 
 ## 8. Tests
 
-11 test files, 247 tests — all passing.
+11 test files, 258 tests — all passing.
 
 | File | Test count | Coverage |
 |------|-----------|------|
