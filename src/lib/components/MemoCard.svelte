@@ -119,7 +119,9 @@
   }
 
   function commitContent() {
-    erdStore.updateMemo(memo.id, { content: editContent });
+    if (editContent !== memo.content) {
+      erdStore.updateMemo(memo.id, { content: editContent });
+    }
     isEditing = false;
     if (erdStore.editingMemoId === memo.id) erdStore.editingMemoId = null;
   }

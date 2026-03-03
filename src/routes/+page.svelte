@@ -167,7 +167,7 @@
     }
   }
 
-  function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } | null {
+  function deriveLabel(prev: ERDSchema, cur: ERDSchema): { label: string; detail: string } {
     const pt = prev.tables;
     const ct = cur.tables;
     const prevIds = new Set(pt.map((t) => t.id));
@@ -260,10 +260,6 @@
     const pm = prev.memos ?? [];
     const cm = cur.memos ?? [];
     if (cm.length > pm.length) {
-      // Skip snapshot for empty memo creation (will be captured on first edit)
-      const prevIds = new Set(pm.map((mm) => mm.id));
-      const newMemo = cm.find((mm) => !prevIds.has(mm.id));
-      if (newMemo && !newMemo.content) return null;
       return { label: 'history_add_memo', detail: '' };
     }
     if (cm.length < pm.length) {
@@ -272,9 +268,7 @@
     for (const curMemo of cm) {
       const prevMemo = pm.find((mm) => mm.id === curMemo.id);
       if (prevMemo && prevMemo.content !== curMemo.content) {
-        // Empty→content means this is the first edit after skipped creation snapshot
-        const label = !prevMemo.content && curMemo.content ? 'history_add_memo' : 'history_edit_memo';
-        return { label, detail: '' };
+        return { label: 'history_edit_memo', detail: '' };
       }
       if (prevMemo && (prevMemo.color !== curMemo.color || prevMemo.width !== curMemo.width || prevMemo.height !== curMemo.height || prevMemo.locked !== curMemo.locked)) {
         return { label: 'history_edit_memo', detail: '' };
