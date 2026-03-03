@@ -5,7 +5,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 FROM base AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-RUN pnpm install --frozen-lockfile
+RUN apk add --no-cache python3 make g++ && pnpm install --frozen-lockfile
 COPY . .
 
 ARG PUBLIC_SITE_URL=https://erdmini.dornol.dev
@@ -24,7 +24,9 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/pnpm-lock.yaml ./
 COPY --from=build /app/pnpm-workspace.yaml ./
 COPY --from=build /app/.npmrc ./
-RUN pnpm install --prod --frozen-lockfile
+RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
+    pnpm install --prod --frozen-lockfile && \
+    apk del .build-deps
 
 ENV NODE_ENV=production
 ENV PUBLIC_STORAGE_MODE=server

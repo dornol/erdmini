@@ -183,8 +183,9 @@ pnpm check        # svelte-check 타입 검사
 
 ### 서버 모드 (SQLite + Auth + 실시간 협업)
 ```bash
-cp .env.example .env   # ADMIN_PASSWORD 등 수정
 docker compose up -d
+# 최초 실행 시 admin 계정이 자동 생성되며 랜덤 비밀번호가 로그에 출력된다
+docker compose logs erdmini | grep Password
 ```
 
 ### 정적 SPA (로컬 모드)

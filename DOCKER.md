@@ -14,15 +14,27 @@ erdmini는 두 가지 Docker 이미지를 제공한다.
 ### 서버 모드 (권장)
 
 ```bash
-# .env 파일 준비
-cp .env.example .env
-# .env에서 ADMIN_PASSWORD 등 수정
-
-# 실행
 docker compose up -d
 ```
 
 기본 포트 `3000`으로 접속: http://localhost:3000
+
+최초 실행 시 admin 계정이 자동 생성되며, 랜덤 비밀번호가 로그에 출력된다:
+
+```bash
+docker compose logs erdmini
+```
+
+```
+============================================================
+  Admin account created on first run
+  Username: admin
+  Password: kR7$mNp2xLfA&wQ9
+  Please change the password after first login.
+============================================================
+```
+
+> 비밀번호를 직접 지정하려면 `ADMIN_PASSWORD` 환경변수를 설정한다.
 
 ### 로컬 모드 (정적 SPA)
 
@@ -50,7 +62,7 @@ docker compose --profile local up -d erdmini-local
 | `DB_PATH` | `/data/erdmini.db` | SQLite DB 파일 경로 |
 | `PORT` | `3000` | 서버 포트 |
 | `ADMIN_USERNAME` | `admin` | 초기 관리자 아이디 |
-| `ADMIN_PASSWORD` | `changeme` | 초기 관리자 비밀번호 (**반드시 변경**) |
+| `ADMIN_PASSWORD` | *(랜덤 생성)* | 초기 관리자 비밀번호. 미설정 시 랜덤 생성 후 로그 출력 |
 | `SESSION_MAX_AGE_DAYS` | `30` | 세션 만료 기간(일) |
 | `PUBLIC_APP_URL` | `http://localhost:5173` | 앱 URL (OIDC 콜백 등) |
 
