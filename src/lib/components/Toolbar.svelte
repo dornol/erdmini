@@ -776,9 +776,13 @@
               placeholder={m.project_new_placeholder()}
               bind:value={newProjectName}
               onkeydown={(e) => { if (e.key === 'Enter') handleNewProject(); if (e.key === 'Escape') { showNewProjectInput = false; newProjectName = ''; } }}
-              onblur={() => { if (!newProjectName.trim()) showNewProjectInput = false; }}
               autofocus
             />
+            <button
+              class="project-new-confirm"
+              onclick={handleNewProject}
+              title="Create"
+            >✓</button>
           </div>
         {:else}
           <button
@@ -1848,6 +1852,27 @@
   .project-new-row {
     display: flex;
     padding: 0;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .project-new-confirm {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    background: #3b82f6;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .project-new-confirm:hover {
+    background: #2563eb;
   }
 
   .project-shared-header {
