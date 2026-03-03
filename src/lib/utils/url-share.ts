@@ -91,11 +91,21 @@ export async function shareStringToSchema(encoded: string): Promise<{ schema: ER
 }
 
 /**
- * Check if the current URL has a shared schema in the hash
+ * Check if the current URL has a shared schema in the hash.
+ * Uses the global __ERDMINI_INITIAL_HASH__ captured in app.html (before SvelteKit runs)
+ * to avoid losing the hash due to router URL normalization during hydration.
  */
 export function getShareDataFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
-  const hash = window.location.hash;
+  // Prefer the hash captured at page load time (set in app.html inline script)
+  const w = window as Window & { __ERDMINI_INITIAL_HASH__?: string };
+  let hash = '';
+  if (w.__ERDMINI_INITIAL_HASH__) {
+    hash = w.__ERDMINI_INITIAL_HASH__;
+    delete w.__ERDMINI_INITIAL_HASH__; // consume once
+  } else {
+    hash = window.location.hash;
+  }
   if (hash.startsWith('#s=')) {
     return hash.slice(3);
   }

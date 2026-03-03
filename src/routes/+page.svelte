@@ -26,10 +26,6 @@
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
 
-  // Capture hash data immediately at component init time (before any effects/onMount/SvelteKit
-  // URL normalization can clear it). Falls back to reading hash later for hashchange events.
-  let _pendingShareData: string | null = typeof window !== 'undefined' ? getShareDataFromUrl() : null;
-
   let sidebarCollapsed = $state(false);
   let commandPaletteOpen = $state(false);
   let showBulkEditModal = $state(false);
@@ -44,6 +40,9 @@
   onMount(async () => {
     const provider = await getStorageProvider();
     await projectStore.init(provider);
+
+    // Load shared schema from URL hash immediately after init (most reliable timing)
+    await loadShareFromHash();
 
     // Restore column display mode
     const savedMode = localStorage.getItem('erdmini_column_display_mode');
@@ -517,12 +516,9 @@
   });
 
   // Load shared schema from URL hash (#s=...)
-  // Uses _pendingShareData captured at init time for fresh page loads,
-  // falls back to reading current hash for hashchange events.
   async function loadShareFromHash() {
-    const shareData = _pendingShareData ?? getShareDataFromUrl();
+    const shareData = getShareDataFromUrl();
     if (!shareData) return;
-    _pendingShareData = null; // consume so it won't be re-processed
     // Clear hash using SvelteKit's shallow replaceState (won't trigger load functions)
     replaceState(window.location.pathname, {});
     try {
@@ -542,16 +538,9 @@
     }
   }
 
-  // Load shared schema on init (waits for projectStore to be ready)
-  $effect(() => {
-    if (!projectStore.initialized) return;
-    loadShareFromHash();
-  });
-
-  // Also handle hashchange (user navigates to share URL while app is already open)
+  // Handle hashchange (user navigates to share URL while app is already open)
   onMount(() => {
     const handleHashChange = () => {
-      _pendingShareData = getShareDataFromUrl(); // capture fresh hash data
       if (projectStore.initialized) loadShareFromHash();
     };
     window.addEventListener('hashchange', handleHashChange);
