@@ -30,6 +30,9 @@
   let formPrimaryKey = $state(false);
   let formUnique = $state(false);
   let formAutoIncrement = $state(false);
+  let formScale = $state<number | undefined>(undefined);
+  let formCheck = $state('');
+  let formEnumValues = $state('');
   let formDefaultValue = $state('');
   let formComment = $state('');
 
@@ -46,6 +49,8 @@
   let hasLength = $derived(
     formType === 'VARCHAR' || formType === 'CHAR' || formType === 'DECIMAL',
   );
+  let hasScale = $derived(formType === 'DECIMAL');
+  let hasEnum = $derived(formType === 'ENUM');
 
   // Usage count map: domainId -> number of linked columns
   let domainUsageMap = $derived.by(() => {
@@ -135,6 +140,9 @@
     formGroup = '';
     formType = 'VARCHAR';
     formLength = 255;
+    formScale = undefined;
+    formCheck = '';
+    formEnumValues = '';
     formNullable = false;
     formPrimaryKey = false;
     formUnique = false;
@@ -152,6 +160,9 @@
     formGroup = domain.group ?? '';
     formType = domain.type;
     formLength = domain.length;
+    formScale = domain.scale;
+    formCheck = domain.check ?? '';
+    formEnumValues = domain.enumValues?.join(', ') ?? '';
     formNullable = domain.nullable;
     formPrimaryKey = domain.primaryKey;
     formUnique = domain.unique;
@@ -165,6 +176,11 @@
     addingNew = true;
   }
 
+  function parseEnumValues(raw: string): string[] | undefined {
+    const vals = raw.split(',').map(v => v.trim()).filter(Boolean);
+    return vals.length > 0 ? vals : undefined;
+  }
+
   function saveEdit() {
     if (!formName.trim()) return;
     const fields = {
@@ -172,6 +188,9 @@
       group: formGroup.trim() || undefined,
       type: formType,
       length: hasLength ? formLength : undefined,
+      scale: hasScale ? formScale : undefined,
+      check: formCheck.trim() || undefined,
+      enumValues: hasEnum ? parseEnumValues(formEnumValues) : undefined,
       nullable: formNullable,
       primaryKey: formPrimaryKey,
       unique: formUnique,
@@ -269,14 +288,17 @@
   const PROPAGATE_FIELDS = new Set([
     'type',
     'length',
+    'scale',
     'nullable',
     'primaryKey',
     'unique',
     'autoIncrement',
     'defaultValue',
+    'check',
+    'enumValues',
   ]);
 
-  const TABLE_COLSPAN = 11;
+  const TABLE_COLSPAN = 14;
 </script>
 
 <svelte:window onkeydown={onKeyDown} />
@@ -294,6 +316,7 @@
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="modal" onclick={handleTableClick} onkeydown={() => {}}>
+    <div class="sheet-handle"><span></span></div>
     <div class="modal-header">
       <span class="modal-title">{m.domain_modal_title()}</span>
       <div class="header-controls">
@@ -386,6 +409,18 @@
                 <span class="th-label">{m.column_default()}</span>
                 <span class="propagate-icon">&harr;</span>
               </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">Scale</span>
+                <span class="propagate-icon">&harr;</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">{m.column_check()}</span>
+                <span class="propagate-icon">&harr;</span>
+              </th>
+              <th class="th-propagate" title={m.domain_propagate_hint()}>
+                <span class="th-label">ENUM</span>
+                <span class="propagate-icon">&harr;</span>
+              </th>
               <th class="th-local" title={m.domain_local_hint()}>
                 {m.column_description()}
               </th>
@@ -441,6 +476,21 @@
                         <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
                         <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
                         <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
+                        <td>
+                          {#if hasScale}
+                            <input class="cell-input cell-num" type="number" bind:value={formScale} min="0" max="30" />
+                          {:else}
+                            <span class="td-mono">&mdash;</span>
+                          {/if}
+                        </td>
+                        <td><input class="cell-input" type="text" bind:value={formCheck} placeholder={m.column_check_placeholder()} /></td>
+                        <td>
+                          {#if hasEnum}
+                            <input class="cell-input" type="text" bind:value={formEnumValues} placeholder="a, b, c" />
+                          {:else}
+                            <span class="td-mono">&mdash;</span>
+                          {/if}
+                        </td>
                         <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
                         <td class="td-actions">
                           <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>&#x2713;</button>
@@ -467,6 +517,9 @@
                         <td class="td-badge">{#if domain.unique}<span class="badge uq">UQ</span>{/if}</td>
                         <td class="td-badge">{#if domain.autoIncrement}<span class="badge ai">AI</span>{/if}</td>
                         <td class="td-mono td-optional">{domain.defaultValue ?? '—'}</td>
+                        <td class="td-mono">{domain.scale != null ? domain.scale : '—'}</td>
+                        <td class="td-mono td-optional">{domain.check ?? '—'}</td>
+                        <td class="td-mono td-optional">{domain.enumValues?.join(', ') ?? '—'}</td>
                         <td class="td-comment">{domain.comment ?? '—'}</td>
                         <td class="td-actions">
                           <button
@@ -521,6 +574,21 @@
                 <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
                 <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
                 <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
+                <td>
+                  {#if hasScale}
+                    <input class="cell-input cell-num" type="number" bind:value={formScale} min="0" max="30" />
+                  {:else}
+                    <span class="td-mono">&mdash;</span>
+                  {/if}
+                </td>
+                <td><input class="cell-input" type="text" bind:value={formCheck} placeholder={m.column_check_placeholder()} /></td>
+                <td>
+                  {#if hasEnum}
+                    <input class="cell-input" type="text" bind:value={formEnumValues} placeholder="a, b, c" />
+                  {:else}
+                    <span class="td-mono">&mdash;</span>
+                  {/if}
+                </td>
                 <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
                 <td class="td-actions">
                   <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>&#x2713;</button>
@@ -539,10 +607,12 @@
         {/each}
       </datalist>
 
-      {#if !addingNew}
-        <button class="add-btn" onclick={startAdd}>{m.domain_add_btn()}</button>
-      {/if}
     </div>
+    {#if !addingNew}
+      <div class="modal-footer">
+        <button class="add-btn" onclick={startAdd}>{m.domain_add_btn()}</button>
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -552,19 +622,45 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
     z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
   }
 
   .modal {
     background: white;
-    border-radius: 10px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    width: min(92vw, 960px);
-    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    height: 80vh;
     display: flex;
     flex-direction: column;
+    animation: slideUp 0.25s ease-out;
+  }
+
+  .sheet-handle {
+    text-align: center;
+    padding: 8px 0 0;
+    flex-shrink: 0;
+  }
+
+  .sheet-handle span {
+    display: inline-block;
+    width: 36px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 2px;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   .modal-header {
@@ -587,7 +683,7 @@
   .header-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     flex: 1;
     justify-content: flex-end;
   }
@@ -595,11 +691,11 @@
   .search-input {
     border: 1px solid #e2e8f0;
     border-radius: 5px;
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 6px 12px;
+    font-size: 13px;
     color: #1e293b;
     outline: none;
-    width: 180px;
+    width: 240px;
     background: #f8fafc;
   }
 
@@ -612,8 +708,8 @@
     background: none;
     border: 1px solid #e2e8f0;
     border-radius: 5px;
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 5px 10px;
+    font-size: 12px;
     color: #94a3b8;
     cursor: pointer;
     white-space: nowrap;
@@ -635,7 +731,7 @@
     background: none;
     border: 1px solid #e2e8f0;
     border-radius: 5px;
-    padding: 4px 7px;
+    padding: 6px 9px;
     color: #64748b;
     cursor: pointer;
     display: flex;
@@ -653,7 +749,7 @@
   .template-link {
     background: none;
     border: none;
-    font-size: 11px;
+    font-size: 12px;
     color: #94a3b8;
     cursor: pointer;
     padding: 0;
@@ -673,10 +769,10 @@
   .close-btn {
     background: none;
     border: none;
-    font-size: 14px;
+    font-size: 16px;
     color: #94a3b8;
     cursor: pointer;
-    padding: 2px 6px;
+    padding: 4px 8px;
     border-radius: 4px;
     line-height: 1;
   }
@@ -698,7 +794,9 @@
     padding: 16px 18px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 0;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
@@ -758,7 +856,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    padding: 6px 8px;
+    padding: 8px 10px;
     text-align: left;
     border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
@@ -808,7 +906,7 @@
   }
 
   .domain-table td {
-    padding: 6px 8px;
+    padding: 7px 10px;
     color: #1e293b;
     vertical-align: middle;
   }
@@ -860,7 +958,7 @@
     color: #94a3b8;
     font-size: 11px;
     white-space: nowrap;
-    max-width: 80px;
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -915,7 +1013,7 @@
   .td-comment {
     color: #64748b;
     font-style: italic;
-    max-width: 140px;
+    max-width: 240px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -931,7 +1029,7 @@
   .cell-input {
     border: 1px solid #cbd5e1;
     border-radius: 3px;
-    padding: 3px 6px;
+    padding: 5px 8px;
     font-size: 12px;
     color: #1e293b;
     outline: none;
@@ -946,16 +1044,16 @@
   }
 
   .cell-num {
-    width: 70px;
+    width: 85px;
   }
 
   .cell-group {
-    width: 80px;
-    min-width: 60px;
+    width: 110px;
+    min-width: 80px;
   }
 
   .td-type-cell {
-    min-width: 110px;
+    min-width: 130px;
   }
 
   .badge {
@@ -1030,12 +1128,18 @@
     border-color: #fca5a5;
   }
 
+  .modal-footer {
+    padding: 10px 18px;
+    border-top: 1px solid #e2e8f0;
+    flex-shrink: 0;
+  }
+
   .add-btn {
     background: none;
     border: 1px dashed #cbd5e1;
     border-radius: 6px;
-    padding: 8px;
-    font-size: 12px;
+    padding: 10px;
+    font-size: 13px;
     color: #64748b;
     cursor: pointer;
     width: 100%;
