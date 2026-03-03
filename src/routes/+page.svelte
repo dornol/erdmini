@@ -272,7 +272,9 @@
     for (const curMemo of cm) {
       const prevMemo = pm.find((mm) => mm.id === curMemo.id);
       if (prevMemo && prevMemo.content !== curMemo.content) {
-        return { label: 'history_edit_memo', detail: '' };
+        // Empty→content means this is the first edit after skipped creation snapshot
+        const label = !prevMemo.content && curMemo.content ? 'history_add_memo' : 'history_edit_memo';
+        return { label, detail: '' };
       }
       if (prevMemo && (prevMemo.color !== curMemo.color || prevMemo.width !== curMemo.width || prevMemo.height !== curMemo.height || prevMemo.locked !== curMemo.locked)) {
         return { label: 'history_edit_memo', detail: '' };
