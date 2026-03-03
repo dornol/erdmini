@@ -795,6 +795,14 @@
             >
               <span class="item-color-dot" style="background:{MEMO_DOTS[memo.color ?? 'yellow'] ?? '#facc15'}"></span>
               <span class="memo-preview">{memo.content ? memo.content.split('\n')[0].slice(0, 30) || m.memo_placeholder() : m.memo_placeholder()}</span>
+              <button
+                class="memo-delete-btn"
+                title={m.action_delete()}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  erdStore.deleteMemo(memo.id);
+                }}
+              >✕</button>
             </div>
           {/each}
         </div>
@@ -1655,6 +1663,25 @@
     padding: 0 6px 8px;
     max-height: 150px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-border, #cbd5e1) transparent;
+  }
+
+  .memo-list::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .memo-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .memo-list::-webkit-scrollbar-thumb {
+    background: var(--app-border, #cbd5e1);
+    border-radius: 3px;
+  }
+
+  .memo-list::-webkit-scrollbar-thumb:hover {
+    background: var(--app-text-muted, #94a3b8);
   }
 
   .memo-item {
@@ -1676,10 +1703,38 @@
   }
 
   .memo-preview {
+    flex: 1;
     font-size: 12px;
     color: var(--app-text-secondary, #475569);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .memo-delete-btn {
+    display: none;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border: none;
+    border-radius: 3px;
+    background: none;
+    color: var(--app-text-muted, #94a3b8);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    text-align: center;
+  }
+
+  .memo-item:hover .memo-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .memo-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
   }
 </style>

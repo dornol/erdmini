@@ -47,22 +47,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const id = randomUUID();
   const { key, hash } = generateApiKey();
 
-  db.prepare(
-    `INSERT INTO api_keys (id, user_id, key_hash, name, expires_at)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(id, locals.user!.id, hash, name, expiresAt || null);
+  const insertKey = db.transaction(() => {
+    db.prepare(
+      `INSERT INTO api_keys (id, user_id, key_hash, name, expires_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(id, locals.user!.id, hash, name, expiresAt || null);
 
-  // Insert scopes if provided
-  if (Array.isArray(scopes) && scopes.length > 0) {
-    const insertScope = db.prepare(
-      `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
-       VALUES (?, ?, ?, ?)`
-    );
-    for (const scope of scopes) {
-      if (scope.projectId && scope.permission) {
-        insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
+    if (Array.isArray(scopes) && scopes.length > 0) {
+      const insertScope = db.prepare(
+        `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
+         VALUES (?, ?, ?, ?)`
+      );
+      for (const scope of scopes) {
+        if (scope.projectId && scope.permission) {
+          insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
+        }
       }
     }
+  });
+
+  try {
+    insertKey();
+  } catch (e: any) {
+    return json({ error: e.message || 'Failed to create key' }, { status: 500 });
   }
 
   return json({ id, key, name, expiresAt: expiresAt || null }, { status: 201 });

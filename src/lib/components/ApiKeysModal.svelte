@@ -39,9 +39,19 @@
 
   async function loadKeys() {
     loading = true;
+    error = '';
     try {
       const res = await fetch('/api/my/api-keys');
-      if (res.ok) apiKeys = await res.json();
+      if (res.ok) {
+        apiKeys = await res.json();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        error = data.error || `Failed to load keys (${res.status})`;
+        apiKeys = [];
+      }
+    } catch (e) {
+      error = 'Failed to connect to server';
+      apiKeys = [];
     } finally {
       loading = false;
     }
