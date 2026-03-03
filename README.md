@@ -207,4 +207,4 @@ docker compose --profile local up -d erdmini-local
 
 For details on environment variables, volume management, reverse proxy, and MCP configuration, see [DOCKER.md](DOCKER.md)
 
-For the full feature list, see [FEATURES.md](FEATURES.md)
+For the full feature list, see [docs/prd/FEATURES.md](docs/prd/FEATURES.md)
