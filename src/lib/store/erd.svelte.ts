@@ -45,6 +45,7 @@ class ERDStore {
   selectedTableIds = $state<Set<string>>(new Set());
   selectedMemoId = $state<string | null>(null);
   selectedMemoIds = $state<Set<string>>(new Set());
+  editingMemoId = $state<string | null>(null);
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
   hoveredColumnInfo = $state<{ tableId: string; columnId: string } | null>(null);
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
@@ -625,6 +626,7 @@ class ERDStore {
     this.schema.updatedAt = now();
     this.selectedMemoId = id;
     this.selectedMemoIds = new Set([id]);
+    this.editingMemoId = id;
     this._emitOp({ kind: 'add-memo', memo });
   }
 

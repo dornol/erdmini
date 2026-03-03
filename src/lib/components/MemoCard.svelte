@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
@@ -9,6 +10,7 @@
 
   let isEditing = $state(false);
   let editContent = $state('');
+  let textareaEl = $state<HTMLTextAreaElement | undefined>();
   let isDragging = $state(false);
   let isResizing = $state(false);
   let dragStart = { mouseX: 0, mouseY: 0, memoX: 0, memoY: 0 };
@@ -103,22 +105,30 @@
     groupDragStarts = null;
   }
 
+  async function startEditing() {
+    isEditing = true;
+    editContent = memo.content;
+    await tick();
+    textareaEl?.focus();
+  }
+
   function onContentDblClick(e: MouseEvent) {
     if (permissionStore.isReadOnly || memo.locked) return;
     e.stopPropagation();
-    isEditing = true;
-    editContent = memo.content;
+    startEditing();
   }
 
   function commitContent() {
     erdStore.updateMemo(memo.id, { content: editContent });
     isEditing = false;
+    if (erdStore.editingMemoId === memo.id) erdStore.editingMemoId = null;
   }
 
   function onTextareaKeyDown(e: KeyboardEvent) {
     e.stopPropagation();
     if (e.key === 'Escape') {
       isEditing = false;
+      if (erdStore.editingMemoId === memo.id) erdStore.editingMemoId = null;
     }
   }
 
@@ -136,6 +146,13 @@
     e.stopPropagation();
     erdStore.updateMemo(memo.id, { color: color === (memo.color ?? 'yellow') ? undefined : color });
   }
+
+  // Auto-enter editing mode when this memo is flagged for editing (e.g. just created)
+  $effect(() => {
+    if (erdStore.editingMemoId === memo.id && !isEditing) {
+      startEditing();
+    }
+  });
 
   $effect(() => {
     window.addEventListener('mousemove', onMouseMove);
@@ -179,13 +196,12 @@
     style="color:{colors.text}"
   >
     {#if isEditing}
-      <!-- svelte-ignore a11y_autofocus -->
       <textarea
         class="memo-textarea"
+        bind:this={textareaEl}
         bind:value={editContent}
         onblur={commitContent}
         onkeydown={onTextareaKeyDown}
-        autofocus
         style="color:{colors.text}"
       ></textarea>
     {:else if memo.content}
