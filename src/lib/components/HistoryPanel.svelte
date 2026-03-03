@@ -1,19 +1,12 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { resolveHistoryLabel } from '$lib/utils/history-labels';
 
   let { onclose }: { onclose: () => void } = $props();
 
   let undoEntries = $derived(erdStore.historyEntries);
   let redoEntries = $derived(erdStore.redoEntries);
-
-  function labelText(label: string): string {
-    try {
-      const fn = (m as Record<string, unknown>)[label];
-      if (typeof fn === 'function') return fn() as string;
-    } catch { /* fallback to raw label */ }
-    return label;
-  }
 
   function relativeTime(ts: number): string {
     const diff = Date.now() - ts;
@@ -52,7 +45,7 @@
         >
           <span class="history-time">{relativeTime(entry.time)}</span>
           <div class="history-content">
-            <span class="history-label">{labelText(entry.label)}</span>
+            <span class="history-label">{resolveHistoryLabel(entry.label)}</span>
             {#if entry.detail}
               <span class="history-detail">{entry.detail}</span>
             {/if}
@@ -75,7 +68,7 @@
         >
           <span class="history-time">{relativeTime(entry.time)}</span>
           <div class="history-content">
-            <span class="history-label">{labelText(entry.label)}</span>
+            <span class="history-label">{resolveHistoryLabel(entry.label)}</span>
             {#if entry.detail}
               <span class="history-detail">{entry.detail}</span>
             {/if}

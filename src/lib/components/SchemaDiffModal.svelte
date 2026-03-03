@@ -3,6 +3,7 @@
   import { diffSchemas, type SchemaDiff } from '$lib/utils/schema-diff';
   import type { ERDSchema } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
+  import { resolveHistoryLabel } from '$lib/utils/history-labels';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -71,7 +72,7 @@
   function historyLabel(entry: { label: string; detail: string; time: number }): string {
     const d = new Date(entry.time);
     const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-    return `${time} — ${entry.detail || entry.label}`;
+    return `${time} — ${entry.detail || resolveHistoryLabel(entry.label)}`;
   }
 </script>
 

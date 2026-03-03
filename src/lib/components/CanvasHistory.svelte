@@ -1,16 +1,9 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { resolveHistoryLabel } from '$lib/utils/history-labels';
 
   let panelOpen = $state(false);
-
-  function resolveLabel(key: string): string {
-    try {
-      const fn = (m as Record<string, unknown>)[key];
-      if (typeof fn === 'function') return fn() as string;
-    } catch { /* fallback to raw key */ }
-    return key;
-  }
 
   function relativeTime(ts: number): string {
     const diff = Math.floor((Date.now() - ts) / 1000);
@@ -45,7 +38,7 @@
             {@const realIndex = erdStore.historyEntries.length - 1 - i}
             <button class="history-item" onclick={() => handleJump(realIndex)}>
               <div class="history-info">
-                <span class="history-label">{resolveLabel(entry.label)}</span>
+                <span class="history-label">{resolveHistoryLabel(entry.label)}</span>
                 {#if entry.detail}
                   <span class="history-detail">{entry.detail}</span>
                 {/if}
