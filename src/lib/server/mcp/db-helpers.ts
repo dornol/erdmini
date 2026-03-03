@@ -150,8 +150,14 @@ export function getSchema(db: Database.Database, projectId: string): ERDSchema |
 
 export function saveSchema(db: Database.Database, projectId: string, schema: ERDSchema): void {
   schema.updatedAt = new Date().toISOString();
+  let json: string;
+  try {
+    json = JSON.stringify(schema);
+  } catch (e) {
+    throw new Error(`Failed to serialize schema for project ${projectId}: ${e instanceof Error ? e.message : String(e)}`);
+  }
   db.prepare(
     `INSERT INTO schemas (project_id, data, updated_at) VALUES (?, ?, datetime('now'))
      ON CONFLICT(project_id) DO UPDATE SET data = excluded.data, updated_at = datetime('now')`
-  ).run(projectId, JSON.stringify(schema));
+  ).run(projectId, json);
 }

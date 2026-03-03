@@ -33,23 +33,38 @@ export const POST: RequestHandler = async ({ request }) => {
     });
   }
 
-  // Ensure Accept header includes required content types for MCP SDK
-  const accept = request.headers.get('accept') || '';
+  // Ensure Accept header includes required content types for MCP SDK validation
+  const headers = new Headers(request.headers);
+  const accept = headers.get('accept') || '';
   if (!accept.includes('application/json') || !accept.includes('text/event-stream')) {
-    const headers = new Headers(request.headers);
     headers.set('accept', 'application/json, text/event-stream');
-    request = new Request(request.url, {
-      method: request.method,
-      headers,
-      body: null,
+  }
+  const correctedRequest = new Request(request.url, {
+    method: request.method,
+    headers,
+    body: JSON.stringify(parsedBody),
+  });
+
+  try {
+    // Stateless: fresh transport + server per request, JSON response mode
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    });
+    const mcpServer = createMcpServer(db, auth.keyInfo);
+    await mcpServer.connect(transport);
+    return transport.handleRequest(correctedRequest, { parsedBody });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({
+      jsonrpc: '2.0',
+      error: { code: -32603, message },
+      id: null,
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
     });
   }
-
-  // Stateless: create fresh transport + server per request
-  const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-  const mcpServer = createMcpServer(db, auth.keyInfo);
-  await mcpServer.connect(transport);
-  return transport.handleRequest(request, { parsedBody });
 };
 
 export const GET: RequestHandler = async () => {
