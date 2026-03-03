@@ -106,23 +106,27 @@ export function findOrCreateOIDCUser(
   email: string | undefined,
   name: string | undefined,
   autoCreate: boolean,
-): string | null {
-  // Check existing identity
+): { userId: string; status: string } | null {
+  // Check existing identity (join users to get status)
   const existing = db.prepare(
-    'SELECT user_id FROM oidc_identities WHERE provider_id = ? AND subject = ?'
-  ).get(providerId, sub) as { user_id: string } | undefined;
+    `SELECT oi.user_id, u.status
+     FROM oidc_identities oi
+     JOIN users u ON u.id = oi.user_id
+     WHERE oi.provider_id = ? AND oi.subject = ?`
+  ).get(providerId, sub) as { user_id: string; status: string } | undefined;
 
-  if (existing) return existing.user_id;
+  if (existing) return { userId: existing.user_id, status: existing.status };
 
-  if (!autoCreate) return null;
+  // Determine status: active if auto-create is on, pending otherwise
+  const status = autoCreate ? 'active' : 'pending';
 
   // Create new user
   const userId = randomUUID();
   const displayName = name || email || `oidc_${sub.substring(0, 8)}`;
 
   db.prepare(
-    `INSERT INTO users (id, display_name, email, role) VALUES (?, ?, ?, 'user')`
-  ).run(userId, displayName, email || null);
+    `INSERT INTO users (id, display_name, email, role, status) VALUES (?, ?, ?, 'user', ?)`
+  ).run(userId, displayName, email || null, status);
 
   // Link identity
   const identityId = randomUUID();
@@ -130,7 +134,7 @@ export function findOrCreateOIDCUser(
     'INSERT INTO oidc_identities (id, user_id, provider_id, subject, email) VALUES (?, ?, ?, ?, ?)'
   ).run(identityId, userId, providerId, sub, email || null);
 
-  return userId;
+  return { userId, status };
 }
 
 // Cleanup expired states (call periodically)

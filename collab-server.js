@@ -197,7 +197,7 @@ function hasProjectAccess(db, projectId, userId, userRole, minLevel) {
 function validateSession(db, sessionId) {
   const row = db.prepare(`
     SELECT s.id as session_id, s.user_id, s.expires_at,
-           u.id as uid, u.display_name, u.role
+           u.id as uid, u.display_name, u.role, u.status
     FROM sessions s JOIN users u ON s.user_id = u.id
     WHERE s.id = ?
   `).get(sessionId);
@@ -206,6 +206,7 @@ function validateSession(db, sessionId) {
     db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
     return null;
   }
+  if (row.status !== 'active') return null;
   return { user: { id: row.uid, displayName: row.display_name, role: row.role } };
 }
 

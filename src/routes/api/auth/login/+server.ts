@@ -55,6 +55,10 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
     return json({ error: 'Invalid credentials' }, { status: 401 });
   }
 
+  if (user.status === 'pending') {
+    return json({ error: 'pending_approval' }, { status: 403 });
+  }
+
   const session = createSession(db, user.id);
 
   cookies.set('erdmini_session', session.id, {

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { UserRow, OIDCProviderRow, ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
   import { authStore } from '$lib/store/auth.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   type UserInfo = Omit<UserRow, 'password_hash'>;
   type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null; scopes: ApiKeyScopeRow[] };
@@ -39,6 +40,9 @@
   let keyCopied = $state(false);
 
   let adminCount = $derived(users.filter(u => u.role === 'admin').length);
+  let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
+  let showPendingOnly = $state(false);
+  let filteredUsers = $derived(showPendingOnly ? users.filter(u => u.status === 'pending') : users);
 
   function isLastAdmin(user: UserInfo): boolean {
     return user.role === 'admin' && adminCount <= 1;
@@ -50,7 +54,7 @@
 
   // Edit user
   let editingUser = $state<string | null>(null);
-  let editUserForm = $state({ displayName: '', email: '', role: 'user', password: '' });
+  let editUserForm = $state({ displayName: '', email: '', role: 'user', status: 'active', password: '' });
 
   function startEditUser(user: UserInfo) {
     editingUser = user.id;
@@ -58,6 +62,7 @@
       displayName: user.display_name,
       email: user.email ?? '',
       role: user.role,
+      status: user.status,
       password: '',
     };
   }
@@ -69,6 +74,7 @@
       displayName: editUserForm.displayName,
       email: editUserForm.email,
       role: editUserForm.role,
+      status: editUserForm.status,
     };
     if (editUserForm.password) body.password = editUserForm.password;
     const res = await fetch(`/api/admin/users/${editingUser}`, {
@@ -95,6 +101,33 @@
       return;
     }
     userSuccess = `User "${username ?? id}" deleted`;
+    await loadUsers();
+  }
+
+  async function approveUser(id: string) {
+    userError = '';
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'active' }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      userError = data.error || 'Failed to approve user';
+      return;
+    }
+    await loadUsers();
+  }
+
+  async function rejectUser(id: string, username: string | null) {
+    if (!confirm(`Reject and delete user "${username ?? id}"?`)) return;
+    userError = '';
+    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      userError = data.error || 'Failed to reject user';
+      return;
+    }
     await loadUsers();
   }
 
@@ -271,6 +304,9 @@
   <div class="tabs">
     <button class="tab" class:active={activeTab === 'users'} onclick={() => (activeTab = 'users')}>
       Users ({users.length})
+      {#if pendingCount > 0}
+        <span class="tab-badge">{pendingCount}</span>
+      {/if}
     </button>
     <button class="tab" class:active={activeTab === 'oidc'} onclick={() => (activeTab = 'oidc')}>
       OIDC Providers ({providers.length})
@@ -283,6 +319,11 @@
   {#if activeTab === 'users'}
     <section class="section">
       <h2>Users</h2>
+      {#if pendingCount > 0}
+        <label class="checkbox-label" style="margin-bottom:12px">
+          <input type="checkbox" bind:checked={showPendingOnly} /> {m.admin_user_status_pending()} only ({pendingCount})
+        </label>
+      {/if}
       <table class="data-table">
         <thead>
           <tr>
@@ -290,12 +331,13 @@
             <th>Display Name</th>
             <th>Email</th>
             <th>Role</th>
+            <th>{m.admin_user_status()}</th>
             <th>Created</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {#each users as user}
+          {#each filteredUsers as user}
             {#if editingUser === user.id}
               <tr>
                 <td>{user.username ?? '(OIDC)'}</td>
@@ -310,6 +352,12 @@
                       <option value="admin">admin</option>
                     </select>
                   {/if}
+                </td>
+                <td>
+                  <select class="inline-select" bind:value={editUserForm.status}>
+                    <option value="active">{m.admin_user_status_active()}</option>
+                    <option value="pending">{m.admin_user_status_pending()}</option>
+                  </select>
                 </td>
                 <td><input class="inline-input" type="password" placeholder="New password" bind:value={editUserForm.password} /></td>
                 <td>
@@ -330,16 +378,28 @@
                     <span class="badge badge-warn" title="Last admin — cannot demote or delete">sole</span>
                   {/if}
                 </td>
+                <td>
+                  {#if user.status === 'pending'}
+                    <span class="badge badge-pending">{m.admin_user_status_pending()}</span>
+                  {:else}
+                    <span class="badge badge-active">{m.admin_user_status_active()}</span>
+                  {/if}
+                </td>
                 <td>{user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
                 <td>
                   <div class="btn-row">
-                    <button class="btn-sm" onclick={() => startEditUser(user)}>Edit</button>
-                    <button
-                      class="btn-sm btn-danger"
-                      disabled={isLastAdmin(user) || isSelf(user)}
-                      title={isSelf(user) ? 'Cannot delete yourself' : isLastAdmin(user) ? 'Cannot delete the last admin' : 'Delete user'}
-                      onclick={() => deleteUser(user.id, user.username)}
-                    >Delete</button>
+                    {#if user.status === 'pending'}
+                      <button class="btn-sm btn-approve" onclick={() => approveUser(user.id)}>{m.admin_user_approve()}</button>
+                      <button class="btn-sm btn-danger" onclick={() => rejectUser(user.id, user.username)}>{m.admin_user_reject()}</button>
+                    {:else}
+                      <button class="btn-sm" onclick={() => startEditUser(user)}>Edit</button>
+                      <button
+                        class="btn-sm btn-danger"
+                        disabled={isLastAdmin(user) || isSelf(user)}
+                        title={isSelf(user) ? 'Cannot delete yourself' : isLastAdmin(user) ? 'Cannot delete the last admin' : 'Delete user'}
+                        onclick={() => deleteUser(user.id, user.username)}
+                      >Delete</button>
+                    {/if}
                   </div>
                 </td>
               </tr>
@@ -653,6 +713,40 @@
   .badge-on {
     background: #14532d;
     color: #4ade80;
+  }
+
+  .badge-active {
+    background: #14532d;
+    color: #4ade80;
+  }
+
+  .badge-pending {
+    background: #713f12;
+    color: #fbbf24;
+  }
+
+  .tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #f59e0b;
+    color: #1e293b;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+
+  .btn-approve {
+    background: #22c55e;
+    color: white;
+  }
+
+  .btn-approve:hover {
+    background: #16a34a;
   }
 
   .form-section {

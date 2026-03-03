@@ -14,6 +14,7 @@
   const oidcError = $derived.by(() => {
     const code = data.errorCode;
     if (code === 'auto_registration_disabled') return m.auth_error_auto_registration();
+    if (code === 'pending_approval') return m.auth_error_pending_approval();
     if (code === 'auth_failed') return m.auth_error_failed();
     return '';
   });
@@ -32,7 +33,11 @@
 
       if (!res.ok) {
         const body = await res.json();
-        error = body.error || 'Login failed';
+        if (body.error === 'pending_approval') {
+          error = m.auth_error_pending_approval();
+        } else {
+          error = body.error || 'Login failed';
+        }
         return;
       }
 

@@ -17,7 +17,7 @@ export const GET: RequestHandler = ({ locals }) => {
   if (err) return err;
 
   const users = db.prepare(
-    'SELECT id, username, display_name, email, role, created_at, updated_at FROM users ORDER BY created_at'
+    'SELECT id, username, display_name, email, role, status, created_at, updated_at FROM users ORDER BY created_at'
   ).all() as Omit<UserRow, 'password_hash'>[];
 
   return json(users);

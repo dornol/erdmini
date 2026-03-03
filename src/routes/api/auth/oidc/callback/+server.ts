@@ -37,7 +37,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   try {
     const { sub, email, name } = await handleCallback(db, provider, url);
 
-    const userId = findOrCreateOIDCUser(
+    const result = findOrCreateOIDCUser(
       db,
       provider.id,
       sub,
@@ -46,11 +46,15 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       provider.auto_create_users === 1,
     );
 
-    if (!userId) {
+    if (!result) {
       throw redirect(303, '/login?error=auto_registration_disabled');
     }
 
-    const session = createSession(db, userId);
+    if (result.status === 'pending') {
+      throw redirect(303, '/login?error=pending_approval');
+    }
+
+    const session = createSession(db, result.userId);
 
     cookies.set('erdmini_session', session.id, {
       path: '/',

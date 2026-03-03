@@ -74,20 +74,79 @@
 - ARIA labels, keyboard navigation, screen reader support
 - Difficulty: Large
 
+### 18. FK Line Type Selection
+- Allow users to choose FK line rendering style: curved (current bezier), straight, orthogonal (right-angle)
+- Add `lineType` setting to canvasState
+- Line type switcher in Toolbar or settings
+- Difficulty: Medium
+
+### 19. Memo-Table Attachment
+- Drag & drop a memo onto a table to attach it
+- Attached memo shows as a small icon on the table header
+- Hover icon to display memo content tooltip
+- Memo moves with the table; drop on empty space to detach
+- Add `attachedTableId` field to Memo type
+- Difficulty: Medium
+
+### 20. API Key Permission Edit & Usage Tracking
+- Allow permission changes after API key creation (API + Admin UI)
+- Add `last_used_at` column to `api_keys` table (migration)
+- Update `last_used_at` on each API key authentication
+- Display last used timestamp in Admin API Keys UI
+- Difficulty: Small
+
+### 21. Admin Page Enhancements
+- Project management: member list per project, owner transfer, project delete/archive
+- Users tab: display auth provider (local / OIDC) per user with icon or label
+- Full backup & restore: SQLite `.backup` API snapshot → zip download, zip upload → validate & restore
+- Admin UI "Backup & Restore" tab
+- Difficulty: Large
+
+### 22. cross-env for Windows Compatibility
+- Add `cross-env` package for cross-platform env var support in npm scripts
+- Apply to `PUBLIC_STORAGE_MODE=server` and other env-dependent scripts
+- Difficulty: Small
+
+---
+
+## Large-Scale Improvements
+
+### 23. Audit Trail Logging
+- Log key activities in server mode: schema changes, MCP operations, admin settings, API key issuance, user registration/login
+- Design log storage format (DB table + query API + Admin UI)
+- Difficulty: Large
+
+### 24. DDL Dialect Expansion (Oracle, H2, SQLite)
+- Oracle: NUMBER, VARCHAR2, CLOB type mappings
+- H2: MySQL-compatible mode considerations
+- SQLite: INTEGER, TEXT, REAL simple type system
+- Extend Dialect type, update ddl-export.ts / ddl-import.ts / MCP dialect options
+- Add tests per dialect
+- Difficulty: Large
+
 ---
 
 ## Long-Term Vision
 
-### 18. AI Schema Generation
+### 25. AI Schema Generation
 - Automatically generate a schema from a natural language description (e.g., "Create a blog system")
 - Requires LLM integration
 - Difficulty: Large
 
-### 19. Live DB Connection & Reverse Engineering
+### 26. Live DB Connection & Reverse Engineering
 - Connect to a live database and automatically extract the schema
 - Currently only DDL text import is supported
 - Difficulty: Large
 
-### 20. Schema Snapshots / Branching
+### 27. Schema Snapshots / Branching
 - Create named snapshots and switch between schema variants after experimentation (like git branches)
 - Difficulty: Large
+
+### 28. Schema Namespace (Multi-Schema per Project)
+- Add `schema` field to tables (e.g., `public`, `auth`, `billing`)
+- Schema tab bar at the top of the canvas to switch between schemas
+- Each schema tab renders only its own tables and FK lines
+- Per-schema canvas viewport state, minimap, selection, auto-layout
+- DDL export: `CREATE SCHEMA` + schema-qualified table names (`auth.users`)
+- Primarily useful for PostgreSQL multi-schema projects
+- Difficulty: Medium

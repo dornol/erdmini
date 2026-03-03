@@ -30,16 +30,19 @@ export function resolveApiKey(
   const hash = hashApiKey(rawKey);
   const row = db.prepare(
     `SELECT ak.id AS key_id, ak.user_id, ak.expires_at,
-            u.role, u.display_name
+            u.role, u.display_name, u.status
      FROM api_keys ak
      JOIN users u ON u.id = ak.user_id
      WHERE ak.key_hash = ?`
-  ).get(hash) as { key_id: string; user_id: string; expires_at: string | null; role: string; display_name: string } | undefined;
+  ).get(hash) as { key_id: string; user_id: string; expires_at: string | null; role: string; display_name: string; status: string } | undefined;
 
   if (!row) return null;
 
   // Check expiry
   if (row.expires_at && new Date(row.expires_at) < new Date()) return null;
+
+  // Block non-active users
+  if (row.status !== 'active') return null;
 
   // Update last_used_at
   db.prepare('UPDATE api_keys SET last_used_at = datetime(\'now\') WHERE id = ?').run(row.key_id);

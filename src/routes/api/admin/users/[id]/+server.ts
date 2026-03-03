@@ -16,7 +16,7 @@ export const GET: RequestHandler = ({ params, locals }) => {
   if (err) return err;
 
   const user = db.prepare(
-    'SELECT id, username, display_name, email, role, created_at, updated_at FROM users WHERE id = ?'
+    'SELECT id, username, display_name, email, role, status, created_at, updated_at FROM users WHERE id = ?'
   ).get(params.id) as Omit<UserRow, 'password_hash'> | undefined;
 
   if (!user) {
@@ -36,7 +36,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
   }
 
   const body = await request.json();
-  const { displayName, email, role, password } = body;
+  const { displayName, email, role, password, status } = body;
 
   // Prevent demoting the last admin
   if (role && role !== 'admin' && user.role === 'admin') {
@@ -62,6 +62,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
   if (role !== undefined) {
     updates.push('role = ?');
     values.push(role);
+  }
+  if (status !== undefined) {
+    if (status !== 'active' && status !== 'pending') {
+      return json({ error: 'Invalid status value' }, { status: 400 });
+    }
+    updates.push('status = ?');
+    values.push(status);
   }
   if (password) {
     const hash = await hashPassword(password);

@@ -19,7 +19,7 @@ export function createSession(db: Database.Database, userId: string): SessionRow
 export function validateSession(db: Database.Database, sessionId: string): { user: AuthUser; session: SessionRow } | null {
   const row = db.prepare(`
     SELECT s.id as session_id, s.user_id, s.expires_at, s.created_at as session_created_at,
-           u.id as uid, u.username, u.display_name, u.email, u.role
+           u.id as uid, u.username, u.display_name, u.email, u.role, u.status
     FROM sessions s
     JOIN users u ON s.user_id = u.id
     WHERE s.id = ?
@@ -33,6 +33,7 @@ export function validateSession(db: Database.Database, sessionId: string): { use
     display_name: string;
     email: string | null;
     role: string;
+    status: string;
   } | undefined;
 
   if (!row) return null;
@@ -43,6 +44,12 @@ export function validateSession(db: Database.Database, sessionId: string): { use
     return null;
   }
 
+  // Block non-active users (e.g. pending approval) — delete all their sessions
+  if (row.status !== 'active') {
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.user_id);
+    return null;
+  }
+
   return {
     user: {
       id: row.uid,
@@ -50,6 +57,7 @@ export function validateSession(db: Database.Database, sessionId: string): { use
       displayName: row.display_name,
       email: row.email,
       role: row.role as 'admin' | 'user',
+      status: row.status as 'active' | 'pending',
     },
     session: {
       id: row.session_id,

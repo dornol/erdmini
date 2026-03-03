@@ -4,6 +4,7 @@ export interface AuthUser {
   displayName: string;
   email: string | null;
   role: 'admin' | 'user';
+  status: 'active' | 'pending';
 }
 
 export interface SessionRow {
@@ -20,6 +21,7 @@ export interface UserRow {
   email: string | null;
   password_hash: string | null;
   role: string;
+  status: string;
   created_at: string;
   updated_at: string;
 }
