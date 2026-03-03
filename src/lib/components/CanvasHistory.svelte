@@ -1,18 +1,9 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import * as m from '$lib/paraglide/messages';
-  import { resolveHistoryLabel } from '$lib/utils/history-labels';
+  import HistoryEntryList from '$lib/components/HistoryEntryList.svelte';
 
   let panelOpen = $state(false);
-
-  function relativeTime(ts: number): string {
-    const diff = Math.floor((Date.now() - ts) / 1000);
-    if (diff < 5) return 'now';
-    if (diff < 60) return `${diff}s`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-    return `${Math.floor(diff / 86400)}d`;
-  }
 
   function handleJump(index: number) {
     erdStore.jumpToHistory(index);
@@ -34,18 +25,12 @@
         {#if erdStore.historyEntries.length === 0}
           <div class="history-empty">{m.history_empty()}</div>
         {:else}
-          {#each [...erdStore.historyEntries].reverse() as entry, i}
-            {@const realIndex = erdStore.historyEntries.length - 1 - i}
-            <button class="history-item" onclick={() => handleJump(realIndex)}>
-              <div class="history-info">
-                <span class="history-label">{resolveHistoryLabel(entry.label)}</span>
-                {#if entry.detail}
-                  <span class="history-detail">{entry.detail}</span>
-                {/if}
-              </div>
-              <span class="history-time">{relativeTime(entry.time)}</span>
-            </button>
-          {/each}
+          <HistoryEntryList
+            entries={erdStore.historyEntries}
+            onjump={handleJump}
+            timeGranularity="fine"
+            timePosition="end"
+          />
         {/if}
       </div>
     </div>
@@ -187,21 +172,6 @@
     transition: background 0.1s;
   }
 
-  .history-info {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-  }
-
-  .history-detail {
-    font-size: 10px;
-    opacity: 0.55;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .history-item:hover:not(.current) {
     background: var(--erd-zoom-border);
   }
@@ -212,11 +182,13 @@
     cursor: default;
   }
 
-  .history-time {
+  .history-panel-list :global(.history-entry:hover) {
+    background: var(--erd-zoom-border);
+  }
+
+  .history-panel-list :global(.history-entry-detail) {
+    opacity: 0.55;
     font-size: 10px;
-    opacity: 0.6;
-    flex-shrink: 0;
-    margin-left: 8px;
   }
 
   .history-empty {

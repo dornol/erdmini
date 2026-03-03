@@ -1,20 +1,12 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import * as m from '$lib/paraglide/messages';
-  import { resolveHistoryLabel } from '$lib/utils/history-labels';
+  import HistoryEntryList from '$lib/components/HistoryEntryList.svelte';
 
   let { onclose }: { onclose: () => void } = $props();
 
   let undoEntries = $derived(erdStore.historyEntries);
   let redoEntries = $derived(erdStore.redoEntries);
-
-  function relativeTime(ts: number): string {
-    const diff = Date.now() - ts;
-    if (diff < 60000) return '< 1m';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
-    return `${Math.floor(diff / 86400000)}d`;
-  }
 
   function jumpToUndo(index: number) {
     erdStore.jumpToHistory(index);
@@ -38,20 +30,13 @@
       <div class="history-empty">{m.history_empty()}</div>
     {:else}
       <!-- Redo entries (future, shown at top, faded) -->
-      {#each redoEntries.slice().reverse() as entry, i}
-        <button
-          class="history-item redo-item"
-          onclick={() => jumpToRedo(redoEntries.length - i)}
-        >
-          <span class="history-time">{relativeTime(entry.time)}</span>
-          <div class="history-content">
-            <span class="history-label">{resolveHistoryLabel(entry.label)}</span>
-            {#if entry.detail}
-              <span class="history-detail">{entry.detail}</span>
-            {/if}
-          </div>
-        </button>
-      {/each}
+      <HistoryEntryList
+        entries={redoEntries}
+        onjump={(idx) => jumpToRedo(redoEntries.length - idx)}
+        timeGranularity="coarse"
+        timePosition="start"
+        entryClass="redo-item"
+      />
 
       <!-- Current state marker -->
       <div class="history-current">
@@ -60,21 +45,12 @@
       </div>
 
       <!-- Undo entries (past, shown below) -->
-      {#each undoEntries.slice().reverse() as entry, i}
-        {@const idx = undoEntries.length - 1 - i}
-        <button
-          class="history-item undo-item"
-          onclick={() => jumpToUndo(idx)}
-        >
-          <span class="history-time">{relativeTime(entry.time)}</span>
-          <div class="history-content">
-            <span class="history-label">{resolveHistoryLabel(entry.label)}</span>
-            {#if entry.detail}
-              <span class="history-detail">{entry.detail}</span>
-            {/if}
-          </div>
-        </button>
-      {/each}
+      <HistoryEntryList
+        entries={undoEntries}
+        onjump={jumpToUndo}
+        timeGranularity="coarse"
+        timePosition="start"
+      />
     {/if}
   </div>
 </div>
@@ -131,6 +107,7 @@
     overflow-y: auto;
     max-height: 450px;
     padding: 4px 0;
+    color: var(--app-text, #e2e8f0);
   }
 
   .history-empty {
@@ -160,58 +137,23 @@
     flex-shrink: 0;
   }
 
-  .history-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    width: 100%;
-    padding: 7px 14px;
-    background: none;
-    border: none;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.1s;
-    font-size: 12px;
-  }
-
-  .history-item:hover {
+  .history-body :global(.history-entry:hover) {
     background: var(--app-hover-bg, #334155);
   }
 
-  .redo-item {
+  .history-body :global(.history-entry-time) {
+    color: var(--app-text-faint, #64748b);
+  }
+
+  .history-body :global(.history-entry-detail) {
+    color: var(--app-text-muted, #94a3b8);
+  }
+
+  .history-body :global(.redo-item) {
     opacity: 0.5;
   }
 
-  .redo-item:hover {
+  .history-body :global(.redo-item:hover) {
     opacity: 0.8;
-  }
-
-  .history-time {
-    flex-shrink: 0;
-    font-size: 10px;
-    color: var(--app-text-faint, #64748b);
-    min-width: 28px;
-    padding-top: 2px;
-  }
-
-  .history-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-  }
-
-  .history-label {
-    color: var(--app-text, #e2e8f0);
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  .history-detail {
-    color: var(--app-text-muted, #94a3b8);
-    font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 </style>
