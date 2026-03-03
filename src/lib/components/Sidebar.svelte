@@ -624,7 +624,7 @@
     </div>
 
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <VirtualList bind:this={virtualListRef} items={virtualRows} class="table-list" ondragover={onDragOverContainer}>
+    <VirtualList bind:this={virtualListRef} items={virtualRows} class="table-list thin-scrollbar" ondragover={onDragOverContainer}>
       {#snippet children(row: VirtualRow, _index: number)}
         {#if row.type === 'table'}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -775,7 +775,7 @@
           <span>{m.sidebar_memos()}</span>
           <span class="count">{erdStore.schema.memos.length}</span>
         </div>
-        <div class="memo-list">
+        <div class="memo-list thin-scrollbar">
           {#each erdStore.schema.memos as memo (memo.id)}
             {@const MEMO_DOTS: Record<string, string> = {
               yellow: '#facc15', blue: '#60a5fa', green: '#4ade80',
@@ -1181,25 +1181,6 @@
     padding: 0;
     margin: 0;
     flex: 1;
-    scrollbar-width: thin;
-    scrollbar-color: var(--app-scrollbar, #cbd5e1) transparent;
-  }
-
-  :global(.table-list::-webkit-scrollbar) {
-    width: 6px;
-  }
-
-  :global(.table-list::-webkit-scrollbar-track) {
-    background: transparent;
-  }
-
-  :global(.table-list::-webkit-scrollbar-thumb) {
-    background: var(--app-scrollbar, #cbd5e1);
-    border-radius: 3px;
-  }
-
-  :global(.table-list::-webkit-scrollbar-thumb:hover) {
-    background: var(--app-text-faint, #94a3b8);
   }
 
   .table-item {
@@ -1663,25 +1644,6 @@
     padding: 0 6px 8px;
     max-height: 150px;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--app-border, #cbd5e1) transparent;
-  }
-
-  .memo-list::-webkit-scrollbar {
-    width: 5px;
-  }
-
-  .memo-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .memo-list::-webkit-scrollbar-thumb {
-    background: var(--app-border, #cbd5e1);
-    border-radius: 3px;
-  }
-
-  .memo-list::-webkit-scrollbar-thumb:hover {
-    background: var(--app-text-muted, #94a3b8);
   }
 
   .memo-item {

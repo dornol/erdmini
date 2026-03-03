@@ -1,1 +1,21 @@
 @import 'tailwindcss';
+
+/* ── Thin scrollbar utility ── */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-thumb, #cbd5e1) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: var(--sb-size, 5px);
+  height: var(--sb-size, 5px);
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb, #cbd5e1);
+  border-radius: 3px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--sb-thumb-hover, #94a3b8);
+}

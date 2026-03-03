@@ -531,7 +531,7 @@
       <div class="upload-message">{uploadMessage}</div>
     {/if}
 
-    <div class="modal-body">
+    <div class="modal-body thin-scrollbar">
       <!-- Coverage dashboard -->
       {#if coverageStats.totalColumns > 0}
         <div class="coverage-panel">
@@ -580,7 +580,7 @@
           {/if}
         </div>
       {/if}
-      <div class="table-wrapper">
+      <div class="table-wrapper thin-scrollbar">
         <table class="domain-table">
           <thead>
             <tr>
@@ -1136,49 +1136,11 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-
-  .modal-body::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .modal-body::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .modal-body::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-  }
-
-  .modal-body::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
   }
 
   /* ── Domain table ── */
   .table-wrapper {
     overflow-x: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-
-  .table-wrapper::-webkit-scrollbar {
-    height: 5px;
-  }
-
-  .table-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .table-wrapper::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-  }
-
-  .table-wrapper::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
   }
 
   .domain-table {

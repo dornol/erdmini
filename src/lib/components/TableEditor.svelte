@@ -279,7 +279,7 @@
     </div>
 
     <!-- Columns (compact) -->
-    <div class="section columns-section">
+    <div class="section columns-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.editor_columns()}</span>
         <button class="add-col-btn" bind:this={addBtnEl} onclick={addColumnAndEdit}>
@@ -347,7 +347,7 @@
     </div>
 
     <!-- Foreign Keys -->
-    <div class="section fk-section">
+    <div class="section fk-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">Foreign Keys</span>
         <button class="add-col-btn" onclick={() => { editingFkId = undefined; showFkModal = true; }}>{m.fk_add()}</button>
@@ -389,7 +389,7 @@
     </div>
 
     <!-- Unique Keys -->
-    <div class="section uk-section">
+    <div class="section uk-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.uq_section()}</span>
         <button class="add-col-btn" onclick={() => (showUkModal = true)}>{m.uq_add()}</button>
@@ -419,7 +419,7 @@
     </div>
 
     <!-- Indexes -->
-    <div class="section idx-section">
+    <div class="section idx-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.idx_section()}</span>
         <button class="add-col-btn" onclick={() => (showIdxModal = true)}>{m.idx_add()}</button>
@@ -560,25 +560,6 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-
-  .columns-section::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .columns-section::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .columns-section::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-  }
-
-  .columns-section::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
   }
 
   .fk-section,
@@ -589,33 +570,6 @@
     gap: 4px;
     overflow-y: auto;
     max-height: 200px;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-
-  .fk-section::-webkit-scrollbar,
-  .uk-section::-webkit-scrollbar,
-  .idx-section::-webkit-scrollbar {
-    width: 5px;
-  }
-
-  .fk-section::-webkit-scrollbar-track,
-  .uk-section::-webkit-scrollbar-track,
-  .idx-section::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .fk-section::-webkit-scrollbar-thumb,
-  .uk-section::-webkit-scrollbar-thumb,
-  .idx-section::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-  }
-
-  .fk-section::-webkit-scrollbar-thumb:hover,
-  .uk-section::-webkit-scrollbar-thumb:hover,
-  .idx-section::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
   }
 
   .field-label {

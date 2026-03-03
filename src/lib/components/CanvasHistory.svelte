@@ -48,7 +48,7 @@
     <div class="history-backdrop" onclick={() => (panelOpen = false)}></div>
     <div class="history-panel" onwheel={(e) => e.stopPropagation()}>
       <div class="history-panel-header">{m.history_title()}</div>
-      <div class="history-panel-list">
+      <div class="history-panel-list thin-scrollbar">
         <div class="history-item current">
           <span class="history-label">{m.history_current()}</span>
         </div>
@@ -190,25 +190,6 @@
   .history-panel-list {
     overflow-y: auto;
     flex: 1;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(148,163,184,0.5) transparent;
-  }
-
-  .history-panel-list::-webkit-scrollbar {
-    width: 5px;
-  }
-
-  .history-panel-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .history-panel-list::-webkit-scrollbar-thumb {
-    background: rgba(148,163,184,0.5);
-    border-radius: 3px;
-  }
-
-  .history-panel-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(148,163,184,0.8);
   }
 
   .history-item {

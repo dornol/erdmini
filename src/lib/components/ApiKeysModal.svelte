@@ -29,6 +29,11 @@
   let scopeMode = $state<'all' | 'scoped'>('all');
   let selectedScopes = $state<{ projectId: string; permission: 'viewer' | 'editor' }[]>([]);
 
+  // Edit state
+  let editingKeyId = $state<string | null>(null);
+  let editScopes = $state<{ projectId: string; permission: 'viewer' | 'editor' }[]>([]);
+  let editScopeMode = $state<'all' | 'scoped'>('all');
+
   // Created key reveal
   let createdKey = $state<string | null>(null);
   let keyCopied = $state(false);
@@ -130,6 +135,57 @@
     selectedScopes = selectedScopes.filter((_, i) => i !== idx);
   }
 
+  function startEdit(key: ApiKeyInfo) {
+    editingKeyId = key.id;
+    if (key.scopes.length > 0) {
+      editScopeMode = 'scoped';
+      editScopes = key.scopes.map(s => ({ projectId: s.project_id, permission: s.permission as 'viewer' | 'editor' }));
+    } else {
+      editScopeMode = 'all';
+      editScopes = [];
+    }
+  }
+
+  function cancelEdit() {
+    editingKeyId = null;
+    editScopes = [];
+    editScopeMode = 'all';
+  }
+
+  async function saveEdit() {
+    if (!editingKeyId) return;
+    error = '';
+    const scopes = editScopeMode === 'scoped' ? editScopes : [];
+    const res = await fetch(`/api/my/api-keys/${editingKeyId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scopes }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      error = data.error || 'Failed to update key';
+      return;
+    }
+    editingKeyId = null;
+    editScopes = [];
+    editScopeMode = 'all';
+    await loadKeys();
+  }
+
+  function addEditScope() {
+    const projects = projectStore.index.projects;
+    if (projects.length === 0) return;
+    const existing = new Set(editScopes.map(s => s.projectId));
+    const next = projects.find(p => !existing.has(p.id));
+    if (next) {
+      editScopes = [...editScopes, { projectId: next.id, permission: 'viewer' }];
+    }
+  }
+
+  function removeEditScope(idx: number) {
+    editScopes = editScopes.filter((_, i) => i !== idx);
+  }
+
   function handleOverlayClick(e: MouseEvent) {
     if (e.target === e.currentTarget) onclose();
   }
@@ -180,7 +236,7 @@
           <div class="loading">Loading...</div>
         {:else}
           {#each apiKeys as key}
-            <div class="key-row">
+            <div class="key-row" class:key-row-editing={editingKeyId === key.id}>
               <div class="key-info">
                 <span class="key-name">{key.name}</span>
                 <span class="key-detail">
@@ -196,10 +252,64 @@
                 </span>
                 <span class="key-scopes">{m.api_keys_scopes()}: {scopeProjectNames(key.scopes)}</span>
               </div>
-              <button class="btn-sm btn-danger" onclick={() => deleteKey(key.id, key.name)}>
-                {m.action_delete()}
-              </button>
+              <div class="key-actions">
+                <button class="btn-sm" onclick={() => startEdit(key)}>Edit</button>
+                <button class="btn-sm btn-danger" onclick={() => deleteKey(key.id, key.name)}>
+                  {m.action_delete()}
+                </button>
+              </div>
             </div>
+            {#if editingKeyId === key.id}
+              <div class="key-edit-section">
+                <div class="scope-section">
+                  <label class="radio-label">
+                    <input type="radio" bind:group={editScopeMode} value="all" />
+                    {m.api_keys_all_projects()}
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" bind:group={editScopeMode} value="scoped" />
+                    {m.api_keys_scopes()}
+                  </label>
+                </div>
+                {#if editScopeMode === 'scoped'}
+                  <div class="scopes-editor">
+                    {#each editScopes as scope, idx}
+                      <div class="scope-row">
+                        <select
+                          class="form-select"
+                          value={scope.projectId}
+                          onchange={(e) => {
+                            editScopes[idx] = { ...scope, projectId: (e.target as HTMLSelectElement).value };
+                            editScopes = editScopes;
+                          }}
+                        >
+                          {#each projectStore.index.projects as p}
+                            <option value={p.id}>{p.name}</option>
+                          {/each}
+                        </select>
+                        <select
+                          class="form-select perm-select"
+                          value={scope.permission}
+                          onchange={(e) => {
+                            editScopes[idx] = { ...scope, permission: (e.target as HTMLSelectElement).value as 'viewer' | 'editor' };
+                            editScopes = editScopes;
+                          }}
+                        >
+                          <option value="viewer">Viewer</option>
+                          <option value="editor">Editor</option>
+                        </select>
+                        <button class="btn-sm" onclick={() => removeEditScope(idx)}>✕</button>
+                      </div>
+                    {/each}
+                    <button class="btn-sm btn-add-scope" onclick={addEditScope}>+ Add project</button>
+                  </div>
+                {/if}
+                <div class="key-edit-actions">
+                  <button class="btn-primary" onclick={saveEdit}>Save</button>
+                  <button class="btn-sm" onclick={cancelEdit}>Cancel</button>
+                </div>
+              </div>
+            {/if}
           {/each}
           {#if apiKeys.length === 0}
             <div class="empty">{m.api_keys_no_keys()}</div>
@@ -573,5 +683,32 @@
     margin-bottom: 8px;
     font-size: 13px;
     color: #4ade80;
+  }
+
+  .key-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .key-row-editing {
+    border-radius: 6px 6px 0 0;
+    margin-bottom: 0;
+  }
+
+  .key-edit-section {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 12px;
+    margin-top: -7px;
+    margin-bottom: 6px;
+  }
+
+  .key-edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
   }
 </style>

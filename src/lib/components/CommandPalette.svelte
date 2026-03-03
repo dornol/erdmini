@@ -123,7 +123,7 @@
       />
     </div>
 
-    <div class="cmd-results" bind:this={resultsEl}>
+    <div class="cmd-results thin-scrollbar" bind:this={resultsEl} style="--sb-thumb: #475569; --sb-thumb-hover: #64748b">
       {#if filtered.all.length === 0}
         <div class="cmd-empty">{m.cmd_palette_no_results()}</div>
       {:else}
@@ -236,25 +236,6 @@
     flex: 1;
     overflow-y: auto;
     padding: 4px 0;
-    scrollbar-width: thin;
-    scrollbar-color: #475569 transparent;
-  }
-
-  .cmd-results::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .cmd-results::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .cmd-results::-webkit-scrollbar-thumb {
-    background: #475569;
-    border-radius: 3px;
-  }
-
-  .cmd-results::-webkit-scrollbar-thumb:hover {
-    background: #64748b;
   }
 
   .cmd-group-label {

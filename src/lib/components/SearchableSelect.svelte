@@ -168,7 +168,7 @@
         autocomplete="off"
         spellcheck="false"
       />
-      <div class="ss-list" role="listbox">
+      <div class="ss-list thin-scrollbar" role="listbox">
         {#each filtered as opt, idx (opt.value)}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -307,25 +307,6 @@
   .ss-list {
     max-height: 200px;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-
-  .ss-list::-webkit-scrollbar {
-    width: 5px;
-  }
-
-  .ss-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .ss-list::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-  }
-
-  .ss-list::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
   }
 
   .ss-item {
