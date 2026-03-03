@@ -32,6 +32,18 @@ export const POST: RequestHandler = async ({ request }) => {
     });
   }
 
+  // Ensure Accept header includes required content types for MCP SDK
+  const accept = request.headers.get('accept') || '';
+  if (!accept.includes('application/json') || !accept.includes('text/event-stream')) {
+    const headers = new Headers(request.headers);
+    headers.set('accept', 'application/json, text/event-stream');
+    request = new Request(request.url, {
+      method: request.method,
+      headers,
+      body: null,
+    });
+  }
+
   // Stateless: create fresh transport + server per request
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const mcpServer = createMcpServer(db, auth.keyInfo);
