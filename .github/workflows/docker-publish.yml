@@ -32,9 +32,9 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           flavor: suffix=-local
           tags: |
-            type=ref,event=branch
+            type=raw,value=latest
             type=semver,pattern={{version}}
-            type=sha,prefix=
+            type=sha
 
       - uses: docker/build-push-action@v6
         with:
@@ -61,9 +61,9 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           flavor: suffix=-server
           tags: |
-            type=ref,event=branch
+            type=raw,value=latest
             type=semver,pattern={{version}}
-            type=sha,prefix=
+            type=sha
 
       - uses: docker/build-push-action@v6
         with:
