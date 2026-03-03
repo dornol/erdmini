@@ -472,6 +472,32 @@ export function createMcpServer(
   );
 
   server.tool(
+    'update_group_color',
+    'Set or clear the color of a table group',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      group: z.string().max(256).describe('Group name'),
+      color: z.string().max(32).optional().describe('CSS color value (e.g. "#ff6600"). Omit or empty string to clear'),
+    },
+    async ({ projectId, group, color }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const groupColors = { ...(schema.groupColors ?? {}) };
+      if (color) {
+        groupColors[group] = color;
+      } else {
+        delete groupColors[group];
+      }
+      const updated: typeof schema = { ...schema, groupColors, updatedAt: new Date().toISOString() };
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: color ? `Group "${group}" color set to ${color}` : `Group "${group}" color cleared` }] };
+    },
+  );
+
+  server.tool(
     'import_ddl',
     'Import DDL SQL to create/update tables in a project',
     {
