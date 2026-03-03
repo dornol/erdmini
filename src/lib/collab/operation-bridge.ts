@@ -12,7 +12,7 @@ export function sendOperation(op: CollabOperation) {
   if (erdStore._isRemoteOp || !collabClient.connected) return;
 
   // Throttle move operations (50ms)
-  if (op.kind === 'move-table' || op.kind === 'move-tables') {
+  if (op.kind === 'move-table' || op.kind === 'move-tables' || op.kind === 'move-memo' || op.kind === 'move-memos') {
     pendingMoveOp = op;
     if (!moveThrottleTimer) {
       moveThrottleTimer = setTimeout(() => {
@@ -171,6 +171,43 @@ export function applyRemoteOperation(op: CollabOperation) {
       case 'apply-layout': {
         const positions = new Map(op.positions.map((p) => [p.tableId, { x: p.x, y: p.y }]));
         erdStore.applyLayout(positions);
+        break;
+      }
+      case 'add-memo': {
+        erdStore.schema.memos = [...erdStore.schema.memos, op.memo];
+        erdStore.schema.updatedAt = new Date().toISOString();
+        break;
+      }
+      case 'delete-memo': {
+        erdStore.deleteMemo(op.memoId);
+        break;
+      }
+      case 'delete-memos': {
+        erdStore.deleteMemos(op.memoIds);
+        break;
+      }
+      case 'move-memo': {
+        const memo = erdStore.schema.memos.find((m) => m.id === op.memoId);
+        if (memo) {
+          memo.position = { x: op.x, y: op.y };
+        }
+        break;
+      }
+      case 'move-memos': {
+        for (const move of op.moves) {
+          const memo = erdStore.schema.memos.find((m) => m.id === move.memoId);
+          if (memo) {
+            memo.position = { x: move.x, y: move.y };
+          }
+        }
+        break;
+      }
+      case 'update-memo': {
+        const memo = erdStore.schema.memos.find((m) => m.id === op.memoId);
+        if (memo) {
+          Object.assign(memo, op.patch);
+          erdStore.schema.updatedAt = new Date().toISOString();
+        }
         break;
       }
       case 'load-schema': {

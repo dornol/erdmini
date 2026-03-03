@@ -1,4 +1,4 @@
-import type { Column, ColumnDomain, ERDSchema, ForeignKey, Table, TableIndex, UniqueKey } from '$lib/types/erd';
+import type { Column, ColumnDomain, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { generateId, now } from '$lib/utils/common';
 import { TABLE_W } from '$lib/constants/layout';
 
@@ -13,6 +13,7 @@ export function defaultSchema(): ERDSchema {
     version: '1',
     tables: [],
     domains: [],
+    memos: [],
     groupColors: {},
     createdAt: now(),
     updatedAt: now(),
@@ -42,6 +43,8 @@ class ERDStore {
   schema = $state<ERDSchema>(defaultSchema());
   selectedTableId = $state<string | null>(null);
   selectedTableIds = $state<Set<string>>(new Set());
+  selectedMemoId = $state<string | null>(null);
+  selectedMemoIds = $state<Set<string>>(new Set());
   editingColumnInfo = $state<{ tableId: string; columnId: string; anchorX: number; anchorY: number } | null>(null);
   hoveredColumnInfo = $state<{ tableId: string; columnId: string } | null>(null);
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
@@ -128,6 +131,10 @@ class ERDStore {
 
   get selectedTable(): Table | undefined {
     return this.schema.tables.find((t) => t.id === this.selectedTableId);
+  }
+
+  get selectedMemo(): Memo | undefined {
+    return this.schema.memos.find((m) => m.id === this.selectedMemoId);
   }
 
   clearHistory() {
@@ -601,8 +608,79 @@ class ERDStore {
     this._emitOp({ kind: 'duplicate-table', table: newTable });
   }
 
+  // Memo CRUD
+  addMemo(viewportWidth = 800, viewportHeight = 600) {
+    const { x, y, scale } = canvasState;
+    const worldX = (viewportWidth / 2 - x) / scale;
+    const worldY = (viewportHeight / 2 - y) / scale;
+    const id = generateId();
+    const memo: Memo = {
+      id,
+      content: '',
+      position: { x: worldX - 100, y: worldY - 75 },
+      width: 200,
+      height: 150,
+    };
+    this.schema.memos = [...this.schema.memos, memo];
+    this.schema.updatedAt = now();
+    this.selectedMemoId = id;
+    this.selectedMemoIds = new Set([id]);
+    this._emitOp({ kind: 'add-memo', memo });
+  }
+
+  deleteMemo(id: string) {
+    this.schema.memos = this.schema.memos.filter((m) => m.id !== id);
+    this.schema.updatedAt = now();
+    if (this.selectedMemoId === id) this.selectedMemoId = null;
+    this.selectedMemoIds.delete(id);
+    this.selectedMemoIds = new Set(this.selectedMemoIds);
+    this._emitOp({ kind: 'delete-memo', memoId: id });
+  }
+
+  deleteMemos(ids: string[]) {
+    const idSet = new Set(ids);
+    this.schema.memos = this.schema.memos.filter((m) => !idSet.has(m.id));
+    this.schema.updatedAt = now();
+    if (this.selectedMemoId && idSet.has(this.selectedMemoId)) this.selectedMemoId = null;
+    this.selectedMemoIds = new Set();
+    this._emitOp({ kind: 'delete-memos', memoIds: ids });
+  }
+
+  moveMemo(id: string, x: number, y: number) {
+    const memo = this.schema.memos.find((m) => m.id === id);
+    if (!memo) return;
+    const sx = canvasState.snap(x);
+    const sy = canvasState.snap(y);
+    memo.position = { x: sx, y: sy };
+    this._emitOp({ kind: 'move-memo', memoId: id, x: sx, y: sy });
+  }
+
+  moveMemos(moves: { id: string; x: number; y: number }[]) {
+    const opMoves: { memoId: string; x: number; y: number }[] = [];
+    for (const move of moves) {
+      const memo = this.schema.memos.find((m) => m.id === move.id);
+      if (!memo) continue;
+      const sx = canvasState.snap(move.x);
+      const sy = canvasState.snap(move.y);
+      memo.position = { x: sx, y: sy };
+      opMoves.push({ memoId: move.id, x: sx, y: sy });
+    }
+    if (opMoves.length > 0) {
+      this._emitOp({ kind: 'move-memos', moves: opMoves });
+    }
+  }
+
+  updateMemo(id: string, patch: Partial<Omit<Memo, 'id'>>) {
+    const memo = this.schema.memos.find((m) => m.id === id);
+    if (!memo) return;
+    Object.assign(memo, patch);
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-memo', memoId: id, patch });
+  }
+
   loadSchema(schema: ERDSchema) {
     if (!schema.domains) schema.domains = [];
+    if (!schema.memos) schema.memos = [];
     if (!schema.groupColors) schema.groupColors = {};
     migrateFK(schema);
     for (const table of schema.tables) {
@@ -615,6 +693,8 @@ class ERDStore {
     this.schema.updatedAt = now();
     this.selectedTableId = null;
     this.selectedTableIds = new Set();
+    this.selectedMemoId = null;
+    this.selectedMemoIds = new Set();
     this._emitOp({ kind: 'load-schema', schema });
   }
 }

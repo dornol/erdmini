@@ -290,5 +290,14 @@
   "toolbar_file": "文件",
   "toolbar_tools": "工具",
   "toolbar_settings": "设置",
-  "toolbar_help": "帮助"
+  "toolbar_help": "帮助",
+  "toolbar_add_memo": "+ 便签",
+  "memo_placeholder": "输入备注...",
+  "sidebar_memos": "便签",
+  "sidebar_memos_empty": "暂无便签。",
+  "dialog_delete_memo_confirm": "删除此便签？",
+  "dialog_delete_memos_confirm": "删除选中的 {count} 个便签？",
+  "history_add_memo": "添加便签",
+  "history_delete_memo": "删除便签",
+  "history_edit_memo": "编辑便签"
 }

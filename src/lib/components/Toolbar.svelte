@@ -45,6 +45,10 @@
     erdStore.addTable(viewportWidth, viewportHeight);
   }
 
+  function addMemo() {
+    erdStore.addMemo(viewportWidth, viewportHeight);
+  }
+
   let modalMode = $state<'import' | 'export' | null>(null);
   let showDomainModal = $state(false);
   let showLintPanel = $state(false);
@@ -776,6 +780,9 @@
     {/if}
     <button class="btn-primary" onclick={addTable} disabled={permissionStore.isReadOnly}>
       {m.toolbar_add_table()}
+    </button>
+    <button class="btn-secondary" onclick={addMemo} disabled={permissionStore.isReadOnly}>
+      {m.toolbar_add_memo()}
     </button>
 
     <!-- Auto-arrange dropdown -->

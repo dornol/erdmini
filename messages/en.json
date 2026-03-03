@@ -306,5 +306,14 @@
   "toolbar_file": "File",
   "toolbar_tools": "Tools",
   "toolbar_settings": "Settings",
-  "toolbar_help": "Help"
+  "toolbar_help": "Help",
+  "toolbar_add_memo": "+ Memo",
+  "memo_placeholder": "Type memo here...",
+  "sidebar_memos": "Memos",
+  "sidebar_memos_empty": "No memos.",
+  "dialog_delete_memo_confirm": "Delete this memo?",
+  "dialog_delete_memos_confirm": "Delete {count} selected memo(s)?",
+  "history_add_memo": "Add memo",
+  "history_delete_memo": "Delete memo",
+  "history_edit_memo": "Edit memo"
 }

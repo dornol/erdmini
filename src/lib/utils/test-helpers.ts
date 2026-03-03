@@ -38,6 +38,7 @@ export function makeSchema(tables: Table[], domains: [] = []): ERDSchema {
     version: '1.0',
     tables,
     domains,
+    memos: [],
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
   };

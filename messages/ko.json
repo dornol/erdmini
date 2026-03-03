@@ -306,5 +306,14 @@
   "toolbar_file": "파일",
   "toolbar_tools": "도구",
   "toolbar_settings": "설정",
-  "toolbar_help": "도움말"
+  "toolbar_help": "도움말",
+  "toolbar_add_memo": "+ 메모",
+  "memo_placeholder": "메모를 입력하세요...",
+  "sidebar_memos": "메모",
+  "sidebar_memos_empty": "메모가 없습니다.",
+  "dialog_delete_memo_confirm": "이 메모를 삭제하시겠습니까?",
+  "dialog_delete_memos_confirm": "선택한 {count}개의 메모를 삭제하시겠습니까?",
+  "history_add_memo": "메모 추가",
+  "history_delete_memo": "메모 삭제",
+  "history_edit_memo": "메모 편집"
 }

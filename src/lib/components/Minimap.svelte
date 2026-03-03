@@ -43,7 +43,8 @@
   const bounds = $derived.by(() => {
     void renderTick;
     const tables = erdStore.schema.tables;
-    if (tables.length === 0) return { minX: 0, minY: 0, maxX: 800, maxY: 600 };
+    const memos = erdStore.schema.memos ?? [];
+    if (tables.length === 0 && memos.length === 0) return { minX: 0, minY: 0, maxX: 800, maxY: 600 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const t of tables) {
       const h = HEADER_H + getFilteredColumnCount(t) * ROW_H;
@@ -51,6 +52,12 @@
       minY = Math.min(minY, t.position.y);
       maxX = Math.max(maxX, t.position.x + canvasState.getTableW(t.id));
       maxY = Math.max(maxY, t.position.y + h);
+    }
+    for (const mm of memos) {
+      minX = Math.min(minX, mm.position.x);
+      minY = Math.min(minY, mm.position.y);
+      maxX = Math.max(maxX, mm.position.x + mm.width);
+      maxY = Math.max(maxY, mm.position.y + mm.height);
     }
     return {
       minX: minX - PAD,
@@ -105,6 +112,25 @@
     });
   });
 
+  const MEMO_COLOR_MAP: Record<string, string> = {
+    yellow: '#facc15', blue: '#60a5fa', green: '#4ade80',
+    pink: '#f472b6', purple: '#c084fc', orange: '#fb923c',
+  };
+
+  const miniMemos = $derived.by(() => {
+    void renderTick;
+    return (erdStore.schema.memos ?? []).map((mm) => {
+      const pos = worldToMap(mm.position.x, mm.position.y);
+      return {
+        id: mm.id,
+        ...pos,
+        w: mm.width * mapScale,
+        h: mm.height * mapScale,
+        color: MEMO_COLOR_MAP[mm.color ?? 'yellow'] ?? MEMO_COLOR_MAP.yellow,
+      };
+    });
+  });
+
   function onMinimapClick(e: MouseEvent) {
     const el = e.currentTarget as HTMLElement;
     const rect = el.getBoundingClientRect();
@@ -126,6 +152,12 @@
     style="width:{MAP_W}px; height:{MAP_H}px;"
     onclick={onMinimapClick}
   >
+    {#each miniMemos as mm (mm.id)}
+      <div
+        class="mini-memo"
+        style="left:{mm.x}px; top:{mm.y}px; width:{mm.w}px; height:{mm.h}px; background:{mm.color}"
+      ></div>
+    {/each}
     {#each miniTables as mt (mt.id)}
       <div
         class="mini-table"
@@ -163,6 +195,14 @@
     background: var(--erd-minimap-table);
     border: 0.5px solid var(--erd-minimap-table-border);
     border-radius: 1px;
+    min-width: 2px;
+    min-height: 2px;
+  }
+
+  .mini-memo {
+    position: absolute;
+    border-radius: 1px;
+    opacity: 0.5;
     min-width: 2px;
     min-height: 2px;
   }

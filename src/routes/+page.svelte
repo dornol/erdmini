@@ -4,6 +4,7 @@
   import RelationLines from '$lib/components/RelationLines.svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import TableCard from '$lib/components/TableCard.svelte';
+  import MemoCard from '$lib/components/MemoCard.svelte';
   import TableEditor from '$lib/components/TableEditor.svelte';
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
@@ -255,6 +256,25 @@
       return { label: 'history_edit_domain', detail: removed?.name ?? '' };
     }
 
+    // Memo added/deleted/edited
+    const pm = prev.memos ?? [];
+    const cm = cur.memos ?? [];
+    if (cm.length > pm.length) {
+      return { label: 'history_add_memo', detail: '' };
+    }
+    if (cm.length < pm.length) {
+      return { label: 'history_delete_memo', detail: '' };
+    }
+    for (const curMemo of cm) {
+      const prevMemo = pm.find((mm) => mm.id === curMemo.id);
+      if (prevMemo && prevMemo.content !== curMemo.content) {
+        return { label: 'history_edit_memo', detail: '' };
+      }
+      if (prevMemo && (prevMemo.color !== curMemo.color || prevMemo.width !== curMemo.width || prevMemo.height !== curMemo.height || prevMemo.locked !== curMemo.locked)) {
+        return { label: 'history_edit_memo', detail: '' };
+      }
+    }
+
     // Table name change
     for (const ct2 of ct) {
       const pt2 = pt.find((t) => t.id === ct2.id);
@@ -369,6 +389,8 @@
       }
       erdStore.selectedTableId = null;
       erdStore.selectedTableIds = new Set();
+      erdStore.selectedMemoId = null;
+      erdStore.selectedMemoIds = new Set();
       return;
     }
 
@@ -427,12 +449,15 @@
       return;
     }
 
-    // Ctrl+A: Select all tables
+    // Ctrl+A: Select all tables and memos
     if ((e.ctrlKey || e.metaKey) && key === 'a' && !isEditing) {
       e.preventDefault();
       const allIds = new Set(erdStore.schema.tables.map((t) => t.id));
       erdStore.selectedTableIds = allIds;
       if (allIds.size > 0) erdStore.selectedTableId = erdStore.schema.tables[0].id;
+      const allMemoIds = new Set(erdStore.schema.memos.map((mm) => mm.id));
+      erdStore.selectedMemoIds = allMemoIds;
+      if (allMemoIds.size > 0 && !erdStore.selectedMemoId) erdStore.selectedMemoId = erdStore.schema.memos[0].id;
       return;
     }
 
@@ -446,28 +471,47 @@
       return;
     }
 
-    // Delete selected table(s)
+    // Delete selected table(s) and/or memo(s)
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing && !permissionStore.isReadOnly) {
-      const ids = [...erdStore.selectedTableIds];
-      if (ids.length === 0) return;
+      const tableIds = [...erdStore.selectedTableIds];
+      const memoIds = [...erdStore.selectedMemoIds];
+      if (tableIds.length === 0 && memoIds.length === 0) return;
       e.preventDefault();
 
-      if (ids.length === 1) {
-        const table = erdStore.schema.tables.find((t) => t.id === ids[0]);
+      // Delete tables
+      if (tableIds.length === 1 && memoIds.length === 0) {
+        const table = erdStore.schema.tables.find((t) => t.id === tableIds[0]);
         if (!table) return;
         const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
           title: m.dialog_delete_table_title(),
           confirmText: m.action_delete(),
           variant: 'danger',
         });
-        if (ok) erdStore.deleteTable(ids[0]);
-      } else {
-        const ok = await dialogStore.confirm(m.dialog_bulk_delete_confirm({ count: ids.length }), {
+        if (ok) erdStore.deleteTable(tableIds[0]);
+      } else if (tableIds.length > 0) {
+        const ok = await dialogStore.confirm(m.dialog_bulk_delete_confirm({ count: tableIds.length }), {
           title: m.dialog_delete_table_title(),
           confirmText: m.action_delete(),
           variant: 'danger',
         });
-        if (ok) erdStore.deleteTables(ids);
+        if (ok) erdStore.deleteTables(tableIds);
+      }
+
+      // Delete memos
+      if (memoIds.length === 1 && tableIds.length === 0) {
+        const ok = await dialogStore.confirm(m.dialog_delete_memo_confirm(), {
+          title: m.action_delete(),
+          confirmText: m.action_delete(),
+          variant: 'danger',
+        });
+        if (ok) erdStore.deleteMemo(memoIds[0]);
+      } else if (memoIds.length > 0) {
+        const ok = await dialogStore.confirm(m.dialog_delete_memos_confirm({ count: memoIds.length }), {
+          title: m.action_delete(),
+          confirmText: m.action_delete(),
+          variant: 'danger',
+        });
+        if (ok) erdStore.deleteMemos(memoIds);
       }
     }
 
@@ -593,6 +637,11 @@
       <div class="fullscreen-canvas">
         <Canvas>
           <RelationLines />
+          {#each erdStore.schema.memos as memo (memo.id)}
+            <div class="fullscreen-table-wrapper">
+              <MemoCard {memo} />
+            </div>
+          {/each}
           {#each erdStore.schema.tables as table (table.id)}
             <div class="fullscreen-table-wrapper">
               <TableCard {table} />
@@ -639,6 +688,14 @@
         <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
         <Canvas>
           <RelationLines />
+          {#each erdStore.schema.memos as memo (memo.id)}
+            <div
+              in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
+              out:fade={{ duration: 150 }}
+            >
+              <MemoCard {memo} />
+            </div>
+          {/each}
           {#each erdStore.schema.tables as table (table.id)}
             <div
               in:scale={{ duration: 200, start: 0.85, opacity: 0 }}

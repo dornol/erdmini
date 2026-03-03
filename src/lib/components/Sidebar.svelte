@@ -763,6 +763,40 @@
         {/if}
       {/snippet}
     </VirtualList>
+
+    <!-- Memos Section -->
+    {#if (erdStore.schema.memos ?? []).length > 0}
+      <div class="memo-section">
+        <div class="memo-section-header">
+          <span>{m.sidebar_memos()}</span>
+          <span class="count">{erdStore.schema.memos.length}</span>
+        </div>
+        <div class="memo-list">
+          {#each erdStore.schema.memos as memo (memo.id)}
+            {@const MEMO_DOTS: Record<string, string> = {
+              yellow: '#facc15', blue: '#60a5fa', green: '#4ade80',
+              pink: '#f472b6', purple: '#c084fc', orange: '#fb923c',
+            }}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="memo-item"
+              class:active={erdStore.selectedMemoIds.has(memo.id)}
+              onclick={() => {
+                erdStore.selectedTableId = null;
+                erdStore.selectedTableIds = new Set();
+                erdStore.selectedMemoId = memo.id;
+                erdStore.selectedMemoIds = new Set([memo.id]);
+              }}
+            >
+              <span class="item-color-dot" style="background:{MEMO_DOTS[memo.color ?? 'yellow'] ?? '#facc15'}"></span>
+              <span class="memo-preview">{memo.content ? memo.content.split('\n')[0].slice(0, 30) || m.memo_placeholder() : m.memo_placeholder()}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     {#if richTooltip}
       {@const tt = richTooltip}
       {@const meta = getTableMeta(tt.table)}
@@ -1553,5 +1587,52 @@
 
   .group-edit-btn:hover {
     color: #3b82f6;
+  }
+
+  .memo-section {
+    border-top: 1px solid var(--app-border, #e2e8f0);
+    flex-shrink: 0;
+  }
+
+  .memo-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--app-text-muted, #64748b);
+  }
+
+  .memo-list {
+    padding: 0 6px 8px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  .memo-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .memo-item:hover {
+    background: var(--app-hover-bg, #f1f5f9);
+  }
+
+  .memo-item.active {
+    background: var(--app-active-bg, #eff6ff);
+  }
+
+  .memo-preview {
+    font-size: 12px;
+    color: var(--app-text-secondary, #475569);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>

@@ -3,7 +3,7 @@
   import { fkDragStore } from '$lib/store/fk-drag.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import { HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
-  import type { Table } from '$lib/types/erd';
+  import type { Table, Memo } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import CanvasHistory from './CanvasHistory.svelte';
   import Minimap from './Minimap.svelte';
@@ -23,6 +23,7 @@
   let marqueeEnd = $state({ x: 0, y: 0 });
   let isSpaceHeld = $state(false);
   let savedSelection = $state<Set<string>>(new Set());
+  let savedMemoSelection = $state<Set<string>>(new Set());
 
   // Touch gesture state (iPad/mobile)
   let touchMode = $state<'none' | 'pan' | 'pinch'>('none');
@@ -42,6 +43,10 @@
   function getTableBounds(t: Table) {
     const h = HEADER_H + (t.comment ? COMMENT_H : 0) + getFilteredColumnCount(t) * ROW_H + BOTTOM_PAD;
     return { x: t.position.x, y: t.position.y, w: canvasState.getTableW(t.id), h };
+  }
+
+  function getMemoBounds(m: Memo) {
+    return { x: m.position.x, y: m.position.y, w: m.width, h: m.height };
   }
 
   function getMarqueeWorld() {
@@ -95,9 +100,13 @@
       if (!e.ctrlKey && !e.metaKey) {
         erdStore.selectedTableId = null;
         erdStore.selectedTableIds = new Set();
+        erdStore.selectedMemoId = null;
+        erdStore.selectedMemoIds = new Set();
         savedSelection = new Set();
+        savedMemoSelection = new Set();
       } else {
         savedSelection = new Set(erdStore.selectedTableIds);
+        savedMemoSelection = new Set(erdStore.selectedMemoIds);
       }
       const rect = viewportEl.getBoundingClientRect();
       isMarquee = true;
@@ -142,7 +151,7 @@
     if (isMarquee) {
       const rect = viewportEl.getBoundingClientRect();
       marqueeEnd = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      // Hit-test tables against marquee rect in world space
+      // Hit-test tables and memos against marquee rect in world space
       const mw = getMarqueeWorld();
       const hits = new Set<string>();
       for (const t of erdStore.schema.tables) {
@@ -151,6 +160,14 @@
       const merged = (e.ctrlKey || e.metaKey) ? new Set([...savedSelection, ...hits]) : hits;
       erdStore.selectedTableIds = merged;
       erdStore.selectedTableId = merged.size > 0 ? [...merged][0] : null;
+
+      const memoHits = new Set<string>();
+      for (const mm of erdStore.schema.memos) {
+        if (rectsIntersect(mw, getMemoBounds(mm))) memoHits.add(mm.id);
+      }
+      const mergedMemos = (e.ctrlKey || e.metaKey) ? new Set([...savedMemoSelection, ...memoHits]) : memoHits;
+      erdStore.selectedMemoIds = mergedMemos;
+      erdStore.selectedMemoId = mergedMemos.size > 0 ? [...mergedMemos][0] : null;
       return;
     }
     if (!isPanning) return;
@@ -192,6 +209,8 @@
       isMarquee = false;
       erdStore.selectedTableIds = savedSelection;
       erdStore.selectedTableId = savedSelection.size > 0 ? [...savedSelection][0] : null;
+      erdStore.selectedMemoIds = savedMemoSelection;
+      erdStore.selectedMemoId = savedMemoSelection.size > 0 ? [...savedMemoSelection][0] : null;
     }
     if (e.key === ' ') {
       e.preventDefault();
@@ -267,6 +286,8 @@
     if (touchMode === 'pan' && !touchMoved && e.touches.length === 0) {
       erdStore.selectedTableId = null;
       erdStore.selectedTableIds = new Set();
+      erdStore.selectedMemoId = null;
+      erdStore.selectedMemoIds = new Set();
     }
     if (e.touches.length === 0) {
       touchMode = 'none';
@@ -306,7 +327,8 @@
 
   function fitToWindow() {
     const tables = erdStore.schema.tables;
-    if (tables.length === 0) return;
+    const memos = erdStore.schema.memos;
+    if (tables.length === 0 && memos.length === 0) return;
     const rect = viewportEl.getBoundingClientRect();
     const PAD = 60;
 
@@ -317,6 +339,12 @@
       minY = Math.min(minY, t.position.y);
       maxX = Math.max(maxX, t.position.x + canvasState.getTableW(t.id));
       maxY = Math.max(maxY, t.position.y + h);
+    }
+    for (const mm of memos) {
+      minX = Math.min(minX, mm.position.x);
+      minY = Math.min(minY, mm.position.y);
+      maxX = Math.max(maxX, mm.position.x + mm.width);
+      maxY = Math.max(maxY, mm.position.y + mm.height);
     }
 
     const worldW = maxX - minX;
@@ -370,7 +398,7 @@
 
   <CanvasHistory />
 
-  {#if erdStore.schema.tables.length > 0}
+  {#if erdStore.schema.tables.length > 0 || erdStore.schema.memos.length > 0}
     <Minimap />
   {/if}
 

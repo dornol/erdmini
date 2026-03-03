@@ -1,4 +1,4 @@
-import type { Column, ERDSchema, ForeignKey, Table, UniqueKey, TableIndex, ColumnDomain } from './erd';
+import type { Column, ERDSchema, ForeignKey, Table, UniqueKey, TableIndex, ColumnDomain, Memo } from './erd';
 
 // ── Peer info ──
 export interface PeerInfo {
@@ -43,6 +43,12 @@ export type CollabOperation =
   | { kind: 'update-group-color'; group: string; color: string | undefined }
   | { kind: 'rename-group'; oldName: string; newName: string }
   | { kind: 'apply-layout'; positions: { tableId: string; x: number; y: number }[] }
+  | { kind: 'add-memo'; memo: Memo }
+  | { kind: 'delete-memo'; memoId: string }
+  | { kind: 'delete-memos'; memoIds: string[] }
+  | { kind: 'move-memo'; memoId: string; x: number; y: number }
+  | { kind: 'move-memos'; moves: { memoId: string; x: number; y: number }[] }
+  | { kind: 'update-memo'; memoId: string; patch: Partial<Omit<Memo, 'id'>> }
   | { kind: 'load-schema'; schema: ERDSchema };
 
 // ── Client → Server messages ──

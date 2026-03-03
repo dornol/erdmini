@@ -497,6 +497,7 @@ export function createMcpServer(
           version: '1',
           tables: result.tables,
           domains: [],
+          memos: [],
           groupColors: {},
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),

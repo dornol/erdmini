@@ -290,5 +290,14 @@
   "toolbar_file": "ファイル",
   "toolbar_tools": "ツール",
   "toolbar_settings": "設定",
-  "toolbar_help": "ヘルプ"
+  "toolbar_help": "ヘルプ",
+  "toolbar_add_memo": "+ メモ",
+  "memo_placeholder": "メモを入力...",
+  "sidebar_memos": "メモ",
+  "sidebar_memos_empty": "メモがありません。",
+  "dialog_delete_memo_confirm": "このメモを削除しますか？",
+  "dialog_delete_memos_confirm": "選択した{count}件のメモを削除しますか？",
+  "history_add_memo": "メモ追加",
+  "history_delete_memo": "メモ削除",
+  "history_edit_memo": "メモ編集"
 }

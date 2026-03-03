@@ -86,10 +86,21 @@ export interface Table {
   locked?: boolean;
 }
 
+export interface Memo {
+  id: string;
+  content: string;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  color?: string;
+  locked?: boolean;
+}
+
 export interface ERDSchema {
   version: string;
   tables: Table[];
   domains: ColumnDomain[];
+  memos: Memo[];
   groupColors?: Record<string, string>;
   createdAt: string;
   updatedAt: string;

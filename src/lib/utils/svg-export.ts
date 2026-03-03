@@ -1,4 +1,4 @@
-import type { ERDSchema, Table } from '$lib/types/erd';
+import type { ERDSchema, Table, Memo } from '$lib/types/erd';
 import { TABLE_W, TABLE_CARD_W, HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
 import { TABLE_COLORS } from '$lib/constants/table-colors';
 import type { TableColorId } from '$lib/constants/table-colors';
@@ -327,10 +327,58 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
   return parts.join('\n');
 }
 
+const MEMO_SVG_COLORS: Record<string, { bg: string; header: string; text: string }> = {
+  yellow:  { bg: '#fef9c3', header: '#facc15', text: '#713f12' },
+  blue:    { bg: '#dbeafe', header: '#60a5fa', text: '#1e3a5f' },
+  green:   { bg: '#dcfce7', header: '#4ade80', text: '#14532d' },
+  pink:    { bg: '#fce7f3', header: '#f472b6', text: '#831843' },
+  purple:  { bg: '#f3e8ff', header: '#c084fc', text: '#581c87' },
+  orange:  { bg: '#ffedd5', header: '#fb923c', text: '#7c2d12' },
+};
+
+function renderMemo(memo: Memo, offsetX: number, offsetY: number): string {
+  const x = memo.position.x - offsetX;
+  const y = memo.position.y - offsetY;
+  const w = memo.width;
+  const h = memo.height;
+  const colors = MEMO_SVG_COLORS[memo.color ?? 'yellow'] ?? MEMO_SVG_COLORS.yellow;
+  const parts: string[] = [];
+
+  // Card background
+  parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${colors.bg}" stroke="${colors.header}" stroke-width="1"/>`);
+  // Header bar
+  parts.push(`<rect x="${x}" y="${y}" width="${w}" height="24" rx="6" fill="${colors.header}"/>`);
+  parts.push(`<rect x="${x}" y="${y + 18}" width="${w}" height="6" fill="${colors.header}"/>`);
+
+  // Content text (simple line wrapping)
+  if (memo.content) {
+    const lineH = 16;
+    const maxChars = Math.floor((w - 20) / 7);
+    const lines = memo.content.split('\n');
+    let lineIdx = 0;
+    const maxLines = Math.floor((h - 36) / lineH);
+    for (const line of lines) {
+      if (lineIdx >= maxLines) break;
+      if (line.length <= maxChars) {
+        parts.push(`<text x="${x + 10}" y="${y + 40 + lineIdx * lineH}" fill="${colors.text}" font-size="12" font-family="system-ui,sans-serif">${esc(line)}</text>`);
+        lineIdx++;
+      } else {
+        for (let i = 0; i < line.length && lineIdx < maxLines; i += maxChars) {
+          parts.push(`<text x="${x + 10}" y="${y + 40 + lineIdx * lineH}" fill="${colors.text}" font-size="12" font-family="system-ui,sans-serif">${esc(line.slice(i, i + maxChars))}</text>`);
+          lineIdx++;
+        }
+      }
+    }
+  }
+
+  return parts.join('\n');
+}
+
 export function exportSvg(schema: ERDSchema, themeId: string): string {
   const theme = THEMES[themeId] ?? THEMES.modern;
+  const memos = schema.memos ?? [];
 
-  if (schema.tables.length === 0) return '';
+  if (schema.tables.length === 0 && memos.length === 0) return '';
 
   // Compute bounding box
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -341,18 +389,28 @@ export function exportSvg(schema: ERDSchema, themeId: string): string {
     maxX = Math.max(maxX, t.position.x + TABLE_CARD_W);
     maxY = Math.max(maxY, t.position.y + h);
   }
+  for (const mm of memos) {
+    minX = Math.min(minX, mm.position.x);
+    minY = Math.min(minY, mm.position.y);
+    maxX = Math.max(maxX, mm.position.x + mm.width);
+    maxY = Math.max(maxY, mm.position.y + mm.height);
+  }
 
   const offsetX = minX - PAD;
   const offsetY = minY - PAD;
   const width = Math.ceil(maxX - minX + PAD * 2);
   const height = Math.ceil(maxY - minY + PAD * 2);
 
+  const memosSvg = memos.map((mm) => renderMemo(mm, offsetX, offsetY)).join('\n');
   const lines = renderLines(schema, theme, offsetX, offsetY);
   const tables = schema.tables.map((t) => renderTable(t, theme, offsetX, offsetY, themeId as ThemeId)).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="${width}" height="${height}" fill="${theme.canvasBg}"/>
+  <g>
+${memosSvg}
+  </g>
   <g>
 ${lines}
   </g>
