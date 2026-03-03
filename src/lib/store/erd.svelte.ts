@@ -1,6 +1,7 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { generateId, now } from '$lib/utils/common';
 import { TABLE_W } from '$lib/constants/layout';
+import { propagateWithHierarchy, getDescendantIds } from '$lib/utils/domain-hierarchy';
 
 function getNextTableName(tables: Table[]): string {
   let i = 1;
@@ -510,43 +511,41 @@ class ERDStore {
   }
 
   updateDomain(id: string, patch: Partial<Omit<ColumnDomain, 'id'>>) {
-    this.schema.domains = this.schema.domains.map((d) =>
-      d.id === id ? { ...d, ...patch } : d
-    );
-    // Propagate changes to all columns linked to this domain
-    const updated = this.schema.domains.find((d) => d.id === id);
-    if (updated) {
-      for (const table of this.schema.tables) {
-        table.columns = table.columns.map((c) => {
-          if (c.domainId !== id) return c;
-          return {
-            ...c,
-            type: updated.type,
-            length: updated.length,
-            scale: updated.scale,
-            nullable: updated.nullable,
-            primaryKey: updated.primaryKey,
-            unique: updated.unique,
-            autoIncrement: updated.autoIncrement,
-            defaultValue: updated.defaultValue,
-            check: updated.check,
-            enumValues: updated.enumValues,
-          };
-        });
-      }
-    }
+    // Use hierarchy-aware propagation (cascades to child domains' linked columns)
+    const result = propagateWithHierarchy(this.schema, id, patch);
+    this.schema.domains = result.domains;
+    this.schema.tables = result.tables;
     this.schema.updatedAt = now();
     this._emitOp({ kind: 'update-domain', domainId: id, patch });
   }
 
   deleteDomain(id: string) {
-    this.schema.domains = this.schema.domains.filter((d) => d.id !== id);
+    const deleted = this.schema.domains.find((d) => d.id === id);
+    const parentIdOfDeleted = deleted?.parentId;
+
+    // Re-parent children: assign deleted domain's parentId to its children
+    this.schema.domains = this.schema.domains
+      .filter((d) => d.id !== id)
+      .map((d) => d.parentId === id ? { ...d, parentId: parentIdOfDeleted } : d);
+
     // Unlink columns that referenced this domain (keep their current settings)
     for (const table of this.schema.tables) {
       table.columns = table.columns.map((c) =>
         c.domainId === id ? { ...c, domainId: undefined } : c
       );
     }
+
+    // Re-propagate for re-parented children
+    if (parentIdOfDeleted) {
+      const childIds = this.schema.domains
+        .filter(d => d.parentId === parentIdOfDeleted)
+        .map(d => d.id);
+      for (const childId of childIds) {
+        const result = propagateWithHierarchy(this.schema, childId, {});
+        this.schema.tables = result.tables;
+      }
+    }
+
     this.schema.updatedAt = now();
     this._emitOp({ kind: 'delete-domain', domainId: id });
   }

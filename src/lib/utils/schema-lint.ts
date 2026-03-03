@@ -1,4 +1,5 @@
 import type { ERDSchema } from '$lib/types/erd';
+import { validateHierarchy } from '$lib/utils/domain-hierarchy';
 
 export interface LintIssue {
   id: string;
@@ -210,6 +211,23 @@ export function lintSchema(schema: ERDSchema): LintIssue[] {
         ruleId: 'empty-table',
         tableId: table.id,
         message: `${table.name}`,
+      });
+    }
+  }
+
+  // Rule 9: domain-circular-hierarchy — Domain hierarchy has circular references
+  if (schema.domains && schema.domains.length > 0) {
+    const hierarchy = validateHierarchy(schema.domains);
+    for (const cycle of hierarchy.cycles) {
+      const domainNames = cycle.map(id => {
+        const d = schema.domains.find(dom => dom.id === id);
+        return d?.name ?? id;
+      });
+      issues.push({
+        id: nextId(),
+        severity: 'error',
+        ruleId: 'domain-circular-hierarchy',
+        message: domainNames.join(' → '),
       });
     }
   }

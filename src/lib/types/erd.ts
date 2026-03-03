@@ -47,6 +47,16 @@ export interface ColumnDomain {
   enumValues?: string[];
   comment?: string;
   group?: string;
+  // Documentation fields (not propagated to columns)
+  description?: string;
+  alias?: string;
+  dataStandard?: string;
+  example?: string;
+  validRange?: string;
+  owner?: string;
+  tags?: string[];
+  // Hierarchy
+  parentId?: string;
 }
 
 export type ReferentialAction = 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';

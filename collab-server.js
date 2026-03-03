@@ -1,7 +1,7 @@
 // Standalone WebSocket collaboration server
 // Works independently of SvelteKit's module system
 import { WebSocketServer } from 'ws';
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 
 const PEER_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6',

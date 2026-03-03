@@ -4,6 +4,9 @@
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { ColumnDomain, ColumnType } from '$lib/types/erd';
   import { exportDomainsToXlsx, exportDomainTemplate, importDomainsFromXlsx } from '$lib/utils/domain-xlsx';
+  import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
+  import { computeCoverageStats, computeImpact } from '$lib/utils/domain-analysis';
+  import { buildDomainTree, getDescendantIds, type DomainTreeNode } from '$lib/utils/domain-hierarchy';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
 
@@ -35,6 +38,53 @@
   let formEnumValues = $state('');
   let formDefaultValue = $state('');
   let formComment = $state('');
+  let formParentId = $state<string | undefined>(undefined);
+
+  // Documentation form fields
+  let formDescription = $state('');
+  let formAlias = $state('');
+  let formDataStandard = $state('');
+  let formExample = $state('');
+  let formValidRange = $state('');
+  let formOwner = $state('');
+  let formTags = $state('');
+
+  // Expanded detail row
+  let expandedId = $state<string | null>(null);
+
+  // Coverage dashboard
+  let showCoverage = $state(false);
+  let coverageStats = $derived(computeCoverageStats(erdStore.schema));
+
+  // Dictionary dropdown
+  let showDictDropdown = $state(false);
+
+  function downloadBlob(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDictExport(format: 'html' | 'markdown' | 'xlsx') {
+    showDictDropdown = false;
+    const ctx = { schema: erdStore.schema, projectName: 'ERD Project' };
+    if (format === 'markdown') {
+      downloadBlob(exportDictionaryMarkdown(ctx), 'domain-dictionary.md', 'text/markdown');
+    } else if (format === 'html') {
+      downloadBlob(exportDictionaryHtml(ctx), 'domain-dictionary.html', 'text/html');
+    } else {
+      // xlsx uses XLSX.writeFile internally
+      import('$lib/utils/domain-dictionary').then(mod => {
+        if ('exportDictionaryXlsx' in mod) {
+          (mod as any).exportDictionaryXlsx(ctx);
+        }
+      });
+    }
+  }
 
   // Upload result message
   let uploadMessage = $state('');
@@ -84,7 +134,11 @@
         d.name.toLowerCase().includes(q) ||
         d.type.toLowerCase().includes(q) ||
         (d.comment ?? '').toLowerCase().includes(q) ||
-        (d.group ?? '').toLowerCase().includes(q)
+        (d.group ?? '').toLowerCase().includes(q) ||
+        (d.description ?? '').toLowerCase().includes(q) ||
+        (d.alias ?? '').toLowerCase().includes(q) ||
+        (d.owner ?? '').toLowerCase().includes(q) ||
+        (d.tags ?? []).some(t => t.toLowerCase().includes(q))
       );
     }
 
@@ -149,6 +203,14 @@
     formAutoIncrement = false;
     formDefaultValue = '';
     formComment = '';
+    formDescription = '';
+    formAlias = '';
+    formDataStandard = '';
+    formExample = '';
+    formValidRange = '';
+    formOwner = '';
+    formTags = '';
+    formParentId = undefined;
     editingId = null;
     addingNew = false;
   }
@@ -169,6 +231,14 @@
     formAutoIncrement = domain.autoIncrement;
     formDefaultValue = domain.defaultValue ?? '';
     formComment = domain.comment ?? '';
+    formDescription = domain.description ?? '';
+    formAlias = domain.alias ?? '';
+    formDataStandard = domain.dataStandard ?? '';
+    formExample = domain.example ?? '';
+    formValidRange = domain.validRange ?? '';
+    formOwner = domain.owner ?? '';
+    formTags = domain.tags?.join(', ') ?? '';
+    formParentId = domain.parentId;
   }
 
   function startAdd() {
@@ -181,7 +251,12 @@
     return vals.length > 0 ? vals : undefined;
   }
 
-  function saveEdit() {
+  function parseTags(raw: string): string[] | undefined {
+    const vals = raw.split(',').map(v => v.trim()).filter(Boolean);
+    return vals.length > 0 ? vals : undefined;
+  }
+
+  async function saveEdit() {
     if (!formName.trim()) return;
     const fields = {
       name: formName.trim(),
@@ -197,8 +272,34 @@
       autoIncrement: formAutoIncrement,
       defaultValue: formDefaultValue || undefined,
       comment: formComment || undefined,
+      description: formDescription.trim() || undefined,
+      alias: formAlias.trim() || undefined,
+      dataStandard: formDataStandard.trim() || undefined,
+      example: formExample.trim() || undefined,
+      validRange: formValidRange.trim() || undefined,
+      owner: formOwner.trim() || undefined,
+      tags: parseTags(formTags),
+      parentId: formParentId || undefined,
     };
     if (editingId) {
+      // Impact analysis: check if propagation fields changed
+      const impact = computeImpact(erdStore.schema, editingId, fields);
+      if (impact) {
+        const details = impact.entries.slice(0, 10).map(e => {
+          const changeStr = e.changes.map(c => `${c.field}: ${c.before} → ${c.after}`).join(', ');
+          return `• ${e.tableName}.${e.columnName}: ${changeStr}`;
+        }).join('\n');
+        const extra = impact.entries.length > 10 ? `\n... and ${impact.entries.length - 10} more` : '';
+        const msg = m.domain_impact_message({
+          columns: String(impact.columnCount),
+          tables: String(impact.tableCount),
+        }) + '\n\n' + details + extra;
+        const ok = await dialogStore.confirm(msg, {
+          title: m.domain_impact_title(),
+          confirmText: m.domain_impact_confirm(),
+        });
+        if (!ok) return;
+      }
       erdStore.updateDomain(editingId, fields);
     } else if (addingNew) {
       erdStore.addDomain(fields);
@@ -284,6 +385,55 @@
     if (e.key === 'Escape' && !editingId && !addingNew) onclose();
   }
 
+  // Domain tree for hierarchy display
+  let domainTree = $derived(buildDomainTree(filteredDomains));
+
+  // Flatten the tree to get display order with depth info
+  function flattenTree(nodes: DomainTreeNode[]): { domain: ColumnDomain; depth: number; effective: ColumnDomain }[] {
+    const result: { domain: ColumnDomain; depth: number; effective: ColumnDomain }[] = [];
+    function walk(nodes: DomainTreeNode[]) {
+      for (const node of nodes) {
+        result.push({ domain: node.domain, depth: node.depth, effective: node.effectiveDomain });
+        walk(node.children);
+      }
+    }
+    walk(nodes);
+    return result;
+  }
+
+  let flatDomains = $derived(flattenTree(domainTree));
+
+  // Map from domain ID to depth for indent
+  let depthMap = $derived.by(() => {
+    const map = new Map<string, number>();
+    for (const item of flatDomains) {
+      map.set(item.domain.id, item.depth);
+    }
+    return map;
+  });
+
+  // Available parent options (for editing): exclude self and descendants
+  function getAvailableParents(selfId: string | null): { value: string; label: string }[] {
+    const excluded = new Set<string>();
+    if (selfId) {
+      excluded.add(selfId);
+      for (const id of getDescendantIds(selfId, erdStore.schema.domains)) {
+        excluded.add(id);
+      }
+    }
+    return erdStore.schema.domains
+      .filter(d => !excluded.has(d.id))
+      .map(d => ({ value: d.id, label: d.name }));
+  }
+
+  function hasDocs(d: ColumnDomain): boolean {
+    return !!(d.description || d.alias || d.dataStandard || d.example || d.validRange || d.owner || (d.tags && d.tags.length > 0));
+  }
+
+  function toggleExpanded(id: string) {
+    expandedId = expandedId === id ? null : id;
+  }
+
   // Propagation field indicators
   const PROPAGATE_FIELDS = new Set([
     'type',
@@ -352,6 +502,17 @@
             <path d="M8 10V2m0 0L5 5m3-3l3 3M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
+        <div class="dict-dropdown-wrapper">
+          <button class="header-icon-btn dict-btn" onclick={() => showDictDropdown = !showDictDropdown} title={m.domain_dict_export()}>
+            {m.domain_dict_export()} ▾
+          </button>
+          {#if showDictDropdown}
+            <div class="dict-dropdown">
+              <button onclick={() => handleDictExport('html')}>HTML</button>
+              <button onclick={() => handleDictExport('markdown')}>Markdown</button>
+            </div>
+          {/if}
+        </div>
         <button class="template-link" onclick={exportDomainTemplate}>
           {m.domain_download_template()}
         </button>
@@ -371,6 +532,54 @@
     {/if}
 
     <div class="modal-body">
+      <!-- Coverage dashboard -->
+      {#if coverageStats.totalColumns > 0}
+        <div class="coverage-panel">
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="coverage-header" onclick={() => showCoverage = !showCoverage}>
+            <span class="coverage-toggle">{showCoverage ? '▼' : '▶'}</span>
+            <span class="coverage-title">{m.domain_coverage()}</span>
+            <span class="coverage-summary">{m.domain_coverage_label({
+              percent: String(coverageStats.coveragePercent),
+              linked: String(coverageStats.linkedColumns),
+              total: String(coverageStats.totalColumns)
+            })}</span>
+          </div>
+          {#if showCoverage}
+            <div class="coverage-body">
+              <div class="coverage-bar-wrapper">
+                <div
+                  class="coverage-bar"
+                  class:green={coverageStats.coveragePercent > 80}
+                  class:yellow={coverageStats.coveragePercent > 50 && coverageStats.coveragePercent <= 80}
+                  class:red={coverageStats.coveragePercent <= 50}
+                  style="width: {coverageStats.coveragePercent}%"
+                ></div>
+              </div>
+              {#if coverageStats.groupBreakdown.length > 1}
+                <div class="coverage-groups">
+                  {#each coverageStats.groupBreakdown as gb}
+                    <div class="coverage-group-item">
+                      <span class="coverage-group-name">{gb.group}</span>
+                      <div class="coverage-minibar-wrapper">
+                        <div
+                          class="coverage-minibar"
+                          class:green={gb.percent > 80}
+                          class:yellow={gb.percent > 50 && gb.percent <= 80}
+                          class:red={gb.percent <= 50}
+                          style="width: {gb.percent}%"
+                        ></div>
+                      </div>
+                      <span class="coverage-group-pct">{gb.percent}%</span>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {/if}
       <div class="table-wrapper">
         <table class="domain-table">
           <thead>
@@ -497,17 +706,67 @@
                           <button class="icon-btn" onclick={cancelEdit}>&#x2715;</button>
                         </td>
                       </tr>
+                      <!-- Editing detail row for documentation fields -->
+                      <tr class="editing-row detail-edit-row">
+                        <td colspan={TABLE_COLSPAN}>
+                          <div class="detail-grid editing">
+                            <div class="detail-field">
+                              <label>{m.domain_parent()}</label>
+                              <select class="cell-input" bind:value={formParentId}>
+                                <option value={undefined}>{m.domain_parent_none()}</option>
+                                {#each getAvailableParents(editingId) as opt}
+                                  <option value={opt.value}>{opt.label}</option>
+                                {/each}
+                              </select>
+                            </div>
+                            <div class="detail-field wide">
+                              <label>{m.domain_description()}</label>
+                              <textarea class="cell-input cell-textarea" bind:value={formDescription} placeholder={m.domain_description_placeholder()} rows="2"></textarea>
+                            </div>
+                            <div class="detail-field">
+                              <label>{m.domain_alias()}</label>
+                              <input class="cell-input" type="text" bind:value={formAlias} placeholder={m.domain_alias_placeholder()} />
+                            </div>
+                            <div class="detail-field">
+                              <label>{m.domain_data_standard()}</label>
+                              <input class="cell-input" type="text" bind:value={formDataStandard} placeholder={m.domain_data_standard_placeholder()} />
+                            </div>
+                            <div class="detail-field">
+                              <label>{m.domain_example()}</label>
+                              <input class="cell-input" type="text" bind:value={formExample} placeholder={m.domain_example_placeholder()} />
+                            </div>
+                            <div class="detail-field">
+                              <label>{m.domain_valid_range()}</label>
+                              <input class="cell-input" type="text" bind:value={formValidRange} placeholder={m.domain_valid_range_placeholder()} />
+                            </div>
+                            <div class="detail-field">
+                              <label>{m.domain_owner()}</label>
+                              <input class="cell-input" type="text" bind:value={formOwner} placeholder={m.domain_owner_placeholder()} />
+                            </div>
+                            <div class="detail-field">
+                              <label>{m.domain_tags()}</label>
+                              <input class="cell-input" type="text" bind:value={formTags} placeholder={m.domain_tags_placeholder()} />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     {:else}
                       <!-- Display row -->
                       <!-- svelte-ignore a11y_click_events_have_key_events -->
                       <tr class="display-row" class:unused={usageCount === 0} onclick={() => handleRowClick(domain)}>
                         <td class="td-group">{domain.group ?? ''}</td>
-                        <td class="td-name">
+                        <td class="td-name" style="padding-left: {10 + (depthMap.get(domain.id) ?? 0) * 20}px">
+                          {#if domain.parentId}
+                            <span class="hierarchy-indent">↳</span>
+                          {/if}
                           {domain.name}
                           {#if usageCount > 0}
                             <span class="usage-badge">{m.domain_usage_count({ count: String(usageCount) })}</span>
                           {:else}
                             <span class="usage-badge unused-badge">{m.domain_unused()}</span>
+                          {/if}
+                          {#if hasDocs(domain)}
+                            <button class="doc-icon" title={m.domain_has_docs()} onclick={(e) => { e.stopPropagation(); toggleExpanded(domain.id); }}>&#x1F4CB;</button>
                           {/if}
                         </td>
                         <td class="td-mono">{domain.type}</td>
@@ -540,6 +799,42 @@
                           >&#x2715;</button>
                         </td>
                       </tr>
+                      {#if expandedId === domain.id}
+                        <tr class="detail-row">
+                          <td colspan={TABLE_COLSPAN}>
+                            <div class="detail-grid">
+                              <div class="detail-field">
+                                <label>{m.domain_description()}</label>
+                                <span class="detail-value">{domain.description || '—'}</span>
+                              </div>
+                              <div class="detail-field">
+                                <label>{m.domain_alias()}</label>
+                                <span class="detail-value">{domain.alias || '—'}</span>
+                              </div>
+                              <div class="detail-field">
+                                <label>{m.domain_data_standard()}</label>
+                                <span class="detail-value">{domain.dataStandard || '—'}</span>
+                              </div>
+                              <div class="detail-field">
+                                <label>{m.domain_example()}</label>
+                                <span class="detail-value">{domain.example || '—'}</span>
+                              </div>
+                              <div class="detail-field">
+                                <label>{m.domain_valid_range()}</label>
+                                <span class="detail-value">{domain.validRange || '—'}</span>
+                              </div>
+                              <div class="detail-field">
+                                <label>{m.domain_owner()}</label>
+                                <span class="detail-value">{domain.owner || '—'}</span>
+                              </div>
+                              <div class="detail-field">
+                                <label>{m.domain_tags()}</label>
+                                <span class="detail-value">{domain.tags?.join(', ') || '—'}</span>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      {/if}
                     {/if}
                   {/each}
                 {/if}
@@ -593,6 +888,49 @@
                 <td class="td-actions">
                   <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>&#x2713;</button>
                   <button class="icon-btn" onclick={cancelEdit}>&#x2715;</button>
+                </td>
+              </tr>
+              <tr class="editing-row detail-edit-row add-row">
+                <td colspan={TABLE_COLSPAN}>
+                  <div class="detail-grid editing">
+                    <div class="detail-field">
+                      <label>{m.domain_parent()}</label>
+                      <select class="cell-input" bind:value={formParentId}>
+                        <option value={undefined}>{m.domain_parent_none()}</option>
+                        {#each getAvailableParents(null) as opt}
+                          <option value={opt.value}>{opt.label}</option>
+                        {/each}
+                      </select>
+                    </div>
+                    <div class="detail-field wide">
+                      <label>{m.domain_description()}</label>
+                      <textarea class="cell-input cell-textarea" bind:value={formDescription} placeholder={m.domain_description_placeholder()} rows="2"></textarea>
+                    </div>
+                    <div class="detail-field">
+                      <label>{m.domain_alias()}</label>
+                      <input class="cell-input" type="text" bind:value={formAlias} placeholder={m.domain_alias_placeholder()} />
+                    </div>
+                    <div class="detail-field">
+                      <label>{m.domain_data_standard()}</label>
+                      <input class="cell-input" type="text" bind:value={formDataStandard} placeholder={m.domain_data_standard_placeholder()} />
+                    </div>
+                    <div class="detail-field">
+                      <label>{m.domain_example()}</label>
+                      <input class="cell-input" type="text" bind:value={formExample} placeholder={m.domain_example_placeholder()} />
+                    </div>
+                    <div class="detail-field">
+                      <label>{m.domain_valid_range()}</label>
+                      <input class="cell-input" type="text" bind:value={formValidRange} placeholder={m.domain_valid_range_placeholder()} />
+                    </div>
+                    <div class="detail-field">
+                      <label>{m.domain_owner()}</label>
+                      <input class="cell-input" type="text" bind:value={formOwner} placeholder={m.domain_owner_placeholder()} />
+                    </div>
+                    <div class="detail-field">
+                      <label>{m.domain_tags()}</label>
+                      <input class="cell-input" type="text" bind:value={formTags} placeholder={m.domain_tags_placeholder()} />
+                    </div>
+                  </div>
                 </td>
               </tr>
             {/if}
@@ -1149,5 +1487,240 @@
   .add-btn:hover {
     border-color: #3b82f6;
     color: #3b82f6;
+  }
+
+  /* Coverage dashboard */
+  .coverage-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .coverage-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    background: #f8fafc;
+    user-select: none;
+  }
+
+  .coverage-header:hover {
+    background: #f1f5f9;
+  }
+
+  .coverage-toggle {
+    font-size: 9px;
+    color: #94a3b8;
+  }
+
+  .coverage-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  .coverage-summary {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-left: auto;
+  }
+
+  .coverage-body {
+    padding: 10px 12px;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .coverage-bar-wrapper {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .coverage-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+
+  .coverage-bar.green { background: #22c55e; }
+  .coverage-bar.yellow { background: #f59e0b; }
+  .coverage-bar.red { background: #ef4444; }
+
+  .coverage-groups {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .coverage-group-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+
+  .coverage-group-name {
+    width: 100px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+
+  .coverage-minibar-wrapper {
+    flex: 1;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .coverage-minibar {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  .coverage-minibar.green { background: #22c55e; }
+  .coverage-minibar.yellow { background: #f59e0b; }
+  .coverage-minibar.red { background: #ef4444; }
+
+  .coverage-group-pct {
+    width: 32px;
+    text-align: right;
+    color: #64748b;
+    flex-shrink: 0;
+  }
+
+  /* Dictionary dropdown */
+  .dict-dropdown-wrapper {
+    position: relative;
+  }
+
+  .dict-btn {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .dict-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 10;
+    min-width: 120px;
+  }
+
+  .dict-dropdown button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    font-size: 12px;
+    color: #1e293b;
+    cursor: pointer;
+  }
+
+  .dict-dropdown button:hover {
+    background: #f1f5f9;
+  }
+
+  .dict-dropdown button:first-child {
+    border-radius: 6px 6px 0 0;
+  }
+
+  .dict-dropdown button:last-child {
+    border-radius: 0 0 6px 6px;
+  }
+
+  /* Documentation detail row */
+  .detail-row {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .detail-row td {
+    padding: 10px 14px !important;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+  }
+
+  .detail-grid.editing {
+    gap: 6px 12px;
+  }
+
+  .detail-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .detail-field.wide {
+    grid-column: 1 / -1;
+  }
+
+  .detail-field label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .detail-value {
+    font-size: 12px;
+    color: #475569;
+    word-break: break-word;
+  }
+
+  .detail-edit-row {
+    outline: none !important;
+    border-top: none;
+  }
+
+  .detail-edit-row td {
+    padding-top: 0 !important;
+  }
+
+  .cell-textarea {
+    resize: vertical;
+    font-family: inherit;
+    min-height: 36px;
+  }
+
+  .doc-icon {
+    background: none;
+    border: none;
+    font-size: 10px;
+    cursor: pointer;
+    padding: 0 2px;
+    vertical-align: middle;
+    opacity: 0.6;
+    line-height: 1;
+  }
+
+  .doc-icon:hover {
+    opacity: 1;
+  }
+
+  .hierarchy-indent {
+    color: #94a3b8;
+    font-size: 11px;
+    margin-right: 2px;
   }
 </style>

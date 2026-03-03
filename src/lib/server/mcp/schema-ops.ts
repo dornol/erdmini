@@ -1,5 +1,6 @@
 import type { Column, ColumnDomain, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table } from '$lib/types/erd';
 import { DOMAIN_FIELDS } from '$lib/types/erd';
+import { propagateWithHierarchy } from '$lib/utils/domain-hierarchy';
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -351,40 +352,26 @@ export function updateDomain(
   domainId: string,
   patch: Partial<Omit<ColumnDomain, 'id'>>,
 ): ERDSchema {
-  const domains = (schema.domains ?? []).map(d =>
-    d.id === domainId ? { ...d, ...patch } : d
-  );
-  const updated = domains.find(d => d.id === domainId);
-  if (!updated) return schema;
-
-  // Propagate domain fields to linked columns
-  const tables = schema.tables.map(t => ({
-    ...t,
-    columns: t.columns.map(c => {
-      if (c.domainId !== domainId) return c;
-      const propagated: Partial<Column> = {};
-      for (const field of DOMAIN_FIELDS) {
-        (propagated as any)[field] = (updated as any)[field];
-      }
-      return { ...c, ...propagated };
-    }),
-  }));
-
-  return { ...schema, domains, tables, updatedAt: now() };
+  return propagateWithHierarchy(schema, domainId, patch);
 }
 
 export function deleteDomain(schema: ERDSchema, domainId: string): ERDSchema {
-  return {
-    ...schema,
-    domains: (schema.domains ?? []).filter(d => d.id !== domainId),
-    tables: schema.tables.map(t => ({
-      ...t,
-      columns: t.columns.map(c =>
-        c.domainId === domainId ? { ...c, domainId: undefined } : c
-      ),
-    })),
-    updatedAt: now(),
-  };
+  const deleted = (schema.domains ?? []).find(d => d.id === domainId);
+  const parentIdOfDeleted = deleted?.parentId;
+
+  // Re-parent children and remove the domain
+  const domains = (schema.domains ?? [])
+    .filter(d => d.id !== domainId)
+    .map(d => d.parentId === domainId ? { ...d, parentId: parentIdOfDeleted } : d);
+
+  const tables = schema.tables.map(t => ({
+    ...t,
+    columns: t.columns.map(c =>
+      c.domainId === domainId ? { ...c, domainId: undefined } : c
+    ),
+  }));
+
+  return { ...schema, domains, tables, updatedAt: now() };
 }
 
 export interface DomainSuggestion {

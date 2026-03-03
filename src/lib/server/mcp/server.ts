@@ -12,6 +12,9 @@ import { importDDL } from '$lib/utils/ddl-import';
 import type { ColumnDomain, Dialect, ERDSchema, ReferentialAction } from '$lib/types/erd';
 import { TABLE_COLOR_IDS } from '$lib/constants/table-colors';
 import { notifyCollabSchemaChange } from '$lib/server/collab-notify';
+import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
+import { computeCoverageStats } from '$lib/utils/domain-analysis';
+import { resolveEffectiveDomain, getDescendantIds } from '$lib/utils/domain-hierarchy';
 
 export function createMcpServer(
   db: Database.Database,
@@ -713,8 +716,12 @@ export function createMcpServer(
           }
         }
       }
+      const effectiveValues = resolveEffectiveDomain(domain.id, schema.domains ?? []);
+      const childDomains = (schema.domains ?? [])
+        .filter(d => d.parentId === domain.id)
+        .map(d => ({ id: d.id, name: d.name }));
       return {
-        content: [{ type: 'text', text: JSON.stringify({ ...domain, linkedColumns }, null, 2) }],
+        content: [{ type: 'text', text: JSON.stringify({ ...domain, linkedColumns, effectiveValues, children: childDomains }, null, 2) }],
       };
     },
   );
@@ -737,6 +744,14 @@ export function createMcpServer(
       enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
       comment: z.string().max(4096).optional().describe('Domain comment'),
       group: z.string().max(256).optional().describe('Domain group name'),
+      description: z.string().max(10000).optional().describe('Multi-line description (markdown)'),
+      alias: z.string().max(256).optional().describe('Alias / display name'),
+      dataStandard: z.string().max(1024).optional().describe('External standard reference'),
+      example: z.string().max(1024).optional().describe('Example value'),
+      validRange: z.string().max(1024).optional().describe('Valid range description'),
+      owner: z.string().max(256).optional().describe('Owner / team'),
+      tags: z.array(z.string().max(128)).max(50).optional().describe('Search tags'),
+      parentId: z.string().max(256).optional().describe('Parent domain ID for hierarchy'),
     },
     async ({ projectId, name, type, ...opts }) => {
       requireAccess(projectId, 'editor');
@@ -758,6 +773,14 @@ export function createMcpServer(
         enumValues: opts.enumValues,
         comment: opts.comment,
         group: opts.group,
+        description: opts.description,
+        alias: opts.alias,
+        dataStandard: opts.dataStandard,
+        example: opts.example,
+        validRange: opts.validRange,
+        owner: opts.owner,
+        tags: opts.tags,
+        parentId: opts.parentId,
       };
       const result = addDomain(schema, domainFields);
       saveAndNotify(projectId, result.schema);
@@ -786,6 +809,14 @@ export function createMcpServer(
       enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
       comment: z.string().max(4096).optional().describe('Domain comment'),
       group: z.string().max(256).optional().describe('Domain group name'),
+      description: z.string().max(10000).optional().describe('Multi-line description (markdown)'),
+      alias: z.string().max(256).optional().describe('Alias / display name'),
+      dataStandard: z.string().max(1024).optional().describe('External standard reference'),
+      example: z.string().max(1024).optional().describe('Example value'),
+      validRange: z.string().max(1024).optional().describe('Valid range description'),
+      owner: z.string().max(256).optional().describe('Owner / team'),
+      tags: z.array(z.string().max(128)).max(50).optional().describe('Search tags'),
+      parentId: z.string().max(256).optional().describe('Parent domain ID for hierarchy'),
     },
     async ({ projectId, domainId, ...patch }) => {
       requireAccess(projectId, 'editor');
@@ -839,6 +870,42 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: 'No domain suggestions — all columns are unique or already linked to domains.' }] };
       }
       return { content: [{ type: 'text', text: JSON.stringify(suggestions, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'domain_coverage',
+    'Get domain coverage statistics for a project (total columns, linked columns, coverage percentage, group breakdown)',
+    { projectId: z.string().max(256).describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const stats = computeCoverageStats(schema);
+      return { content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'export_domain_dictionary',
+    'Export a domain data dictionary in markdown or html format',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      format: z.enum(['markdown', 'html']).describe('Output format'),
+    },
+    async ({ projectId, format }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const ctx = { schema, projectName: projectId };
+      const result = format === 'markdown'
+        ? exportDictionaryMarkdown(ctx)
+        : exportDictionaryHtml(ctx);
+      return { content: [{ type: 'text', text: result }] };
     },
   );
 

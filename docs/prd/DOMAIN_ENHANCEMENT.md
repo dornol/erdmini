@@ -197,19 +197,24 @@ identifier (BIGINT, NOT NULL, AI)
 
 ---
 
-## Recommended Implementation Order
+## Implementation Status
 
-| Priority | Phase | Effort | Value |
-|---|---|---|---|
-| 1 | **A: Data Model Completion** | Small | Fixes inconsistency (scale, check, enum missing) |
-| 2 | **E: MCP Tools** | Small | Enables AI-assisted domain management |
-| 3 | **F: DDL Integration** | Small | Makes domains visible in SQL output |
-| 4 | **B: Documentation Fields** | Medium | Core value for data dictionary use case |
-| 5 | **C: Dictionary Export** | Medium | Enterprise deliverable generation |
-| 6 | **D: Coverage & Impact** | Medium | Data governance tooling |
-| 7 | **G: Hierarchy** | Large | Enterprise-scale organization |
+| Priority | Phase | Effort | Value | Status |
+|---|---|---|---|---|
+| 1 | **A: Data Model Completion** | Small | Fixes inconsistency (scale, check, enum missing) | ✅ Done |
+| 2 | **E: MCP Tools** | Small | Enables AI-assisted domain management | ✅ Done |
+| 3 | **F: DDL Integration** | Small | Makes domains visible in SQL output | ✅ Done (Option 1: SQL comments) |
+| 4 | **B: Documentation Fields** | Medium | Core value for data dictionary use case | ⬜ Not started |
+| 5 | **C: Dictionary Export** | Medium | Enterprise deliverable generation | ⬜ Not started |
+| 6 | **D: Coverage & Impact** | Medium | Data governance tooling | ⬜ Not started |
+| 7 | **G: Hierarchy** | Large | Enterprise-scale organization | ⬜ Not started |
 
-Phases A + E + F can be done quickly and provide immediate value.
+### Completed
+- **Phase A**: Added `scale`, `check`, `enumValues` to `ColumnDomain` type. Propagation via `DOMAIN_FIELDS`. DomainModal UI fields, domain-xlsx import/export, erdStore propagation all updated.
+- **Phase E**: 6 MCP tools added (`list_domains`, `get_domain`, `add_domain`, `update_domain`, `delete_domain`, `suggest_domains`). Documentation in `docs/mcp/TOOLS.md` (22 → 28 tools).
+- **Phase F**: `includeDomains` DDL export option with inline `-- domain: name` comments per column. DdlModal checkbox, i18n (4 languages), 6 tests added. Option 2 (PostgreSQL CREATE DOMAIN) not yet implemented.
+
+### Remaining
 Phases B + C together deliver the full "data dictionary" capability.
 Phase G is optional and only needed for very large schemas.
 

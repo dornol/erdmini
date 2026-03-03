@@ -28,6 +28,13 @@ export function exportDomainsToXlsx(domains: ColumnDomain[]) {
     Check: d.check ?? '',
     EnumValues: d.enumValues?.join(', ') ?? '',
     Comment: d.comment ?? '',
+    Description: d.description ?? '',
+    Alias: d.alias ?? '',
+    DataStandard: d.dataStandard ?? '',
+    Example: d.example ?? '',
+    ValidRange: d.validRange ?? '',
+    Owner: d.owner ?? '',
+    Tags: d.tags?.join(', ') ?? '',
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -38,10 +45,10 @@ export function exportDomainsToXlsx(domains: ColumnDomain[]) {
 
 export function exportDomainTemplate() {
   const example = [
-    { Group: 'User', Name: 'user_id', Type: 'INT', Length: '', Scale: '', Nullable: '', PrimaryKey: 'Y', Unique: 'Y', AutoIncrement: 'Y', Default: '', Check: '', EnumValues: '', Comment: 'User PK' },
-    { Group: 'User', Name: 'username', Type: 'VARCHAR', Length: 50, Scale: '', Nullable: '', PrimaryKey: '', Unique: 'Y', AutoIncrement: '', Default: '', Check: '', EnumValues: '', Comment: '' },
-    { Group: '', Name: 'price', Type: 'DECIMAL', Length: 10, Scale: 2, Nullable: '', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Check: 'price >= 0', EnumValues: '', Comment: '' },
-    { Group: '', Name: 'status', Type: 'ENUM', Length: '', Scale: '', Nullable: 'Y', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Check: '', EnumValues: 'active, inactive, pending', Comment: '' },
+    { Group: 'User', Name: 'user_id', Type: 'INT', Length: '', Scale: '', Nullable: '', PrimaryKey: 'Y', Unique: 'Y', AutoIncrement: 'Y', Default: '', Check: '', EnumValues: '', Comment: 'User PK', Description: '', Alias: '', DataStandard: '', Example: '1', ValidRange: '', Owner: '', Tags: '' },
+    { Group: 'User', Name: 'username', Type: 'VARCHAR', Length: 50, Scale: '', Nullable: '', PrimaryKey: '', Unique: 'Y', AutoIncrement: '', Default: '', Check: '', EnumValues: '', Comment: '', Description: 'Login username', Alias: 'User Name', DataStandard: '', Example: 'john_doe', ValidRange: '1-50 chars', Owner: 'Auth Team', Tags: 'auth, identity' },
+    { Group: '', Name: 'price', Type: 'DECIMAL', Length: 10, Scale: 2, Nullable: '', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Check: 'price >= 0', EnumValues: '', Comment: '', Description: '', Alias: '', DataStandard: '', Example: '29.99', ValidRange: '0-999999.99', Owner: '', Tags: '' },
+    { Group: '', Name: 'status', Type: 'ENUM', Length: '', Scale: '', Nullable: 'Y', PrimaryKey: '', Unique: '', AutoIncrement: '', Default: '', Check: '', EnumValues: 'active, inactive, pending', Comment: '', Description: '', Alias: '', DataStandard: '', Example: 'active', ValidRange: '', Owner: '', Tags: '' },
   ];
 
   const ws = XLSX.utils.json_to_sheet(example);
@@ -74,6 +81,9 @@ export async function importDomainsFromXlsx(
     const enumValuesRaw = row.EnumValues ? String(row.EnumValues).trim() : '';
     const enumValues = enumValuesRaw ? enumValuesRaw.split(',').map((v: string) => v.trim()).filter(Boolean) : undefined;
 
+    const tagsRaw = row.Tags ? String(row.Tags).trim() : '';
+    const tags = tagsRaw ? tagsRaw.split(',').map((v: string) => v.trim()).filter(Boolean) : undefined;
+
     results.push({
       name,
       group: group || undefined,
@@ -88,6 +98,13 @@ export async function importDomainsFromXlsx(
       check: row.Check ? String(row.Check).trim() : undefined,
       enumValues,
       comment: row.Comment ? String(row.Comment) : undefined,
+      description: row.Description ? String(row.Description).trim() : undefined,
+      alias: row.Alias ? String(row.Alias).trim() : undefined,
+      dataStandard: row.DataStandard ? String(row.DataStandard).trim() : undefined,
+      example: row.Example ? String(row.Example).trim() : undefined,
+      validRange: row.ValidRange ? String(row.ValidRange).trim() : undefined,
+      owner: row.Owner ? String(row.Owner).trim() : undefined,
+      tags,
     });
   }
 

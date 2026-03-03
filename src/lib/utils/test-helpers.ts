@@ -44,6 +44,17 @@ export function makeMemo(overrides: Partial<Memo> = {}): Memo {
   };
 }
 
+export function makeDomain(overrides: Partial<ColumnDomain> & { id: string; name: string }): ColumnDomain {
+  return {
+    type: 'VARCHAR',
+    nullable: true,
+    primaryKey: false,
+    unique: false,
+    autoIncrement: false,
+    ...overrides,
+  };
+}
+
 export function makeSchema(tables: Table[], domains: ColumnDomain[] = []): ERDSchema {
   return {
     version: '1.0',
