@@ -5,9 +5,10 @@ import { createMcpServer } from '$lib/server/mcp/server';
 import db from '$lib/server/db';
 
 function authenticate(request: Request) {
-  const apiKey = request.headers.get('x-api-key');
+  const auth = request.headers.get('authorization');
+  const apiKey = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!apiKey) {
-    return { error: new Response(JSON.stringify({ error: 'Missing x-api-key header' }), { status: 401, headers: { 'Content-Type': 'application/json' } }) };
+    return { error: new Response(JSON.stringify({ error: 'Missing or invalid Authorization header. Expected: Bearer <api-key>' }), { status: 401, headers: { 'Content-Type': 'application/json' } }) };
   }
 
   const keyInfo = resolveApiKey(db, apiKey);

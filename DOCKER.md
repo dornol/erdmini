@@ -1,25 +1,25 @@
-# Docker 배포 가이드
+# Docker Deployment Guide
 
-erdmini는 두 가지 Docker 이미지를 제공한다.
+erdmini provides two Docker images.
 
-| 이미지 | Dockerfile | 설명 |
+| Image | Dockerfile | Description |
 |--------|------------|------|
-| **정적 SPA** | `Dockerfile` | Nginx로 정적 파일 서빙 (로컬 모드, IndexedDB) |
-| **서버 모드** | `Dockerfile.server` | Node.js + SQLite + Auth + 실시간 협업 |
+| **Static SPA** | `Dockerfile` | Serves static files via Nginx (local mode, IndexedDB) |
+| **Server mode** | `Dockerfile.server` | Node.js + SQLite + Auth + real-time collaboration |
 
 ---
 
-## 빠른 시작
+## Quick Start
 
-### 서버 모드 (권장)
+### Server Mode (Recommended)
 
 ```bash
 docker compose up -d
 ```
 
-기본 포트 `3000`으로 접속: http://localhost:3000
+Access at default port `3000`: http://localhost:3000
 
-최초 실행 시 admin 계정이 자동 생성되며, 랜덤 비밀번호가 로그에 출력된다:
+On first run, an admin account is created automatically and the random password is printed to the logs:
 
 ```bash
 docker compose logs erdmini
@@ -34,63 +34,63 @@ docker compose logs erdmini
 ============================================================
 ```
 
-> 비밀번호를 직접 지정하려면 `ADMIN_PASSWORD` 환경변수를 설정한다.
+> To specify a password explicitly, set the `ADMIN_PASSWORD` environment variable.
 
-### 로컬 모드 (정적 SPA)
+### Local Mode (Static SPA)
 
 ```bash
 docker compose --profile local up -d erdmini-local
 ```
 
-기본 포트 `8080`으로 접속: http://localhost:8080
+Access at default port `8080`: http://localhost:8080
 
 ---
 
-## 환경변수
+## Environment Variables
 
-### 공통
+### Common
 
-| 변수 | 기본값 | 설명 |
+| Variable | Default | Description |
 |------|--------|------|
-| `PUBLIC_SITE_URL` | `https://erdmini.dornol.dev` | SEO 메타태그에 사용되는 사이트 URL |
+| `PUBLIC_SITE_URL` | `https://erdmini.dornol.dev` | Site URL used in SEO meta tags |
 
-### 서버 모드 전용
+### Server Mode Only
 
-| 변수 | 기본값 | 설명 |
+| Variable | Default | Description |
 |------|--------|------|
-| `PUBLIC_STORAGE_MODE` | `server` | 스토리지 모드 (`local` / `server`) |
-| `DB_PATH` | `/data/erdmini.db` | SQLite DB 파일 경로 |
-| `PORT` | `3000` | 서버 포트 |
-| `ADMIN_USERNAME` | `admin` | 초기 관리자 아이디 |
-| `ADMIN_PASSWORD` | *(랜덤 생성)* | 초기 관리자 비밀번호. 미설정 시 랜덤 생성 후 로그 출력 |
-| `SESSION_MAX_AGE_DAYS` | `30` | 세션 만료 기간(일) |
-| `PUBLIC_APP_URL` | `http://localhost:5173` | 앱 URL (OIDC 콜백 등) |
+| `PUBLIC_STORAGE_MODE` | `server` | Storage mode (`local` / `server`) |
+| `DB_PATH` | `/data/erdmini.db` | SQLite DB file path |
+| `PORT` | `3000` | Server port |
+| `ADMIN_USERNAME` | `admin` | Initial admin username |
+| `ADMIN_PASSWORD` | *(randomly generated)* | Initial admin password. If not set, a random password is generated and printed to the logs |
+| `SESSION_MAX_AGE_DAYS` | `30` | Session expiry period (days) |
+| `PUBLIC_APP_URL` | `http://localhost:5173` | App URL (for OIDC callback, etc.) |
 
-### OIDC 설정
+### OIDC Configuration
 
-OIDC 프로바이더는 서버 관리자 화면에서 추가/관리한다. 환경변수로 설정하는 것이 아니라 로그인 후 Admin 패널에서 프로바이더를 등록한다.
+OIDC providers are added and managed through the server admin UI. Rather than configuring via environment variables, register providers in the Admin panel after logging in.
 
 ---
 
-## 볼륨 & 데이터
+## Volumes & Data
 
-서버 모드는 `/data` 볼륨에 SQLite DB를 저장한다.
+In server mode, the SQLite DB is stored in the `/data` volume.
 
 ```yaml
 volumes:
   - erdmini-data:/data   # named volume
-  # 또는 호스트 바인드 마운트:
+  # or host bind mount:
   # - ./data:/data
 ```
 
-### 백업
+### Backup
 
 ```bash
-# named volume에서 DB 파일 복사
+# Copy the DB file from the named volume
 docker compose cp erdmini:/data/erdmini.db ./backup-erdmini.db
 ```
 
-### 복원
+### Restore
 
 ```bash
 docker compose down
@@ -100,9 +100,9 @@ docker compose up -d
 
 ---
 
-## 커스텀 빌드
+## Custom Build
 
-### PUBLIC_SITE_URL 변경
+### Changing PUBLIC_SITE_URL
 
 ```bash
 docker build \
@@ -111,7 +111,7 @@ docker build \
   -t erdmini-server .
 ```
 
-### 포트 변경
+### Changing the Port
 
 ```bash
 PORT=8080 docker compose up -d
@@ -119,18 +119,18 @@ PORT=8080 docker compose up -d
 
 ---
 
-## docker compose 프로필
+## docker compose Profiles
 
-| 서비스 | 프로필 | 설명 |
+| Service | Profile | Description |
 |--------|--------|------|
-| `erdmini` | (기본) | 서버 모드 — `docker compose up` |
-| `erdmini-local` | `local` | 정적 SPA — `docker compose --profile local up erdmini-local` |
+| `erdmini` | (default) | Server mode — `docker compose up` |
+| `erdmini-local` | `local` | Static SPA — `docker compose --profile local up erdmini-local` |
 
 ---
 
-## 프로덕션 팁
+## Production Tips
 
-### 리버스 프록시 (Nginx 예시)
+### Reverse Proxy (Nginx Example)
 
 ```nginx
 server {
@@ -153,42 +153,42 @@ server {
 }
 ```
 
-> **WebSocket**: `Upgrade`/`Connection` 헤더를 프록시해야 실시간 협업이 동작한다.
+> **WebSocket**: The `Upgrade`/`Connection` headers must be proxied for real-time collaboration to function.
 
 ### HTTPS
 
-서버 모드에서 OIDC를 사용하려면 HTTPS가 필수이다. 리버스 프록시에서 TLS를 종료하고 `PUBLIC_APP_URL`을 `https://...`로 설정한다.
+HTTPS is required to use OIDC in server mode. Terminate TLS at the reverse proxy and set `PUBLIC_APP_URL` to `https://...`.
 
 ### Healthcheck
 
-`Dockerfile.server`에 healthcheck가 포함되어 있다:
+`Dockerfile.server` includes a healthcheck:
 
 ```
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3
   CMD wget --spider http://localhost:3000/ || exit 1
 ```
 
-`docker ps`에서 `healthy` 상태를 확인할 수 있다.
+The `healthy` status can be verified with `docker ps`.
 
 ---
 
-## MCP (Model Context Protocol) 서버
+## MCP (Model Context Protocol) Server
 
-erdmini 서버에 MCP Streamable HTTP 엔드포인트(`/mcp`)가 내장되어 있다. 별도 프로세스 없이 동일 서버에서 MCP를 제공한다. 서버 모드 전용.
+The erdmini server has a built-in MCP Streamable HTTP endpoint (`/mcp`). MCP is served from the same server process without a separate process. Server mode only.
 
-### 사전 준비
+### Prerequisites
 
-1. Admin UI(`/admin`)의 **API Keys** 탭에서 API 키를 생성한다.
-2. 생성 직후 표시되는 `erd_...` 키를 안전한 곳에 복사한다 (1회만 표시됨).
+1. Generate an API key from the **API Keys** tab in the Admin UI (`/admin`).
+2. Copy the `erd_...` key displayed immediately after creation to a safe location (shown only once).
 
-### 빌드
+### Build
 
 ```bash
-pnpm build:server     # SvelteKit 서버 빌드 (MCP 포함)
-pnpm start:server     # 서버 시작 (웹 UI + MCP 모두 제공)
+pnpm build:server     # SvelteKit server build (includes MCP)
+pnpm start:server     # Start server (serves both web UI and MCP)
 ```
 
-### Claude Desktop 설정
+### Claude Desktop Configuration
 
 `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -199,45 +199,45 @@ pnpm start:server     # 서버 시작 (웹 UI + MCP 모두 제공)
       "type": "streamable-http",
       "url": "http://localhost:3000/mcp",
       "headers": {
-        "x-api-key": "erd_<admin에서_생성한_키>"
+        "Authorization": "Bearer erd_<key generated from admin>"
       }
     }
   }
 }
 ```
 
-### Claude Code 설정
+### Claude Code Configuration
 
 ```bash
 claude mcp add --transport http erdmini http://localhost:3000/mcp \
-  --header "x-api-key: erd_<admin에서_생성한_키>"
+  --header "Authorization: Bearer erd_<key generated from admin>"
 ```
 
-### 사용 가능한 도구
+### Available Tools
 
-| 도구 | 설명 | 최소 권한 |
+| Tool | Description | Minimum Permission |
 |------|------|-----------|
-| `list_projects` | 접근 가능한 프로젝트 목록 | - |
-| `get_schema` | ERD 스키마 JSON | viewer |
-| `export_ddl` | DDL SQL 생성 (4 dialect) | viewer |
-| `lint_schema` | 스키마 린트 검사 | viewer |
+| `list_projects` | List accessible projects | - |
+| `get_schema` | ERD schema JSON | viewer |
+| `export_ddl` | Generate DDL SQL (4 dialects) | viewer |
+| `lint_schema` | Schema lint check | viewer |
 | `export_diagram` | Mermaid / PlantUML | viewer |
-| `add_table` | 테이블 추가 | editor |
-| `update_table` | 테이블 수정 | editor |
-| `delete_table` | 테이블 삭제 | editor |
-| `add_column` | 컬럼 추가 | editor |
-| `update_column` | 컬럼 수정 | editor |
-| `delete_column` | 컬럼 삭제 | editor |
-| `add_foreign_key` | FK 추가 | editor |
-| `delete_foreign_key` | FK 삭제 | editor |
-| `import_ddl` | DDL SQL 임포트 | editor |
+| `add_table` | Add a table | editor |
+| `update_table` | Update a table | editor |
+| `delete_table` | Delete a table | editor |
+| `add_column` | Add a column | editor |
+| `update_column` | Update a column | editor |
+| `delete_column` | Delete a column | editor |
+| `add_foreign_key` | Add a FK | editor |
+| `delete_foreign_key` | Delete a FK | editor |
+| `import_ddl` | Import DDL SQL | editor |
 
-### Docker에서 MCP 사용
+### Using MCP with Docker
 
-Docker 배포 시 별도 설정 없이 동일 포트에서 MCP가 제공된다:
+When deployed via Docker, MCP is served on the same port with no additional configuration:
 
 ```
-http://localhost:3000/mcp   ← MCP Streamable HTTP
-http://localhost:3000/      ← 웹 UI
-ws://localhost:3000/ws      ← 실시간 협업
+http://localhost:3000/mcp   <- MCP Streamable HTTP
+http://localhost:3000/      <- Web UI
+ws://localhost:3000/ws      <- Real-time collaboration
 ```

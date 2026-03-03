@@ -1,93 +1,93 @@
-# erdmini 기능 개선 목록
+# erdmini Feature Improvement List
 
-## Quick Wins (소규모, 높은 효과)
+## Quick Wins (Small Scope, High Impact)
 
-### ~~1. 키보드 단축키 도움말 패널~~ ✅
-- ~~`?` 키 또는 도움말 버튼으로 단축키 목록 모달 표시~~
+### ~~1. Keyboard Shortcut Help Panel~~ ✅
+- ~~Display a shortcut list modal via the `?` key or a help button~~
 
-### ~~2. 잠긴 테이블 캔버스 표시~~ ✅
-- ~~TableCard에 잠금 아이콘/배지 표시~~
+### ~~2. Locked Table Canvas Indicator~~ ✅
+- ~~Show a lock icon/badge on TableCard~~
 
-### ~~3. 사이드바 그룹 접기 상태 저장~~ ✅
-- ~~localStorage에 접힌 그룹 목록 저장, 새로고침 시 복원~~
+### ~~3. Persist Sidebar Group Collapse State~~ ✅
+- ~~Save collapsed group list to localStorage and restore on page reload~~
 
-### ~~4. FK 참조 무결성 경고~~ ✅
-- ~~스키마 린팅에 포함 (set-null-not-nullable 규칙)~~
+### ~~4. FK Referential Integrity Warning~~ ✅
+- ~~Included in schema linting (set-null-not-nullable rule)~~
 
-### ~~5. 사이드바 검색 확장~~ ✅
-- ~~7개 프리픽스 필터: fk:, group:, locked:, type:, has:, no:, color:~~
-- ~~검색 힌트 드롭다운 (클릭/키보드 방향키 선택)~~
-- ~~기본 검색에 컬럼 코멘트 포함~~
+### ~~5. Sidebar Search Expansion~~ ✅
+- ~~7 prefix filters: fk:, group:, locked:, type:, has:, no:, color:~~
+- ~~Search hint dropdown (clickable / keyboard arrow key selection)~~
+- ~~Include column comments in basic search~~
 
-### ~~6. 컬럼 복사/복제~~ ✅
-- ~~같은 테이블 내 컬럼 복제 (column_duplicate 기능)~~
+### ~~6. Column Copy / Duplicate~~ ✅
+- ~~Duplicate a column within the same table (column_duplicate feature)~~
 
-### ~~7. 컬럼 기본값 프리셋~~ ✅
-- ~~타입별 자주 쓰는 기본값 드롭다운 (NOW(), CURRENT_TIMESTAMP, UUID(), 0 등)~~
-
----
-
-## 중간 규모 개선
-
-### ~~8. 테이블 일괄 편집~~ ✅
-- ~~다중 선택된 테이블의 color, group, comment를 한번에 수정하는 다이얼로그~~
-- ~~일괄 잠금/해제 기능 포함~~
-
-### ~~9. 스키마 검증/린팅~~ ✅
-- ~~8가지 규칙: PK 누락, FK 대상 누락, SET NULL+NOT NULL, 중복 컬럼/테이블/인덱스, 순환 FK, 빈 테이블~~
-- ~~LintPanel: 심각도 아이콘, 클릭으로 해당 테이블 이동~~
-
-### ~~10. PDF 내보내기~~ ✅
-- ~~jsPDF + svg2pdf.js 기반, SVG 출력을 PDF로 변환~~
-
-### ~~11. DDL 내보내기 포맷 옵션~~ ✅
-- ~~들여쓰기(2칸/4칸/탭), 따옴표(없음/백틱/이중/괄호), 키워드 대소문자~~
-- ~~코멘트/인덱스/FK 포함 여부 토글, localStorage 저장~~
-
-### ~~12. 실행취소 히스토리 패널~~ ✅
-- ~~스크롤 가능한 히스토리 목록, Redo(미래)/현재/Undo(과거) 구분~~
-- ~~클릭으로 특정 시점 점프, i18n 라벨 + 상세 정보 표시~~
-
-### ~~13. 컬럼 표시 모드~~ ✅
-- ~~3가지 모드: 전체 / PK&FK만 / 이름만~~
-- ~~FK 관계선, 미니맵, 캔버스 높이 계산 모두 연동~~
-
-### ~~14. 스키마 버전 비교 (Diff)~~ ✅
-- ~~히스토리 또는 파일 업로드에서 이전 버전 선택~~
-- ~~테이블/컬럼/FK/인덱스 추가·삭제·수정 색상 코딩 표시~~
+### ~~7. Column Default Value Presets~~ ✅
+- ~~Type-specific common default value dropdown (NOW(), CURRENT_TIMESTAMP, UUID(), 0, etc.)~~
 
 ---
 
-## 대규모 개선
+## Medium-Scale Improvements
 
-### ~~15. FK 라인 스마트 라우팅~~ ✅
-- ~~FK 선 겹침 방지, 스플라인 경로 최적화~~
-- ~~같은 테이블 쌍 FK 자동 분산, 중간 테이블 장애물 회피, 자기참조 루프~~
-- ~~`fk-routing.ts` 모듈로 분리, RelationLines + svg-export 공유~~
+### ~~8. Bulk Table Edit~~ ✅
+- ~~Dialog to modify color, group, and comment for multiple selected tables at once~~
+- ~~Includes bulk lock / unlock functionality~~
 
-### ~~16. 사이드바 대규모 스키마 가상 스크롤~~ ✅
-- ~~1000+ 테이블 시 DOM 렌더링 최적화~~
-- ~~VirtualList.svelte 제네릭 컴포넌트 (binary search, overscan, scrollToIndex)~~
-- ~~Sidebar: VirtualRow 평탄화 + 가상 스크롤 적용~~
+### ~~9. Schema Validation / Linting~~ ✅
+- ~~8 rules: missing PK, missing FK target, SET NULL + NOT NULL, duplicate columns / tables / indexes, circular FK, empty table~~
+- ~~LintPanel: severity icons, click to navigate to the affected table~~
 
-### 17. 접근성 (A11y) 개선
-- ARIA 레이블, 키보드 네비게이션, 스크린 리더 지원
-- 난이도: 대
+### ~~10. PDF Export~~ ✅
+- ~~Based on jsPDF + svg2pdf.js; converts SVG output to PDF~~
+
+### ~~11. DDL Export Format Options~~ ✅
+- ~~Indentation (2 spaces / 4 spaces / tab), quoting (none / backtick / double / bracket), keyword casing~~
+- ~~Toggle inclusion of comments / indexes / FKs; saved to localStorage~~
+
+### ~~12. Undo History Panel~~ ✅
+- ~~Scrollable history list with Redo (future) / current / Undo (past) distinction~~
+- ~~Click to jump to a specific point in time; i18n labels + detail display~~
+
+### ~~13. Column Display Mode~~ ✅
+- ~~3 modes: All / PK & FK only / Name only~~
+- ~~Integrated with FK relation lines, minimap, and canvas height calculation~~
+
+### ~~14. Schema Version Diff~~ ✅
+- ~~Select a previous version from history or via file upload~~
+- ~~Color-coded display of added / removed / modified tables, columns, FKs, and indexes~~
 
 ---
 
-## 장기 비전
+## Large-Scale Improvements
 
-### 18. AI 스키마 생성
-- 자연어 설명으로 스키마 자동 생성 ("블로그 시스템 만들어줘")
-- LLM 연동 필요
-- 난이도: 대
+### ~~15. FK Line Smart Routing~~ ✅
+- ~~Prevent FK line overlaps; optimize spline paths~~
+- ~~Auto-spread FK lines between the same table pair, avoid intermediate table obstacles, self-referencing loops~~
+- ~~Extracted into a `fk-routing.ts` module; shared by RelationLines + svg-export~~
 
-### 19. 실시간 DB 연결 & 역공학
-- 라이브 데이터베이스 접속해서 스키마 자동 추출
-- 현재는 DDL 텍스트 임포트만 가능
-- 난이도: 대
+### ~~16. Sidebar Virtual Scroll for Large Schemas~~ ✅
+- ~~Optimize DOM rendering for 1000+ tables~~
+- ~~Generic VirtualList.svelte component (binary search, overscan, scrollToIndex)~~
+- ~~Sidebar: flatten into VirtualRow and apply virtual scroll~~
 
-### 20. 스키마 스냅샷/브랜칭
-- 이름 붙인 스냅샷 생성, 스키마 변형 실험 후 전환 (git branch처럼)
-- 난이도: 대
+### 17. Accessibility (A11y) Improvements
+- ARIA labels, keyboard navigation, screen reader support
+- Difficulty: Large
+
+---
+
+## Long-Term Vision
+
+### 18. AI Schema Generation
+- Automatically generate a schema from a natural language description (e.g., "Create a blog system")
+- Requires LLM integration
+- Difficulty: Large
+
+### 19. Live DB Connection & Reverse Engineering
+- Connect to a live database and automatically extract the schema
+- Currently only DDL text import is supported
+- Difficulty: Large
+
+### 20. Schema Snapshots / Branching
+- Create named snapshots and switch between schema variants after experimentation (like git branches)
+- Difficulty: Large

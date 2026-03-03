@@ -59,9 +59,11 @@ Factory in `index.ts` selects based on `PUBLIC_STORAGE_MODE`.
 ### Server-Side (`src/lib/server/`)
 
 Only loaded in server mode. Includes:
-- **`db.ts`**: Singleton SQLite (better-sqlite3, WAL mode). Creates all tables on first run.
+- **`db.ts`**: Singleton SQLite (better-sqlite3, WAL mode). Calls `runMigrations()` on first access.
+- **`migrate.ts`**: Flyway-style migration runner. Auto-discovers `migrations/*.sql` via `import.meta.glob`, tracks versions in `schema_migrations` table with SHA-256 checksums, supports baseline detection for existing DBs.
+- **`migrations/`**: Versioned SQL files (`V001__initial_schema.sql`, etc.). Add new `V###__description.sql` files for schema changes — never modify applied migrations.
 - **`auth/`**: Password hashing (argon2), sessions (30-day, cookie-based), API keys (`erd_` prefix + SHA-256), OIDC (PKCE flow via openid-client), permission hierarchy (viewer < editor < owner, admin bypasses).
-- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. API key auth with scoped permissions. Read tools (list/get/export) and write tools (add/update/delete tables/columns/FKs). Write ops call `notifyCollabSchemaChange()`.
+- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. Read tools (list/get/export) and write tools (add/update/delete tables/columns/FKs). Write ops call `notifyCollabSchemaChange()`.
 
 ### Real-time Collaboration
 
