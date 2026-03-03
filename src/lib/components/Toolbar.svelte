@@ -1851,9 +1851,13 @@
 
   .project-new-row {
     display: flex;
-    padding: 0;
+    padding: 4px 8px;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+  }
+
+  .project-new-row .project-rename-input {
+    margin: 0;
   }
 
   .project-new-confirm {
