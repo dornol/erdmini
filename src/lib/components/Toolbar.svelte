@@ -1051,8 +1051,8 @@
         title={m.toolbar_settings()}
       >
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/>
-          <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M6.86 1.58l-.37 1.47a5.08 5.08 0 00-1.22.7L3.84 3.3l-1.14 2 1.05 1.1a5.1 5.1 0 000 1.4l-1.05 1.1 1.14 2 1.43-.45c.36.28.77.52 1.22.7l.37 1.47h2.28l.37-1.47c.45-.18.86-.42 1.22-.7l1.43.45 1.14-2-1.05-1.1a5.1 5.1 0 000-1.4l1.05-1.1-1.14-2-1.43.45a5.08 5.08 0 00-1.22-.7L9.14 1.58H6.86z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+          <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
         </svg>
       </button>
       {#if settingsOpen}
