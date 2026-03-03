@@ -22,6 +22,7 @@
   import { collabClient } from '$lib/collab/collab-client';
   import { collabStore } from '$lib/store/collab.svelte';
   import { handleServerMessage, sendPresence, sendOperation } from '$lib/collab/operation-bridge';
+  import { replaceState } from '$app/navigation';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
 
@@ -515,8 +516,8 @@
   async function loadShareFromHash() {
     const shareData = getShareDataFromUrl();
     if (!shareData) return;
-    // Clear hash immediately to prevent re-triggering
-    history.replaceState(null, '', window.location.pathname);
+    // Clear hash using SvelteKit's shallow replaceState (won't trigger load functions)
+    replaceState(window.location.pathname, {});
     try {
       const { schema, projectName } = await shareStringToSchema(shareData);
       let name: string;
