@@ -1,5 +1,5 @@
 import { randomBytes, createHash } from 'crypto';
-import type { ApiKeyRow, UserRow } from '$lib/types/auth';
+import type { ApiKeyRow, ApiKeyScope, ApiKeyScopeRow, UserRow } from '$lib/types/auth';
 
 const PREFIX = 'erd_';
 
@@ -18,10 +18,11 @@ export interface ResolvedApiKey {
   userRole: string;
   displayName: string;
   keyId: string;
+  scopes: ApiKeyScope[] | null; // null = unrestricted (all user access)
 }
 
 export function resolveApiKey(
-  db: { prepare: (sql: string) => { get: (...args: unknown[]) => unknown } },
+  db: { prepare: (sql: string) => { get: (...args: unknown[]) => unknown; all: (...args: unknown[]) => unknown[]; run: (...args: unknown[]) => unknown } },
   rawKey: string,
 ): ResolvedApiKey | null {
   if (!rawKey || !rawKey.startsWith(PREFIX)) return null;
@@ -43,10 +44,20 @@ export function resolveApiKey(
   // Update last_used_at
   db.prepare('UPDATE api_keys SET last_used_at = datetime(\'now\') WHERE id = ?').run(row.key_id);
 
+  // Load scopes
+  const scopeRows = db.prepare(
+    'SELECT project_id, permission FROM api_key_scopes WHERE api_key_id = ?'
+  ).all(row.key_id) as { project_id: string; permission: string }[];
+
+  const scopes: ApiKeyScope[] | null = scopeRows.length > 0
+    ? scopeRows.map(s => ({ projectId: s.project_id, permission: s.permission as 'viewer' | 'editor' }))
+    : null;
+
   return {
     userId: row.user_id,
     userRole: row.role,
     displayName: row.display_name,
     keyId: row.key_id,
+    scopes,
   };
 }

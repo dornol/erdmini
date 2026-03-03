@@ -17,6 +17,7 @@
   import HistoryPanel from './HistoryPanel.svelte';
   import SchemaDiffModal from './SchemaDiffModal.svelte';
   import ShareProjectModal from './ShareProjectModal.svelte';
+  import ApiKeysModal from './ApiKeysModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import { authStore } from '$lib/store/auth.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
@@ -436,6 +437,7 @@
   let shortcutsOpen = $state(false);
   let userMenuOpen = $state(false);
   let showChangePassword = $state(false);
+  let showApiKeysModal = $state(false);
   let cpCurrent = $state('');
   let cpNew = $state('');
   let cpConfirm = $state('');
@@ -1193,6 +1195,13 @@
               </button>
             {/if}
             <button
+              class="dropdown-item"
+              role="menuitem"
+              onclick={() => { userMenuOpen = false; showApiKeysModal = true; }}
+            >
+              {m.api_keys_title()}
+            </button>
+            <button
               class="dropdown-item dropdown-item-danger"
               role="menuitem"
               onclick={() => { userMenuOpen = false; authStore.logout(); }}
@@ -1232,6 +1241,10 @@
 
 {#if showDiffModal}
   <SchemaDiffModal onclose={() => (showDiffModal = false)} />
+{/if}
+
+{#if showApiKeysModal}
+  <ApiKeysModal onclose={() => (showApiKeysModal = false)} />
 {/if}
 
 {#if showChangePassword}
@@ -1504,6 +1517,7 @@
     color: #cbd5e1;
     cursor: pointer;
     transition: background 0.1s;
+    white-space: nowrap;
   }
 
   .dropdown-item:hover {

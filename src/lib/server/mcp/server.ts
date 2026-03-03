@@ -23,7 +23,7 @@ export function createMcpServer(
   });
 
   function requireAccess(projectId: string, level: 'viewer' | 'editor' | 'owner'): void {
-    if (!checkAccess(db, projectId, keyInfo.userId, keyInfo.userRole, level)) {
+    if (!checkAccess(db, projectId, keyInfo.userId, keyInfo.userRole, level, keyInfo.scopes)) {
       throw new Error(`Access denied: requires '${level}' permission on project ${projectId}`);
     }
   }
@@ -42,7 +42,7 @@ export function createMcpServer(
     'List all ERD projects accessible to the authenticated user',
     {},
     async () => {
-      const projects = listUserProjects(db, keyInfo.userId, keyInfo.userRole);
+      const projects = listUserProjects(db, keyInfo.userId, keyInfo.userRole, keyInfo.scopes);
       return {
         content: [{ type: 'text', text: JSON.stringify(projects, null, 2) }],
       };

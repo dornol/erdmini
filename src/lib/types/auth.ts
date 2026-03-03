@@ -72,6 +72,18 @@ export interface ApiKeyRow {
   expires_at: string | null;
 }
 
+export interface ApiKeyScope {
+  projectId: string;
+  permission: 'viewer' | 'editor';
+}
+
+export interface ApiKeyScopeRow {
+  id: string;
+  api_key_id: string;
+  project_id: string;
+  permission: string;
+}
+
 export interface ProjectPermission {
   id: string;
   projectId: string;

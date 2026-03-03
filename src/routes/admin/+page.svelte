@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { UserRow, OIDCProviderRow, ApiKeyRow } from '$lib/types/auth';
+  import type { UserRow, OIDCProviderRow, ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
   import { authStore } from '$lib/store/auth.svelte';
 
   type UserInfo = Omit<UserRow, 'password_hash'>;
-  type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null };
+  type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null; scopes: ApiKeyScopeRow[] };
 
   let users = $state<UserInfo[]>([]);
   let providers = $state<OIDCProviderRow[]>([]);
@@ -31,6 +31,8 @@
 
   // API Key form
   let newApiKey = $state({ name: '', expiresAt: '' });
+  let newApiKeyScopes = $state<{ projectId: string; permission: 'viewer' | 'editor' }[]>([]);
+  let apiKeyScopeMode = $state<'all' | 'scoped'>('all');
   let apiKeyError = $state('');
   let apiKeySuccess = $state('');
   let createdKey = $state<string | null>(null);
@@ -149,23 +151,29 @@
     apiKeyError = '';
     apiKeySuccess = '';
     createdKey = null;
+    const body: Record<string, unknown> = {
+      name: newApiKey.name,
+      expiresAt: newApiKey.expiresAt || undefined,
+    };
+    if (apiKeyScopeMode === 'scoped' && newApiKeyScopes.length > 0) {
+      body.scopes = newApiKeyScopes;
+    }
     const res = await fetch('/api/admin/api-keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: newApiKey.name,
-        expiresAt: newApiKey.expiresAt || undefined,
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const body = await res.json();
-      apiKeyError = body.error || 'Failed';
+      const data = await res.json();
+      apiKeyError = data.error || 'Failed';
       return;
     }
     const data = await res.json();
     createdKey = data.key;
     apiKeySuccess = `API key "${newApiKey.name}" created`;
     newApiKey = { name: '', expiresAt: '' };
+    apiKeyScopeMode = 'all';
+    newApiKeyScopes = [];
     await loadApiKeys();
   }
 
@@ -445,6 +453,7 @@
           <tr>
             <th>Name</th>
             <th>User</th>
+            <th>Scopes</th>
             <th>Created</th>
             <th>Last Used</th>
             <th>Expires</th>
@@ -456,6 +465,15 @@
             <tr>
               <td>{key.name}</td>
               <td>{key.user_display_name} {key.username ? `(${key.username})` : ''}</td>
+              <td>
+                {#if key.scopes && key.scopes.length > 0}
+                  {#each key.scopes as scope}
+                    <span class="badge" style="margin-right:4px">{scope.project_id.slice(0,8)}… ({scope.permission})</span>
+                  {/each}
+                {:else}
+                  <span class="badge badge-on">All</span>
+                {/if}
+              </td>
               <td>{key.created_at ? new Date(key.created_at).toLocaleDateString() : '-'}</td>
               <td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never'}</td>
               <td>
@@ -475,7 +493,7 @@
             </tr>
           {/each}
           {#if apiKeys.length === 0}
-            <tr><td colspan="6" style="text-align:center;color:#64748b">No API keys</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:#64748b">No API keys</td></tr>
           {/if}
         </tbody>
       </table>
@@ -488,6 +506,31 @@
             <span>Expires</span>
             <input type="date" bind:value={newApiKey.expiresAt} />
           </label>
+        </div>
+        <div class="scope-controls" style="margin-top:10px">
+          <label class="checkbox-label">
+            <input type="radio" bind:group={apiKeyScopeMode} value="all" /> All Projects (Unrestricted)
+          </label>
+          <label class="checkbox-label">
+            <input type="radio" bind:group={apiKeyScopeMode} value="scoped" /> Specific Projects
+          </label>
+        </div>
+        {#if apiKeyScopeMode === 'scoped'}
+          <div style="margin-top:8px">
+            {#each newApiKeyScopes as scope, idx}
+              <div class="form-grid" style="margin-bottom:6px">
+                <input placeholder="Project ID" bind:value={scope.projectId} />
+                <select bind:value={scope.permission}>
+                  <option value="viewer">Viewer</option>
+                  <option value="editor">Editor</option>
+                </select>
+                <button class="btn-sm btn-danger" onclick={() => { newApiKeyScopes = newApiKeyScopes.filter((_, i) => i !== idx); }}>✕</button>
+              </div>
+            {/each}
+            <button class="btn-sm" style="margin-top:4px" onclick={() => { newApiKeyScopes = [...newApiKeyScopes, { projectId: '', permission: 'viewer' }]; }}>+ Add Project Scope</button>
+          </div>
+        {/if}
+        <div style="margin-top:10px">
           <button class="btn-primary" onclick={createApiKey}>Create Key</button>
         </div>
         {#if apiKeyError}<div class="msg-error">{apiKeyError}</div>{/if}

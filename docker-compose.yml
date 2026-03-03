@@ -12,6 +12,7 @@ services:
       - PUBLIC_STORAGE_MODE=server
       - DB_PATH=/data/erdmini.db
     restart: unless-stopped
+    stop_grace_period: 10s
 
   erdmini-local:
     build:

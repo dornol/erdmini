@@ -1,12 +1,40 @@
 import type Database from 'better-sqlite3';
 import type { ERDSchema, ProjectMeta } from '$lib/types/erd';
-import type { ProjectPermissionLevel } from '$lib/types/auth';
+import type { ProjectPermissionLevel, ApiKeyScope } from '$lib/types/auth';
 
 interface ProjectIndexData {
   projects: ProjectMeta[];
 }
 
-export function listUserProjects(db: Database.Database, userId: string, userRole: string): ProjectMeta[] {
+const SCOPE_LEVEL: Record<string, number> = { viewer: 0, editor: 1 };
+
+export function listUserProjects(
+  db: Database.Database,
+  userId: string,
+  userRole: string,
+  keyScopes?: ApiKeyScope[] | null,
+): ProjectMeta[] {
+  // If scopes are set, only return scoped projects
+  if (keyScopes) {
+    const scopedIds = new Set(keyScopes.map(s => s.projectId));
+    const allRows = db.prepare(
+      `SELECT pi.data FROM project_index pi WHERE pi.user_id != 'singleton'`
+    ).all() as { data: string }[];
+
+    const result: ProjectMeta[] = [];
+    for (const row of allRows) {
+      try {
+        const index: ProjectIndexData = JSON.parse(row.data);
+        if (index.projects) {
+          for (const p of index.projects) {
+            if (scopedIds.has(p.id)) result.push(p);
+          }
+        }
+      } catch { /* skip */ }
+    }
+    return result;
+  }
+
   // Admin can see all projects
   if (userRole === 'admin') {
     const rows = db.prepare(
@@ -73,7 +101,18 @@ export function checkAccess(
   userId: string,
   userRole: string,
   requiredLevel: ProjectPermissionLevel,
+  keyScopes?: ApiKeyScope[] | null,
 ): boolean {
+  // If scopes are set, check scope-level access first
+  if (keyScopes) {
+    const scope = keyScopes.find(s => s.projectId === projectId);
+    if (!scope) return false; // project not in scopes → deny
+    const requiredLevelNum = SCOPE_LEVEL[requiredLevel] ?? 999;
+    const scopeLevelNum = SCOPE_LEVEL[scope.permission] ?? -1;
+    if (scopeLevelNum < requiredLevelNum) return false;
+    // Scope allows it — still verify user actually has access to this project
+  }
+
   if (userRole === 'admin') return true;
 
   // Check if user owns this project (via project_index)

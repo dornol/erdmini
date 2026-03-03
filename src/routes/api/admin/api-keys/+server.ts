@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { generateApiKey } from '$lib/server/auth/api-key';
 import { randomUUID } from 'crypto';
-import type { ApiKeyRow } from '$lib/types/auth';
+import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
 
 function requireAdmin(locals: App.Locals) {
   if (!locals.user || locals.user.role !== 'admin') {
@@ -24,14 +24,23 @@ export const GET: RequestHandler = ({ locals }) => {
      ORDER BY ak.created_at DESC`
   ).all() as (Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null })[];
 
-  return json(keys);
+  // Attach scopes to each key
+  const scopeStmt = db.prepare(
+    'SELECT id, api_key_id, project_id, permission FROM api_key_scopes WHERE api_key_id = ?'
+  );
+  const result = keys.map(k => ({
+    ...k,
+    scopes: scopeStmt.all(k.id) as ApiKeyScopeRow[],
+  }));
+
+  return json(result);
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
-  const { name, userId, expiresAt } = await request.json();
+  const { name, userId, expiresAt, scopes } = await request.json();
 
   if (!name) {
     return json({ error: 'name is required' }, { status: 400 });
@@ -52,6 +61,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     `INSERT INTO api_keys (id, user_id, key_hash, name, expires_at)
      VALUES (?, ?, ?, ?, ?)`
   ).run(id, targetUserId, hash, name, expiresAt || null);
+
+  // Insert scopes if provided
+  if (Array.isArray(scopes) && scopes.length > 0) {
+    const insertScope = db.prepare(
+      `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
+       VALUES (?, ?, ?, ?)`
+    );
+    for (const scope of scopes) {
+      if (scope.projectId && scope.permission) {
+        insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
+      }
+    }
+  }
 
   // Return the raw key only once
   return json({ id, key, name, userId: targetUserId, expiresAt: expiresAt || null }, { status: 201 });
