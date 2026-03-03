@@ -23,12 +23,12 @@ export async function setupAdmin(db: Database.Database): Promise<void> {
      VALUES (?, ?, ?, 'admin', ?)`
   ).run(adminId, username, 'Admin', passwordHash);
 
-  console.log('='.repeat(60));
-  console.log('  Admin account created on first run');
+  console.log('============================================');
+  console.log('  INITIAL ADMIN CREDENTIALS (shown once)');
   console.log(`  Username: ${username}`);
   console.log(`  Password: ${password}`);
-  console.log('  Please change the password after first login.');
-  console.log('='.repeat(60));
+  console.log('  Please change the password after login!');
+  console.log('============================================');
 
   // Migrate existing singleton project_index data to admin user
   const singleton = db.prepare(

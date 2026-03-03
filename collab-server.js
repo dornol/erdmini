@@ -100,6 +100,23 @@ function notifySchemaChange(projectId, schema) {
   roomManager.broadcast(projectId, { type: 'sync', schema });
 }
 
+// ── Rate Limiting ──
+/** @type {Map<string, { count: number, resetTime: number }>} */
+const peerMessageCounts = new Map();
+const RATE_LIMIT = 100; // messages per second
+const RATE_WINDOW = 1000; // 1 second in ms
+
+function checkRateLimit(peerId) {
+  const now = Date.now();
+  let entry = peerMessageCounts.get(peerId);
+  if (!entry || now > entry.resetTime) {
+    entry = { count: 0, resetTime: now + RATE_WINDOW };
+    peerMessageCounts.set(peerId, entry);
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT;
+}
+
 // ── Message Handler ──
 function handleMessage(peerId, raw, db, userId, userRole) {
   let msg;
@@ -122,6 +139,20 @@ function handleMessage(peerId, raw, db, userId, userRole) {
       break;
     }
     case 'operation': {
+      // Basic operation payload validation
+      if (!msg.op || typeof msg.op !== 'object') {
+        roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation: op must be an object' });
+        return;
+      }
+      if (!msg.op.kind || typeof msg.op.kind !== 'string') {
+        roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation: op.kind must be a non-empty string' });
+        return;
+      }
+      const opStr = JSON.stringify(msg.op);
+      if (opStr.length > 512 * 1024) {
+        roomManager.sendTo(peerId, { type: 'error', message: 'Operation payload too large' });
+        return;
+      }
       const projectId = roomManager.getProjectId(peerId);
       if (!projectId) { roomManager.sendTo(peerId, { type: 'error', message: 'Not in a room' }); return; }
       if (!hasProjectAccess(db, projectId, userId, userRole, 'editor')) {
@@ -196,12 +227,23 @@ function setupConnection(ws, db, user) {
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (rawData) => {
+    if (!checkRateLimit(peerId)) {
+      roomManager.sendTo(peerId, { type: 'error', message: 'Rate limit exceeded' });
+      ws.close(1008, 'Rate limit exceeded');
+      return;
+    }
     const raw = typeof rawData === 'string' ? rawData : rawData.toString();
     handleMessage(peerId, raw, db, user.id, user.role);
   });
 
-  ws.on('close', () => roomManager.unregister(peerId));
-  ws.on('error', () => roomManager.unregister(peerId));
+  ws.on('close', () => {
+    peerMessageCounts.delete(peerId);
+    roomManager.unregister(peerId);
+  });
+  ws.on('error', () => {
+    peerMessageCounts.delete(peerId);
+    roomManager.unregister(peerId);
+  });
 }
 
 // ── Shared: authenticate an upgrade request ──
@@ -220,7 +262,7 @@ function authenticateUpgrade(request, db) {
  * @param {import('better-sqlite3').Database} db
  */
 export function createCollabHandler(db) {
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1 * 1024 * 1024 });
 
   // Ping/pong keepalive
   const pingInterval = setInterval(() => {

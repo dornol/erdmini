@@ -6,7 +6,7 @@ interface ProjectIndexData {
   projects: ProjectMeta[];
 }
 
-const SCOPE_LEVEL: Record<string, number> = { viewer: 0, editor: 1 };
+const SCOPE_LEVEL: Record<string, number> = { viewer: 0, editor: 1, owner: 2 };
 
 export function listUserProjects(
   db: Database.Database,

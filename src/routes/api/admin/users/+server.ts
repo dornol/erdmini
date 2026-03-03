@@ -33,6 +33,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'username, displayName, password required' }, { status: 400 });
   }
 
+  if (password.length < 4) {
+    return json({ error: 'Password must be at least 4 characters' }, { status: 400 });
+  }
+
   // Check uniqueness
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) {

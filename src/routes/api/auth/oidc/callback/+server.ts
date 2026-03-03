@@ -57,7 +57,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: url.protocol === 'https:',
       maxAge: 30 * 24 * 60 * 60,
     });
 
@@ -71,6 +71,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       throw e;
     }
     console.error('OIDC callback error:', e);
-    return new Response(`Authentication failed: ${(e as Error).message}`, { status: 400 });
+    return new Response('Authentication failed', { status: 400 });
   }
 };

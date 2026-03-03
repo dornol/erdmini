@@ -19,7 +19,8 @@ export const GET: RequestHandler = ({ locals }) => {
     'SELECT * FROM oidc_providers ORDER BY created_at'
   ).all() as OIDCProviderRow[];
 
-  return json(providers);
+  const filtered = providers.map(({ client_secret, ...rest }) => rest);
+  return json(filtered);
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {

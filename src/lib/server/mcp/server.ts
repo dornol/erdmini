@@ -52,7 +52,7 @@ export function createMcpServer(
   server.tool(
     'get_schema',
     'Get the full ERD schema JSON for a project',
-    { projectId: z.string().describe('Project ID') },
+    { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
       const schema = getSchema(db, projectId);
@@ -68,7 +68,7 @@ export function createMcpServer(
   server.tool(
     'get_schema_summary',
     'Get a high-level summary of a project schema (table/column/FK/index counts, groups, domains)',
-    { projectId: z.string().describe('Project ID') },
+    { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
       const schema = getSchema(db, projectId);
@@ -93,8 +93,8 @@ export function createMcpServer(
     'list_tables',
     'List tables with summary info (no full column data). Optionally filter by group.',
     {
-      projectId: z.string().describe('Project ID'),
-      group: z.string().optional().describe('Filter by group name (exact match)'),
+      projectId: z.string().max(256).describe('Project ID'),
+      group: z.string().max(256).optional().describe('Filter by group name (exact match)'),
     },
     async ({ projectId, group }) => {
       requireAccess(projectId, 'viewer');
@@ -124,9 +124,9 @@ export function createMcpServer(
     'get_table',
     'Get full details of a single table by ID or name (columns, foreignKeys, uniqueKeys, indexes)',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().optional().describe('Table ID (provide tableId or tableName)'),
-      tableName: z.string().optional().describe('Table name (provide tableId or tableName)'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).optional().describe('Table ID (provide tableId or tableName)'),
+      tableName: z.string().max(256).optional().describe('Table name (provide tableId or tableName)'),
     },
     async ({ projectId, tableId, tableName }) => {
       requireAccess(projectId, 'viewer');
@@ -150,7 +150,7 @@ export function createMcpServer(
   server.tool(
     'list_groups',
     'List groups with table counts and table names',
-    { projectId: z.string().describe('Project ID') },
+    { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
       const schema = getSchema(db, projectId);
@@ -174,7 +174,7 @@ export function createMcpServer(
     'export_ddl',
     'Export DDL SQL for a project schema (supports mysql, postgresql, mariadb, mssql)',
     {
-      projectId: z.string().describe('Project ID'),
+      projectId: z.string().max(256).describe('Project ID'),
       dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql']).describe('SQL dialect'),
       includeComments: z.boolean().optional().describe('Include comments in DDL'),
       includeForeignKeys: z.boolean().optional().describe('Include FK constraints'),
@@ -201,7 +201,7 @@ export function createMcpServer(
   server.tool(
     'lint_schema',
     'Run schema lint validation and return issues',
-    { projectId: z.string().describe('Project ID') },
+    { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
       const schema = getSchema(db, projectId);
@@ -219,7 +219,7 @@ export function createMcpServer(
     'export_diagram',
     'Export ERD as Mermaid or PlantUML diagram',
     {
-      projectId: z.string().describe('Project ID'),
+      projectId: z.string().max(256).describe('Project ID'),
       format: z.enum(['mermaid', 'plantuml']).describe('Diagram format'),
     },
     async ({ projectId, format }) => {
@@ -241,11 +241,11 @@ export function createMcpServer(
     'add_table',
     'Add a new table to the ERD schema',
     {
-      projectId: z.string().describe('Project ID'),
-      name: z.string().optional().describe('Table name (auto-generated if omitted)'),
-      comment: z.string().optional().describe('Table comment'),
+      projectId: z.string().max(256).describe('Project ID'),
+      name: z.string().max(256).optional().describe('Table name (auto-generated if omitted)'),
+      comment: z.string().max(4096).optional().describe('Table comment'),
       color: z.enum(TABLE_COLOR_IDS as unknown as [string, ...string[]]).optional().describe('Table header color'),
-      group: z.string().optional().describe('Table group name'),
+      group: z.string().max(256).optional().describe('Table group name'),
       withPk: z.boolean().optional().describe('Auto-create id PK column (default: true)'),
     },
     async ({ projectId, ...opts }) => {
@@ -266,12 +266,12 @@ export function createMcpServer(
     'update_table',
     'Update table properties (name, comment, color, group)',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().describe('Table ID'),
-      name: z.string().optional().describe('New table name'),
-      comment: z.string().optional().describe('New comment (empty string to clear)'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      name: z.string().max(256).optional().describe('New table name'),
+      comment: z.string().max(4096).optional().describe('New comment (empty string to clear)'),
       color: z.enum([...TABLE_COLOR_IDS, ''] as unknown as [string, ...string[]]).optional().describe('Table header color (empty string to clear)'),
-      group: z.string().optional().describe('New group name (empty string to clear)'),
+      group: z.string().max(256).optional().describe('New group name (empty string to clear)'),
     },
     async ({ projectId, tableId, ...patch }) => {
       requireAccess(projectId, 'editor');
@@ -292,8 +292,8 @@ export function createMcpServer(
     'delete_table',
     'Delete a table and clean up FK references',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().describe('Table ID to delete'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID to delete'),
     },
     async ({ projectId, tableId }) => {
       requireAccess(projectId, 'editor');
@@ -314,9 +314,9 @@ export function createMcpServer(
     'add_column',
     'Add a column to a table',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().describe('Table ID'),
-      name: z.string().optional().describe('Column name'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      name: z.string().max(256).optional().describe('Column name'),
       type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).optional().describe('Column type'),
       length: z.number().optional().describe('Column length'),
       scale: z.number().optional().describe('Decimal scale'),
@@ -324,9 +324,9 @@ export function createMcpServer(
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique constraint'),
       autoIncrement: z.boolean().optional().describe('Auto increment'),
-      defaultValue: z.string().optional().describe('Default value expression'),
-      comment: z.string().optional().describe('Column comment'),
-      enumValues: z.array(z.string()).optional().describe('ENUM values'),
+      defaultValue: z.string().max(1024).optional().describe('Default value expression'),
+      comment: z.string().max(4096).optional().describe('Column comment'),
+      enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
     },
     async ({ projectId, tableId, ...colOpts }) => {
       requireAccess(projectId, 'editor');
@@ -349,10 +349,10 @@ export function createMcpServer(
     'update_column',
     'Update column properties',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().describe('Table ID'),
-      columnId: z.string().describe('Column ID'),
-      name: z.string().optional().describe('New column name'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      columnId: z.string().max(256).describe('Column ID'),
+      name: z.string().max(256).optional().describe('New column name'),
       type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).optional().describe('New column type'),
       length: z.number().optional().describe('New length'),
       scale: z.number().optional().describe('New decimal scale'),
@@ -360,8 +360,8 @@ export function createMcpServer(
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique'),
       autoIncrement: z.boolean().optional().describe('Auto increment'),
-      defaultValue: z.string().optional().describe('Default value expression'),
-      comment: z.string().optional().describe('Column comment'),
+      defaultValue: z.string().max(1024).optional().describe('Default value expression'),
+      comment: z.string().max(4096).optional().describe('Column comment'),
     },
     async ({ projectId, tableId, columnId, ...patch }) => {
       requireAccess(projectId, 'editor');
@@ -386,9 +386,9 @@ export function createMcpServer(
     'delete_column',
     'Delete a column and clean up FK/UQ references',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().describe('Table ID'),
-      columnId: z.string().describe('Column ID to delete'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      columnId: z.string().max(256).describe('Column ID to delete'),
     },
     async ({ projectId, tableId, columnId }) => {
       requireAccess(projectId, 'editor');
@@ -413,11 +413,11 @@ export function createMcpServer(
     'add_foreign_key',
     'Add a foreign key relationship between tables',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().describe('Source table ID'),
-      columnIds: z.array(z.string()).describe('Source column IDs'),
-      referencedTableId: z.string().describe('Referenced table ID'),
-      referencedColumnIds: z.array(z.string()).describe('Referenced column IDs'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Source table ID'),
+      columnIds: z.array(z.string().max(256)).max(100).describe('Source column IDs'),
+      referencedTableId: z.string().max(256).describe('Referenced table ID'),
+      referencedColumnIds: z.array(z.string().max(256)).max(100).describe('Referenced column IDs'),
       onDelete: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional().describe('ON DELETE action'),
       onUpdate: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional().describe('ON UPDATE action'),
     },
@@ -448,9 +448,9 @@ export function createMcpServer(
     'delete_foreign_key',
     'Delete a foreign key from a table',
     {
-      projectId: z.string().describe('Project ID'),
-      tableId: z.string().describe('Table ID'),
-      fkId: z.string().describe('Foreign key ID to delete'),
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      fkId: z.string().max(256).describe('Foreign key ID to delete'),
     },
     async ({ projectId, tableId, fkId }) => {
       requireAccess(projectId, 'editor');
@@ -475,8 +475,8 @@ export function createMcpServer(
     'import_ddl',
     'Import DDL SQL to create/update tables in a project',
     {
-      projectId: z.string().describe('Project ID'),
-      sql: z.string().describe('DDL SQL statements'),
+      projectId: z.string().max(256).describe('Project ID'),
+      sql: z.string().max(1048576).describe('DDL SQL statements'),
       dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql']).optional().describe('SQL dialect (default: mysql)'),
       replace: z.boolean().optional().describe('Replace existing schema (default: false, merges)'),
     },
