@@ -7,30 +7,12 @@
   let undoEntries = $derived(erdStore.historyEntries);
   let redoEntries = $derived(erdStore.redoEntries);
 
-  const LABEL_MAP: Record<string, () => string> = {
-    'history_add_table': () => m.history_add_table(),
-    'history_delete_table': () => m.history_delete_table(),
-    'history_edit_table': () => m.history_edit_table(),
-    'history_add_column': () => m.history_add_column(),
-    'history_delete_column': () => m.history_delete_column(),
-    'history_edit_column': () => m.history_edit_column(),
-    'history_add_fk': () => m.history_add_fk(),
-    'history_delete_fk': () => m.history_delete_fk(),
-    'history_edit_fk': () => m.history_edit_fk(),
-    'history_edit_domain': () => m.history_edit_domain(),
-    'history_layout': () => m.history_layout(),
-    'history_edit': () => m.history_edit(),
-    'history_add_uq': () => m.history_add_uq(),
-    'history_delete_uq': () => m.history_delete_uq(),
-    'history_add_idx': () => m.history_add_idx(),
-    'history_delete_idx': () => m.history_delete_idx(),
-    'history_add_memo': () => m.history_add_memo(),
-    'history_delete_memo': () => m.history_delete_memo(),
-    'history_edit_memo': () => m.history_edit_memo(),
-  };
-
   function labelText(label: string): string {
-    return LABEL_MAP[label]?.() ?? label;
+    try {
+      const fn = (m as Record<string, unknown>)[label];
+      if (typeof fn === 'function') return fn() as string;
+    } catch { /* fallback to raw label */ }
+    return label;
   }
 
   function relativeTime(ts: number): string {
