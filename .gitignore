@@ -36,3 +36,6 @@ project.inlang/cache/
 
 # VsCode
 .vscode
+
+# Claude
+.claude
