@@ -30,4 +30,21 @@ const db = new Proxy({} as InstanceType<typeof Database>, {
   },
 });
 
+export function getDbPath(): string {
+  return env.DB_PATH || 'data/erdmini.db';
+}
+
+export function closeDb(): void {
+  if (_db) {
+    try { _db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
+    try { _db.close(); } catch { /* ignore */ }
+    _db = null;
+  }
+}
+
+export function reinitDb(): void {
+  _db = null;
+  // Next access via proxy will re-initialize
+}
+
 export default db;

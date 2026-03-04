@@ -17,10 +17,25 @@ export const GET: RequestHandler = ({ locals }) => {
   if (err) return err;
 
   const users = db.prepare(
-    'SELECT id, username, display_name, email, role, status, created_at, updated_at FROM users ORDER BY created_at'
-  ).all() as Omit<UserRow, 'password_hash'>[];
+    `SELECT u.id, u.username, u.display_name, u.email, u.role, u.status,
+            u.created_at, u.updated_at,
+            CASE WHEN u.password_hash IS NOT NULL THEN 1 ELSE 0 END as has_local_auth,
+            GROUP_CONCAT(DISTINCT op.display_name) as oidc_provider_names
+     FROM users u
+     LEFT JOIN oidc_identities oi ON oi.user_id = u.id
+     LEFT JOIN oidc_providers op ON op.id = oi.provider_id
+     GROUP BY u.id
+     ORDER BY u.created_at`
+  ).all() as (Omit<UserRow, 'password_hash'> & { has_local_auth: number; oidc_provider_names: string | null })[];
 
-  return json(users);
+  const result = users.map(u => ({
+    ...u,
+    has_local_auth: u.has_local_auth === 1,
+    oidc_providers: u.oidc_provider_names ? u.oidc_provider_names.split(',') : [],
+    oidc_provider_names: undefined,
+  }));
+
+  return json(result);
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {

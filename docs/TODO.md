@@ -95,12 +95,13 @@
 - ~~Display last used timestamp in Admin API Keys UI~~
 - ~~Difficulty: Small~~
 
-### 21. Admin Page Enhancements
-- Project management: member list per project, owner transfer, project delete/archive
-- Users tab: display auth provider (local / OIDC) per user with icon or label
-- Full backup & restore: SQLite `.backup` API snapshot → zip download, zip upload → validate & restore
-- Admin UI "Backup & Restore" tab
-- Difficulty: Large
+### ~~21. Admin Page Enhancements~~ ✅
+- ~~Project management: member list per project, owner transfer, project delete~~
+- ~~Users tab: auth provider badges (Local / OIDC provider name)~~
+- ~~Backup & Restore: DB download (WAL checkpoint + copy), upload restore with validation & rollback~~
+- ~~Admin UI: Projects tab + Backup tab added~~
+- ~~i18n: 21 new keys across 4 languages (ko/en/ja/zh)~~
+- ~~Difficulty: Large~~
 
 ### ~~22. cross-env for Windows Compatibility~~ ✅
 - ~~Add `cross-env` package for cross-platform env var support in npm scripts~~
@@ -116,13 +117,14 @@
 - Design log storage format (DB table + query API + Admin UI)
 - Difficulty: Large
 
-### 24. DDL Dialect Expansion (Oracle, H2, SQLite)
-- Oracle: NUMBER, VARCHAR2, CLOB type mappings
-- H2: MySQL-compatible mode considerations
-- SQLite: INTEGER, TEXT, REAL simple type system
-- Extend Dialect type, update ddl-export.ts / ddl-import.ts / MCP dialect options
-- Add tests per dialect
-- Difficulty: Large
+### ~~24. DDL Dialect Expansion (Oracle, H2, SQLite)~~ ✅
+- ~~Oracle: NUMBER, VARCHAR2, CLOB type mappings~~
+- ~~H2: MySQL-compatible mode considerations~~
+- ~~SQLite: INTEGER, TEXT, REAL simple type system~~
+- ~~Extend Dialect type, update ddl-export.ts / ddl-import.ts / MCP dialect options~~
+- ~~Add tests per dialect~~
+- ~~ddl-import.ts 방언별 모듈 분리 (ddl-import-mssql.ts, ddl-import-oracle.ts, ddl-import-types.ts)~~
+- ~~Difficulty: Large~~
 
 ---
 

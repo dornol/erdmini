@@ -4,13 +4,52 @@
   import { authStore } from '$lib/store/auth.svelte';
   import * as m from '$lib/paraglide/messages';
 
-  type UserInfo = Omit<UserRow, 'password_hash'>;
+  type UserInfo = Omit<UserRow, 'password_hash'> & { has_local_auth: boolean; oidc_providers: string[] };
   type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null; scopes: ApiKeyScopeRow[] };
+
+  type ProjectInfo = {
+    id: string;
+    name: string;
+    updatedAt: string;
+    ownerId: string | null;
+    ownerName: string | null;
+    memberCount: number;
+  };
+  type ProjectMember = {
+    id: string;
+    user_id: string;
+    permission: string;
+    created_at: string;
+    display_name: string;
+    username: string | null;
+    email: string | null;
+  };
+  type BackupStats = {
+    dbSizeBytes: number;
+    userCount: number;
+    projectCount: number;
+    migrationVersion: number;
+  };
 
   let users = $state<UserInfo[]>([]);
   let providers = $state<OIDCProviderRow[]>([]);
   let apiKeys = $state<ApiKeyInfo[]>([]);
-  let activeTab = $state<'users' | 'oidc' | 'api-keys'>('users');
+  let activeTab = $state<'users' | 'oidc' | 'api-keys' | 'projects' | 'backup'>('users');
+
+  // Projects
+  let projects = $state<ProjectInfo[]>([]);
+  let expandedProject = $state<string | null>(null);
+  let projectMembers = $state<ProjectMember[]>([]);
+  let projectError = $state('');
+  let projectSuccess = $state('');
+  let transferUserId = $state('');
+
+  // Backup
+  let backupStats = $state<BackupStats | null>(null);
+  let backupLoading = $state(false);
+  let restoreLoading = $state(false);
+  let backupError = $state('');
+  let backupSuccess = $state('');
 
   // New user form
   let newUser = $state({ username: '', displayName: '', email: '', password: '', role: 'user' });
@@ -187,6 +226,121 @@
     await Promise.all([loadUsers(), loadProviders(), loadApiKeys()]);
   });
 
+  // Project functions
+  async function loadProjects() {
+    projectError = '';
+    const res = await fetch('/api/admin/projects');
+    if (res.ok) projects = await res.json();
+  }
+
+  async function toggleProjectMembers(projectId: string) {
+    if (expandedProject === projectId) {
+      expandedProject = null;
+      return;
+    }
+    expandedProject = projectId;
+    transferUserId = '';
+    const res = await fetch(`/api/admin/projects/${projectId}`);
+    if (res.ok) projectMembers = await res.json();
+  }
+
+  async function transferOwnership(projectId: string, projectName: string) {
+    if (!transferUserId) return;
+    const targetUser = users.find(u => u.id === transferUserId);
+    if (!confirm(m.admin_projects_transfer_confirm({ name: projectName, user: targetUser?.display_name ?? transferUserId }))) return;
+    projectError = '';
+    const res = await fetch(`/api/admin/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'transfer', newOwnerId: transferUserId }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      projectError = data.error || 'Failed to transfer';
+      return;
+    }
+    projectSuccess = `Ownership transferred`;
+    transferUserId = '';
+    expandedProject = null;
+    await loadProjects();
+  }
+
+  async function deleteProject(projectId: string, projectName: string) {
+    const input = prompt(m.admin_projects_delete_confirm({ name: projectName }));
+    if (input !== projectName) return;
+    projectError = '';
+    const res = await fetch(`/api/admin/projects/${projectId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      projectError = data.error || 'Failed to delete project';
+      return;
+    }
+    projectSuccess = `Project "${projectName}" deleted`;
+    expandedProject = null;
+    await loadProjects();
+  }
+
+  // Backup functions
+  async function loadBackupStats() {
+    backupError = '';
+    const res = await fetch('/api/admin/backup?stats=1');
+    if (res.ok) backupStats = await res.json();
+  }
+
+  async function downloadBackup() {
+    backupLoading = true;
+    backupError = '';
+    try {
+      const res = await fetch('/api/admin/backup');
+      if (!res.ok) {
+        backupError = 'Failed to download backup';
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'erdmini-backup.db';
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      backupLoading = false;
+    }
+  }
+
+  async function restoreBackup(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!confirm(m.admin_restore_confirm())) {
+      input.value = '';
+      return;
+    }
+
+    restoreLoading = true;
+    backupError = '';
+    backupSuccess = '';
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/backup', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        backupError = data.error || m.admin_restore_failed();
+        return;
+      }
+      backupSuccess = m.admin_restore_success();
+      setTimeout(() => location.reload(), 1500);
+    } finally {
+      restoreLoading = false;
+      input.value = '';
+    }
+  }
+
   async function loadUsers() {
     const res = await fetch('/api/admin/users');
     if (res.ok) users = await res.json();
@@ -354,6 +508,12 @@
     <button class="tab" class:active={activeTab === 'api-keys'} onclick={() => (activeTab = 'api-keys')}>
       API Keys ({apiKeys.length})
     </button>
+    <button class="tab" class:active={activeTab === 'projects'} onclick={() => { activeTab = 'projects'; if (projects.length === 0) loadProjects(); }}>
+      {m.admin_tab_projects()}
+    </button>
+    <button class="tab" class:active={activeTab === 'backup'} onclick={() => { activeTab = 'backup'; if (!backupStats) loadBackupStats(); }}>
+      {m.admin_tab_backup()}
+    </button>
   </div>
 
   {#if activeTab === 'users'}
@@ -371,6 +531,7 @@
             <th>Display Name</th>
             <th>Email</th>
             <th>Role</th>
+            <th>{m.admin_auth_provider()}</th>
             <th>{m.admin_user_status()}</th>
             <th>Created</th>
             <th>Actions</th>
@@ -392,6 +553,12 @@
                       <option value="admin">admin</option>
                     </select>
                   {/if}
+                </td>
+                <td>
+                  <div class="auth-badges">
+                    {#if user.has_local_auth}<span class="badge badge-auth-local">{m.admin_auth_local()}</span>{/if}
+                    {#each user.oidc_providers as provider}<span class="badge badge-auth-oidc">{provider}</span>{/each}
+                  </div>
                 </td>
                 <td>
                   <select class="inline-select" bind:value={editUserForm.status}>
@@ -417,6 +584,12 @@
                   {#if isLastAdmin(user)}
                     <span class="badge badge-warn" title="Last admin — cannot demote or delete">sole</span>
                   {/if}
+                </td>
+                <td>
+                  <div class="auth-badges">
+                    {#if user.has_local_auth}<span class="badge badge-auth-local">{m.admin_auth_local()}</span>{/if}
+                    {#each user.oidc_providers as provider}<span class="badge badge-auth-oidc">{provider}</span>{/each}
+                  </div>
                 </td>
                 <td>
                   {#if user.status === 'pending'}
@@ -681,6 +854,128 @@
         {#if apiKeySuccess && !createdKey}<div class="msg-success">{apiKeySuccess}</div>{/if}
       </div>
     </section>
+  {:else if activeTab === 'projects'}
+    <section class="section">
+      <h2>{m.admin_projects_title()}</h2>
+      {#if projectError}<div class="msg-error">{projectError}</div>{/if}
+      {#if projectSuccess}<div class="msg-success">{projectSuccess}</div>{/if}
+
+      {#if projects.length === 0}
+        <p class="section-desc">{m.admin_projects_no_projects()}</p>
+      {:else}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{m.admin_projects_name()}</th>
+              <th>{m.admin_projects_owner()}</th>
+              <th>{m.admin_projects_members()}</th>
+              <th>{m.admin_projects_updated()}</th>
+              <th>{m.admin_projects_actions()}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each projects as project}
+              <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+              <tr class="clickable-row" onclick={() => toggleProjectMembers(project.id)}>
+                <td>
+                  <span class="project-name">{project.name}</span>
+                  <span class="project-id">{project.id.slice(0, 8)}…</span>
+                </td>
+                <td>{project.ownerName ?? '-'}</td>
+                <td>{project.memberCount}</td>
+                <td>{project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : '-'}</td>
+                <td>
+                  <div class="btn-row" onclick={(e) => e.stopPropagation()}>
+                    <button class="btn-sm btn-danger" onclick={() => deleteProject(project.id, project.name)}>{m.admin_projects_delete()}</button>
+                  </div>
+                </td>
+              </tr>
+              {#if expandedProject === project.id}
+                <tr>
+                  <td colspan="5">
+                    <div class="project-detail">
+                      <h4>{m.admin_projects_members()}</h4>
+                      {#if projectMembers.length > 0}
+                        <div class="member-list">
+                          {#each projectMembers as member}
+                            <div class="member-row">
+                              <span class="member-name">{member.display_name}</span>
+                              {#if member.username}<span class="member-username">({member.username})</span>{/if}
+                              <span class="badge" class:badge-admin={member.permission === 'owner'}>{member.permission}</span>
+                            </div>
+                          {/each}
+                        </div>
+                      {:else}
+                        <p class="section-desc">No members</p>
+                      {/if}
+
+                      <div class="transfer-section">
+                        <h4>{m.admin_projects_transfer()}</h4>
+                        <div class="form-grid">
+                          <select class="inline-select" bind:value={transferUserId}>
+                            <option value="">{m.select_placeholder()}</option>
+                            {#each users.filter(u => u.status === 'active' && u.id !== project.ownerId) as u}
+                              <option value={u.id}>{u.display_name} {u.username ? `(${u.username})` : ''}</option>
+                            {/each}
+                          </select>
+                          <button class="btn-sm btn-save" disabled={!transferUserId} onclick={() => transferOwnership(project.id, project.name)}>{m.admin_projects_transfer()}</button>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              {/if}
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </section>
+  {:else if activeTab === 'backup'}
+    <section class="section">
+      <h2>{m.admin_backup_title()}</h2>
+
+      <div class="form-section">
+        <h3>{m.admin_backup_download()}</h3>
+        {#if backupStats}
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">{m.admin_backup_db_size()}</span>
+              <span class="stat-value">{(backupStats.dbSizeBytes / 1024 / 1024).toFixed(2)} MB</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">{m.admin_backup_user_count()}</span>
+              <span class="stat-value">{backupStats.userCount}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">{m.admin_backup_project_count()}</span>
+              <span class="stat-value">{backupStats.projectCount}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">{m.admin_backup_version()}</span>
+              <span class="stat-value">V{String(backupStats.migrationVersion).padStart(3, '0')}</span>
+            </div>
+          </div>
+        {/if}
+        <div style="margin-top:12px">
+          <button class="btn-primary" onclick={downloadBackup} disabled={backupLoading}>
+            {backupLoading ? m.admin_backup_downloading() : m.admin_backup_download()}
+          </button>
+        </div>
+      </div>
+
+      <div class="form-section" style="margin-top:16px">
+        <h3>{m.admin_restore_title()}</h3>
+        <p class="restore-warning">{m.admin_restore_warning()}</p>
+        <div style="margin-top:12px">
+          <label class="btn-primary restore-btn">
+            {restoreLoading ? '...' : m.admin_restore_upload()}
+            <input type="file" accept=".db" style="display:none" onchange={restoreBackup} disabled={restoreLoading} />
+          </label>
+        </div>
+        {#if backupError}<div class="msg-error">{backupError}</div>{/if}
+        {#if backupSuccess}<div class="msg-success">{backupSuccess}</div>{/if}
+      </div>
+    </section>
   {/if}
 </div>
 
@@ -690,7 +985,7 @@
     background: #0f172a;
     color: #f1f5f9;
     padding: 24px;
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
   }
 
@@ -1119,5 +1414,121 @@
     display: flex;
     gap: 16px;
     flex-wrap: wrap;
+  }
+
+  .auth-badges {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .badge-auth-local {
+    background: #1e3a5f;
+    color: #93c5fd;
+  }
+
+  .badge-auth-oidc {
+    background: #312e81;
+    color: #c4b5fd;
+  }
+
+  /* Projects tab */
+  .clickable-row {
+    cursor: pointer;
+  }
+
+  .clickable-row:hover {
+    background: rgba(96, 165, 250, 0.05);
+  }
+
+  .project-name {
+    font-weight: 500;
+  }
+
+  .project-id {
+    font-size: 11px;
+    color: #64748b;
+    margin-left: 8px;
+    font-family: monospace;
+  }
+
+  .project-detail {
+    padding: 12px 16px;
+    background: #1e293b;
+    border-radius: 6px;
+  }
+
+  .project-detail h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: #cbd5e1;
+  }
+
+  .member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .member-name {
+    font-weight: 500;
+  }
+
+  .member-username {
+    color: #64748b;
+    font-size: 12px;
+  }
+
+  .transfer-section {
+    border-top: 1px solid #334155;
+    padding-top: 12px;
+  }
+
+  /* Backup tab */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: #94a3b8;
+  }
+
+  .stat-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+
+  .restore-warning {
+    font-size: 13px;
+    color: #f59e0b;
+    margin: 0;
+    padding: 8px 12px;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+
+  .restore-btn {
+    display: inline-block;
+    cursor: pointer;
   }
 </style>
