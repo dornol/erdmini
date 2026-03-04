@@ -856,6 +856,7 @@
   }
 
   .main {
+    position: relative;
     display: flex;
     flex: 1;
     overflow: hidden;

@@ -766,6 +766,11 @@ class ERDStore {
     this._emitOp({ kind: 'rename-schema', oldName, newName });
   }
 
+  reorderSchemas(schemas: string[]) {
+    this.schema.schemas = schemas;
+    this.schema.updatedAt = now();
+  }
+
   deleteSchema(name: string) {
     this.schema.schemas = this.schema.schemas?.filter((s) => s !== name);
     for (const t of this.schema.tables) {

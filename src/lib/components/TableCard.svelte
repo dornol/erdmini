@@ -651,7 +651,7 @@
   .schema-badge-btn {
     font-size: 9px;
     font-weight: 600;
-    padding: 1px 5px;
+    padding: 2px 5px;
     border-radius: 3px;
     border: none;
     background: rgba(255,255,255,0.15);
@@ -660,7 +660,9 @@
     cursor: pointer;
     font-family: inherit;
     transition: background 0.12s, opacity 0.12s;
-    line-height: 1.6;
+    line-height: 1;
+    display: flex;
+    align-items: center;
   }
 
   .schema-badge-btn.assigned {

@@ -169,6 +169,13 @@
     <div class="editor-header">
       <span class="editor-title">{m.editor_title()}</span>
       <button
+        class="id-badge"
+        title="Copy table ID"
+        onclick={() => {
+          navigator.clipboard.writeText(selectedTable!.id);
+        }}
+      >{selectedTable.id}</button>
+      <button
         class="lock-btn"
         class:locked={selectedTable.locked}
         title={selectedTable.locked ? 'Unlock position' : 'Lock position'}
@@ -275,6 +282,21 @@
             <option value={g}></option>
           {/each}
         </datalist>
+
+        {#if (erdStore.schema.schemas?.length ?? 0) > 0}
+          <label class="field-label" for="tbl-schema" style="margin-top:8px">Schema</label>
+          <select
+            id="tbl-schema"
+            class="text-input"
+            value={selectedTable.schema ?? ''}
+            onchange={(e) => erdStore.updateTableSchema(selectedTable!.id, (e.target as HTMLSelectElement).value || undefined)}
+          >
+            <option value="">({m.schema_tab_all()})</option>
+            {#each erdStore.schema.schemas ?? [] as s}
+              <option value={s}>{s}</option>
+            {/each}
+          </select>
+        {/if}
       {/if}
     </div>
 
@@ -513,7 +535,7 @@
     border-bottom: 1px solid var(--app-border, #e2e8f0);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
   }
 
   .lock-btn {
@@ -525,6 +547,7 @@
     border-radius: 4px;
     opacity: 0.5;
     transition: opacity 0.15s;
+    margin-left: auto;
   }
 
   .lock-btn:hover {
@@ -541,6 +564,23 @@
     color: var(--app-text-muted, #64748b);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  .id-badge {
+    font-size: 10px;
+    font-family: monospace;
+    color: var(--app-text-faint, #94a3b8);
+    background: var(--app-badge-bg, #f1f5f9);
+    border: 1px solid var(--app-badge-border, #e2e8f0);
+    border-radius: 3px;
+    padding: 1px 5px;
+    cursor: pointer;
+    line-height: 1.4;
+  }
+
+  .id-badge:hover {
+    color: var(--app-text-muted, #64748b);
+    background: var(--app-hover-bg, #e2e8f0);
   }
 
   .section {

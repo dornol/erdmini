@@ -69,7 +69,7 @@
     const cursorY = e.clientY - rect.top;
 
     const factor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.min(3, Math.max(0.2, canvasState.scale * factor));
+    const newScale = Math.min(3, Math.max(0.05, canvasState.scale * factor));
 
     // Keep cursor position fixed in world space
     canvasState.x = cursorX - (cursorX - canvasState.x) * (newScale / canvasState.scale);
@@ -265,7 +265,7 @@
       const rect = viewportEl.getBoundingClientRect();
       const midX = (t0.clientX + t1.clientX) / 2 - rect.left;
       const midY = (t0.clientY + t1.clientY) / 2 - rect.top;
-      const newScale = Math.min(3, Math.max(0.2, pinchStart.scale * (dist / pinchStart.dist)));
+      const newScale = Math.min(3, Math.max(0.05, pinchStart.scale * (dist / pinchStart.dist)));
       canvasState.x = midX - (pinchStart.midX - pinchStart.canvasX) * (newScale / pinchStart.scale);
       canvasState.y = midY - (pinchStart.midY - pinchStart.canvasY) * (newScale / pinchStart.scale);
       canvasState.scale = newScale;
@@ -326,8 +326,13 @@
   }
 
   function fitToWindow() {
-    const tables = erdStore.schema.tables;
-    const memos = erdStore.schema.memos;
+    const active = canvasState.activeSchema;
+    const tables = active === '(all)'
+      ? erdStore.schema.tables
+      : erdStore.schema.tables.filter((t) => (t.schema ?? '') === active);
+    const memos = active === '(all)'
+      ? erdStore.schema.memos
+      : erdStore.schema.memos.filter((mm) => (mm.schema ?? '') === active);
     if (tables.length === 0 && memos.length === 0) return;
     const rect = viewportEl.getBoundingClientRect();
     const PAD = 60;
@@ -354,7 +359,7 @@
       (rect.height - PAD * 2) / worldH,
       2,
     );
-    const clampedScale = Math.max(0.2, Math.min(3, scale));
+    const clampedScale = Math.max(0.05, Math.min(3, scale));
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
     canvasState.scale = clampedScale;

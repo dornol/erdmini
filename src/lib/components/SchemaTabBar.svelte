@@ -94,9 +94,50 @@
       switchSchema('(all)');
     }
   }
+
+  // Drag & drop reorder
+  let dragSchema = $state<string | null>(null);
+  let dropTarget = $state<string | null>(null);
+
+  function onDragStart(name: string, e: DragEvent) {
+    if (permissionStore.isReadOnly) return;
+    dragSchema = name;
+    e.dataTransfer!.effectAllowed = 'move';
+  }
+
+  function onDragOver(name: string, e: DragEvent) {
+    if (!dragSchema || dragSchema === name) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'move';
+    dropTarget = name;
+  }
+
+  function onDragLeave() {
+    dropTarget = null;
+  }
+
+  function onDrop(name: string, e: DragEvent) {
+    e.preventDefault();
+    if (!dragSchema || dragSchema === name) { dragSchema = null; dropTarget = null; return; }
+    const schemas = [...(erdStore.schema.schemas ?? [])];
+    const fromIdx = schemas.indexOf(dragSchema);
+    const toIdx = schemas.indexOf(name);
+    if (fromIdx < 0 || toIdx < 0) { dragSchema = null; dropTarget = null; return; }
+    schemas.splice(fromIdx, 1);
+    schemas.splice(toIdx, 0, dragSchema);
+    erdStore.reorderSchemas(schemas);
+    dragSchema = null;
+    dropTarget = null;
+  }
+
+  function onDragEnd() {
+    dragSchema = null;
+    dropTarget = null;
+  }
 </script>
 
 <div class="schema-tab-bar">
+  <span class="schema-label">Schema</span>
   <button
     class="schema-tab"
     class:active={canvasState.activeSchema === '(all)'}
@@ -106,7 +147,16 @@
   </button>
 
   {#each (erdStore.schema.schemas ?? []) as schemaName (schemaName)}
-    <div class="schema-tab-wrapper">
+    <div
+      class="schema-tab-wrapper"
+      class:drop-before={dropTarget === schemaName}
+      draggable={!permissionStore.isReadOnly && renamingSchema !== schemaName}
+      ondragstart={(e) => onDragStart(schemaName, e)}
+      ondragover={(e) => onDragOver(schemaName, e)}
+      ondragleave={onDragLeave}
+      ondrop={(e) => onDrop(schemaName, e)}
+      ondragend={onDragEnd}
+    >
       {#if renamingSchema === schemaName}
         <input
           bind:this={renameInputEl}
@@ -120,6 +170,7 @@
         <button
           class="schema-tab"
           class:active={canvasState.activeSchema === schemaName}
+          class:dragging={dragSchema === schemaName}
           onclick={() => switchSchema(schemaName)}
           ondblclick={(e) => startRename(schemaName, e)}
         >
@@ -162,6 +213,16 @@
     flex-shrink: 0;
     overflow-x: auto;
     scrollbar-width: none;
+  }
+
+  .schema-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--app-text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    margin-right: 4px;
   }
 
   .schema-tab-bar::-webkit-scrollbar {
@@ -260,6 +321,14 @@
     color: var(--app-text);
     border-color: var(--app-text-muted);
     background: var(--app-hover-bg);
+  }
+
+  .schema-tab.dragging {
+    opacity: 0.4;
+  }
+
+  .schema-tab-wrapper.drop-before {
+    box-shadow: -2px 0 0 0 #3b82f6;
   }
 
   .schema-tab-input {

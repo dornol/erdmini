@@ -993,7 +993,7 @@
   .expand-btn {
     position: absolute;
     left: 0;
-    top: 48px;
+    top: 8px;
     z-index: 50;
     background: var(--app-panel-bg, #f8fafc);
     border: 1px solid var(--app-border, #e2e8f0);

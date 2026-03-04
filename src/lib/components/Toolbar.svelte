@@ -732,7 +732,7 @@
                 onclick={async () => { await projectStore.switchProject(proj.id); closeDropdown(); }}
               >
                 <span class="project-item-label">{proj.name}</span>
-                <span class="project-item-meta">{formatDate(proj.updatedAt)} · {getProjectTableCount(proj.id)} tables</span>
+                <span class="project-item-meta">{formatDate(proj.updatedAt)} · {getProjectTableCount(proj.id)} tables · <span class="id-copy-btn" role="button" tabindex="-1" title="Copy project ID" onclick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(proj.id); }} onkeydown={() => {}}>{proj.id}</span></span>
               </button>
               <div class="project-item-actions">
                 <button
@@ -1812,6 +1812,22 @@
 
   .project-item.active .project-item-meta {
     color: #93c5fd;
+  }
+
+  .id-copy-btn {
+    font-family: monospace;
+    font-size: 9px;
+    background: rgba(100, 116, 139, 0.15);
+    border: none;
+    border-radius: 2px;
+    padding: 0 3px;
+    color: inherit;
+    cursor: pointer;
+    vertical-align: baseline;
+  }
+
+  .id-copy-btn:hover {
+    background: rgba(100, 116, 139, 0.3);
   }
 
   .project-item-actions {
