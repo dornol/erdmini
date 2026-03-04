@@ -42,7 +42,9 @@
   // All minimap computations depend on renderTick (throttled)
   const bounds = $derived.by(() => {
     void renderTick;
-    const tables = erdStore.schema.tables;
+    const tables = canvasState.activeSchema === '(all)'
+      ? erdStore.schema.tables
+      : erdStore.schema.tables.filter((t) => (t.schema ?? '') === canvasState.activeSchema);
     const memos = erdStore.schema.memos ?? [];
     if (tables.length === 0 && memos.length === 0) return { minX: 0, minY: 0, maxX: 800, maxY: 600 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -95,10 +97,13 @@
     };
   });
 
-  // Table positions for minimap (throttled)
+  // Table positions for minimap (throttled, filtered by active schema)
   const miniTables = $derived.by(() => {
     void renderTick;
-    return erdStore.schema.tables.map((t) => {
+    const tables = canvasState.activeSchema === '(all)'
+      ? erdStore.schema.tables
+      : erdStore.schema.tables.filter((t) => (t.schema ?? '') === canvasState.activeSchema);
+    return tables.map((t) => {
       const colorId = getEffectiveColor(t, erdStore.schema);
       const colorEntry = colorId ? TABLE_COLORS[colorId] : null;
       return {
@@ -119,7 +124,10 @@
 
   const miniMemos = $derived.by(() => {
     void renderTick;
-    return (erdStore.schema.memos ?? []).map((mm) => {
+    const memos = canvasState.activeSchema === '(all)'
+      ? (erdStore.schema.memos ?? [])
+      : (erdStore.schema.memos ?? []).filter((mm) => (mm.schema ?? '') === canvasState.activeSchema);
+    return memos.filter((mm) => !mm.attachedTableId).map((mm) => {
       const pos = worldToMap(mm.position.x, mm.position.y);
       return {
         id: mm.id,

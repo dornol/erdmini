@@ -49,6 +49,12 @@ export type CollabOperation =
   | { kind: 'move-memo'; memoId: string; x: number; y: number }
   | { kind: 'move-memos'; moves: { memoId: string; x: number; y: number }[] }
   | { kind: 'update-memo'; memoId: string; patch: Partial<Omit<Memo, 'id'>> }
+  | { kind: 'attach-memo'; memoId: string; tableId: string }
+  | { kind: 'detach-memo'; memoId: string }
+  | { kind: 'add-schema'; name: string }
+  | { kind: 'delete-schema'; name: string }
+  | { kind: 'rename-schema'; oldName: string; newName: string }
+  | { kind: 'update-table-schema'; tableId: string; schema: string }
   | { kind: 'load-schema'; schema: ERDSchema };
 
 // ── Client → Server messages ──

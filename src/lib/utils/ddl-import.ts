@@ -776,6 +776,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
 
     try {
       const rawTableName = stmt.table?.[0]?.table ?? 'unknown';
+      const rawSchemaName: string | undefined = stmt.table?.[0]?.db || undefined;
       const tableName = getUniqueName(rawTableName, existingNames);
       existingNames.push(tableName);
 
@@ -939,6 +940,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
         indexes: [],
         position: { x: 40 + col * GRID_GAP_X, y: 40 + row * GRID_GAP_Y },
         comment: tableComment,
+        ...(rawSchemaName ? { schema: rawSchemaName } : {}),
       };
 
       // Store parsed FK info for second-pass resolution

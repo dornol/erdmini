@@ -43,7 +43,7 @@ function computeNewTablePosition(tables: Table[]): { x: number; y: number } {
 
 export function addTable(
   schema: ERDSchema,
-  options?: { name?: string; comment?: string; color?: string; group?: string; withPk?: boolean },
+  options?: { name?: string; comment?: string; color?: string; group?: string; withPk?: boolean; schema?: string },
 ): { schema: ERDSchema; tableId: string } {
   const name = options?.name || getNextTableName(schema.tables);
   const id = generateId();
@@ -72,6 +72,7 @@ export function addTable(
     comment: options?.comment,
     color: options?.color,
     group: options?.group,
+    ...(options?.schema ? { schema: options.schema } : {}),
   };
 
   return {
@@ -83,7 +84,7 @@ export function addTable(
 export function updateTable(
   schema: ERDSchema,
   tableId: string,
-  patch: { name?: string; comment?: string; color?: string; group?: string },
+  patch: { name?: string; comment?: string; color?: string; group?: string; schema?: string },
 ): ERDSchema {
   return {
     ...schema,
@@ -95,6 +96,7 @@ export function updateTable(
         comment: patch.comment !== undefined ? (patch.comment || undefined) : t.comment,
         color: patch.color !== undefined ? (patch.color || undefined) : t.color,
         group: patch.group !== undefined ? (patch.group || undefined) : t.group,
+        ...(patch.schema !== undefined ? (patch.schema ? { schema: patch.schema } : { schema: undefined }) : {}),
       };
     }),
     updatedAt: now(),
@@ -274,7 +276,7 @@ export function deleteForeignKey(
 
 export function addMemo(
   schema: ERDSchema,
-  options?: { content?: string; color?: string; x?: number; y?: number; width?: number; height?: number },
+  options?: { content?: string; color?: string; x?: number; y?: number; width?: number; height?: number; schema?: string },
 ): { schema: ERDSchema; memoId: string } {
   const id = generateId();
   const memos = schema.memos ?? [];
@@ -286,6 +288,7 @@ export function addMemo(
     width: options?.width ?? 200,
     height: options?.height ?? 150,
     color: options?.color,
+    ...(options?.schema ? { schema: options.schema } : {}),
   };
 
   return {

@@ -365,5 +365,10 @@
   "line_type_title": "선 스타일",
   "line_type_bezier": "베지어",
   "line_type_straight": "직선",
-  "line_type_orthogonal": "직각"
+  "line_type_orthogonal": "직각",
+  "memo_detach": "테이블에서 분리",
+  "schema_tab_all": "전체",
+  "schema_add": "스키마 추가",
+  "schema_delete": "스키마 삭제",
+  "schema_name_placeholder": "스키마 이름"
 }

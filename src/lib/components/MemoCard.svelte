@@ -3,6 +3,7 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
+  import { memoDragState } from '$lib/store/memo-drag.svelte';
   import type { Memo } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
 
@@ -19,6 +20,7 @@
 
   let isSelected = $derived(erdStore.selectedMemoIds.has(memo.id));
   let isHovered = $state(false);
+  let isSingleDrag = $state(false); // track single-memo drag (not group)
 
   const MEMO_COLORS: Record<string, { bg: string; header: string; text: string }> = {
     yellow:  { bg: '#fef9c3', header: '#facc15', text: '#713f12' },
@@ -62,7 +64,11 @@
     erdStore.selectedTableIds = new Set();
     erdStore.selectedMemoId = memo.id;
     erdStore.selectedMemoIds = new Set([memo.id]);
-    if (!memo.locked && !permissionStore.isReadOnly) isDragging = true;
+    if (!memo.locked && !permissionStore.isReadOnly) {
+      isDragging = true;
+      isSingleDrag = true;
+      memoDragState.isDragging = true;
+    }
     dragStart = {
       mouseX: e.clientX,
       mouseY: e.clientY,
@@ -77,6 +83,15 @@
     e.preventDefault();
     isResizing = true;
     resizeStart = { mouseX: e.clientX, mouseY: e.clientY, width: memo.width, height: memo.height };
+  }
+
+  function findTableAtPoint(clientX: number, clientY: number): string | null {
+    const elements = document.elementsFromPoint(clientX, clientY);
+    for (const el of elements) {
+      const tid = (el as HTMLElement).dataset?.tableId;
+      if (tid) return tid;
+    }
+    return null;
   }
 
   function onMouseMove(e: MouseEvent) {
@@ -96,13 +111,28 @@
       erdStore.moveMemos(moves);
     } else {
       erdStore.moveMemo(memo.id, dragStart.memoX + dx, dragStart.memoY + dy);
+      // Detect table under cursor for attach
+      if (isSingleDrag) {
+        memoDragState.hoverTableId = findTableAtPoint(e.clientX, e.clientY);
+      }
     }
   }
 
   function onMouseUp() {
+    if (isSingleDrag && !permissionStore.isReadOnly) {
+      const hoverTableId = memoDragState.hoverTableId;
+      if (hoverTableId && hoverTableId !== memo.attachedTableId) {
+        erdStore.attachMemo(memo.id, hoverTableId);
+      } else if (!hoverTableId && memo.attachedTableId) {
+        erdStore.detachMemo(memo.id);
+      }
+    }
     isDragging = false;
+    isSingleDrag = false;
     isResizing = false;
     groupDragStarts = null;
+    memoDragState.isDragging = false;
+    memoDragState.hoverTableId = null;
   }
 
   async function startEditing() {
@@ -183,6 +213,14 @@
     onmousedown={onHeaderMouseDown}
   >
     {#if memo.locked}<span class="lock-icon">🔒</span>{/if}
+    {#if memo.attachedTableId}
+      <button
+        class="pin-btn"
+        title={m.memo_detach()}
+        onclick={(e) => { e.stopPropagation(); if (!permissionStore.isReadOnly) erdStore.detachMemo(memo.id); }}
+        style="color:{colors.text}"
+      >📌</button>
+    {/if}
     <div class="header-spacer"></div>
     {#if !permissionStore.isReadOnly}
       <button class="delete-btn" onclick={onDeleteClick} style="color:{colors.text}">✕</button>
@@ -288,6 +326,21 @@
 
   .delete-btn:hover {
     opacity: 1 !important;
+  }
+
+  .pin-btn {
+    background: none;
+    border: none;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    opacity: 0.8;
+    flex-shrink: 0;
+  }
+
+  .pin-btn:hover {
+    opacity: 1;
   }
 
   .memo-content {

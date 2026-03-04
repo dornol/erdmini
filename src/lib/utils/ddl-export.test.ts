@@ -615,3 +615,70 @@ describe('exportDDL — Domain comments', () => {
     expect(ddl).toContain('-- domain: amount_type');
   });
 });
+
+describe('exportDDL — Schema namespace', () => {
+  it('generates qualified table name for PostgreSQL with non-public schema', () => {
+    const col = makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true, nullable: false });
+    const table = makeTable({ name: 'users', columns: [col] });
+    table.schema = 'auth';
+    const schema = makeSchema([table]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain('CREATE SCHEMA IF NOT EXISTS "auth"');
+    expect(ddl).toContain('CREATE TABLE "auth"."users"');
+  });
+
+  it('skips CREATE SCHEMA for public schema in PostgreSQL', () => {
+    const col = makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true, nullable: false });
+    const table = makeTable({ name: 'users', columns: [col] });
+    table.schema = 'public';
+    const schema = makeSchema([table]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).not.toContain('CREATE SCHEMA');
+    expect(ddl).toContain('CREATE TABLE "public"."users"');
+  });
+
+  it('generates qualified table name for MySQL with schema prefix (backtick)', () => {
+    const col = makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true, nullable: false });
+    const table = makeTable({ name: 'users', columns: [col] });
+    table.schema = 'auth';
+    const schema = makeSchema([table]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('CREATE TABLE `auth`.`users`');
+    // MySQL does not emit CREATE SCHEMA
+    expect(ddl).not.toContain('CREATE SCHEMA');
+  });
+
+  it('generates no schema prefix when table.schema is undefined', () => {
+    const col = makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true, nullable: false });
+    const table = makeTable({ name: 'products', columns: [col] });
+    const schema = makeSchema([table]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).not.toContain('"public"');
+    expect(ddl).toContain('CREATE TABLE "products"');
+  });
+
+  it('generates qualified FK REFERENCES for PostgreSQL', () => {
+    const userId = 'u_id';
+    const orderUserId = 'o_user_id';
+    const users = makeTable({
+      id: 'tbl_users',
+      name: 'users',
+      columns: [makeColumn({ id: userId, name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+    });
+    users.schema = 'auth';
+    const orders = makeTable({
+      id: 'tbl_orders',
+      name: 'orders',
+      columns: [
+        makeColumn({ id: 'o_id', name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+        makeColumn({ id: orderUserId, name: 'user_id', type: 'INT', nullable: false }),
+      ],
+      foreignKeys: [{ id: 'fk_1', columnIds: [orderUserId], referencedTableId: 'tbl_users', referencedColumnIds: [userId], onDelete: 'CASCADE', onUpdate: 'RESTRICT' }],
+    });
+    orders.schema = 'billing';
+    const schema = makeSchema([users, orders]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain('REFERENCES "auth"."users"');
+    expect(ddl).toContain('ALTER TABLE "billing"."orders"');
+  });
+});

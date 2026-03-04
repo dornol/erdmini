@@ -98,8 +98,9 @@ export function createMcpServer(
     {
       projectId: z.string().max(256).describe('Project ID'),
       group: z.string().max(256).optional().describe('Filter by group name (exact match)'),
+      schema: z.string().max(256).optional().describe('Filter by schema name (exact match)'),
     },
-    async ({ projectId, group }) => {
+    async ({ projectId, group, schema: schemaFilter }) => {
       requireAccess(projectId, 'viewer');
       const schema = getSchema(db, projectId);
       if (!schema) {
@@ -109,15 +110,40 @@ export function createMcpServer(
       if (group !== undefined) {
         tables = tables.filter(t => (t.group || '') === group);
       }
+      if (schemaFilter !== undefined) {
+        tables = tables.filter(t => (t.schema || '') === schemaFilter);
+      }
       const result = tables.map(t => ({
         id: t.id,
         name: t.name,
+        schema: t.schema || null,
         comment: t.comment || null,
         group: t.group || null,
         color: t.color || null,
         columnCount: t.columns.length,
         fkCount: t.foreignKeys.length,
         pkColumns: t.columns.filter(c => c.primaryKey).map(c => c.name),
+      }));
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'list_schemas',
+    'List all schema namespaces defined in a project, with table and memo counts',
+    { projectId: z.string().max(256).describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const defined = schema.schemas ?? [];
+      const result = defined.map(name => ({
+        name,
+        tableCount: schema.tables.filter(t => t.schema === name).length,
+        memoCount: (schema.memos ?? []).filter(m => m.schema === name).length,
+        tableNames: schema.tables.filter(t => t.schema === name).map(t => t.name),
       }));
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     },
@@ -251,6 +277,7 @@ export function createMcpServer(
       comment: z.string().max(4096).optional().describe('Table comment'),
       color: z.enum(TABLE_COLOR_IDS as unknown as [string, ...string[]]).optional().describe('Table header color'),
       group: z.string().max(256).optional().describe('Table group name'),
+      schema: z.string().max(256).optional().describe('Schema namespace (e.g. "public", "auth")'),
       withPk: z.boolean().optional().describe('Auto-create id PK column (default: true)'),
     },
     async ({ projectId, ...opts }) => {
@@ -269,7 +296,7 @@ export function createMcpServer(
 
   server.tool(
     'update_table',
-    'Update table properties (name, comment, color, group)',
+    'Update table properties (name, comment, color, group, schema)',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -277,6 +304,7 @@ export function createMcpServer(
       comment: z.string().max(4096).optional().describe('New comment (empty string to clear)'),
       color: z.enum([...TABLE_COLOR_IDS, ''] as unknown as [string, ...string[]]).optional().describe('Table header color (empty string to clear)'),
       group: z.string().max(256).optional().describe('New group name (empty string to clear)'),
+      schema: z.string().max(256).optional().describe('Schema namespace (empty string to remove)'),
     },
     async ({ projectId, tableId, ...patch }) => {
       requireAccess(projectId, 'editor');
@@ -556,15 +584,23 @@ export function createMcpServer(
   server.tool(
     'list_memos',
     'List all memos in a project with summary info',
-    { projectId: z.string().max(256).describe('Project ID') },
-    async ({ projectId }) => {
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      schema: z.string().max(256).optional().describe('Filter by schema namespace'),
+    },
+    async ({ projectId, schema: schemaFilter }) => {
       requireAccess(projectId, 'viewer');
       const schema = getSchema(db, projectId);
       if (!schema) {
         return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
       }
-      const memos = (schema.memos ?? []).map(m => ({
+      let memoList = schema.memos ?? [];
+      if (schemaFilter !== undefined) {
+        memoList = memoList.filter(m => (m.schema || '') === schemaFilter);
+      }
+      const memos = memoList.map(m => ({
         id: m.id,
+        schema: m.schema || null,
         content: m.content.length > 100 ? m.content.slice(0, 100) + '...' : m.content,
         color: m.color ?? 'yellow',
         locked: m.locked ?? false,
@@ -583,6 +619,7 @@ export function createMcpServer(
       projectId: z.string().max(256).describe('Project ID'),
       content: z.string().max(10000).optional().describe('Memo text content'),
       color: z.enum(['yellow', 'blue', 'green', 'pink', 'purple', 'orange']).optional().describe('Memo color'),
+      schema: z.string().max(256).optional().describe('Schema namespace to assign this memo to'),
       x: z.number().optional().describe('X position on canvas'),
       y: z.number().optional().describe('Y position on canvas'),
       width: z.number().optional().describe('Memo width (default: 200)'),

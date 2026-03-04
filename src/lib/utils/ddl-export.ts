@@ -128,12 +128,19 @@ function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domain
   return parts.join(' ');
 }
 
+function qualifiedTableName(table: Table, dialect: Dialect, qs: DDLExportOptions['quoteStyle']): string {
+  if (table.schema) {
+    return `${q(table.schema, qs)}.${q(table.name, qs)}`;
+  }
+  return q(table.name, qs);
+}
+
 function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[]): string {
   const ind = getIndent(opts.indent);
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
   const lines: string[] = [];
-  const tq = q(table.name, qs);
+  const tq = qualifiedTableName(table, dialect, qs);
 
   for (const col of table.columns) {
     lines.push(columnSql(col, dialect, opts, domains));
@@ -182,7 +189,7 @@ function postgresComments(table: Table, opts: DDLExportOptions): string[] {
   const stmts: string[] = [];
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
-  const tq = q(table.name, qs);
+  const tq = qualifiedTableName(table, 'postgresql', qs);
   if (table.comment) {
     stmts.push(`${kw('COMMENT ON TABLE', up)} ${tq} ${kw('IS', up)} '${table.comment.replace(/'/g, "''")}';`);
   }
@@ -232,13 +239,13 @@ function alterTableFkSql(
     if (srcCols.some((c) => !c) || refCols.some((c) => !c)) continue;
 
     const constraintName = `fk_${table.name}_${srcCols.map((c) => c!.name).join('_')}`;
-    const tq = q(table.name, qs);
+    const tq = qualifiedTableName(table, dialect, qs);
     const srcColSql = srcCols.map((c) => q(c!.name, qs)).join(', ');
     const refColSql = refCols.map((c) => q(c!.name, qs)).join(', ');
     const sql =
       `${kw('ALTER TABLE', up)} ${tq}\n` +
       `${ind}${kw('ADD CONSTRAINT', up)} ${q(constraintName, qs)}\n` +
-      `${ind}${kw('FOREIGN KEY', up)} (${srcColSql}) ${kw('REFERENCES', up)} ${q(refTable.name, qs)} (${refColSql})\n` +
+      `${ind}${kw('FOREIGN KEY', up)} (${srcColSql}) ${kw('REFERENCES', up)} ${qualifiedTableName(refTable, dialect, qs)} (${refColSql})\n` +
       `${ind}${kw('ON DELETE', up)} ${kw(fk.onDelete, up)} ${kw('ON UPDATE', up)} ${kw(fk.onUpdate, up)};`;
     result.push(sql);
   }
@@ -252,8 +259,23 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
     ...options,
   };
   const sections: string[] = [];
+  const qs = opts.quoteStyle;
+  const up = opts.upperCaseKeywords;
 
   const domains = schema.domains ?? [];
+
+  // CREATE SCHEMA statements (PostgreSQL/MSSQL only, skip 'public' for PostgreSQL)
+  if (dialect === 'postgresql' || dialect === 'mssql') {
+    const schemaNames = [...new Set(schema.tables.map((t) => t.schema).filter(Boolean))] as string[];
+    for (const sn of schemaNames) {
+      if (dialect === 'postgresql' && sn === 'public') continue;
+      if (dialect === 'postgresql') {
+        sections.push(`${kw('CREATE SCHEMA IF NOT EXISTS', up)} ${q(sn, qs)};`);
+      } else {
+        sections.push(`IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '${sn}') EXEC('CREATE SCHEMA ${sn}');`);
+      }
+    }
+  }
 
   // CREATE TABLE statements
   for (const table of schema.tables) {
@@ -286,7 +308,7 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
         const uniqueKw = idx.unique ? `${kw('UNIQUE', opts.upperCaseKeywords)} ` : '';
         const idxName = idx.name || `idx_${table.name}_${idx.columnIds.map((id) => table.columns.find((c) => c.id === id)?.name ?? '').join('_')}`;
         sections.push(
-          `${kw('CREATE', opts.upperCaseKeywords)} ${uniqueKw}${kw('INDEX', opts.upperCaseKeywords)} ${q(idxName, opts.quoteStyle)} ${kw('ON', opts.upperCaseKeywords)} ${q(table.name, opts.quoteStyle)} (${colNames.join(', ')});`,
+          `${kw('CREATE', opts.upperCaseKeywords)} ${uniqueKw}${kw('INDEX', opts.upperCaseKeywords)} ${q(idxName, opts.quoteStyle)} ${kw('ON', opts.upperCaseKeywords)} ${qualifiedTableName(table, dialect, opts.quoteStyle)} (${colNames.join(', ')});`,
         );
       }
     }

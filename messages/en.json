@@ -365,5 +365,10 @@
   "line_type_title": "Line Style",
   "line_type_bezier": "Bezier",
   "line_type_straight": "Straight",
-  "line_type_orthogonal": "Orthogonal"
+  "line_type_orthogonal": "Orthogonal",
+  "memo_detach": "Detach from table",
+  "schema_tab_all": "All",
+  "schema_add": "Add schema",
+  "schema_delete": "Delete schema",
+  "schema_name_placeholder": "Schema name"
 }

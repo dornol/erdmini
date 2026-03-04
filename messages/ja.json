@@ -349,5 +349,10 @@
   "line_type_title": "線スタイル",
   "line_type_bezier": "ベジエ",
   "line_type_straight": "直線",
-  "line_type_orthogonal": "直角"
+  "line_type_orthogonal": "直角",
+  "memo_detach": "テーブルから切り離す",
+  "schema_tab_all": "すべて",
+  "schema_add": "スキーマ追加",
+  "schema_delete": "スキーマ削除",
+  "schema_name_placeholder": "スキーマ名"
 }

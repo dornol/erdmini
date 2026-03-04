@@ -74,11 +74,11 @@
 - ARIA labels, keyboard navigation, screen reader support
 - Difficulty: Large
 
-### 18. FK Line Type Selection
-- Allow users to choose FK line rendering style: curved (current bezier), straight, orthogonal (right-angle)
-- Add `lineType` setting to canvasState
-- Line type switcher in Toolbar or settings
-- Difficulty: Medium
+### ~~18. FK Line Type Selection~~ ✅
+- ~~Allow users to choose FK line rendering style: curved (current bezier), straight, orthogonal (right-angle)~~
+- ~~Add `lineType` setting to canvasState~~
+- ~~Line type switcher in Toolbar or settings~~
+- ~~Difficulty: Medium~~
 
 ### 19. Memo-Table Attachment
 - Drag & drop a memo onto a table to attach it
@@ -88,12 +88,12 @@
 - Add `attachedTableId` field to Memo type
 - Difficulty: Medium
 
-### 20. API Key Permission Edit & Usage Tracking
-- Allow permission changes after API key creation (API + Admin UI)
-- Add `last_used_at` column to `api_keys` table (migration)
-- Update `last_used_at` on each API key authentication
-- Display last used timestamp in Admin API Keys UI
-- Difficulty: Small
+### ~~20. API Key Permission Edit & Usage Tracking~~ ✅
+- ~~Allow permission changes after API key creation (API + Admin UI)~~
+- ~~Add `last_used_at` column to `api_keys` table (migration)~~
+- ~~Update `last_used_at` on each API key authentication~~
+- ~~Display last used timestamp in Admin API Keys UI~~
+- ~~Difficulty: Small~~
 
 ### 21. Admin Page Enhancements
 - Project management: member list per project, owner transfer, project delete/archive
@@ -102,10 +102,10 @@
 - Admin UI "Backup & Restore" tab
 - Difficulty: Large
 
-### 22. cross-env for Windows Compatibility
-- Add `cross-env` package for cross-platform env var support in npm scripts
-- Apply to `PUBLIC_STORAGE_MODE=server` and other env-dependent scripts
-- Difficulty: Small
+### ~~22. cross-env for Windows Compatibility~~ ✅
+- ~~Add `cross-env` package for cross-platform env var support in npm scripts~~
+- ~~Apply to `PUBLIC_STORAGE_MODE=server` and other env-dependent scripts~~
+- ~~Difficulty: Small~~
 
 ---
 

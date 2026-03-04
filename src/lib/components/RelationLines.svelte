@@ -7,6 +7,8 @@
   import { HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
   import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
 
+  let { visibleTables }: { visibleTables?: Table[] } = $props();
+
   const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string; dash: string }> = {
     modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc', dash: '' },
     classic:   { normal: '#b0a08a', hover: '#b8860b', bg: '#f5f0e4', dash: '' },
@@ -68,8 +70,11 @@
     const inputs: (FKLineInput & { _tableId: string; _fk: ForeignKey; _isUnique: boolean; _isNullable: boolean })[] = [];
     const aabbs: AABB[] = [];
 
-    // Build AABBs for all tables
-    for (const table of erdStore.schema.tables) {
+    const tablesToRender = visibleTables ?? erdStore.schema.tables;
+    const visibleIds = new Set(tablesToRender.map((t) => t.id));
+
+    // Build AABBs for visible tables
+    for (const table of tablesToRender) {
       aabbs.push({
         id: table.id,
         x: table.position.x,
@@ -79,9 +84,11 @@
       });
     }
 
-    for (const table of erdStore.schema.tables) {
+    for (const table of tablesToRender) {
       const srcW = canvasState.getTableW(table.id);
       for (const fk of table.foreignKeys) {
+        // Only render FK lines where both tables are visible
+        if (!visibleIds.has(fk.referencedTableId)) continue;
         const refTable = erdStore.schema.tables.find((t) => t.id === fk.referencedTableId);
         if (!refTable) continue;
         const refW = canvasState.getTableW(refTable.id);

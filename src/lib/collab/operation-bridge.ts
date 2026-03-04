@@ -68,7 +68,15 @@ export function applyRemoteOperation(op: CollabOperation) {
       case 'move-table': {
         const table = erdStore.schema.tables.find((t) => t.id === op.tableId);
         if (table) {
+          const dx = op.x - table.position.x;
+          const dy = op.y - table.position.y;
           table.position = { x: op.x, y: op.y };
+          // Move attached memos by the same delta
+          for (const memo of erdStore.schema.memos) {
+            if (memo.attachedTableId === op.tableId) {
+              memo.position = { x: memo.position.x + dx, y: memo.position.y + dy };
+            }
+          }
         }
         break;
       }
@@ -76,7 +84,15 @@ export function applyRemoteOperation(op: CollabOperation) {
         for (const move of op.moves) {
           const table = erdStore.schema.tables.find((t) => t.id === move.tableId);
           if (table) {
+            const dx = move.x - table.position.x;
+            const dy = move.y - table.position.y;
             table.position = { x: move.x, y: move.y };
+            // Move attached memos by the same delta
+            for (const memo of erdStore.schema.memos) {
+              if (memo.attachedTableId === move.tableId) {
+                memo.position = { x: memo.position.x + dx, y: memo.position.y + dy };
+              }
+            }
           }
         }
         break;
@@ -208,6 +224,30 @@ export function applyRemoteOperation(op: CollabOperation) {
           Object.assign(memo, op.patch);
           erdStore.schema.updatedAt = new Date().toISOString();
         }
+        break;
+      }
+      case 'attach-memo': {
+        erdStore.attachMemo(op.memoId, op.tableId);
+        break;
+      }
+      case 'detach-memo': {
+        erdStore.detachMemo(op.memoId);
+        break;
+      }
+      case 'add-schema': {
+        erdStore.addSchema(op.name);
+        break;
+      }
+      case 'delete-schema': {
+        erdStore.deleteSchema(op.name);
+        break;
+      }
+      case 'rename-schema': {
+        erdStore.renameSchema(op.oldName, op.newName);
+        break;
+      }
+      case 'update-table-schema': {
+        erdStore.updateTableSchema(op.tableId, op.schema || undefined);
         break;
       }
       case 'load-schema': {

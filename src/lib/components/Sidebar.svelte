@@ -98,6 +98,11 @@
   const filteredTables = $derived(() => {
     let tables = erdStore.schema.tables;
 
+    // Schema filter (when a specific schema is active)
+    if (canvasState.activeSchema !== '(all)') {
+      tables = tables.filter((t) => (t.schema ?? '') === canvasState.activeSchema);
+    }
+
     if (searchQuery.trim()) {
       const raw = searchQuery.trim();
       const lower = raw.toLowerCase();

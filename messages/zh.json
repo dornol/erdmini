@@ -349,5 +349,10 @@
   "line_type_title": "线条样式",
   "line_type_bezier": "贝塞尔",
   "line_type_straight": "直线",
-  "line_type_orthogonal": "直角"
+  "line_type_orthogonal": "直角",
+  "memo_detach": "从表格分离",
+  "schema_tab_all": "全部",
+  "schema_add": "添加架构",
+  "schema_delete": "删除架构",
+  "schema_name_placeholder": "架构名称"
 }

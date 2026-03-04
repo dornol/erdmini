@@ -152,6 +152,7 @@ class ERDStore {
 
     const id = generateId();
     const name = getNextTableName(this.schema.tables);
+    const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
     const newTable: Table = {
       id,
       name,
@@ -170,6 +171,7 @@ class ERDStore {
       uniqueKeys: [],
       indexes: [],
       position: { x: worldX - 100, y: worldY - 60 },
+      ...(activeSchema ? { schema: activeSchema } : {}),
     };
     this.schema.tables = [...this.schema.tables, newTable];
     this.schema.updatedAt = now();
@@ -178,6 +180,12 @@ class ERDStore {
   }
 
   deleteTable(id: string) {
+    // Detach memos attached to this table
+    for (const memo of this.schema.memos) {
+      if (memo.attachedTableId === id) {
+        delete memo.attachedTableId;
+      }
+    }
     // Also remove FK references to this table from other tables
     this.schema.tables = this.schema.tables
       .filter((t) => t.id !== id)
@@ -194,6 +202,12 @@ class ERDStore {
 
   deleteTables(ids: string[]) {
     const idSet = new Set(ids);
+    // Detach memos attached to deleted tables
+    for (const memo of this.schema.memos) {
+      if (memo.attachedTableId && idSet.has(memo.attachedTableId)) {
+        delete memo.attachedTableId;
+      }
+    }
     this.schema.tables = this.schema.tables
       .filter((t) => !idSet.has(t.id))
       .map((t) => ({
@@ -282,9 +296,19 @@ class ERDStore {
   moveTable(id: string, x: number, y: number) {
     const table = this.schema.tables.find((t) => t.id === id);
     if (!table) return;
+    const oldX = table.position.x;
+    const oldY = table.position.y;
     const sx = canvasState.snap(x);
     const sy = canvasState.snap(y);
+    const dx = sx - oldX;
+    const dy = sy - oldY;
     table.position = { x: sx, y: sy };
+    // Move attached memos by the same delta
+    for (const memo of this.schema.memos) {
+      if (memo.attachedTableId === id) {
+        memo.position = { x: memo.position.x + dx, y: memo.position.y + dy };
+      }
+    }
     this._emitOp({ kind: 'move-table', tableId: id, x: sx, y: sy });
   }
 
@@ -293,9 +317,19 @@ class ERDStore {
     for (const move of moves) {
       const table = this.schema.tables.find((t) => t.id === move.id);
       if (!table) continue;
+      const oldX = table.position.x;
+      const oldY = table.position.y;
       const sx = canvasState.snap(move.x);
       const sy = canvasState.snap(move.y);
+      const dx = sx - oldX;
+      const dy = sy - oldY;
       table.position = { x: sx, y: sy };
+      // Move attached memos by the same delta
+      for (const memo of this.schema.memos) {
+        if (memo.attachedTableId === move.id) {
+          memo.position = { x: memo.position.x + dx, y: memo.position.y + dy };
+        }
+      }
       opMoves.push({ tableId: move.id, x: sx, y: sy });
     }
     if (opMoves.length > 0) {
@@ -617,12 +651,14 @@ class ERDStore {
     const worldX = (viewportWidth / 2 - x) / scale;
     const worldY = (viewportHeight / 2 - y) / scale;
     const id = generateId();
+    const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
     const memo: Memo = {
       id,
       content: '',
       position: { x: worldX - 100, y: worldY - 75 },
       width: 200,
       height: 150,
+      ...(activeSchema ? { schema: activeSchema } : {}),
     };
     this.schema.memos = [...this.schema.memos, memo];
     this.schema.updatedAt = now();
@@ -682,6 +718,74 @@ class ERDStore {
     this._emitOp({ kind: 'update-memo', memoId: id, patch });
   }
 
+  attachMemo(memoId: string, tableId: string) {
+    const memo = this.schema.memos.find((m) => m.id === memoId);
+    if (!memo) return;
+    memo.attachedTableId = tableId;
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'attach-memo', memoId, tableId });
+  }
+
+  detachMemo(memoId: string) {
+    const memo = this.schema.memos.find((m) => m.id === memoId);
+    if (!memo) return;
+    const tableId = memo.attachedTableId;
+    delete memo.attachedTableId;
+    // Reposition near the table if possible
+    if (tableId) {
+      const table = this.schema.tables.find((t) => t.id === tableId);
+      if (table) {
+        memo.position = { x: table.position.x, y: table.position.y - memo.height - 12 };
+      }
+    }
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'detach-memo', memoId });
+  }
+
+  // Schema namespace methods
+  addSchema(name: string) {
+    if (!this.schema.schemas) this.schema.schemas = [];
+    if (!this.schema.schemas.includes(name)) {
+      this.schema.schemas = [...this.schema.schemas, name];
+      this.schema.updatedAt = now();
+      this._emitOp({ kind: 'add-schema', name });
+    }
+  }
+
+  renameSchema(oldName: string, newName: string) {
+    if (!newName || oldName === newName) return;
+    if (this.schema.schemas?.includes(newName)) return; // duplicate
+    this.schema.schemas = this.schema.schemas?.map((s) => (s === oldName ? newName : s));
+    for (const t of this.schema.tables) {
+      if (t.schema === oldName) t.schema = newName;
+    }
+    for (const mm of this.schema.memos) {
+      if (mm.schema === oldName) mm.schema = newName;
+    }
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'rename-schema', oldName, newName });
+  }
+
+  deleteSchema(name: string) {
+    this.schema.schemas = this.schema.schemas?.filter((s) => s !== name);
+    for (const t of this.schema.tables) {
+      if (t.schema === name) delete t.schema;
+    }
+    for (const mm of this.schema.memos) {
+      if (mm.schema === name) delete mm.schema;
+    }
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'delete-schema', name });
+  }
+
+  updateTableSchema(tableId: string, schema: string | undefined) {
+    const t = this.schema.tables.find((t) => t.id === tableId);
+    if (!t) return;
+    if (schema) t.schema = schema; else delete t.schema;
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-table-schema', tableId, schema: schema ?? '' });
+  }
+
   loadSchema(schema: ERDSchema) {
     if (!schema.domains) schema.domains = [];
     if (!schema.memos) schema.memos = [];
@@ -717,6 +821,8 @@ class CanvasState {
   columnDisplayMode = $state<ColumnDisplayMode>('all');
   lineType = $state<LineType>('bezier');
   tableWidths = $state<Map<string, number>>(new Map());
+  activeSchema = $state<string>('(all)');
+  schemaViewports = $state<Record<string, { x: number; y: number; scale: number }>>({});
 
   snap(v: number): number {
     return this.snapToGrid ? Math.round(v / this.gridSize) * this.gridSize : v;

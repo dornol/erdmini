@@ -97,6 +97,7 @@ export interface Table {
   color?: string;
   group?: string;
   locked?: boolean;
+  schema?: string;
 }
 
 export interface Memo {
@@ -107,6 +108,8 @@ export interface Memo {
   height: number;
   color?: string;
   locked?: boolean;
+  attachedTableId?: string;
+  schema?: string;
 }
 
 export interface ERDSchema {
@@ -115,6 +118,7 @@ export interface ERDSchema {
   domains: ColumnDomain[];
   memos: Memo[];
   groupColors?: Record<string, string>;
+  schemas?: string[];
   createdAt: string;
   updatedAt: string;
 }

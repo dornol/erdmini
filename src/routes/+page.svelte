@@ -10,6 +10,7 @@
   import Toolbar from '$lib/components/Toolbar.svelte';
   import BulkEditModal from '$lib/components/BulkEditModal.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
+  import SchemaTabBar from '$lib/components/SchemaTabBar.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
   import { erdStore, canvasState, type ColumnDisplayMode, type LineType } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
@@ -38,10 +39,27 @@
     if (savedLineType === 'straight' || savedLineType === 'orthogonal') {
       canvasState.lineType = savedLineType as LineType;
     }
+    const savedActiveSchema = localStorage.getItem('erdmini_active_schema');
+    if (savedActiveSchema) canvasState.activeSchema = savedActiveSchema;
+    const savedViewports = localStorage.getItem('erdmini_schema_viewports');
+    if (savedViewports) {
+      try { canvasState.schemaViewports = JSON.parse(savedViewports); } catch { /* ignore */ }
+    }
   }
 
   let sidebarCollapsed = $state(false);
   let commandPaletteOpen = $state(false);
+
+  const visibleTables = $derived(
+    canvasState.activeSchema === '(all)'
+      ? erdStore.schema.tables
+      : erdStore.schema.tables.filter((t) => (t.schema ?? '') === canvasState.activeSchema)
+  );
+  const visibleMemos = $derived(
+    canvasState.activeSchema === '(all)'
+      ? erdStore.schema.memos
+      : erdStore.schema.memos.filter((mm) => (mm.schema ?? '') === canvasState.activeSchema)
+  );
   let showBulkEditModal = $state(false);
   let viewportWidth = $state(768);
   let forceDesktop = $state(false);
@@ -78,6 +96,14 @@
     } else {
       localStorage.setItem('erdmini_line_type', lt);
     }
+  });
+
+  // Persist active schema and schema viewports
+  $effect(() => {
+    const as = canvasState.activeSchema;
+    if (as === '(all)') localStorage.removeItem('erdmini_active_schema');
+    else localStorage.setItem('erdmini_active_schema', as);
+    localStorage.setItem('erdmini_schema_viewports', JSON.stringify(canvasState.schemaViewports));
   });
 
   /** Measure viewport, apply state change, then compensate canvas position to keep center stable */
@@ -657,7 +683,7 @@
       <div class="fullscreen-canvas">
         <Canvas>
           <RelationLines />
-          {#each erdStore.schema.memos as memo (memo.id)}
+          {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div class="fullscreen-table-wrapper">
               <MemoCard {memo} />
             </div>
@@ -704,11 +730,12 @@
         </div>
       {/if}
       <Toolbar onfullscreen={enterFullscreen} />
+      <SchemaTabBar />
       <div class="main">
         <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
         <Canvas>
-          <RelationLines />
-          {#each erdStore.schema.memos as memo (memo.id)}
+          <RelationLines {visibleTables} />
+          {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div
               in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
               out:fade={{ duration: 150 }}
@@ -716,7 +743,7 @@
               <MemoCard {memo} />
             </div>
           {/each}
-          {#each erdStore.schema.tables as table (table.id)}
+          {#each visibleTables as table (table.id)}
             <div
               in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
               out:fade={{ duration: 150 }}
