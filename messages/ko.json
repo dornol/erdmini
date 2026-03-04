@@ -361,5 +361,9 @@
   "domain_inherited": "상속됨",
   "domain_hierarchy": "계층",
   "domain_cycle_error": "순환 참조가 감지되었습니다",
-  "lint_domain_circular_hierarchy": "도메인 순환 계층 참조"
+  "lint_domain_circular_hierarchy": "도메인 순환 계층 참조",
+  "line_type_title": "선 스타일",
+  "line_type_bezier": "베지어",
+  "line_type_straight": "직선",
+  "line_type_orthogonal": "직각"
 }

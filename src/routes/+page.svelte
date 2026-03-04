@@ -11,7 +11,7 @@
   import BulkEditModal from '$lib/components/BulkEditModal.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
-  import { erdStore, canvasState, type ColumnDisplayMode } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState, type ColumnDisplayMode, type LineType } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ERDSchema } from '$lib/types/erd';
@@ -23,9 +23,22 @@
   import { collabClient } from '$lib/collab/collab-client';
   import { collabStore } from '$lib/store/collab.svelte';
   import { handleServerMessage, sendPresence, sendOperation } from '$lib/collab/operation-bridge';
+  import { browser } from '$app/environment';
   import { replaceState } from '$app/navigation';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
+
+  // Restore persisted canvas settings synchronously (before $effects run)
+  if (browser) {
+    const savedMode = localStorage.getItem('erdmini_column_display_mode');
+    if (savedMode === 'pk-fk-only' || savedMode === 'names-only') {
+      canvasState.columnDisplayMode = savedMode as ColumnDisplayMode;
+    }
+    const savedLineType = localStorage.getItem('erdmini_line_type');
+    if (savedLineType === 'straight' || savedLineType === 'orthogonal') {
+      canvasState.lineType = savedLineType as LineType;
+    }
+  }
 
   let sidebarCollapsed = $state(false);
   let commandPaletteOpen = $state(false);
@@ -45,11 +58,6 @@
     // Load shared schema from URL hash immediately after init (most reliable timing)
     await loadShareFromHash();
 
-    // Restore column display mode
-    const savedMode = localStorage.getItem('erdmini_column_display_mode');
-    if (savedMode === 'pk-fk-only' || savedMode === 'names-only') {
-      canvasState.columnDisplayMode = savedMode as ColumnDisplayMode;
-    }
   });
 
   // Persist column display mode
@@ -59,6 +67,16 @@
       localStorage.removeItem('erdmini_column_display_mode');
     } else {
       localStorage.setItem('erdmini_column_display_mode', mode);
+    }
+  });
+
+  // Persist line type
+  $effect(() => {
+    const lt = canvasState.lineType;
+    if (lt === 'bezier') {
+      localStorage.removeItem('erdmini_line_type');
+    } else {
+      localStorage.setItem('erdmini_line_type', lt);
     }
   });
 

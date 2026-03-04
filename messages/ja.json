@@ -345,5 +345,9 @@
   "domain_inherited": "継承",
   "domain_hierarchy": "階層",
   "domain_cycle_error": "循環参照が検出されました",
-  "lint_domain_circular_hierarchy": "ドメイン循環階層参照"
+  "lint_domain_circular_hierarchy": "ドメイン循環階層参照",
+  "line_type_title": "線スタイル",
+  "line_type_bezier": "ベジエ",
+  "line_type_straight": "直線",
+  "line_type_orthogonal": "直角"
 }

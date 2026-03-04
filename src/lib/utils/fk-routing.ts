@@ -197,6 +197,53 @@ export function computeSelfRefLoop(
   return { path, labelX: mid.x, labelY: mid.y };
 }
 
+// ─── Straight line ────────────────────────────────────────
+
+export function computeStraightLine(
+  x1: number, y1: number, x2: number, y2: number,
+): FKLineRoute {
+  return {
+    path: `M ${x1} ${y1} L ${x2} ${y2}`,
+    labelX: (x1 + x2) / 2,
+    labelY: (y1 + y2) / 2,
+  };
+}
+
+// ─── Orthogonal (right-angle) line ────────────────────────
+
+export function computeOrthogonalLine(
+  x1: number, y1: number, x2: number, y2: number,
+  fromRight: boolean, toLeft: boolean,
+): FKLineRoute {
+  const minOffset = 20;
+  const cDir = fromRight ? 1 : -1;
+  const tDir = toLeft ? -1 : 1;
+  const ex1 = x1 + cDir * minOffset;
+  const ex2 = x2 + tDir * minOffset;
+
+  let path: string;
+  let labelX: number;
+  let labelY: number;
+
+  if (fromRight === !toLeft) {
+    // Same-direction exit: both go right or both go left
+    // Use a simple 3-segment path: exit → mid-x → enter
+    const midX = (ex1 + ex2) / 2;
+    path = `M ${x1} ${y1} L ${ex1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${ex2} ${y2} L ${x2} ${y2}`;
+    labelX = midX;
+    labelY = (y1 + y2) / 2;
+  } else {
+    // Opposite directions (tables face each other or back-to-back)
+    // Need two corners: exit → ex1,y1 → ex1,midY → ex2,midY → ex2,y2 → enter
+    const midY = (y1 + y2) / 2;
+    path = `M ${x1} ${y1} L ${ex1} ${y1} L ${ex1} ${midY} L ${ex2} ${midY} L ${ex2} ${y2} L ${x2} ${y2}`;
+    labelX = (ex1 + ex2) / 2;
+    labelY = midY;
+  }
+
+  return { path, labelX, labelY };
+}
+
 // ─── Main entry point ─────────────────────────────────────
 
 export function routeFKLines(

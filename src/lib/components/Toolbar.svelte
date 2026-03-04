@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { erdStore, canvasState, type ColumnDisplayMode } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState, type ColumnDisplayMode, type LineType } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
@@ -56,8 +56,19 @@
 
   let lintIssueCount = $derived(lintSchema(erdStore.schema).length);
 
-  // Project dropdown state
-  let projectOpen = $state(false);
+  // Dropdown state — only one open at a time
+  type DropdownId = 'project' | 'layout' | 'align' | 'file' | 'tools' | 'settings' | 'shortcuts' | 'userMenu';
+  let activeDropdown = $state<DropdownId | null>(null);
+  function toggleDropdown(id: DropdownId) { activeDropdown = activeDropdown === id ? null : id; }
+  function closeDropdown() { activeDropdown = null; }
+  let projectOpen = $derived(activeDropdown === 'project');
+  let layoutOpen = $derived(activeDropdown === 'layout');
+  let alignOpen = $derived(activeDropdown === 'align');
+  let fileOpen = $derived(activeDropdown === 'file');
+  let toolsOpen = $derived(activeDropdown === 'tools');
+  let settingsOpen = $derived(activeDropdown === 'settings');
+  let shortcutsOpen = $derived(activeDropdown === 'shortcuts');
+  let userMenuOpen = $derived(activeDropdown === 'userMenu');
   let renamingId = $state<string | null>(null);
   let renameValue = $state('');
   let newProjectName = $state('');
@@ -91,7 +102,7 @@
     await projectStore.createProject(name);
     newProjectName = '';
     showNewProjectInput = false;
-    projectOpen = false;
+    closeDropdown();
   }
 
   // Auto-arrange
@@ -172,7 +183,7 @@
     erdStore.schema.updatedAt = now();
   }
 
-  let alignOpen = $state(false);
+
 
   // JSON export
   function exportJson() {
@@ -302,7 +313,7 @@
           // Merge domains by name
           const existingDomainNames = new Set(erdStore.schema.domains.map((d) => d.name));
           if (action === 'overwrite') {
-            const newDomainMap = new Map(schema.domains.map((d: { name: string }) => [d.name, d]));
+            const newDomainMap = new Map((schema.domains as import('$lib/types/erd').ColumnDomain[]).map((d) => [d.name, d]));
             erdStore.schema.domains = erdStore.schema.domains.map((d) =>
               newDomainMap.has(d.name) ? newDomainMap.get(d.name)! : d,
             );
@@ -367,7 +378,7 @@
 
   // SVG export
   function exportSvgFile() {
-    const svg = exportSvg(erdStore.schema, themeStore.current);
+    const svg = exportSvg(erdStore.schema, themeStore.current, canvasState.lineType);
     if (!svg) return;
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
@@ -458,12 +469,6 @@
     return 0;
   }
 
-  let layoutOpen = $state(false);
-  let fileOpen = $state(false);
-  let toolsOpen = $state(false);
-  let settingsOpen = $state(false);
-  let shortcutsOpen = $state(false);
-  let userMenuOpen = $state(false);
   let showChangePassword = $state(false);
   let showApiKeysModal = $state(false);
   let cpCurrent = $state('');
@@ -533,6 +538,12 @@
     { mode: 'names-only', label: () => m.view_mode_names_only() },
   ];
 
+  const LINE_TYPES: { type: LineType; label: () => string }[] = [
+    { type: 'bezier', label: () => m.line_type_bezier() },
+    { type: 'straight', label: () => m.line_type_straight() },
+    { type: 'orthogonal', label: () => m.line_type_orthogonal() },
+  ];
+
   // Shared projects
   interface SharedProject {
     projectId: string;
@@ -563,7 +574,7 @@
       const schema = await res.json();
       // Switch to the shared project - create or load it
       await projectStore.loadSharedProject(proj.projectId, proj.projectName, schema);
-      projectOpen = false;
+      closeDropdown();
     } catch { /* ignore */ }
   }
 
@@ -687,7 +698,7 @@
   <div class="dropdown-wrap project-wrap">
     <button
       class="btn-project"
-      onclick={() => { projectOpen = !projectOpen; if (projectOpen) loadSharedProjects(); }}
+      onclick={() => { toggleDropdown('project'); if (activeDropdown === 'project') loadSharedProjects(); }}
       aria-expanded={projectOpen}
       aria-haspopup="menu"
     >
@@ -699,7 +710,7 @@
         class="dropdown-menu project-dropdown"
         role="menu"
         tabindex="-1"
-        onmouseleave={() => { if (!renamingId && !showNewProjectInput) projectOpen = false; }}
+        onmouseleave={() => { if (!renamingId && !showNewProjectInput) closeDropdown(); }}
       >
         {#each projectStore.index.projects as proj (proj.id)}
           <div
@@ -718,7 +729,7 @@
             {:else}
               <button
                 class="project-item-name"
-                onclick={async () => { await projectStore.switchProject(proj.id); projectOpen = false; }}
+                onclick={async () => { await projectStore.switchProject(proj.id); closeDropdown(); }}
               >
                 <span class="project-item-label">{proj.name}</span>
                 <span class="project-item-meta">{formatDate(proj.updatedAt)} · {getProjectTableCount(proj.id)} tables</span>
@@ -732,7 +743,7 @@
                 <button
                   class="project-action-btn"
                   title={m.project_duplicate()}
-                  onclick={async (e) => { e.stopPropagation(); await projectStore.duplicateProject(proj.id); projectOpen = false; }}
+                  onclick={async (e) => { e.stopPropagation(); await projectStore.duplicateProject(proj.id); closeDropdown(); }}
                 >⧉</button>
                 {#if projectStore.index.projects.length > 1}
                   <button
@@ -817,7 +828,7 @@
     <div class="dropdown-wrap">
       <button
         class="btn-secondary"
-        onclick={() => (layoutOpen = !layoutOpen)}
+        onclick={() => (toggleDropdown('layout'))}
         aria-expanded={layoutOpen}
         aria-haspopup="menu"
       >
@@ -828,13 +839,13 @@
           class="dropdown-menu"
           role="menu"
           tabindex="-1"
-          onmouseleave={() => (layoutOpen = false)}
+          onmouseleave={() => (closeDropdown())}
         >
           {#each LAYOUT_TYPES as { type, label }}
             <button
               class="dropdown-item"
               role="menuitem"
-              onclick={() => { applyLayout(type); layoutOpen = false; }}
+              onclick={() => { applyLayout(type); closeDropdown(); }}
             >
               {label()}
             </button>
@@ -846,7 +857,7 @@
               <button
                 class="dropdown-item"
                 role="menuitem"
-                onclick={() => { applyLayout(type, { groupByGroup: true }); layoutOpen = false; }}
+                onclick={() => { applyLayout(type, { groupByGroup: true }); closeDropdown(); }}
               >
                 {label()}
               </button>
@@ -876,7 +887,7 @@
       <div class="dropdown-wrap">
         <button
           class="btn-secondary btn-align"
-          onclick={() => (alignOpen = !alignOpen)}
+          onclick={() => (toggleDropdown('align'))}
           title="Align / Distribute"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -886,15 +897,15 @@
           </svg>
         </button>
         {#if alignOpen}
-          <div class="dropdown-menu align-menu" role="menu" tabindex="-1" onmouseleave={() => (alignOpen = false)}>
-            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('left'); alignOpen = false; }}>Align Left</button>
-            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('right'); alignOpen = false; }}>Align Right</button>
-            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('top'); alignOpen = false; }}>Align Top</button>
-            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('bottom'); alignOpen = false; }}>Align Bottom</button>
+          <div class="dropdown-menu align-menu" role="menu" tabindex="-1" onmouseleave={() => (closeDropdown())}>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('left'); closeDropdown(); }}>Align Left</button>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('right'); closeDropdown(); }}>Align Right</button>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('top'); closeDropdown(); }}>Align Top</button>
+            <button class="dropdown-item" role="menuitem" onclick={() => { alignTables('bottom'); closeDropdown(); }}>Align Bottom</button>
             {#if erdStore.selectedTableIds.size >= 3}
               <div class="dropdown-sep"></div>
-              <button class="dropdown-item" role="menuitem" onclick={() => { distributeTables('h'); alignOpen = false; }}>Distribute H</button>
-              <button class="dropdown-item" role="menuitem" onclick={() => { distributeTables('v'); alignOpen = false; }}>Distribute V</button>
+              <button class="dropdown-item" role="menuitem" onclick={() => { distributeTables('h'); closeDropdown(); }}>Distribute H</button>
+              <button class="dropdown-item" role="menuitem" onclick={() => { distributeTables('v'); closeDropdown(); }}>Distribute V</button>
             {/if}
           </div>
         {/if}
@@ -907,7 +918,7 @@
     <div class="dropdown-wrap">
       <button
         class="btn-secondary"
-        onclick={() => (fileOpen = !fileOpen)}
+        onclick={() => (toggleDropdown('file'))}
         aria-expanded={fileOpen}
         aria-haspopup="menu"
       >
@@ -918,37 +929,37 @@
           class="dropdown-menu"
           role="menu"
           tabindex="-1"
-          onmouseleave={() => (fileOpen = false)}
+          onmouseleave={() => (closeDropdown())}
         >
           <div class="dropdown-section-label">{m.toolbar_import()}</div>
-          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'import'; fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'import'; closeDropdown(); }}>
             DDL
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { importJson(); fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { importJson(); closeDropdown(); }}>
             JSON
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { importBackup(); fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { importBackup(); closeDropdown(); }}>
             {m.toolbar_restore_all()}
           </button>
           <div class="dropdown-sep"></div>
           <div class="dropdown-section-label">{m.toolbar_export()}</div>
-          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'export'; fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'export'; closeDropdown(); }}>
             DDL
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportJson(); fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportJson(); closeDropdown(); }}>
             JSON
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportImage(); fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportImage(); closeDropdown(); }}>
             {m.toolbar_image_export()} (PNG)
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportSvgFile(); fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportSvgFile(); closeDropdown(); }}>
             SVG
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportPdfFile(); fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportPdfFile(); closeDropdown(); }}>
             {m.toolbar_pdf_export()}
           </button>
           <div class="dropdown-sep"></div>
-          <button class="dropdown-item" role="menuitem" onclick={() => { exportBackup(); fileOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { exportBackup(); closeDropdown(); }}>
             {m.toolbar_backup_all()}
           </button>
         </div>
@@ -960,7 +971,7 @@
       <button
         class="btn-secondary btn-tools"
         class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showDomainModal || canvasState.columnDisplayMode !== 'all'}
-        onclick={() => (toolsOpen = !toolsOpen)}
+        onclick={() => (toggleDropdown('tools'))}
         aria-expanded={toolsOpen}
         aria-haspopup="menu"
       >
@@ -975,12 +986,12 @@
           class="dropdown-menu"
           role="menu"
           tabindex="-1"
-          onmouseleave={() => (toolsOpen = false)}
+          onmouseleave={() => (closeDropdown())}
         >
-          <button class="dropdown-item" role="menuitem" onclick={() => { showDomainModal = true; toolsOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showDomainModal = true; closeDropdown(); }}>
             {m.toolbar_domains()}
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { showLintPanel = !showLintPanel; toolsOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showLintPanel = !showLintPanel; closeDropdown(); }}>
             {m.toolbar_lint()}
             {#if lintIssueCount > 0}
               <span class="lint-badge">{lintIssueCount}</span>
@@ -993,16 +1004,28 @@
               class="dropdown-item"
               class:active={canvasState.columnDisplayMode === vm.mode}
               role="menuitem"
-              onclick={() => { canvasState.columnDisplayMode = vm.mode; toolsOpen = false; }}
+              onclick={() => { canvasState.columnDisplayMode = vm.mode; closeDropdown(); }}
             >
               {vm.label()}
             </button>
           {/each}
           <div class="dropdown-sep"></div>
-          <button class="dropdown-item" role="menuitem" onclick={() => { showHistoryPanel = !showHistoryPanel; toolsOpen = false; }}>
+          <div class="dropdown-section-label">{m.line_type_title()}</div>
+          {#each LINE_TYPES as lt}
+            <button
+              class="dropdown-item"
+              class:active={canvasState.lineType === lt.type}
+              role="menuitem"
+              onclick={() => { canvasState.lineType = lt.type; closeDropdown(); }}
+            >
+              {lt.label()}
+            </button>
+          {/each}
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showHistoryPanel = !showHistoryPanel; closeDropdown(); }}>
             {m.history_title()}
           </button>
-          <button class="dropdown-item" role="menuitem" onclick={() => { showDiffModal = !showDiffModal; toolsOpen = false; }}>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showDiffModal = !showDiffModal; closeDropdown(); }}>
             {m.diff_title()}
           </button>
         </div>
@@ -1073,7 +1096,7 @@
     <div class="dropdown-wrap">
       <button
         class="btn-icon"
-        onclick={() => (settingsOpen = !settingsOpen)}
+        onclick={() => (toggleDropdown('settings'))}
         aria-expanded={settingsOpen}
         aria-haspopup="menu"
         title={m.toolbar_settings()}
@@ -1088,7 +1111,7 @@
           class="dropdown-menu dropdown-right settings-dropdown"
           role="menu"
           tabindex="-1"
-          onmouseleave={() => (settingsOpen = false)}
+          onmouseleave={() => (closeDropdown())}
         >
           <div class="dropdown-section-label">{m.toolbar_theme()}</div>
           {#each THEMES as t}
@@ -1122,7 +1145,7 @@
     <div class="dropdown-wrap">
       <button
         class="btn-help"
-        onclick={() => (shortcutsOpen = !shortcutsOpen)}
+        onclick={() => (toggleDropdown('shortcuts'))}
         aria-expanded={shortcutsOpen}
         aria-haspopup="dialog"
         title={m.shortcuts_title()}
@@ -1134,7 +1157,7 @@
           class="shortcuts-panel"
           role="dialog"
           tabindex="-1"
-          onmouseleave={() => (shortcutsOpen = false)}
+          onmouseleave={() => (closeDropdown())}
         >
           <div class="shortcuts-header">{m.shortcuts_title()}</div>
 
@@ -1194,7 +1217,7 @@
       <div class="dropdown-wrap">
         <button
           class="btn-user"
-          onclick={() => (userMenuOpen = !userMenuOpen)}
+          onclick={() => (toggleDropdown('userMenu'))}
           aria-expanded={userMenuOpen}
           aria-haspopup="menu"
         >
@@ -1209,14 +1232,14 @@
             class="dropdown-menu dropdown-right"
             role="menu"
             tabindex="-1"
-            onmouseleave={() => (userMenuOpen = false)}
+            onmouseleave={() => (closeDropdown())}
           >
             <div class="dropdown-user-info">
               <span class="dropdown-user-name">{authStore.user?.displayName}</span>
               <span class="dropdown-user-role">{authStore.user?.role}</span>
             </div>
             {#if authStore.isAdmin}
-              <a href="/admin" class="dropdown-item" role="menuitem" onclick={() => (userMenuOpen = false)}>
+              <a href="/admin" class="dropdown-item" role="menuitem" onclick={() => (closeDropdown())}>
                 {m.nav_admin()}
               </a>
             {/if}
@@ -1224,7 +1247,7 @@
               <button
                 class="dropdown-item"
                 role="menuitem"
-                onclick={() => { userMenuOpen = false; resetChangePassword(); showChangePassword = true; }}
+                onclick={() => { closeDropdown(); resetChangePassword(); showChangePassword = true; }}
               >
                 {m.auth_change_password()}
               </button>
@@ -1232,14 +1255,14 @@
             <button
               class="dropdown-item"
               role="menuitem"
-              onclick={() => { userMenuOpen = false; showApiKeysModal = true; }}
+              onclick={() => { closeDropdown(); showApiKeysModal = true; }}
             >
               {m.api_keys_title()}
             </button>
             <button
               class="dropdown-item dropdown-item-danger"
               role="menuitem"
-              onclick={() => { userMenuOpen = false; authStore.logout(); }}
+              onclick={() => { closeDropdown(); authStore.logout(); }}
             >
               {m.nav_sign_out()}
             </button>

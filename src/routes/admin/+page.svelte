@@ -39,6 +39,46 @@
   let createdKey = $state<string | null>(null);
   let keyCopied = $state(false);
 
+  // Edit API Key
+  let editingKeyId = $state<string | null>(null);
+  let editKeyForm = $state({ name: '', expiresAt: '' });
+  let editKeyScopes = $state<{ projectId: string; permission: 'viewer' | 'editor' }[]>([]);
+  let editKeyScopeMode = $state<'all' | 'scoped'>('all');
+
+  function startEditApiKey(key: ApiKeyInfo) {
+    editingKeyId = key.id;
+    editKeyForm = { name: key.name, expiresAt: key.expires_at ? new Date(key.expires_at).toISOString().slice(0, 10) : '' };
+    editKeyScopeMode = key.scopes && key.scopes.length > 0 ? 'scoped' : 'all';
+    editKeyScopes = key.scopes ? key.scopes.map(s => ({ projectId: s.project_id, permission: s.permission as 'viewer' | 'editor' })) : [];
+  }
+
+  async function saveApiKey() {
+    if (!editingKeyId) return;
+    apiKeyError = '';
+    const body: Record<string, unknown> = {
+      name: editKeyForm.name,
+      expiresAt: editKeyForm.expiresAt || null,
+    };
+    if (editKeyScopeMode === 'scoped' && editKeyScopes.length > 0) {
+      body.scopes = editKeyScopes;
+    } else if (editKeyScopeMode === 'all') {
+      body.scopes = [];
+    }
+    const res = await fetch(`/api/admin/api-keys/${editingKeyId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      apiKeyError = data.error || 'Failed to update API key';
+      return;
+    }
+    apiKeySuccess = `API key "${editKeyForm.name}" updated`;
+    editingKeyId = null;
+    await loadApiKeys();
+  }
+
   let adminCount = $derived(users.filter(u => u.role === 'admin').length);
   let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
   let showPendingOnly = $state(false);
@@ -522,35 +562,79 @@
         </thead>
         <tbody>
           {#each apiKeys as key}
-            <tr>
-              <td>{key.name}</td>
-              <td>{key.user_display_name} {key.username ? `(${key.username})` : ''}</td>
-              <td>
-                {#if key.scopes && key.scopes.length > 0}
-                  {#each key.scopes as scope}
-                    <span class="badge" style="margin-right:4px">{scope.project_id.slice(0,8)}… ({scope.permission})</span>
-                  {/each}
-                {:else}
-                  <span class="badge badge-on">All</span>
-                {/if}
-              </td>
-              <td>{key.created_at ? new Date(key.created_at).toLocaleDateString() : '-'}</td>
-              <td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never'}</td>
-              <td>
-                {#if key.expires_at}
-                  <span class:expired={new Date(key.expires_at) < new Date()}>
-                    {new Date(key.expires_at).toLocaleDateString()}
-                  </span>
-                {:else}
-                  Never
-                {/if}
-              </td>
-              <td>
-                <button class="btn-sm btn-danger" onclick={() => deleteApiKey(key.id, key.name)}>
-                  Delete
-                </button>
-              </td>
-            </tr>
+            {#if editingKeyId === key.id}
+              <tr>
+                <td colspan="7">
+                  <div class="key-edit-form">
+                    <div class="form-grid">
+                      <input class="inline-input" placeholder="Key name" bind:value={editKeyForm.name} />
+                      <label class="input-label">
+                        <span>Expires</span>
+                        <input class="inline-input" type="date" bind:value={editKeyForm.expiresAt} />
+                      </label>
+                    </div>
+                    <div class="scope-controls" style="margin-top:8px">
+                      <label class="checkbox-label">
+                        <input type="radio" bind:group={editKeyScopeMode} value="all" /> All Projects
+                      </label>
+                      <label class="checkbox-label">
+                        <input type="radio" bind:group={editKeyScopeMode} value="scoped" /> Specific Projects
+                      </label>
+                    </div>
+                    {#if editKeyScopeMode === 'scoped'}
+                      <div style="margin-top:6px">
+                        {#each editKeyScopes as scope, idx}
+                          <div class="form-grid" style="margin-bottom:4px">
+                            <input class="inline-input" placeholder="Project ID" bind:value={scope.projectId} />
+                            <select class="inline-select" bind:value={scope.permission}>
+                              <option value="viewer">Viewer</option>
+                              <option value="editor">Editor</option>
+                            </select>
+                            <button class="btn-sm btn-danger" onclick={() => { editKeyScopes = editKeyScopes.filter((_, i) => i !== idx); }}>✕</button>
+                          </div>
+                        {/each}
+                        <button class="btn-sm" style="margin-top:4px" onclick={() => { editKeyScopes = [...editKeyScopes, { projectId: '', permission: 'viewer' }]; }}>+ Add Scope</button>
+                      </div>
+                    {/if}
+                    <div class="btn-row" style="margin-top:10px">
+                      <button class="btn-sm btn-save" onclick={saveApiKey}>Save</button>
+                      <button class="btn-sm" onclick={() => (editingKeyId = null)}>Cancel</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {:else}
+              <tr>
+                <td>{key.name}</td>
+                <td>{key.user_display_name} {key.username ? `(${key.username})` : ''}</td>
+                <td>
+                  {#if key.scopes && key.scopes.length > 0}
+                    {#each key.scopes as scope}
+                      <span class="badge" style="margin-right:4px">{scope.project_id.slice(0,8)}… ({scope.permission})</span>
+                    {/each}
+                  {:else}
+                    <span class="badge badge-on">All</span>
+                  {/if}
+                </td>
+                <td>{key.created_at ? new Date(key.created_at).toLocaleDateString() : '-'}</td>
+                <td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never'}</td>
+                <td>
+                  {#if key.expires_at}
+                    <span class:expired={new Date(key.expires_at) < new Date()}>
+                      {new Date(key.expires_at).toLocaleDateString()}
+                    </span>
+                  {:else}
+                    Never
+                  {/if}
+                </td>
+                <td>
+                  <div class="btn-row">
+                    <button class="btn-sm" onclick={() => startEditApiKey(key)}>Edit</button>
+                    <button class="btn-sm btn-danger" onclick={() => deleteApiKey(key.id, key.name)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            {/if}
           {/each}
           {#if apiKeys.length === 0}
             <tr><td colspan="7" style="text-align:center;color:#64748b">No API keys</td></tr>
@@ -1023,5 +1107,17 @@
     border-radius: 6px;
     color: #f1f5f9;
     font-size: 13px;
+  }
+
+  .key-edit-form {
+    padding: 12px 16px;
+    background: #1e293b;
+    border-radius: 6px;
+  }
+
+  .scope-controls {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
   }
 </style>

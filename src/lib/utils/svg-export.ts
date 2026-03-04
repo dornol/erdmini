@@ -3,7 +3,8 @@ import { TABLE_W, TABLE_CARD_W, HEADER_H, ROW_H, COMMENT_H } from '$lib/constant
 import { TABLE_COLORS } from '$lib/constants/table-colors';
 import type { TableColorId } from '$lib/constants/table-colors';
 import type { ThemeId } from '$lib/store/theme.svelte';
-import { routeFKLines, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
+import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput, type FKLineRoute } from '$lib/utils/fk-routing';
+import type { LineType } from '$lib/store/erd.svelte';
 
 const PAD = 40;
 
@@ -219,7 +220,7 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
   return parts.join('\n');
 }
 
-function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, offsetY: number): string {
+function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, offsetY: number, lineType: LineType = 'bezier'): string {
   const parts: string[] = [];
   const color = theme.lineColor;
   const bg = theme.lineBg;
@@ -280,7 +281,35 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
   }
 
   // Route all lines
-  const routes = routeFKLines(inputs, aabbs);
+  let routes: Map<string, FKLineRoute>;
+  if (lineType === 'bezier') {
+    routes = routeFKLines(inputs, aabbs);
+  } else {
+    routes = new Map();
+    const selfRefGroups = new Map<string, typeof inputs[number][]>();
+    for (const input of inputs) {
+      if (input.sourceTableId === input.targetTableId) {
+        const group = selfRefGroups.get(input.sourceTableId) ?? [];
+        group.push(input);
+        selfRefGroups.set(input.sourceTableId, group);
+      }
+    }
+    const selfRefLoopIndex = new Map<string, number>();
+    for (const [, group] of selfRefGroups) {
+      group.forEach((inp, i) => selfRefLoopIndex.set(inp.id, i));
+    }
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i];
+      const meta = metas[i];
+      if (input.sourceTableId === input.targetTableId) {
+        routes.set(input.id, computeSelfRefLoop(meta.x1, meta.y1, meta.x2, meta.y2, selfRefLoopIndex.get(input.id) ?? 0));
+      } else if (lineType === 'straight') {
+        routes.set(input.id, computeStraightLine(meta.x1, meta.y1, meta.x2, meta.y2));
+      } else {
+        routes.set(input.id, computeOrthogonalLine(meta.x1, meta.y1, meta.x2, meta.y2, meta.fromRight, meta.toLeft));
+      }
+    }
+  }
 
   // Render each line
   for (let idx = 0; idx < inputs.length; idx++) {
@@ -374,7 +403,7 @@ function renderMemo(memo: Memo, offsetX: number, offsetY: number): string {
   return parts.join('\n');
 }
 
-export function exportSvg(schema: ERDSchema, themeId: string): string {
+export function exportSvg(schema: ERDSchema, themeId: string, lineType: LineType = 'bezier'): string {
   const theme = THEMES[themeId] ?? THEMES.modern;
   const memos = schema.memos ?? [];
 
@@ -402,7 +431,7 @@ export function exportSvg(schema: ERDSchema, themeId: string): string {
   const height = Math.ceil(maxY - minY + PAD * 2);
 
   const memosSvg = memos.map((mm) => renderMemo(mm, offsetX, offsetY)).join('\n');
-  const lines = renderLines(schema, theme, offsetX, offsetY);
+  const lines = renderLines(schema, theme, offsetX, offsetY, lineType);
   const tables = schema.tables.map((t) => renderTable(t, theme, offsetX, offsetY, themeId as ThemeId)).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>

@@ -5,7 +5,7 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
   import { HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
-  import { routeFKLines, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
+  import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
 
   const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string; dash: string }> = {
     modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc', dash: '' },
@@ -134,7 +134,40 @@
     }
 
     // Step 2: Route all lines
-    const routes = routeFKLines(inputs, aabbs);
+    const lineType = canvasState.lineType;
+    let routes: Map<string, import('$lib/utils/fk-routing').FKLineRoute>;
+
+    if (lineType === 'bezier') {
+      routes = routeFKLines(inputs, aabbs);
+    } else {
+      routes = new Map();
+      // Self-ref groups for loop index tracking
+      const selfRefGroups = new Map<string, (typeof inputs[number])[]>();
+      for (const input of inputs) {
+        if (input.sourceTableId === input.targetTableId) {
+          const group = selfRefGroups.get(input.sourceTableId) ?? [];
+          group.push(input);
+          selfRefGroups.set(input.sourceTableId, group);
+        }
+      }
+      // Assign loop indices
+      const selfRefLoopIndex = new Map<string, number>();
+      for (const [, group] of selfRefGroups) {
+        group.forEach((inp, i) => selfRefLoopIndex.set(inp.id, i));
+      }
+
+      for (const input of inputs) {
+        if (input.sourceTableId === input.targetTableId) {
+          // Always use loop for self-ref regardless of line type
+          const loopIdx = selfRefLoopIndex.get(input.id) ?? 0;
+          routes.set(input.id, computeSelfRefLoop(input.x1, input.y1, input.x2, input.y2, loopIdx));
+        } else if (lineType === 'straight') {
+          routes.set(input.id, computeStraightLine(input.x1, input.y1, input.x2, input.y2));
+        } else {
+          routes.set(input.id, computeOrthogonalLine(input.x1, input.y1, input.x2, input.y2, input.fromRight, input.toLeft));
+        }
+      }
+    }
 
     // Step 3: Map routes back to FKLine objects
     const result: FKLine[] = [];

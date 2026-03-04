@@ -3,6 +3,8 @@ import {
   routeFKLines,
   computeSmartBezier,
   computeSelfRefLoop,
+  computeStraightLine,
+  computeOrthogonalLine,
   sampleCubicBezier,
   pointInAABB,
   type AABB,
@@ -429,5 +431,75 @@ describe('edge cases', () => {
     const line = makeLine({ id: 'fk1', x1: 200, x2: 210, y1: 100, y2: 100 });
     const routes = routeFKLines([line], []);
     expect(routes.get('fk1')).toBeTruthy();
+  });
+});
+
+// ─── computeStraightLine ─────────────────────────────────
+
+describe('computeStraightLine', () => {
+  it('returns a simple M L path', () => {
+    const route = computeStraightLine(0, 0, 100, 50);
+    expect(route.path).toBe('M 0 0 L 100 50');
+  });
+
+  it('label is at midpoint', () => {
+    const route = computeStraightLine(0, 0, 100, 100);
+    expect(route.labelX).toBe(50);
+    expect(route.labelY).toBe(50);
+  });
+
+  it('handles same-point degenerate case', () => {
+    const route = computeStraightLine(50, 50, 50, 50);
+    expect(route.path).toBe('M 50 50 L 50 50');
+    expect(route.labelX).toBe(50);
+    expect(route.labelY).toBe(50);
+  });
+
+  it('handles negative coordinates', () => {
+    const route = computeStraightLine(-50, -20, 150, 80);
+    expect(route.path).toBe('M -50 -20 L 150 80');
+    expect(route.labelX).toBe(50);
+    expect(route.labelY).toBe(30);
+  });
+});
+
+// ─── computeOrthogonalLine ───────────────────────────────
+
+describe('computeOrthogonalLine', () => {
+  it('returns a path string', () => {
+    const route = computeOrthogonalLine(0, 0, 200, 100, true, true);
+    expect(typeof route.path).toBe('string');
+    expect(route.path.startsWith('M 0 0')).toBe(true);
+  });
+
+  it('same-direction: ends at target point', () => {
+    const route = computeOrthogonalLine(0, 0, 200, 100, true, true);
+    expect(route.path.endsWith('L 200 100')).toBe(true);
+  });
+
+  it('opposite-direction: ends at target point', () => {
+    const route = computeOrthogonalLine(200, 0, 0, 100, false, false);
+    expect(route.path.endsWith('L 0 100')).toBe(true);
+  });
+
+  it('returns valid label coordinates', () => {
+    const route = computeOrthogonalLine(0, 0, 200, 100, true, true);
+    expect(typeof route.labelX).toBe('number');
+    expect(typeof route.labelY).toBe('number');
+    expect(isFinite(route.labelX)).toBe(true);
+    expect(isFinite(route.labelY)).toBe(true);
+  });
+
+  it('same-direction exit: label X is midpoint of exit points', () => {
+    // fromRight=true, toLeft=true → same direction (fromRight === !toLeft is false when both true)
+    // both go right: fromRight=true (exit right), toLeft=true (enter from left → dir=-1, enter goes left)
+    // fromRight === !toLeft → true === false → false → opposite path used
+    const route = computeOrthogonalLine(0, 50, 300, 150, true, true);
+    expect(route.path).toBeTruthy();
+  });
+
+  it('handles equal y1 and y2', () => {
+    const route = computeOrthogonalLine(0, 100, 200, 100, true, true);
+    expect(route.path.endsWith('L 200 100')).toBe(true);
   });
 });

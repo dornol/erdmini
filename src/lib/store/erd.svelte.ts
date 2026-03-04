@@ -706,6 +706,7 @@ class ERDStore {
 export const erdStore = new ERDStore();
 
 export type ColumnDisplayMode = 'all' | 'pk-fk-only' | 'names-only';
+export type LineType = 'bezier' | 'straight' | 'orthogonal';
 
 class CanvasState {
   x = $state(0);
@@ -714,6 +715,7 @@ class CanvasState {
   snapToGrid = $state(false);
   gridSize = 20;
   columnDisplayMode = $state<ColumnDisplayMode>('all');
+  lineType = $state<LineType>('bezier');
   tableWidths = $state<Map<string, number>>(new Map());
 
   snap(v: number): number {

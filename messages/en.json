@@ -361,5 +361,9 @@
   "domain_inherited": "Inherited",
   "domain_hierarchy": "Hierarchy",
   "domain_cycle_error": "Circular reference detected",
-  "lint_domain_circular_hierarchy": "Domain circular hierarchy reference"
+  "lint_domain_circular_hierarchy": "Domain circular hierarchy reference",
+  "line_type_title": "Line Style",
+  "line_type_bezier": "Bezier",
+  "line_type_straight": "Straight",
+  "line_type_orthogonal": "Orthogonal"
 }

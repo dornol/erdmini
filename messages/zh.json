@@ -345,5 +345,9 @@
   "domain_inherited": "继承",
   "domain_hierarchy": "层级",
   "domain_cycle_error": "检测到循环引用",
-  "lint_domain_circular_hierarchy": "域循环层级引用"
+  "lint_domain_circular_hierarchy": "域循环层级引用",
+  "line_type_title": "线条样式",
+  "line_type_bezier": "贝塞尔",
+  "line_type_straight": "直线",
+  "line_type_orthogonal": "直角"
 }
