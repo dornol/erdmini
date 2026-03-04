@@ -43,9 +43,10 @@ npx vitest run -t "test name pattern"                     # Single test by name
 
 All stores use **Svelte 5 Runes** (`.svelte.ts` files with `$state`). They are singleton class instances — no legacy Svelte stores API.
 
-- **`erd.svelte.ts`**: Central store. Two exports: `erdStore` (schema, selection, undo/redo stack, all CRUD methods) and `canvasState` (viewport transform, grid snap, display mode). Every mutation calls `_emitOp()` to publish a `CollabOperation`.
+- **`erd.svelte.ts`**: Central store. Two exports: `erdStore` (schema, selection, undo/redo stack, all CRUD methods) and `canvasState` (viewport transform, grid snap, display mode, active schema). Every mutation calls `_emitOp()` to publish a `CollabOperation`.
 - **`project.svelte.ts`**: Multi-project management. Delegates to the injected `StorageProvider`.
 - **`collab.svelte.ts`**: WebSocket connection state, peers, remote cursors/selections.
+- **`memo-drag.svelte.ts`**: Memo drag hover state for memo-table attachment.
 - **`auth.svelte.ts`**, **`permission.svelte.ts`**, **`theme.svelte.ts`**, **`language.svelte.ts`**, **`dialog.svelte.ts`**, **`fk-drag.svelte.ts`**
 
 ### Storage Layer (`src/lib/storage/`)
@@ -63,7 +64,7 @@ Only loaded in server mode. Includes:
 - **`migrate.ts`**: Flyway-style migration runner. Auto-discovers `migrations/*.sql` via `import.meta.glob`, tracks versions in `schema_migrations` table with SHA-256 checksums, supports baseline detection for existing DBs.
 - **`migrations/`**: Versioned SQL files (`V001__initial_schema.sql`, etc.). Add new `V###__description.sql` files for schema changes — never modify applied migrations.
 - **`auth/`**: Password hashing (argon2), sessions (30-day, cookie-based), API keys (`erd_` prefix + SHA-256), OIDC (PKCE flow via openid-client), permission hierarchy (viewer < editor < owner, admin bypasses).
-- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. 31 tools: CRUD for tables/columns/FKs/memos/domains, schema read/export/lint/diagram/DDL, domain analysis/coverage/dictionary. Write ops call `notifyCollabSchemaChange()`.
+- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. 32 tools: CRUD for tables/columns/FKs/memos/domains, schema read/export/lint/diagram/DDL, domain analysis/coverage/dictionary, schema namespace listing. Write ops call `notifyCollabSchemaChange()`.
 
 ### Real-time Collaboration
 
@@ -74,7 +75,7 @@ Only loaded in server mode. Includes:
 
 ### Canvas Rendering
 
-Tables and memos are DOM `div` elements with CSS `transform` (not Canvas/WebGL). FK lines are SVG overlaid on the canvas. Memos are sticky note cards (`MemoCard.svelte`) with drag, resize, inline editing, and color selection. This makes drag/selection/editing straightforward.
+Tables and memos are DOM `div` elements with CSS `transform` (not Canvas/WebGL). FK lines are SVG overlaid on the canvas. Memos are sticky note cards (`MemoCard.svelte`) with drag, resize, inline editing, color selection, and table attachment (drag onto table to attach, moves with table). Schema namespaces filter visible tables/memos/FK lines via `SchemaTabBar.svelte`. This makes drag/selection/editing straightforward.
 
 ### i18n
 
@@ -84,8 +85,8 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (15 test files, 334 tests)
-- 34 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos)
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (17 test files, 361 tests)
+- 40 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos, schemas)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts
 - **Layout constants** in `src/lib/constants/layout.ts`: `TABLE_W=220`, `HEADER_H=37`, `ROW_H=26` — used for FK line routing, auto-layout, and SVG export

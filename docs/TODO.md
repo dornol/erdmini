@@ -80,13 +80,13 @@
 - ~~Line type switcher in Toolbar or settings~~
 - ~~Difficulty: Medium~~
 
-### 19. Memo-Table Attachment
-- Drag & drop a memo onto a table to attach it
-- Attached memo shows as a small icon on the table header
-- Hover icon to display memo content tooltip
-- Memo moves with the table; drop on empty space to detach
-- Add `attachedTableId` field to Memo type
-- Difficulty: Medium
+### ~~19. Memo-Table Attachment~~ ✅
+- ~~Drag & drop a memo onto a table to attach it~~
+- ~~Attached memo shows as a pin badge on memo header + chip above table card~~
+- ~~Memo moves with the table; drop on empty space to detach~~
+- ~~`attachedTableId` field on Memo type; drag threshold to prevent accidental detach~~
+- ~~Sidebar memo double-click to navigate and edit~~
+- ~~Difficulty: Medium~~
 
 ### ~~20. API Key Permission Edit & Usage Tracking~~ ✅
 - ~~Allow permission changes after API key creation (API + Admin UI)~~
@@ -142,11 +142,12 @@
 - Create named snapshots and switch between schema variants after experimentation (like git branches)
 - Difficulty: Large
 
-### 28. Schema Namespace (Multi-Schema per Project)
-- Add `schema` field to tables (e.g., `public`, `auth`, `billing`)
-- Schema tab bar at the top of the canvas to switch between schemas
-- Each schema tab renders only its own tables and FK lines
-- Per-schema canvas viewport state, minimap, selection, auto-layout
-- DDL export: `CREATE SCHEMA` + schema-qualified table names (`auth.users`)
-- Primarily useful for PostgreSQL multi-schema projects
-- Difficulty: Medium
+### ~~28. Schema Namespace (Multi-Schema per Project)~~ ✅
+- ~~`schema` field on tables/memos (e.g., `public`, `auth`, `billing`)~~
+- ~~Schema tab bar at the top of the canvas to switch between schemas~~
+- ~~Each schema tab renders only its own tables, memos, and FK lines~~
+- ~~Per-schema canvas viewport state persistence~~
+- ~~DDL export: `CREATE SCHEMA` + schema-qualified table names (`auth.users`)~~
+- ~~DDL import: extracts schema from parsed statements~~
+- ~~MCP: `list_schemas` tool, schema filter on `list_tables`/`list_memos`~~
+- ~~Difficulty: Medium~~

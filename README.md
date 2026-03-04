@@ -75,7 +75,7 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 
 ### Foreign Keys
 - Add/edit FK modal: source column → referenced table/column, ON DELETE / ON UPDATE actions
-- **Crow's Foot Notation** relation lines
+- **Crow's Foot Notation** relation lines (bezier / straight / orthogonal)
   - Dashed lines for nullable FK, mandatory tick distinction
   - Automatic 1:1 (unique FK) / 1:N detection
 - Both columns highlighted on FK line hover
@@ -85,6 +85,13 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - Define reusable column property templates
 - Changes to a domain are immediately reflected on all linked columns
 - Domain link is automatically removed when a column is manually edited
+
+### Schema Namespace
+- Assign tables and memos to schemas (e.g., `public`, `auth`, `billing`)
+- Schema tab bar to switch between schemas or view all
+- Per-schema canvas viewport persistence
+- DDL export: `CREATE SCHEMA` + schema-qualified table names
+- DDL import: auto-extract schema from parsed statements
 
 ### DDL Import / Export
 - **4 dialects supported**: MySQL / PostgreSQL / MariaDB / MSSQL
@@ -101,8 +108,9 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - Canvas sticky notes (add / edit / delete / drag / resize)
 - 6 color options (yellow, blue, green, pink, purple, orange)
 - Inline editing (double-click → textarea)
+- **Table attachment**: drag memo onto a table to attach; memo moves with table, pin badge indicates attachment
 - Multi-select, group drag, lock support
-- Visible in sidebar, minimap, and image exports
+- Visible in sidebar (double-click to navigate & edit), minimap, and image exports
 
 ### Sidebar
 - Table list search (name + column name + comment)
@@ -145,7 +153,7 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 - **Sharing**: User search → grant permissions, read-only mode
 - **Real-time collaboration**: WebSocket sync, connected user cursor display, LWW conflict resolution
 - **Admin**: User CRUD, OIDC provider management, API key management
-- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 31 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary), collab integration
+- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 32 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces), collab integration
 
 ---
 
@@ -154,7 +162,7 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 ```
 ERDSchema
 ├── tables: Table[]
-│   ├── id, name, comment, color, group, locked
+│   ├── id, name, comment, color, group, locked, schema?
 │   ├── position: { x, y }
 │   ├── columns: Column[]
 │   │   ├── id, name, type, length, scale
@@ -169,9 +177,11 @@ ERDSchema
 │   └── indexes: TableIndex[]
 ├── domains: ColumnDomain[]
 ├── memos: Memo[]
-│   ├── id, content, color?, locked?
+│   ├── id, content, color?, locked?, schema?
 │   ├── position: { x, y }
-│   └── width, height
+│   ├── width, height
+│   └── attachedTableId?
+├── schemas?: string[]
 └── groupColors?: Record<string, string>
 ```
 
@@ -185,7 +195,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (334 tests)
+pnpm test         # vitest (361 tests)
 pnpm check        # svelte-check type checking
 ```
 
