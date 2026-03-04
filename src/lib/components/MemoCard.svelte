@@ -21,6 +21,7 @@
   let isSelected = $derived(erdStore.selectedMemoIds.has(memo.id));
   let isHovered = $state(false);
   let isSingleDrag = $state(false); // track single-memo drag (not group)
+  let hasDragged = $state(false); // true when mouse actually moved beyond threshold
 
   const MEMO_COLORS: Record<string, { bg: string; header: string; text: string }> = {
     yellow:  { bg: '#fef9c3', header: '#facc15', text: '#713f12' },
@@ -67,6 +68,7 @@
     if (!memo.locked && !permissionStore.isReadOnly) {
       isDragging = true;
       isSingleDrag = true;
+      hasDragged = false;
       memoDragState.isDragging = true;
     }
     dragStart = {
@@ -106,6 +108,9 @@
     if (!isDragging) return;
     const dx = (e.clientX - dragStart.mouseX) / canvasState.scale;
     const dy = (e.clientY - dragStart.mouseY) / canvasState.scale;
+    if (!hasDragged && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      hasDragged = true;
+    }
     if (groupDragStarts && groupDragStarts.size > 1) {
       const moves = [...groupDragStarts].map(([id, start]) => ({ id, x: start.x + dx, y: start.y + dy }));
       erdStore.moveMemos(moves);
@@ -119,7 +124,7 @@
   }
 
   function onMouseUp() {
-    if (isSingleDrag && !permissionStore.isReadOnly) {
+    if (isSingleDrag && hasDragged && !permissionStore.isReadOnly) {
       const hoverTableId = memoDragState.hoverTableId;
       if (hoverTableId && hoverTableId !== memo.attachedTableId) {
         erdStore.attachMemo(memo.id, hoverTableId);
@@ -129,6 +134,7 @@
     }
     isDragging = false;
     isSingleDrag = false;
+    hasDragged = false;
     isResizing = false;
     groupDragStarts = null;
     memoDragState.isDragging = false;

@@ -797,6 +797,14 @@
                 erdStore.selectedMemoId = memo.id;
                 erdStore.selectedMemoIds = new Set([memo.id]);
               }}
+              ondblclick={() => {
+                if (permissionStore.isReadOnly || memo.locked) return;
+                erdStore.selectedMemoId = memo.id;
+                erdStore.selectedMemoIds = new Set([memo.id]);
+                erdStore.editingMemoId = memo.id;
+                canvasState.x = -memo.position.x * canvasState.scale + window.innerWidth / 2 - (memo.width / 2) * canvasState.scale;
+                canvasState.y = -memo.position.y * canvasState.scale + window.innerHeight / 2 - (memo.height / 2) * canvasState.scale;
+              }}
             >
               <span class="item-color-dot" style="background:{MEMO_DOTS[memo.color ?? 'yellow'] ?? '#facc15'}"></span>
               <span class="memo-preview">{memo.content ? memo.content.split('\n')[0].slice(0, 30) || m.memo_placeholder() : m.memo_placeholder()}</span>
