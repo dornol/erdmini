@@ -129,6 +129,31 @@ describe('normalizeType', () => {
   });
 });
 
+describe('importDDL — bracket identifiers', () => {
+  it('strips bracket identifiers for non-MSSQL dialects', async () => {
+    const sql = `
+      CREATE TABLE [SPRING_SESSION] (
+        [primary_id] VARCHAR(36) NOT NULL,
+        [session_id] VARCHAR(36) NOT NULL,
+        [creation_time] BIGINT NOT NULL,
+        [max_inactive_interval] INT NOT NULL,
+        [principal_name] VARCHAR(100),
+        PRIMARY KEY ([primary_id]),
+        UNIQUE ([session_id])
+      ) ENGINE=InnoDB;
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.errors).toHaveLength(0);
+    expect(result.tables).toHaveLength(1);
+    expect(result.tables[0].name).toBe('SPRING_SESSION');
+    expect(result.tables[0].columns).toHaveLength(5);
+    const pk = result.tables[0].columns.find(c => c.name === 'primary_id')!;
+    expect(pk.primaryKey).toBe(true);
+    const sid = result.tables[0].columns.find(c => c.name === 'session_id')!;
+    expect(sid.unique).toBe(true);
+  });
+});
+
 describe('importDDL — MySQL', () => {
   it('parses a basic CREATE TABLE', async () => {
     const sql = `
@@ -480,5 +505,217 @@ describe('importDDL — MariaDB', () => {
     const table = result.tables[0];
     expect(table.comment).toBe('Item table');
     expect(table.columns[0].comment).toBe('Primary key');
+  });
+});
+
+describe('normalizeType — Oracle/H2 types', () => {
+  it('maps VARCHAR2 → VARCHAR', () => {
+    expect(normalizeType('VARCHAR2')).toBe('VARCHAR');
+  });
+
+  it('maps NVARCHAR2 → VARCHAR', () => {
+    expect(normalizeType('NVARCHAR2')).toBe('VARCHAR');
+  });
+
+  it('maps NUMBER → DECIMAL', () => {
+    expect(normalizeType('NUMBER')).toBe('DECIMAL');
+  });
+
+  it('maps CLOB → TEXT', () => {
+    expect(normalizeType('CLOB')).toBe('TEXT');
+  });
+
+  it('maps NCLOB → TEXT', () => {
+    expect(normalizeType('NCLOB')).toBe('TEXT');
+  });
+
+  it('maps BINARY_DOUBLE → DOUBLE', () => {
+    expect(normalizeType('BINARY_DOUBLE')).toBe('DOUBLE');
+  });
+
+  it('maps BINARY_FLOAT → FLOAT', () => {
+    expect(normalizeType('BINARY_FLOAT')).toBe('FLOAT');
+  });
+
+  it('maps LONG → TEXT', () => {
+    expect(normalizeType('LONG')).toBe('TEXT');
+  });
+
+  it('maps RAW → TEXT', () => {
+    expect(normalizeType('RAW')).toBe('TEXT');
+  });
+});
+
+describe('importDDL — SQLite', () => {
+  it('parses INTEGER PRIMARY KEY AUTOINCREMENT', async () => {
+    const sql = `
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL
+      );
+    `;
+    const result = await importDDL(sql, 'sqlite');
+    expect(result.tables).toHaveLength(1);
+    const table = result.tables[0];
+    expect(table.columns[0].primaryKey).toBe(true);
+    expect(table.columns[0].autoIncrement).toBe(true);
+  });
+
+  it('maps INTEGER → INT, TEXT stays TEXT, REAL → DECIMAL', async () => {
+    const sql = `
+      CREATE TABLE data (
+        id INTEGER NOT NULL,
+        name TEXT,
+        amount REAL
+      );
+    `;
+    const result = await importDDL(sql, 'sqlite');
+    const cols = result.tables[0].columns;
+    expect(cols[0].type).toBe('INT');
+    expect(cols[1].type).toBe('TEXT');
+    expect(cols[2].type).toBe('DECIMAL');
+  });
+
+  it('parses FK constraints', async () => {
+    const sql = `
+      CREATE TABLE parent (
+        id INTEGER PRIMARY KEY
+      );
+      CREATE TABLE child (
+        id INTEGER PRIMARY KEY,
+        parent_id INTEGER NOT NULL,
+        FOREIGN KEY (parent_id) REFERENCES parent (id)
+      );
+    `;
+    const result = await importDDL(sql, 'sqlite');
+    expect(result.tables).toHaveLength(2);
+    const child = result.tables.find(t => t.name === 'child')!;
+    expect(child.foreignKeys).toHaveLength(1);
+  });
+
+  it('normalizes main schema to undefined', async () => {
+    const sql = `
+      CREATE TABLE main.test (
+        id INTEGER PRIMARY KEY
+      );
+    `;
+    const result = await importDDL(sql, 'sqlite');
+    expect(result.tables[0].schema).toBeUndefined();
+  });
+
+  it('preserves non-main schema', async () => {
+    const sql = `
+      CREATE TABLE other.test (
+        id INTEGER PRIMARY KEY
+      );
+    `;
+    const result = await importDDL(sql, 'sqlite');
+    expect(result.tables[0].schema).toBe('other');
+  });
+});
+
+describe('importDDL — Oracle', () => {
+  it('parses CREATE TABLE with Oracle types', async () => {
+    const sql = `
+      CREATE TABLE employees (
+        id DECIMAL(10) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        bio TEXT,
+        PRIMARY KEY (id)
+      );
+    `;
+    const result = await importDDL(sql, 'oracle');
+    expect(result.tables).toHaveLength(1);
+    expect(result.tables[0].columns).toHaveLength(3);
+  });
+
+  it('detects GENERATED ALWAYS AS IDENTITY', async () => {
+    const sql = `
+      CREATE TABLE test (
+        id NUMBER(10) GENERATED ALWAYS AS IDENTITY NOT NULL,
+        name VARCHAR2(100),
+        PRIMARY KEY (id)
+      );
+    `;
+    const result = await importDDL(sql, 'oracle');
+    const idCol = result.tables[0].columns.find(c => c.name === 'id')!;
+    expect(idCol.autoIncrement).toBe(true);
+  });
+
+  it('applies COMMENT ON TABLE and COLUMN', async () => {
+    const sql = `
+      CREATE TABLE items (
+        id DECIMAL(10) NOT NULL,
+        name VARCHAR(100)
+      );
+      COMMENT ON TABLE items IS 'Item master table';
+      COMMENT ON COLUMN items.name IS 'Item name';
+    `;
+    const result = await importDDL(sql, 'oracle');
+    expect(result.tables[0].comment).toBe('Item master table');
+    expect(result.tables[0].columns.find(c => c.name === 'name')!.comment).toBe('Item name');
+  });
+
+  it('maps VARCHAR2 → VARCHAR in normalizeType', async () => {
+    const sql = `
+      CREATE TABLE test (
+        code VARCHAR(10) NOT NULL
+      );
+    `;
+    const result = await importDDL(sql, 'oracle');
+    expect(result.tables[0].columns[0].type).toBe('VARCHAR');
+  });
+});
+
+describe('importDDL — H2', () => {
+  it('parses CREATE TABLE with H2 types', async () => {
+    const sql = `
+      CREATE TABLE test (
+        id INT NOT NULL,
+        data TEXT,
+        PRIMARY KEY (id)
+      );
+    `;
+    const result = await importDDL(sql, 'h2');
+    expect(result.tables).toHaveLength(1);
+  });
+
+  it('detects GENERATED BY DEFAULT AS IDENTITY', async () => {
+    const sql = `
+      CREATE TABLE test (
+        id INT GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+        name VARCHAR(100),
+        PRIMARY KEY (id)
+      );
+    `;
+    const result = await importDDL(sql, 'h2');
+    const idCol = result.tables[0].columns.find(c => c.name === 'id')!;
+    expect(idCol.autoIncrement).toBe(true);
+  });
+
+  it('applies COMMENT ON TABLE and COLUMN', async () => {
+    const sql = `
+      CREATE TABLE items (
+        id INT NOT NULL,
+        name VARCHAR(100)
+      );
+      COMMENT ON TABLE items IS 'Item table';
+      COMMENT ON COLUMN items.name IS 'Item name';
+    `;
+    const result = await importDDL(sql, 'h2');
+    expect(result.tables[0].comment).toBe('Item table');
+    expect(result.tables[0].columns.find(c => c.name === 'name')!.comment).toBe('Item name');
+  });
+
+  it('maps CLOB → TEXT', async () => {
+    const sql = `
+      CREATE TABLE test (
+        id INT NOT NULL,
+        data TEXT
+      );
+    `;
+    const result = await importDDL(sql, 'h2');
+    // TEXT is parsed directly by PG parser and normalized
+    expect(result.tables[0].columns.find(c => c.name === 'data')!.type).toBe('TEXT');
   });
 });

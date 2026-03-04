@@ -127,7 +127,7 @@ export const DOMAIN_FIELDS: (keyof Column)[] = [
   'type', 'length', 'scale', 'nullable', 'primaryKey', 'unique', 'autoIncrement', 'defaultValue', 'check', 'enumValues',
 ];
 
-export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql';
+export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql' | 'sqlite' | 'oracle' | 'h2';
 
 export interface ProjectMeta {
   id: string;

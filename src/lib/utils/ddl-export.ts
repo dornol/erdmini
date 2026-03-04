@@ -13,6 +13,7 @@ export interface DDLExportOptions {
 export function getDefaultQuoteStyle(dialect: Dialect): DDLExportOptions['quoteStyle'] {
   if (dialect === 'mysql' || dialect === 'mariadb') return 'backtick';
   if (dialect === 'mssql') return 'bracket';
+  if (dialect === 'sqlite') return 'none';
   return 'double';
 }
 
@@ -69,6 +70,39 @@ function columnTypeSql(col: Column, dialect: Dialect, upper: boolean): string {
     return kw(col.type, upper);
   }
 
+  if (dialect === 'sqlite') {
+    if (col.type === 'INT' || col.type === 'BIGINT' || col.type === 'SMALLINT' || col.type === 'BOOLEAN') return kw('INTEGER', upper);
+    if (col.type === 'DECIMAL' || col.type === 'FLOAT' || col.type === 'DOUBLE') return kw('REAL', upper);
+    return kw('TEXT', upper);
+  }
+
+  if (dialect === 'oracle') {
+    if (col.type === 'INT') return `${kw('NUMBER', upper)}(10)`;
+    if (col.type === 'BIGINT') return `${kw('NUMBER', upper)}(19)`;
+    if (col.type === 'SMALLINT') return `${kw('NUMBER', upper)}(5)`;
+    if (col.type === 'BOOLEAN') return `${kw('NUMBER', upper)}(1)`;
+    if (col.type === 'VARCHAR') return `${kw('VARCHAR2', upper)}${len || '(255)'}`;
+    if (col.type === 'CHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
+    if (col.type === 'TEXT' || col.type === 'JSON') return kw('CLOB', upper);
+    if (col.type === 'DATE') return kw('DATE', upper);
+    if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return kw('TIMESTAMP', upper);
+    if (col.type === 'DECIMAL') return `${kw('NUMBER', upper)}${decimalLen || '(10,2)'}`;
+    if (col.type === 'FLOAT') return kw('FLOAT', upper);
+    if (col.type === 'DOUBLE') return kw('BINARY_DOUBLE', upper);
+    if (col.type === 'UUID') return `${kw('VARCHAR2', upper)}(36)`;
+    if (col.type === 'ENUM') return `${kw('VARCHAR2', upper)}(255)`;
+    return kw(col.type, upper);
+  }
+
+  if (dialect === 'h2') {
+    if (col.type === 'TEXT' || col.type === 'JSON') return kw('CLOB', upper);
+    if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
+    if (col.type === 'DECIMAL') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
+    if (col.type === 'ENUM') return `${kw('ENUM', upper)}${enumList || "('value')"}`;
+    if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
+    return kw(col.type, upper);
+  }
+
   // MSSQL
   if (col.type === 'ENUM') return `${kw('NVARCHAR', upper)}(255)`;
   if (col.type === 'BOOLEAN') return kw('BIT', upper);
@@ -95,10 +129,20 @@ function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domain
     parts.push('IDENTITY(1,1)');
   }
 
+  // Oracle: GENERATED ALWAYS AS IDENTITY
+  if (col.autoIncrement && dialect === 'oracle') {
+    parts.push(kw('GENERATED ALWAYS AS IDENTITY', up));
+  }
+
   if (!col.nullable) parts.push(kw('NOT NULL', up));
 
-  if (col.autoIncrement && (dialect === 'mysql' || dialect === 'mariadb')) {
+  if (col.autoIncrement && (dialect === 'mysql' || dialect === 'mariadb' || dialect === 'h2')) {
     parts.push(kw('AUTO_INCREMENT', up));
+  }
+
+  // SQLite: PRIMARY KEY AUTOINCREMENT inline (skipped from table-level PK)
+  if (col.autoIncrement && dialect === 'sqlite' && col.primaryKey) {
+    parts.push(kw('PRIMARY KEY AUTOINCREMENT', up));
   }
 
   if (col.defaultValue !== undefined && col.defaultValue !== '') {
@@ -129,7 +173,7 @@ function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domain
 }
 
 function qualifiedTableName(table: Table, dialect: Dialect, qs: DDLExportOptions['quoteStyle']): string {
-  if (table.schema) {
+  if (table.schema && dialect !== 'sqlite') {
     return `${q(table.schema, qs)}.${q(table.name, qs)}`;
   }
   return q(table.name, qs);
@@ -146,9 +190,13 @@ function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions, 
     lines.push(columnSql(col, dialect, opts, domains));
   }
 
+  // SQLite: auto-increment PK is inline, skip from table-level PK clause
   const pkCols = table.columns.filter((c) => c.primaryKey);
-  if (pkCols.length > 0) {
-    lines.push(`${ind}${kw('PRIMARY KEY', up)} (${pkCols.map((c) => q(c.name, qs)).join(', ')})`);
+  const tableLevelPKCols = dialect === 'sqlite'
+    ? pkCols.filter((c) => !c.autoIncrement)
+    : pkCols;
+  if (tableLevelPKCols.length > 0) {
+    lines.push(`${ind}${kw('PRIMARY KEY', up)} (${tableLevelPKCols.map((c) => q(c.name, qs)).join(', ')})`);
   }
 
   const uqCols = table.columns.filter((c) => c.unique && !c.primaryKey);
@@ -182,14 +230,17 @@ function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions, 
     trailer = ');';
   }
 
+  // SQLite: skip schema prefix (not supported)
+  // Oracle/H2: schema prefix handled by qualifiedTableName
+
   return `${kw('CREATE TABLE', up)} ${tq} (\n${lines.join(',\n')}\n${trailer}`;
 }
 
-function postgresComments(table: Table, opts: DDLExportOptions): string[] {
+function commentOnStatements(table: Table, dialect: Dialect, opts: DDLExportOptions): string[] {
   const stmts: string[] = [];
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
-  const tq = qualifiedTableName(table, 'postgresql', qs);
+  const tq = qualifiedTableName(table, dialect, qs);
   if (table.comment) {
     stmts.push(`${kw('COMMENT ON TABLE', up)} ${tq} ${kw('IS', up)} '${table.comment.replace(/'/g, "''")}';`);
   }
@@ -242,11 +293,12 @@ function alterTableFkSql(
     const tq = qualifiedTableName(table, dialect, qs);
     const srcColSql = srcCols.map((c) => q(c!.name, qs)).join(', ');
     const refColSql = refCols.map((c) => q(c!.name, qs)).join(', ');
+    const onUpdateClause = dialect === 'oracle' ? '' : ` ${kw('ON UPDATE', up)} ${kw(fk.onUpdate, up)}`;
     const sql =
       `${kw('ALTER TABLE', up)} ${tq}\n` +
       `${ind}${kw('ADD CONSTRAINT', up)} ${q(constraintName, qs)}\n` +
       `${ind}${kw('FOREIGN KEY', up)} (${srcColSql}) ${kw('REFERENCES', up)} ${qualifiedTableName(refTable, dialect, qs)} (${refColSql})\n` +
-      `${ind}${kw('ON DELETE', up)} ${kw(fk.onDelete, up)} ${kw('ON UPDATE', up)} ${kw(fk.onUpdate, up)};`;
+      `${ind}${kw('ON DELETE', up)} ${kw(fk.onDelete, up)}${onUpdateClause};`;
     result.push(sql);
   }
   return result;
@@ -264,12 +316,12 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
 
   const domains = schema.domains ?? [];
 
-  // CREATE SCHEMA statements (PostgreSQL/MSSQL only, skip 'public' for PostgreSQL)
-  if (dialect === 'postgresql' || dialect === 'mssql') {
+  // CREATE SCHEMA statements (PostgreSQL/MSSQL/H2 only — not SQLite/Oracle)
+  if (dialect === 'postgresql' || dialect === 'mssql' || dialect === 'h2') {
     const schemaNames = [...new Set(schema.tables.map((t) => t.schema).filter(Boolean))] as string[];
     for (const sn of schemaNames) {
       if (dialect === 'postgresql' && sn === 'public') continue;
-      if (dialect === 'postgresql') {
+      if (dialect === 'postgresql' || dialect === 'h2') {
         sections.push(`${kw('CREATE SCHEMA IF NOT EXISTS', up)} ${q(sn, qs)};`);
       } else {
         sections.push(`IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '${sn}') EXEC('CREATE SCHEMA ${sn}');`);
@@ -282,10 +334,10 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
     sections.push(createTableSql(table, dialect, opts, domains));
   }
 
-  // PostgreSQL COMMENT ON statements
-  if (opts.includeComments && dialect === 'postgresql') {
+  // COMMENT ON statements (PostgreSQL, Oracle, H2)
+  if (opts.includeComments && (dialect === 'postgresql' || dialect === 'oracle' || dialect === 'h2')) {
     for (const table of schema.tables) {
-      sections.push(...postgresComments(table, opts));
+      sections.push(...commentOnStatements(table, dialect, opts));
     }
   }
 

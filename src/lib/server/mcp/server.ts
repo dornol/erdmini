@@ -201,10 +201,10 @@ export function createMcpServer(
 
   server.tool(
     'export_ddl',
-    'Export DDL SQL for a project schema (supports mysql, postgresql, mariadb, mssql)',
+    'Export DDL SQL for a project schema (supports mysql, postgresql, mariadb, mssql, sqlite, oracle, h2)',
     {
       projectId: z.string().max(256).describe('Project ID'),
-      dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql']).describe('SQL dialect'),
+      dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql', 'sqlite', 'oracle', 'h2']).describe('SQL dialect'),
       includeComments: z.boolean().optional().describe('Include comments in DDL'),
       includeForeignKeys: z.boolean().optional().describe('Include FK constraints'),
       includeIndexes: z.boolean().optional().describe('Include indexes'),
@@ -536,7 +536,7 @@ export function createMcpServer(
     {
       projectId: z.string().max(256).describe('Project ID'),
       sql: z.string().max(1048576).describe('DDL SQL statements'),
-      dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql']).optional().describe('SQL dialect (default: mysql)'),
+      dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql', 'sqlite', 'oracle', 'h2']).optional().describe('SQL dialect (default: mysql)'),
       replace: z.boolean().optional().describe('Replace existing schema (default: false, merges)'),
     },
     async ({ projectId, sql, dialect, replace }) => {

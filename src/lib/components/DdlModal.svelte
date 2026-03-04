@@ -35,6 +35,9 @@
     { value: 'postgresql', label: 'PostgreSQL' },
     { value: 'mariadb', label: 'MariaDB' },
     { value: 'mssql', label: 'MSSQL' },
+    { value: 'sqlite', label: 'SQLite' },
+    { value: 'oracle', label: 'Oracle' },
+    { value: 'h2', label: 'H2' },
   ];
 
   // Export state

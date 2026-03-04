@@ -682,3 +682,294 @@ describe('exportDDL — Schema namespace', () => {
     expect(ddl).toContain('ALTER TABLE "billing"."orders"');
   });
 });
+
+describe('exportDDL — SQLite', () => {
+  it('maps INT/BIGINT/SMALLINT/BOOLEAN to INTEGER', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'INT', nullable: false }),
+          makeColumn({ name: 'b', type: 'BIGINT', nullable: false }),
+          makeColumn({ name: 'c', type: 'SMALLINT', nullable: false }),
+          makeColumn({ name: 'd', type: 'BOOLEAN', nullable: false }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'sqlite');
+    expect(ddl).toContain('a INTEGER');
+    expect(ddl).toContain('b INTEGER');
+    expect(ddl).toContain('c INTEGER');
+    expect(ddl).toContain('d INTEGER');
+  });
+
+  it('maps VARCHAR/CHAR/TEXT/JSON/UUID/ENUM/DATE/DATETIME/TIMESTAMP to TEXT', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'VARCHAR', nullable: true }),
+          makeColumn({ name: 'b', type: 'TEXT', nullable: true }),
+          makeColumn({ name: 'c', type: 'JSON', nullable: true }),
+          makeColumn({ name: 'd', type: 'UUID', nullable: true }),
+          makeColumn({ name: 'e', type: 'DATE', nullable: true }),
+          makeColumn({ name: 'f', type: 'TIMESTAMP', nullable: true }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'sqlite');
+    // All should be TEXT
+    const textCount = (ddl.match(/\bTEXT\b/g) ?? []).length;
+    expect(textCount).toBeGreaterThanOrEqual(6);
+  });
+
+  it('maps DECIMAL/FLOAT/DOUBLE to REAL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'DECIMAL', nullable: true }),
+          makeColumn({ name: 'b', type: 'FLOAT', nullable: true }),
+          makeColumn({ name: 'c', type: 'DOUBLE', nullable: true }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'sqlite');
+    const realCount = (ddl.match(/\bREAL\b/g) ?? []).length;
+    expect(realCount).toBe(3);
+  });
+
+  it('generates AUTOINCREMENT for auto-increment PK', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'sqlite');
+    expect(ddl).toContain('PRIMARY KEY AUTOINCREMENT');
+  });
+
+  it('does not generate ENGINE=InnoDB', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'sqlite');
+    expect(ddl).not.toContain('ENGINE');
+  });
+
+  it('defaults to no quoting', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'sqlite');
+    expect(ddl).toContain('CREATE TABLE users');
+    expect(ddl).not.toContain('`users`');
+    expect(ddl).not.toContain('"users"');
+  });
+
+  it('skips CREATE SCHEMA even when tables have schema', () => {
+    const t = makeTable({
+      name: 'test',
+      columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+    });
+    t.schema = 'myschema';
+    const schema = makeSchema([t]);
+    const ddl = exportDDL(schema, 'sqlite');
+    expect(ddl).not.toContain('CREATE SCHEMA');
+    // Table name should NOT have schema prefix
+    expect(ddl).toContain('CREATE TABLE test');
+    expect(ddl).not.toContain('myschema');
+  });
+
+  it('generates FK without ON UPDATE in ALTER TABLE', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'sqlite');
+    expect(ddl).toContain('FOREIGN KEY');
+    expect(ddl).toContain('ON DELETE CASCADE');
+    expect(ddl).toContain('ON UPDATE RESTRICT');
+  });
+});
+
+describe('exportDDL — Oracle', () => {
+  it('maps INT to NUMBER(10), BIGINT to NUMBER(19), SMALLINT to NUMBER(5)', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'INT', nullable: false }),
+          makeColumn({ name: 'b', type: 'BIGINT', nullable: false }),
+          makeColumn({ name: 'c', type: 'SMALLINT', nullable: false }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'oracle');
+    expect(ddl).toContain('NUMBER(10)');
+    expect(ddl).toContain('NUMBER(19)');
+    expect(ddl).toContain('NUMBER(5)');
+  });
+
+  it('maps VARCHAR to VARCHAR2, TEXT/JSON to CLOB', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'VARCHAR', length: 100, nullable: true }),
+          makeColumn({ name: 'b', type: 'TEXT', nullable: true }),
+          makeColumn({ name: 'c', type: 'JSON', nullable: true }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'oracle');
+    expect(ddl).toContain('VARCHAR2(100)');
+    expect(ddl).toContain('CLOB');
+  });
+
+  it('maps BOOLEAN to NUMBER(1), DOUBLE to BINARY_DOUBLE, UUID to VARCHAR2(36)', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'BOOLEAN', nullable: true }),
+          makeColumn({ name: 'b', type: 'DOUBLE', nullable: true }),
+          makeColumn({ name: 'c', type: 'UUID', nullable: true }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'oracle');
+    expect(ddl).toContain('NUMBER(1)');
+    expect(ddl).toContain('BINARY_DOUBLE');
+    expect(ddl).toContain('VARCHAR2(36)');
+  });
+
+  it('uses GENERATED ALWAYS AS IDENTITY for auto-increment', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'oracle');
+    expect(ddl).toContain('GENERATED ALWAYS AS IDENTITY');
+    expect(ddl).not.toContain('AUTO_INCREMENT');
+    expect(ddl).not.toContain('AUTOINCREMENT');
+  });
+
+  it('generates COMMENT ON for table and column comments', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'col', type: 'INT', nullable: false, comment: 'col comment' })],
+        comment: 'table comment',
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'oracle');
+    expect(ddl).toContain("COMMENT ON TABLE \"test\" IS 'table comment'");
+    expect(ddl).toContain("COMMENT ON COLUMN \"test\".\"col\" IS 'col comment'");
+  });
+
+  it('omits ON UPDATE from FK constraints', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'oracle');
+    expect(ddl).toContain('ON DELETE CASCADE');
+    expect(ddl).not.toContain('ON UPDATE');
+  });
+
+  it('uses double-quote quoting by default', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'oracle');
+    expect(ddl).toContain('CREATE TABLE "users"');
+  });
+
+  it('does not emit ENGINE=InnoDB', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'oracle');
+    expect(ddl).not.toContain('ENGINE');
+  });
+
+  it('skips CREATE SCHEMA for schema-prefixed tables', () => {
+    const t = makeTable({
+      name: 'test',
+      columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+    });
+    t.schema = 'hr';
+    const schema = makeSchema([t]);
+    const ddl = exportDDL(schema, 'oracle');
+    expect(ddl).not.toContain('CREATE SCHEMA');
+    expect(ddl).toContain('"hr"."test"');
+  });
+
+  it('maps DECIMAL with precision to NUMBER(p,s)', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'amount', type: 'DECIMAL', length: 12, scale: 4, nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'oracle');
+    expect(ddl).toContain('NUMBER(12,4)');
+  });
+});
+
+describe('exportDDL — H2', () => {
+  it('maps TEXT/JSON to CLOB', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'TEXT', nullable: true }),
+          makeColumn({ name: 'b', type: 'JSON', nullable: true }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'h2');
+    const clobCount = (ddl.match(/\bCLOB\b/g) ?? []).length;
+    expect(clobCount).toBe(2);
+  });
+
+  it('passes through BOOLEAN, UUID, INT natively', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [
+          makeColumn({ name: 'a', type: 'BOOLEAN', nullable: true }),
+          makeColumn({ name: 'b', type: 'UUID', nullable: true }),
+          makeColumn({ name: 'c', type: 'INT', nullable: false }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'h2');
+    expect(ddl).toContain('BOOLEAN');
+    expect(ddl).toContain('UUID');
+    expect(ddl).toContain('INT');
+  });
+
+  it('uses AUTO_INCREMENT for auto-increment', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'h2');
+    expect(ddl).toContain('AUTO_INCREMENT');
+  });
+
+  it('generates COMMENT ON for table and column comments', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'col', type: 'INT', nullable: false, comment: 'col comment' })],
+        comment: 'table comment',
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'h2');
+    expect(ddl).toContain("COMMENT ON TABLE \"test\" IS 'table comment'");
+    expect(ddl).toContain("COMMENT ON COLUMN \"test\".\"col\" IS 'col comment'");
+  });
+
+  it('generates CREATE SCHEMA IF NOT EXISTS', () => {
+    const t = makeTable({
+      name: 'test',
+      columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+    });
+    t.schema = 'app';
+    const schema = makeSchema([t]);
+    const ddl = exportDDL(schema, 'h2');
+    expect(ddl).toContain('CREATE SCHEMA IF NOT EXISTS "app"');
+    expect(ddl).toContain('"app"."test"');
+  });
+
+  it('uses double-quote quoting by default', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'h2');
+    expect(ddl).toContain('CREATE TABLE "users"');
+  });
+
+  it('does not emit ENGINE=InnoDB', () => {
+    const ddl = exportDDL(usersOrdersSchema(), 'h2');
+    expect(ddl).not.toContain('ENGINE');
+  });
+
+  it('generates DECIMAL with precision', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'amount', type: 'DECIMAL', length: 10, scale: 2, nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'h2');
+    expect(ddl).toContain('DECIMAL(10,2)');
+  });
+});

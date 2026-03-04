@@ -35,10 +35,16 @@ export function normalizeType(raw: string): ColumnType {
   if (base === 'DATETIME' || base === 'TIMESTAMP' || base === 'TIMESTAMPTZ' || base === 'DATETIME2') return 'TIMESTAMP';
   if (base === 'NUMERIC' || base === 'REAL' || base === 'MONEY' || base === 'DOUBLE PRECISION') return 'DECIMAL';
   if (base === 'VARBINARY' || base === 'IMAGE') return 'TEXT';
-  if (base === 'CHARACTER VARYING' || base === 'NVARCHAR') return 'VARCHAR';
+  if (base === 'CHARACTER VARYING' || base === 'NVARCHAR' || base === 'NVARCHAR2') return 'VARCHAR';
+  if (base === 'VARCHAR2') return 'VARCHAR';
   if (base === 'CHARACTER' || base === 'NCHAR') return 'CHAR';
   if (base === 'UNIQUEIDENTIFIER') return 'UUID';
   if (base === 'NVARCHAR(MAX)') return 'TEXT';
+  if (base === 'NUMBER') return 'DECIMAL';
+  if (base === 'CLOB' || base === 'NCLOB' || base === 'LONG') return 'TEXT';
+  if (base === 'RAW') return 'TEXT';
+  if (base === 'BINARY_DOUBLE') return 'DOUBLE';
+  if (base === 'BINARY_FLOAT') return 'FLOAT';
   if (base === 'ENUM') return 'ENUM';
 
   if ((COLUMN_TYPES as readonly string[]).includes(base)) return base as ColumnType;
@@ -542,6 +548,11 @@ async function getParser(dialect: Dialect): Promise<any> {
       return resolveParser(await import('node-sql-parser/build/postgresql'));
     case 'mssql':
       return resolveParser(await import('node-sql-parser/build/transactsql'));
+    case 'sqlite':
+      return resolveParser(await import('node-sql-parser/build/sqlite'));
+    case 'oracle':
+    case 'h2':
+      return resolveParser(await import('node-sql-parser/build/postgresql'));
   }
 }
 
@@ -629,6 +640,143 @@ function extractIndexStatements(sql: string): ParsedIndex[] {
   return results;
 }
 
+interface OraclePreprocessResult {
+  cleanedSql: string;
+  tableComments: Map<string, string>;
+  colComments: Map<string, Map<string, string>>;
+  identityColumns: Map<string, Set<string>>;
+}
+
+function preprocessOracle(sql: string): OraclePreprocessResult {
+  const tableComments = new Map<string, string>();
+  const colComments = new Map<string, Map<string, string>>();
+  const identityColumns = new Map<string, Set<string>>();
+
+  // Extract COMMENT ON TABLE
+  const tableCommentRe = /COMMENT\s+ON\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s+IS\s+'([^']*)'/gi;
+  let m: RegExpExecArray | null;
+  while ((m = tableCommentRe.exec(sql)) !== null) {
+    tableComments.set(m[1], m[2]);
+  }
+
+  // Extract COMMENT ON COLUMN
+  const colCommentRe = /COMMENT\s+ON\s+COLUMN\s+(?:"\w+"\.)?"?(\w+)"?\."?(\w+)"?\s+IS\s+'([^']*)'/gi;
+  while ((m = colCommentRe.exec(sql)) !== null) {
+    if (!colComments.has(m[1])) colComments.set(m[1], new Map());
+    colComments.get(m[1])!.set(m[2], m[3]);
+  }
+
+  // Extract IDENTITY columns (GENERATED ... AS IDENTITY)
+  const tableRe = /CREATE\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s*\(([\s\S]*?)\)\s*;/gi;
+  while ((m = tableRe.exec(sql)) !== null) {
+    const tableName = m[1];
+    const body = m[2];
+    const identityRe = /^\s*"?(\w+)"?\s+.*GENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY/gim;
+    let cm: RegExpExecArray | null;
+    while ((cm = identityRe.exec(body)) !== null) {
+      if (!identityColumns.has(tableName)) identityColumns.set(tableName, new Set());
+      identityColumns.get(tableName)!.add(cm[1]);
+    }
+  }
+
+  let cleaned = sql;
+  // Remove COMMENT ON statements
+  cleaned = cleaned.replace(/COMMENT\s+ON\s+(?:TABLE|COLUMN)\s+[^;]*;/gi, '');
+  // Remove ALTER TABLE FK statements (will be re-parsed)
+  // Remove Oracle-specific syntax
+  cleaned = cleanOracleSyntax(cleaned);
+
+  return { cleanedSql: cleaned, tableComments, colComments, identityColumns };
+}
+
+function cleanOracleSyntax(sql: string): string {
+  // Remove / batch separators (Oracle SQL*Plus)
+  sql = sql.replace(/^\s*\/\s*$/gm, '');
+  // Remove GENERATED ... AS IDENTITY
+  sql = sql.replace(/\bGENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY(?:\s*\([^)]*\))?/gi, '');
+  // VARCHAR2 → VARCHAR
+  sql = sql.replace(/\bVARCHAR2\b/gi, 'VARCHAR');
+  // NVARCHAR2 → VARCHAR
+  sql = sql.replace(/\bNVARCHAR2\b/gi, 'VARCHAR');
+  // NUMBER → DECIMAL
+  sql = sql.replace(/\bNUMBER\b/gi, 'DECIMAL');
+  // CLOB/NCLOB → TEXT
+  sql = sql.replace(/\bNCLOB\b/gi, 'TEXT');
+  sql = sql.replace(/\bCLOB\b/gi, 'TEXT');
+  // BINARY_DOUBLE → DOUBLE PRECISION
+  sql = sql.replace(/\bBINARY_DOUBLE\b/gi, 'DOUBLE PRECISION');
+  // BINARY_FLOAT → FLOAT
+  sql = sql.replace(/\bBINARY_FLOAT\b/gi, 'FLOAT');
+  // RAW(...) → TEXT
+  sql = sql.replace(/\bRAW\s*\(\s*\d+\s*\)/gi, 'TEXT');
+  // Remove Oracle keywords: ENABLE, NOVALIDATE, TABLESPACE, PCTFREE, INITRANS, etc.
+  sql = sql.replace(/\bENABLE\b/gi, '');
+  sql = sql.replace(/\bNOVALIDATE\b/gi, '');
+  sql = sql.replace(/\bTABLESPACE\s+\w+/gi, '');
+  sql = sql.replace(/\bPCTFREE\s+\d+/gi, '');
+  sql = sql.replace(/\bINITRANS\s+\d+/gi, '');
+  sql = sql.replace(/\bSTORAGE\s*\([^)]*\)/gi, '');
+  sql = sql.replace(/\bLOGGING\b/gi, '');
+  sql = sql.replace(/\bNOLOGGING\b/gi, '');
+  sql = sql.replace(/\bSEGMENT\s+CREATION\s+\w+/gi, '');
+  // Remove USING INDEX clause
+  sql = sql.replace(/\bUSING\s+INDEX\b/gi, '');
+  // Fix trailing comma before closing paren
+  sql = sql.replace(/,(\s*\n?\s*\))/g, '$1');
+  return sql;
+}
+
+interface H2PreprocessResult {
+  cleanedSql: string;
+  tableComments: Map<string, string>;
+  colComments: Map<string, Map<string, string>>;
+  identityColumns: Map<string, Set<string>>;
+}
+
+function preprocessH2(sql: string): H2PreprocessResult {
+  const tableComments = new Map<string, string>();
+  const colComments = new Map<string, Map<string, string>>();
+  const identityColumns = new Map<string, Set<string>>();
+
+  // Extract COMMENT ON TABLE
+  const tableCommentRe = /COMMENT\s+ON\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s+IS\s+'([^']*)'/gi;
+  let m: RegExpExecArray | null;
+  while ((m = tableCommentRe.exec(sql)) !== null) {
+    tableComments.set(m[1], m[2]);
+  }
+
+  // Extract COMMENT ON COLUMN
+  const colCommentRe = /COMMENT\s+ON\s+COLUMN\s+(?:"\w+"\.)?"?(\w+)"?\."?(\w+)"?\s+IS\s+'([^']*)'/gi;
+  while ((m = colCommentRe.exec(sql)) !== null) {
+    if (!colComments.has(m[1])) colComments.set(m[1], new Map());
+    colComments.get(m[1])!.set(m[2], m[3]);
+  }
+
+  // Extract IDENTITY columns (GENERATED BY DEFAULT AS IDENTITY / AUTO_INCREMENT)
+  const tableRe = /CREATE\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s*\(([\s\S]*?)\)\s*;/gi;
+  while ((m = tableRe.exec(sql)) !== null) {
+    const tableName = m[1];
+    const body = m[2];
+    const identityRe = /^\s*"?(\w+)"?\s+.*(?:GENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY|AUTO_INCREMENT)/gim;
+    let cm: RegExpExecArray | null;
+    while ((cm = identityRe.exec(body)) !== null) {
+      if (!identityColumns.has(tableName)) identityColumns.set(tableName, new Set());
+      identityColumns.get(tableName)!.add(cm[1]);
+    }
+  }
+
+  let cleaned = sql;
+  // Remove COMMENT ON statements
+  cleaned = cleaned.replace(/COMMENT\s+ON\s+(?:TABLE|COLUMN)\s+[^;]*;/gi, '');
+  // Remove IDENTITY keywords
+  cleaned = cleaned.replace(/\bGENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY(?:\s*\([^)]*\))?/gi, '');
+  cleaned = cleaned.replace(/\bAUTO_INCREMENT\b/gi, '');
+  // Fix trailing comma before closing paren
+  cleaned = cleaned.replace(/,(\s*\n?\s*\))/g, '$1');
+
+  return { cleanedSql: cleaned, tableComments, colComments, identityColumns };
+}
+
 export async function importDDL(sql: string, dialect: Dialect = 'mysql', messages?: DDLImportMessages): Promise<ImportResult> {
   const msg = messages ?? DEFAULT_MESSAGES;
   const errors: string[] = [];
@@ -636,6 +784,13 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   const tables: Table[] = [];
   const existingNames: string[] = [];
   _typeWarnings = [];
+
+  // Strip bracket identifiers [name] → name (MSSQL-style quoting used in H2, Spring DDLs, etc.)
+  // MSSQL preprocessor handles this separately, so skip for mssql
+  if (dialect !== 'mssql') {
+    sql = sql.replace(/\[([^\]]+)\]/g, '$1');
+  }
+
   // Extract CHECK constraints from raw SQL before parsing
   const checkConstraints = extractCheckConstraints(sql);
   // Extract CREATE INDEX statements from raw SQL
@@ -654,6 +809,8 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   let mssqlComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null = null;
   let mssqlAlterFKs: MSSQLAlterFK[] = [];
   let mssqlAlterUQs: MSSQLAlterUQ[] = [];
+  let preprocessedComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null = null;
+  let preprocessedIdentity: Map<string, Set<string>> | null = null;
 
   if (dialect === 'mssql') {
     const preprocessed = preprocessMSSQL(sql);
@@ -676,6 +833,46 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
         } catch (e) {
           const tMatch = stmtSql.match(/(?:create|alter)\s+table\s+(\w+)/i);
           errors.push(`Parse failed (${tMatch?.[1] ?? 'unknown'}): ${e instanceof Error ? e.message : e}`);
+        }
+      }
+    }
+  } else if (dialect === 'oracle') {
+    const preprocessed = preprocessOracle(sql);
+    preprocessedComments = { tableComments: preprocessed.tableComments, colComments: preprocessed.colComments };
+    preprocessedIdentity = preprocessed.identityColumns;
+    sql = preprocessed.cleanedSql;
+    stmts = [];
+    const rawStmts = sql.split(/;\s*/).filter((s) => s.trim());
+    for (const rawStmt of rawStmts) {
+      const trimmed = rawStmt.trim();
+      if (!trimmed || !/^\s*create\s+table\b/i.test(trimmed)) continue;
+      try {
+        const result = parser.astify(trimmed);
+        const arr = Array.isArray(result) ? result : [result];
+        stmts.push(...arr);
+      } catch (e) {
+        const tMatch = trimmed.match(/create\s+table\s+(?:"\w+"\.)?"?(\w+)"?/i);
+        errors.push(`Parse failed (${tMatch?.[1] ?? 'unknown'}): ${e instanceof Error ? e.message : e}`);
+      }
+    }
+  } else if (dialect === 'h2') {
+    const preprocessed = preprocessH2(sql);
+    preprocessedComments = { tableComments: preprocessed.tableComments, colComments: preprocessed.colComments };
+    preprocessedIdentity = preprocessed.identityColumns;
+    sql = preprocessed.cleanedSql;
+    stmts = [];
+    const rawStmts = sql.split(/;\s*/).filter((s) => s.trim());
+    for (const rawStmt of rawStmts) {
+      const trimmed = rawStmt.trim();
+      if (!trimmed) continue;
+      try {
+        const result = parser.astify(trimmed);
+        const arr = Array.isArray(result) ? result : [result];
+        stmts.push(...arr);
+      } catch (e) {
+        const tMatch = trimmed.match(/(?:create|alter)\s+table\s+(?:"\w+"\.)?"?(\w+)"?/i);
+        if (tMatch) {
+          errors.push(`Parse failed (${tMatch[1]}): ${e instanceof Error ? e.message : e}`);
         }
       }
     }
@@ -776,7 +973,9 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
 
     try {
       const rawTableName = stmt.table?.[0]?.table ?? 'unknown';
-      const rawSchemaName: string | undefined = stmt.table?.[0]?.db || undefined;
+      let rawSchemaName: string | undefined = stmt.table?.[0]?.db || undefined;
+      // SQLite: 'main' is the default schema, normalize to undefined
+      if (dialect === 'sqlite' && rawSchemaName === 'main') rawSchemaName = undefined;
       const tableName = getUniqueName(rawTableName, existingNames);
       existingNames.push(tableName);
 
@@ -1088,6 +1287,31 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
         for (const col of table.columns) {
           const c = colCmts.get(col.name);
           if (c) col.comment = c;
+        }
+      }
+    }
+  }
+
+  // Apply Oracle/H2 preprocessed comments and identity columns
+  if (preprocessedComments) {
+    for (const table of tables) {
+      const tComment = preprocessedComments.tableComments.get(table.name);
+      if (tComment) table.comment = tComment;
+      const colCmts = preprocessedComments.colComments.get(table.name);
+      if (colCmts) {
+        for (const col of table.columns) {
+          const c = colCmts.get(col.name);
+          if (c) col.comment = c;
+        }
+      }
+    }
+  }
+  if (preprocessedIdentity) {
+    for (const table of tables) {
+      const identityCols = preprocessedIdentity.get(table.name);
+      if (identityCols) {
+        for (const col of table.columns) {
+          if (identityCols.has(col.name)) col.autoIncrement = true;
         }
       }
     }
