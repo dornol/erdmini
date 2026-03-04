@@ -195,7 +195,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (361 tests)
+pnpm test         # vitest (366 tests)
 pnpm check        # svelte-check type checking
 ```
 
