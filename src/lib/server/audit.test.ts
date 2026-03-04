@@ -16,7 +16,7 @@ vi.mock('$env/dynamic/private', () => ({
 	env: mockEnv,
 }));
 
-import { logAudit, purgeOldAuditLogs, getAuditStats, getRetentionDays } from './audit';
+import { logAudit, purgeOldAuditLogs, getAuditStats, getRetentionDays, auditSchemaChanges } from './audit';
 
 describe('logAudit', () => {
 	beforeEach(() => {
@@ -88,6 +88,103 @@ describe('logAudit', () => {
 		expect(mockRun).toHaveBeenCalledWith(
 			'u1', 'api-user', 'add_table', 'mcp', 'schema', 'proj-1', null, null, 'mcp',
 		);
+	});
+});
+
+describe('auditSchemaChanges', () => {
+	const user = { id: 'u1', username: 'admin' };
+	const projectId = 'proj-1';
+
+	beforeEach(() => {
+		mockRun.mockClear();
+		mockPrepare.mockClear();
+	});
+
+	it('detects table creation', () => {
+		auditSchemaChanges(user, projectId,
+			{ tables: [] },
+			{ tables: [{ id: 't1', name: 'users' }] },
+		);
+		expect(mockRun).toHaveBeenCalledTimes(1);
+		expect(mockRun.mock.calls[0][2]).toBe('create_table');
+		expect(JSON.parse(mockRun.mock.calls[0][6])).toEqual({ tableId: 't1', tableName: 'users' });
+	});
+
+	it('detects table deletion', () => {
+		auditSchemaChanges(user, projectId,
+			{ tables: [{ id: 't1', name: 'users' }] },
+			{ tables: [] },
+		);
+		expect(mockRun).toHaveBeenCalledTimes(1);
+		expect(mockRun.mock.calls[0][2]).toBe('delete_table');
+		expect(JSON.parse(mockRun.mock.calls[0][6])).toEqual({ tableId: 't1', tableName: 'users' });
+	});
+
+	it('detects table rename', () => {
+		auditSchemaChanges(user, projectId,
+			{ tables: [{ id: 't1', name: 'users' }] },
+			{ tables: [{ id: 't1', name: 'accounts' }] },
+		);
+		expect(mockRun).toHaveBeenCalledTimes(1);
+		expect(mockRun.mock.calls[0][2]).toBe('rename_table');
+		expect(JSON.parse(mockRun.mock.calls[0][6])).toEqual({ tableId: 't1', oldName: 'users', newName: 'accounts' });
+	});
+
+	it('detects memo creation', () => {
+		auditSchemaChanges(user, projectId,
+			{ memos: [] },
+			{ memos: [{ id: 'm1' }] },
+		);
+		expect(mockRun).toHaveBeenCalledTimes(1);
+		expect(mockRun.mock.calls[0][2]).toBe('create_memo');
+	});
+
+	it('detects memo deletion', () => {
+		auditSchemaChanges(user, projectId,
+			{ memos: [{ id: 'm1' }] },
+			{ memos: [] },
+		);
+		expect(mockRun).toHaveBeenCalledTimes(1);
+		expect(mockRun.mock.calls[0][2]).toBe('delete_memo');
+	});
+
+	it('does not log when nothing changed', () => {
+		auditSchemaChanges(user, projectId,
+			{ tables: [{ id: 't1', name: 'users' }], memos: [{ id: 'm1' }] },
+			{ tables: [{ id: 't1', name: 'users' }], memos: [{ id: 'm1' }] },
+		);
+		expect(mockRun).not.toHaveBeenCalled();
+	});
+
+	it('handles multiple changes at once', () => {
+		auditSchemaChanges(user, projectId,
+			{ tables: [{ id: 't1', name: 'users' }, { id: 't2', name: 'orders' }], memos: [{ id: 'm1' }] },
+			{ tables: [{ id: 't1', name: 'accounts' }, { id: 't3', name: 'products' }], memos: [] },
+		);
+		const actions = mockRun.mock.calls.map((c: unknown[]) => c[2]);
+		expect(actions).toContain('delete_table');   // t2 removed
+		expect(actions).toContain('create_table');   // t3 added
+		expect(actions).toContain('rename_table');   // t1 renamed
+		expect(actions).toContain('delete_memo');    // m1 removed
+		expect(mockRun).toHaveBeenCalledTimes(4);
+	});
+
+	it('handles undefined tables/memos gracefully', () => {
+		auditSchemaChanges(user, projectId, {}, {});
+		expect(mockRun).not.toHaveBeenCalled();
+	});
+
+	it('sets correct user and project in audit entries', () => {
+		auditSchemaChanges(user, projectId,
+			{ tables: [] },
+			{ tables: [{ id: 't1', name: 'users' }] },
+		);
+		const call = mockRun.mock.calls[0];
+		expect(call[0]).toBe('u1');       // userId
+		expect(call[1]).toBe('admin');    // username
+		expect(call[3]).toBe('schema');   // category
+		expect(call[5]).toBe('proj-1');   // resourceId
+		expect(call[8]).toBe('web');      // source
 	});
 });
 
