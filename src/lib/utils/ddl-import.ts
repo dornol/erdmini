@@ -1,18 +1,13 @@
 import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
 import { generateId } from '$lib/utils/common';
+import { DEFAULT_MESSAGES, parseRefAction } from './ddl-import-types';
+import type { MSSQLAlterFK } from './ddl-import-mssql';
+import { preprocessMSSQL, cleanMSSQLStatement } from './ddl-import-mssql';
+import { preprocessOracle, preprocessH2 } from './ddl-import-oracle';
 
-export interface DDLImportMessages {
-  noCreateTable: () => string;
-  tableParseError: (params: { error: string }) => string;
-  fkResolveFailed: (params: { detail: string }) => string;
-}
-
-const DEFAULT_MESSAGES: DDLImportMessages = {
-  noCreateTable: () => 'No CREATE TABLE statements found.',
-  tableParseError: ({ error }) => `Table parse error: ${error}`,
-  fkResolveFailed: ({ detail }) => `FK resolve failed: ${detail}`,
-};
+// Re-export public types for external consumers
+export type { DDLImportMessages, ImportResult, ParsedFK, ParsedIndex } from './ddl-import-types';
 
 /** Track type normalizations (original → normalized) */
 let _typeWarnings: { original: string; normalized: string }[] = [];
@@ -50,15 +45,6 @@ export function normalizeType(raw: string): ColumnType {
   if ((COLUMN_TYPES as readonly string[]).includes(base)) return base as ColumnType;
   _typeWarnings.push({ original: raw.trim(), normalized: 'VARCHAR' });
   return 'VARCHAR';
-}
-
-function parseRefAction(raw: string | undefined): ReferentialAction {
-  if (!raw) return 'RESTRICT';
-  const u = raw.trim().toUpperCase();
-  if (u === 'CASCADE') return 'CASCADE';
-  if (u === 'SET NULL') return 'SET NULL';
-  if (u === 'RESTRICT') return 'RESTRICT';
-  return 'NO ACTION';
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -119,416 +105,6 @@ function extractFKFromRefDef(refDef: any, fkColumns: any[]): ParsedFK | null {
   return { columnNames, refTableName: refTable, refColumnNames, onDelete, onUpdate };
 }
 
-interface MSSQLAlterFK {
-  tableName: string;
-  columns: string[];
-  refTable: string;
-  refColumns: string[];
-}
-
-interface MSSQLAlterUQ {
-  tableName: string;
-  columns: string[];
-  name?: string;
-}
-
-interface MSSQLPreprocessResult {
-  statements: string[];
-  tableComments: Map<string, string>;
-  colComments: Map<string, Map<string, string>>;
-  alterFKs: MSSQLAlterFK[];
-  alterUQs: MSSQLAlterUQ[];
-}
-
-/** Unwrap MSSQL default parens: DEFAULT ((0)) → DEFAULT 0, DEFAULT (getdate()) → DEFAULT getdate() */
-function unwrapDefaultParens(sql: string): string {
-  const pattern = /\bDEFAULT\s+\(/gi;
-  let result = '';
-  let lastIdx = 0;
-  let m: RegExpExecArray | null;
-
-  while ((m = pattern.exec(sql)) !== null) {
-    // Find matching closing paren
-    let depth = 1;
-    let i = m.index + m[0].length;
-    while (i < sql.length && depth > 0) {
-      if (sql[i] === '(') depth++;
-      else if (sql[i] === ')') depth--;
-      i++;
-    }
-    if (depth !== 0) continue;
-
-    let inner = sql.slice(m.index + m[0].length, i - 1).trim();
-    // Recursively unwrap nested parens: ((0)) → (0) → 0
-    while (inner.startsWith('(') && inner.endsWith(')')) {
-      const unwrapped = inner.slice(1, -1).trim();
-      let d = 0;
-      let balanced = true;
-      for (const ch of unwrapped) {
-        if (ch === '(') d++;
-        else if (ch === ')') d--;
-        if (d < 0) { balanced = false; break; }
-      }
-      if (balanced && d === 0) inner = unwrapped;
-      else break;
-    }
-
-    result += sql.slice(lastIdx, m.index) + 'DEFAULT ' + inner;
-    lastIdx = i;
-    pattern.lastIndex = i;
-  }
-
-  return result + sql.slice(lastIdx);
-}
-
-/** Remove balanced parenthesized block starting at given index. Returns end index. */
-function findClosingParen(sql: string, openIdx: number): number {
-  let depth = 1;
-  let i = openIdx + 1;
-  while (i < sql.length && depth > 0) {
-    if (sql[i] === '(') depth++;
-    else if (sql[i] === ')') depth--;
-    i++;
-  }
-  return depth === 0 ? i : -1;
-}
-
-/** Strip all balanced (...) blocks following a keyword (e.g. CHECK, WITH, INCLUDE) */
-function stripKeywordWithParens(sql: string, keyword: RegExp): string {
-  let result = '';
-  let lastIdx = 0;
-  const pattern = new RegExp(`(?:,\\s*)?\\b${keyword.source}\\s*\\(`, 'gi');
-  let m: RegExpExecArray | null;
-  while ((m = pattern.exec(sql)) !== null) {
-    // The match already includes the opening '(' at the end
-    const openIdx = m.index + m[0].length - 1;
-    const closeIdx = findClosingParen(sql, openIdx);
-    if (closeIdx === -1) continue;
-    result += sql.slice(lastIdx, m.index);
-    lastIdx = closeIdx;
-    pattern.lastIndex = closeIdx;
-  }
-  return result + sql.slice(lastIdx);
-}
-
-/** Clean MSSQL-specific syntax that node-sql-parser can't handle */
-function cleanMSSQLSyntax(sql: string): string {
-  // Strip SQL single-line comments (they contain keywords that confuse cleanup regexes)
-  sql = sql.replace(/--.*$/gm, '');
-
-  // Strip block comments
-  sql = sql.replace(/\/\*[\s\S]*?\*\//g, '');
-
-  // Strip [bracket] identifiers → bare names
-  sql = sql.replace(/\[([^\]]+)\]/g, '$1');
-
-  // Strip schema prefixes: dbo. / schema.
-  sql = sql.replace(/\bdbo\./gi, '');
-
-  // Strip N'...' Unicode string prefix → regular '...'
-  sql = sql.replace(/\bN'/gi, "'");
-
-  // Strip named constraint prefixes: "constraint PK_NAME primary key" → "primary key"
-  sql = sql.replace(/\bconstraint\s+\S+\s+/gi, '');
-
-  // Strip bare "references <table>" without column list (\b prevents backtracking inside table name)
-  sql = sql.replace(/\breferences\s+\w+\b(?!\s*\()/gi, '');
-
-  // IDENTITY(1,1) or IDENTITY (1, 1) → identity
-  sql = sql.replace(/\bidentity\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, 'identity');
-
-  // NOT FOR REPLICATION (used with identity/FK)
-  sql = sql.replace(/\bNOT\s+FOR\s+REPLICATION\b/gi, '');
-
-  // MSSQL (max) types: nvarchar(max) → nvarchar(4000), varchar(max) → varchar(8000), varbinary(max) → varbinary(8000)
-  sql = sql.replace(/\bnvarchar\s*\(\s*max\s*\)/gi, 'nvarchar(4000)');
-  sql = sql.replace(/\bvarchar\s*\(\s*max\s*\)/gi, 'varchar(8000)');
-  sql = sql.replace(/\bvarbinary\s*\(\s*max\s*\)/gi, 'varbinary(8000)');
-
-  // MSSQL-specific types the parser doesn't understand → standard equivalents
-  sql = sql.replace(/\bdatetime2\s*\(\s*\d+\s*\)/gi, 'datetime');
-  sql = sql.replace(/\bdatetimeoffset\s*\(\s*\d+\s*\)/gi, 'datetime');
-  sql = sql.replace(/\btime\s*\(\s*\d+\s*\)/gi, 'time');
-  sql = sql.replace(/\bdatetime2\b/gi, 'datetime');
-  sql = sql.replace(/\bdatetimeoffset\b/gi, 'datetime');
-  sql = sql.replace(/\bsmalldatetime\b/gi, 'datetime');
-  sql = sql.replace(/\bhierarchyid\b/gi, 'varchar(900)');
-  sql = sql.replace(/\bsql_variant\b/gi, 'varchar(8000)');
-  sql = sql.replace(/\bsysname\b/gi, 'nvarchar(128)');
-  sql = sql.replace(/\browversion\b/gi, 'binary(8)');
-  sql = sql.replace(/\btimestamp\b/gi, 'binary(8)');
-  sql = sql.replace(/\bntext\b/gi, 'text');
-  sql = sql.replace(/\bimage\b/gi, 'varbinary(8000)');
-  sql = sql.replace(/\bxml\b/gi, 'text');
-  sql = sql.replace(/\bgeography\b/gi, 'text');
-  sql = sql.replace(/\bgeometry\b/gi, 'text');
-  sql = sql.replace(/\buniqueidentifier\b/gi, 'char(36)');
-  sql = sql.replace(/\bsmallmoney\b/gi, 'decimal(10,4)');
-  sql = sql.replace(/\bmoney\b/gi, 'decimal(19,4)');
-
-  // Strip CHECK constraints (balanced paren matching for nested expressions)
-  sql = stripKeywordWithParens(sql, /check/);
-
-  // Strip computed columns with parens: <name> AS (...)
-  sql = stripKeywordWithParens(sql, /\w+\s+as/);
-
-  // Strip computed columns without parens: "col_name as expr" (up to comma/closing paren/newline)
-  sql = sql.replace(/,?\s*\b\w+\s+as\s+(?!\s*\()[^,)\n]+/gi, '');
-
-  // Unwrap DEFAULT (expr) → DEFAULT expr
-  sql = unwrapDefaultParens(sql);
-
-  // Strip NONCLUSTERED / CLUSTERED keywords
-  sql = sql.replace(/\b(NON)?CLUSTERED\b/gi, '');
-
-  // Strip INCLUDE (...) clause (MSSQL index included columns)
-  sql = stripKeywordWithParens(sql, /include/);
-
-  // Strip WITH (...) options (balanced)
-  sql = stripKeywordWithParens(sql, /with/);
-
-  // Strip WHERE (...) filter predicates on indexes
-  sql = stripKeywordWithParens(sql, /where/);
-
-  // Strip ON [filegroup] clauses
-  sql = sql.replace(/\bON\s+\[?\w+\]?(?=\s*$|\s*,|\s*\))/gim, '');
-
-  // Strip ASC/DESC after column in PK/index definitions
-  sql = sql.replace(/\b(ASC|DESC)\b/gi, '');
-
-  // Strip TEXTIMAGE_ON [filegroup]
-  sql = sql.replace(/\bTEXTIMAGE_ON\s+\[?\w+\]?/gi, '');
-
-  // Strip MSSQL-specific column/constraint keywords
-  sql = sql.replace(/\bROWGUIDCOL\b/gi, '');
-  sql = sql.replace(/\bSPARSE\b/gi, '');
-  sql = sql.replace(/\bPERSISTED\b/gi, '');
-  sql = sql.replace(/\bFILESTREAM\b/gi, '');
-  sql = sql.replace(/\bMASKED\b/gi, '');
-
-  // Strip MASKED WITH (FUNCTION = '...') — Dynamic Data Masking
-  sql = sql.replace(/\bMASKED\s+WITH\s*\([^)]*\)/gi, '');
-
-  // Fix trailing comma before closing paren (from removed lines)
-  sql = sql.replace(/,(\s*\n?\s*\))/g, '$1');
-  // Fix double/triple commas
-  sql = sql.replace(/,(\s*,)+/g, ',');
-  // Fix leading comma after opening paren
-  sql = sql.replace(/\(\s*,/g, '(');
-  // Remove empty lines
-  sql = sql.replace(/^\s*\n/gm, '');
-
-  return sql;
-}
-
-function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
-  const tableComments = new Map<string, string>();
-  const colComments = new Map<string, Map<string, string>>();
-  const alterFKs: MSSQLAlterFK[] = [];
-  const alterUQs: MSSQLAlterUQ[] = [];
-  const statements: string[] = [];
-  const seenStmts = new Set<string>();
-
-  // Split by 'go' batch separator (case-insensitive, standalone line)
-  const batches = sql.split(/^\s*go\s*$/gim);
-
-  for (const batch of batches) {
-    const trimmed = batch.trim();
-    if (!trimmed) continue;
-
-    // Extract comments from exec sp_addextendedproperty
-    const extPropMatch = trimmed.match(
-      /sp_addextendedproperty\s+'MS_Description'\s*,\s*N?'([^']*)'\s*,\s*'SCHEMA'\s*,\s*'[^']*'\s*,\s*'TABLE'\s*,\s*'([^']*)'/i,
-    );
-    if (extPropMatch) {
-      const comment = extPropMatch[1];
-      const tableName = extPropMatch[2];
-      const colMatch = trimmed.match(/'COLUMN'\s*,\s*\n?\s*'([^']*)'/i);
-      const isConstraint = /'CONSTRAINT'/i.test(trimmed);
-      if (colMatch && !isConstraint) {
-        if (!colComments.has(tableName)) colComments.set(tableName, new Map());
-        colComments.get(tableName)!.set(colMatch[1], comment);
-      } else if (!isConstraint) {
-        tableComments.set(tableName, comment);
-      }
-      continue;
-    }
-
-    // Skip other exec statements
-    if (/^\s*exec\b/i.test(trimmed)) continue;
-
-    // Skip create index / alter index
-    if (/^\s*(create|alter)\s+(unique\s+)?(nonclustered\s+)?index\b/i.test(trimmed)) continue;
-
-    // Extract ALTER TABLE FK via regex (parser struggles with MSSQL ALTER TABLE syntax)
-    const alterFKMatch = trimmed.match(
-      /alter\s+table\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?\s+add\s+(?:constraint\s+\S+\s+)?foreign\s+key\s*\(([^)]+)\)\s*references\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?\s*\(([^)]+)\)/i,
-    );
-    if (alterFKMatch) {
-      alterFKs.push({
-        tableName: alterFKMatch[1],
-        columns: alterFKMatch[2].split(',').map((s: string) => s.replace(/[\[\]]/g, '').trim()),
-        refTable: alterFKMatch[3],
-        refColumns: alterFKMatch[4].split(',').map((s: string) => s.replace(/[\[\]]/g, '').trim()),
-      });
-      continue;
-    }
-
-    // Extract ALTER TABLE UNIQUE via regex
-    const alterUQMatch = trimmed.match(
-      /alter\s+table\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?\s+add\s+(?:constraint\s+(\S+)\s+)?unique\s*(?:nonclustered\s*)?\(([^)]+)\)/i,
-    );
-    if (alterUQMatch) {
-      const cols = alterUQMatch[3].split(',').map((s: string) => s.replace(/[\[\]]/g, '').trim());
-      if (cols.length >= 2) {
-        alterUQs.push({
-          tableName: alterUQMatch[1],
-          columns: cols,
-          name: alterUQMatch[2]?.replace(/[\[\]]/g, ''),
-        });
-      }
-      continue;
-    }
-
-    // Extract inline FK references from raw DDL BEFORE cleanup strips them
-    const tblNameRaw = trimmed.match(/create\s+table\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?/i)?.[1];
-    if (tblNameRaw && /^\s*create\s+table\b/i.test(trimmed)) {
-      // Find table body between first ( and last )
-      const bodyStart = trimmed.indexOf('(');
-      const bodyEnd = trimmed.lastIndexOf(')');
-      if (bodyStart !== -1 && bodyEnd !== -1) {
-        const body = trimmed.slice(bodyStart + 1, bodyEnd);
-        // Split by top-level commas (tracking paren depth)
-        const colDefs: string[] = [];
-        let depth = 0, start = 0;
-        for (let ci = 0; ci < body.length; ci++) {
-          if (body[ci] === '(') depth++;
-          else if (body[ci] === ')') depth--;
-          else if (body[ci] === ',' && depth === 0) {
-            colDefs.push(body.slice(start, ci));
-            start = ci + 1;
-          }
-        }
-        colDefs.push(body.slice(start));
-
-        for (const colDef of colDefs) {
-          const clean = colDef.replace(/\[([^\]]+)\]/g, '$1').replace(/\bdbo\./gi, '').trim();
-          if (!clean) continue;
-
-          // Check for references
-          const refMatch = clean.match(/\breferences\s+(\w+)\s*(?:\(\s*(\w+)\s*\))?/i);
-          if (!refMatch) continue;
-
-          // Determine source column:
-          // - Table-level: "foreign key (COL) references TABLE"
-          const fkColMatch = clean.match(/\bforeign\s+key\s*\(\s*(\w+)\s*\)/i);
-          // - Column-level: first word is the column name (not a keyword)
-          const firstWord = clean.match(/^(\w+)/)?.[1] ?? '';
-          const isTableLevel = /^(constraint|foreign|primary|unique|check)\b/i.test(firstWord);
-
-          let srcCol: string;
-          if (fkColMatch) {
-            srcCol = fkColMatch[1]; // from "foreign key (COL)"
-          } else if (!isTableLevel) {
-            srcCol = firstWord; // column-level: first word is column name
-          } else {
-            continue; // can't determine source column
-          }
-
-          alterFKs.push({
-            tableName: tblNameRaw,
-            columns: [srcCol],
-            refTable: refMatch[1],
-            refColumns: refMatch[2] ? [refMatch[2]] : [],
-          });
-        }
-      }
-    }
-
-    // Clean MSSQL-specific syntax
-    let cleaned = cleanMSSQLSyntax(trimmed);
-
-    // Keep CREATE TABLE statements only (ALTER TABLE FKs handled above)
-    if (/^\s*create\s+table\b/i.test(cleaned)) {
-      const tblMatch = cleaned.match(/create\s+table\s+(\w+)/i);
-      const tblName = tblMatch?.[1] ?? '';
-
-      // Extract and strip table-level FK constraints (parser can't handle them)
-      const fkPattern = /,?\s*\bforeign\s+key\s*\(([^)]+)\)\s*references\s+(\w+)\s*\(([^)]+)\)/gi;
-      let fkMatch: RegExpExecArray | null;
-      while ((fkMatch = fkPattern.exec(cleaned)) !== null) {
-        if (tblName) {
-          alterFKs.push({
-            tableName: tblName,
-            columns: fkMatch[1].split(',').map(s => s.trim()),
-            refTable: fkMatch[2],
-            refColumns: fkMatch[3].split(',').map(s => s.trim()),
-          });
-        }
-      }
-      cleaned = cleaned.replace(fkPattern, '');
-
-      // Extract and strip table-level UNIQUE constraints (parser misparses them as columns)
-      // Handles: UNIQUE (col), UNIQUE name (col), UNIQUE INDEX name (col), etc.
-      const uqPattern = /,?\s*\bunique\b[^(,)]*\(([^)]+)\)/gi;
-      let uqMatch: RegExpExecArray | null;
-      while ((uqMatch = uqPattern.exec(cleaned)) !== null) {
-        if (tblName) {
-          const cols = uqMatch[1].split(',').map(s => s.trim()).filter(Boolean);
-          if (cols.length > 0) {
-            alterUQs.push({ tableName: tblName, columns: cols });
-          }
-        }
-      }
-      cleaned = cleaned.replace(uqPattern, '');
-
-      // Also strip any bare UNIQUE keyword left without parens
-      cleaned = cleaned.replace(/,?\s*\bunique\s*(?=\s*[,)])/gi, '');
-
-      // Also strip any remaining inline references (now that FKs are extracted)
-      cleaned = cleaned.replace(/\breferences\s+\w+\s*(\([^)]*\))?\s*/gi, '');
-
-      // Clean up after removal (trailing comma before closing paren)
-      cleaned = cleaned.replace(/,(\s*\n?\s*\))/g, '$1');
-
-      // Deduplicate identical statements
-      const normalized = cleaned.replace(/\s+/g, ' ').trim();
-      if (!seenStmts.has(normalized)) {
-        seenStmts.add(normalized);
-        statements.push(cleaned);
-      }
-    }
-  }
-
-  return { statements, tableComments, colComments, alterFKs, alterUQs };
-}
-
-function cleanMSSQLStatement(sql: string): string {
-  // Apply the full MSSQL syntax cleanup again (in case preprocessing missed something)
-  sql = cleanMSSQLSyntax(sql);
-
-  // More aggressive: strip ALL inline references (with or without column list)
-  sql = sql.replace(/\breferences\s+\w+\s*(\([^)]*\))?\s*/gi, '');
-
-  // Strip all DEFAULT clauses entirely (nuclear option for stubborn expressions)
-  sql = sql.replace(/\bDEFAULT\s+(?:'[^']*'|\w+\([^)]*\)|[\w.]+)/gi, '');
-
-  // Remove table-level UNIQUE constraints (with or without content, parser misidentifies them)
-  sql = sql.replace(/,?\s*\bunique\s*\([^)]*\)/gi, '');
-
-  // Remove bare UNIQUE keyword left as table-level entry (no parens)
-  sql = sql.replace(/,?\s*\bunique\s*(?=\s*[,)])/gi, '');
-
-  // Fix trailing comma before closing paren
-  sql = sql.replace(/,(\s*\n?\s*\))/g, '$1');
-  // Fix double commas
-  sql = sql.replace(/,\s*,/g, ',');
-  // Fix leading comma
-  sql = sql.replace(/\(\s*,/g, '(');
-
-  return sql;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resolveParser(mod: any): any {
   // CJS modules imported via ESM: Parser may be at mod.Parser (Vite) or mod.default.Parser (Node.js)
@@ -554,12 +130,6 @@ async function getParser(dialect: Dialect): Promise<any> {
     case 'h2':
       return resolveParser(await import('node-sql-parser/build/postgresql'));
   }
-}
-
-export interface ImportResult {
-  tables: Table[];
-  errors: string[];
-  warnings: string[];
 }
 
 /**
@@ -628,7 +198,7 @@ interface ParsedIndex {
  */
 function extractIndexStatements(sql: string): ParsedIndex[] {
   const results: ParsedIndex[] = [];
-  const pattern = /create\s+(unique\s+)?(?:nonclustered\s+)?index\s+(?:\[?(\w+)\]?)\s+on\s+(?:\[?\w+\]?\.)?[\[`"]?(\w+)[\]`"]?\s*\(([^)]+)\)/gi;
+  const pattern = /create\s+(unique\s+)?(?:nonclustered\s+)?index\s+(?:if\s+not\s+exists\s+)?(?:\[?(\w+)\]?)\s+on\s+(?:\[?\w+\]?\.)?[\[`"]?(\w+)[\]`"]?\s*\(([^)]+)\)/gi;
   let m: RegExpExecArray | null;
   while ((m = pattern.exec(sql)) !== null) {
     const unique = !!m[1];
@@ -640,144 +210,7 @@ function extractIndexStatements(sql: string): ParsedIndex[] {
   return results;
 }
 
-interface OraclePreprocessResult {
-  cleanedSql: string;
-  tableComments: Map<string, string>;
-  colComments: Map<string, Map<string, string>>;
-  identityColumns: Map<string, Set<string>>;
-}
-
-function preprocessOracle(sql: string): OraclePreprocessResult {
-  const tableComments = new Map<string, string>();
-  const colComments = new Map<string, Map<string, string>>();
-  const identityColumns = new Map<string, Set<string>>();
-
-  // Extract COMMENT ON TABLE
-  const tableCommentRe = /COMMENT\s+ON\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s+IS\s+'([^']*)'/gi;
-  let m: RegExpExecArray | null;
-  while ((m = tableCommentRe.exec(sql)) !== null) {
-    tableComments.set(m[1], m[2]);
-  }
-
-  // Extract COMMENT ON COLUMN
-  const colCommentRe = /COMMENT\s+ON\s+COLUMN\s+(?:"\w+"\.)?"?(\w+)"?\."?(\w+)"?\s+IS\s+'([^']*)'/gi;
-  while ((m = colCommentRe.exec(sql)) !== null) {
-    if (!colComments.has(m[1])) colComments.set(m[1], new Map());
-    colComments.get(m[1])!.set(m[2], m[3]);
-  }
-
-  // Extract IDENTITY columns (GENERATED ... AS IDENTITY)
-  const tableRe = /CREATE\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s*\(([\s\S]*?)\)\s*;/gi;
-  while ((m = tableRe.exec(sql)) !== null) {
-    const tableName = m[1];
-    const body = m[2];
-    const identityRe = /^\s*"?(\w+)"?\s+.*GENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY/gim;
-    let cm: RegExpExecArray | null;
-    while ((cm = identityRe.exec(body)) !== null) {
-      if (!identityColumns.has(tableName)) identityColumns.set(tableName, new Set());
-      identityColumns.get(tableName)!.add(cm[1]);
-    }
-  }
-
-  let cleaned = sql;
-  // Remove COMMENT ON statements
-  cleaned = cleaned.replace(/COMMENT\s+ON\s+(?:TABLE|COLUMN)\s+[^;]*;/gi, '');
-  // Remove ALTER TABLE FK statements (will be re-parsed)
-  // Remove Oracle-specific syntax
-  cleaned = cleanOracleSyntax(cleaned);
-
-  return { cleanedSql: cleaned, tableComments, colComments, identityColumns };
-}
-
-function cleanOracleSyntax(sql: string): string {
-  // Remove / batch separators (Oracle SQL*Plus)
-  sql = sql.replace(/^\s*\/\s*$/gm, '');
-  // Remove GENERATED ... AS IDENTITY
-  sql = sql.replace(/\bGENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY(?:\s*\([^)]*\))?/gi, '');
-  // VARCHAR2 → VARCHAR
-  sql = sql.replace(/\bVARCHAR2\b/gi, 'VARCHAR');
-  // NVARCHAR2 → VARCHAR
-  sql = sql.replace(/\bNVARCHAR2\b/gi, 'VARCHAR');
-  // NUMBER → DECIMAL
-  sql = sql.replace(/\bNUMBER\b/gi, 'DECIMAL');
-  // CLOB/NCLOB → TEXT
-  sql = sql.replace(/\bNCLOB\b/gi, 'TEXT');
-  sql = sql.replace(/\bCLOB\b/gi, 'TEXT');
-  // BINARY_DOUBLE → DOUBLE PRECISION
-  sql = sql.replace(/\bBINARY_DOUBLE\b/gi, 'DOUBLE PRECISION');
-  // BINARY_FLOAT → FLOAT
-  sql = sql.replace(/\bBINARY_FLOAT\b/gi, 'FLOAT');
-  // RAW(...) → TEXT
-  sql = sql.replace(/\bRAW\s*\(\s*\d+\s*\)/gi, 'TEXT');
-  // Remove Oracle keywords: ENABLE, NOVALIDATE, TABLESPACE, PCTFREE, INITRANS, etc.
-  sql = sql.replace(/\bENABLE\b/gi, '');
-  sql = sql.replace(/\bNOVALIDATE\b/gi, '');
-  sql = sql.replace(/\bTABLESPACE\s+\w+/gi, '');
-  sql = sql.replace(/\bPCTFREE\s+\d+/gi, '');
-  sql = sql.replace(/\bINITRANS\s+\d+/gi, '');
-  sql = sql.replace(/\bSTORAGE\s*\([^)]*\)/gi, '');
-  sql = sql.replace(/\bLOGGING\b/gi, '');
-  sql = sql.replace(/\bNOLOGGING\b/gi, '');
-  sql = sql.replace(/\bSEGMENT\s+CREATION\s+\w+/gi, '');
-  // Remove USING INDEX clause
-  sql = sql.replace(/\bUSING\s+INDEX\b/gi, '');
-  // Fix trailing comma before closing paren
-  sql = sql.replace(/,(\s*\n?\s*\))/g, '$1');
-  return sql;
-}
-
-interface H2PreprocessResult {
-  cleanedSql: string;
-  tableComments: Map<string, string>;
-  colComments: Map<string, Map<string, string>>;
-  identityColumns: Map<string, Set<string>>;
-}
-
-function preprocessH2(sql: string): H2PreprocessResult {
-  const tableComments = new Map<string, string>();
-  const colComments = new Map<string, Map<string, string>>();
-  const identityColumns = new Map<string, Set<string>>();
-
-  // Extract COMMENT ON TABLE
-  const tableCommentRe = /COMMENT\s+ON\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s+IS\s+'([^']*)'/gi;
-  let m: RegExpExecArray | null;
-  while ((m = tableCommentRe.exec(sql)) !== null) {
-    tableComments.set(m[1], m[2]);
-  }
-
-  // Extract COMMENT ON COLUMN
-  const colCommentRe = /COMMENT\s+ON\s+COLUMN\s+(?:"\w+"\.)?"?(\w+)"?\."?(\w+)"?\s+IS\s+'([^']*)'/gi;
-  while ((m = colCommentRe.exec(sql)) !== null) {
-    if (!colComments.has(m[1])) colComments.set(m[1], new Map());
-    colComments.get(m[1])!.set(m[2], m[3]);
-  }
-
-  // Extract IDENTITY columns (GENERATED BY DEFAULT AS IDENTITY / AUTO_INCREMENT)
-  const tableRe = /CREATE\s+TABLE\s+(?:"\w+"\.)?"?(\w+)"?\s*\(([\s\S]*?)\)\s*;/gi;
-  while ((m = tableRe.exec(sql)) !== null) {
-    const tableName = m[1];
-    const body = m[2];
-    const identityRe = /^\s*"?(\w+)"?\s+.*(?:GENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY|AUTO_INCREMENT)/gim;
-    let cm: RegExpExecArray | null;
-    while ((cm = identityRe.exec(body)) !== null) {
-      if (!identityColumns.has(tableName)) identityColumns.set(tableName, new Set());
-      identityColumns.get(tableName)!.add(cm[1]);
-    }
-  }
-
-  let cleaned = sql;
-  // Remove COMMENT ON statements
-  cleaned = cleaned.replace(/COMMENT\s+ON\s+(?:TABLE|COLUMN)\s+[^;]*;/gi, '');
-  // Remove IDENTITY keywords
-  cleaned = cleaned.replace(/\bGENERATED\s+(?:ALWAYS|BY\s+DEFAULT)\s+AS\s+IDENTITY(?:\s*\([^)]*\))?/gi, '');
-  cleaned = cleaned.replace(/\bAUTO_INCREMENT\b/gi, '');
-  // Fix trailing comma before closing paren
-  cleaned = cleaned.replace(/,(\s*\n?\s*\))/g, '$1');
-
-  return { cleanedSql: cleaned, tableComments, colComments, identityColumns };
-}
-
-export async function importDDL(sql: string, dialect: Dialect = 'mysql', messages?: DDLImportMessages): Promise<ImportResult> {
+export async function importDDL(sql: string, dialect: Dialect = 'mysql', messages?: import('./ddl-import-types').DDLImportMessages): Promise<import('./ddl-import-types').ImportResult> {
   const msg = messages ?? DEFAULT_MESSAGES;
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -789,6 +222,17 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   // MSSQL preprocessor handles this separately, so skip for mssql
   if (dialect !== 'mssql') {
     sql = sql.replace(/\[([^\]]+)\]/g, '$1');
+  }
+
+  // SQLite: strip "main." default database prefix (e.g. "main.users" → "users", "references main.users" → "references users")
+  // Also fix inline REFERENCES without column list (e.g. "REFERENCES users" → "REFERENCES users(id)")
+  // since the SQLite parser requires explicit column references
+  if (dialect === 'sqlite') {
+    sql = sql.replace(/\bmain\./gi, '');
+    // Add placeholder column for inline REFERENCES without column list
+    // e.g. "REFERENCES users ON DELETE CASCADE" → "REFERENCES users(id) ON DELETE CASCADE"
+    // Must not match "REFERENCES users (id)" (table-level FK with explicit column)
+    sql = sql.replace(/\breferences\s+(\w+)\b(?!\s*\()/gi, 'references $1(id)');
   }
 
   // Extract CHECK constraints from raw SQL before parsing
@@ -808,7 +252,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   let stmts: any[];
   let mssqlComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null = null;
   let mssqlAlterFKs: MSSQLAlterFK[] = [];
-  let mssqlAlterUQs: MSSQLAlterUQ[] = [];
+  let mssqlAlterUQs: import('./ddl-import-mssql').MSSQLAlterUQ[] = [];
   let preprocessedComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null = null;
   let preprocessedIdentity: Map<string, Set<string>> | null = null;
 
@@ -845,13 +289,15 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
     const rawStmts = sql.split(/;\s*/).filter((s) => s.trim());
     for (const rawStmt of rawStmts) {
       const trimmed = rawStmt.trim();
-      if (!trimmed || !/^\s*create\s+table\b/i.test(trimmed)) continue;
+      if (!trimmed) continue;
+      // Only process CREATE TABLE and ALTER TABLE statements
+      if (!/^\s*(create\s+table|alter\s+table)\b/i.test(trimmed)) continue;
       try {
         const result = parser.astify(trimmed);
         const arr = Array.isArray(result) ? result : [result];
         stmts.push(...arr);
       } catch (e) {
-        const tMatch = trimmed.match(/create\s+table\s+(?:"\w+"\.)?"?(\w+)"?/i);
+        const tMatch = trimmed.match(/(?:create|alter)\s+table\s+(?:"\w+"\.)?"?(\w+)"?/i);
         errors.push(`Parse failed (${tMatch?.[1] ?? 'unknown'}): ${e instanceof Error ? e.message : e}`);
       }
     }
@@ -916,7 +362,8 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const stmt of stmts) {
     // ALTER TABLE ... ADD CONSTRAINT FOREIGN KEY / UNIQUE
-    if (stmt.type === 'alter' && stmt.keyword === 'table') {
+    // MySQL parser omits keyword field; PG/MariaDB parsers set keyword='table'
+    if (stmt.type === 'alter' && (stmt.keyword === 'table' || stmt.table)) {
       const tName = stmt.table?.[0]?.table ?? '';
       if (stmt.expr) {
         for (const expr of stmt.expr) {
@@ -1033,6 +480,12 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
           if (comment) col.comment = comment;
 
           columns.push(col);
+
+          // Inline REFERENCES (SQLite parser returns reference_definition on column-level)
+          if (def.reference_definition) {
+            const fk = extractFKFromRefDef(def.reference_definition, [{ column: colName }]);
+            if (fk) foreignKeys.push(fk);
+          }
         } else if (def.resource === 'constraint') {
           const ct = def.constraint_type?.toUpperCase() ?? '';
           if (ct === 'PRIMARY KEY') {
@@ -1230,8 +683,8 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
       columnIds,
       referencedTableId: refTable.id,
       referencedColumnIds,
-      onDelete: 'RESTRICT',
-      onUpdate: 'RESTRICT',
+      onDelete: afk.onDelete ?? 'RESTRICT',
+      onUpdate: afk.onUpdate ?? 'RESTRICT',
     });
   }
 
@@ -1268,6 +721,11 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
       .map((name) => srcTable.columns.find((c) => c.name === name)?.id)
       .filter((id): id is string => !!id);
     if (colIds.length === 0) continue;
+    // Mark single-column unique indexes on the column itself
+    if (pidx.unique && colIds.length === 1) {
+      const col = srcTable.columns.find((c) => c.id === colIds[0]);
+      if (col && !col.unique) col.unique = true;
+    }
     const idx: TableIndex = {
       id: generateId(),
       columnIds: colIds,
