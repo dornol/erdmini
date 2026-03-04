@@ -5,7 +5,101 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="description" content="Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL." />
 		<meta name="theme-color" content="#1e293b" />
-		<title>erdmini</title>
+		<title>erdmini — Free Browser-Based ERD Tool</title>
+		<link rel="canonical" href="https://erdmini.dornol.dev" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="erdmini — Free Browser-Based ERD Tool" />
+		<meta property="og:description" content="Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL." />
+		<meta property="og:url" content="https://erdmini.dornol.dev" />
+		<meta property="og:image" content="https://erdmini.dornol.dev/og-image.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:site_name" content="erdmini" />
+		<meta property="og:locale" content="en_US" />
+
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="erdmini — Free Browser-Based ERD Tool" />
+		<meta name="twitter:description" content="Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL." />
+		<meta name="twitter:image" content="https://erdmini.dornol.dev/og-image.png" />
+
+		<!-- hreflang -->
+		<link rel="alternate" hreflang="en" href="https://erdmini.dornol.dev" />
+		<link rel="alternate" hreflang="ko" href="https://erdmini.dornol.dev" />
+		<link rel="alternate" hreflang="ja" href="https://erdmini.dornol.dev" />
+		<link rel="alternate" hreflang="zh" href="https://erdmini.dornol.dev" />
+		<link rel="alternate" hreflang="x-default" href="https://erdmini.dornol.dev" />
+
+		<!-- JSON-LD: SoftwareApplication -->
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "SoftwareApplication",
+			"name": "erdmini",
+			"url": "https://erdmini.dornol.dev",
+			"description": "Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL.",
+			"applicationCategory": "DeveloperApplication",
+			"applicationSubCategory": "Database Design Tool",
+			"operatingSystem": "Any",
+			"availableOnDevice": "Web Browser",
+			"permissions": "none",
+			"isAccessibleForFree": true,
+			"offers": {
+				"@type": "Offer",
+				"price": "0",
+				"priceCurrency": "USD"
+			},
+			"featureList": "Visual ERD Designer, DDL Export/Import, MySQL, PostgreSQL, MariaDB, MSSQL, Auto-Layout, Schema Linting, Real-time Collaboration, URL Sharing",
+			"screenshot": "https://erdmini.dornol.dev/og-image.png",
+			"inLanguage": ["en", "ko", "ja", "zh"]
+		}
+		</script>
+
+		<!-- JSON-LD: FAQPage -->
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "FAQPage",
+			"mainEntity": [
+				{
+					"@type": "Question",
+					"name": "Is erdmini free?",
+					"acceptedAnswer": {
+						"@type": "Answer",
+						"text": "Yes. erdmini is completely free and open-source. No sign-up or payment required."
+					}
+				},
+				{
+					"@type": "Question",
+					"name": "What databases does erdmini support?",
+					"acceptedAnswer": {
+						"@type": "Answer",
+						"text": "erdmini exports DDL for MySQL, PostgreSQL, MariaDB, and Microsoft SQL Server (MSSQL)."
+					}
+				},
+				{
+					"@type": "Question",
+					"name": "Does erdmini require a server?",
+					"acceptedAnswer": {
+						"@type": "Answer",
+						"text": "No. erdmini runs entirely in the browser using local storage. An optional server mode with SQLite, Docker, and real-time collaboration is also available."
+					}
+				},
+				{
+					"@type": "Question",
+					"name": "Can I share my ERD with others?",
+					"acceptedAnswer": {
+						"@type": "Answer",
+						"text": "Yes. You can share schemas via URL (compressed, no server needed) or export as DDL, Mermaid, PlantUML, SVG, or PNG."
+					}
+				}
+			]
+		}
+		</script>
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

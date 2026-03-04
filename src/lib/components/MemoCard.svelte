@@ -132,13 +132,17 @@
         erdStore.detachMemo(memo.id);
       }
     }
+    // Only clear shared memoDragState if this memo was actually being dragged,
+    // otherwise other MemoCard instances' handlers would clear it prematurely
+    if (isDragging) {
+      memoDragState.isDragging = false;
+      memoDragState.hoverTableId = null;
+    }
     isDragging = false;
     isSingleDrag = false;
     hasDragged = false;
     isResizing = false;
     groupDragStarts = null;
-    memoDragState.isDragging = false;
-    memoDragState.hoverTableId = null;
   }
 
   async function startEditing() {

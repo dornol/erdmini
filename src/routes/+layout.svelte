@@ -106,6 +106,13 @@
 	<meta name="twitter:description" content={SITE_DESCRIPTION} />
 	<meta name="twitter:image" content="{data.siteUrl}/og-image.png" />
 
+	<!-- hreflang -->
+	<link rel="alternate" hreflang="en" href={data.siteUrl} />
+	<link rel="alternate" hreflang="ko" href={data.siteUrl} />
+	<link rel="alternate" hreflang="ja" href={data.siteUrl} />
+	<link rel="alternate" hreflang="zh" href={data.siteUrl} />
+	<link rel="alternate" hreflang="x-default" href={data.siteUrl} />
+
 	<!-- Structured Data -->
 	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 	{@html `<script type="application/ld+json">${faqJsonLd}</script>`}

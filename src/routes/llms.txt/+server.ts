@@ -1,10 +1,9 @@
-import { PUBLIC_SITE_URL, PUBLIC_STORAGE_MODE } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
-const siteUrl = PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
-
-export const prerender = PUBLIC_STORAGE_MODE !== 'server';
+export const prerender = true;
 
 export function GET() {
+	const siteUrl = env.PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
 	const body = `# erdmini
 
 > Free, open-source, browser-based Entity-Relationship Diagram (ERD) tool. No sign-up required. Design database schemas visually and export DDL for multiple dialects.

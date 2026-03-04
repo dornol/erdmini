@@ -1,10 +1,9 @@
-import { PUBLIC_SITE_URL, PUBLIC_STORAGE_MODE } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
-const siteUrl = PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
-
-export const prerender = PUBLIC_STORAGE_MODE !== 'server';
+export const prerender = true;
 
 export function GET() {
+	const siteUrl = env.PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
 	const body = `User-agent: *
 Disallow:
 

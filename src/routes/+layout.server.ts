@@ -1,10 +1,8 @@
 import { env } from '$env/dynamic/public';
-import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { LayoutServerLoad } from './$types';
 
-const siteUrl = PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
-
 export const load: LayoutServerLoad = async ({ locals }) => {
+  const siteUrl = env.PUBLIC_SITE_URL || 'https://erdmini.dornol.dev';
   const isServerMode = env.PUBLIC_STORAGE_MODE === 'server';
 
   if (!isServerMode) {

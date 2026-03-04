@@ -6,7 +6,7 @@ const config = {
 	kit: {
 		adapter: isServer
 			? (await import('@sveltejs/adapter-node')).default()
-			: (await import('@sveltejs/adapter-static')).default({ fallback: 'index.html' }),
+			: (await import('@sveltejs/adapter-static')).default({ fallback: '404.html' }),
 		paths: {
 			base: basePath,
 		},
