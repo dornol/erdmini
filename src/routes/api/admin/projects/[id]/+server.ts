@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
+import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 
 function requireAdmin(locals: App.Locals) {
@@ -77,6 +78,8 @@ export const PATCH: RequestHandler = async ({ request, locals, params }) => {
 
   transferTx();
 
+  logAudit({ action: 'transfer', category: 'project', userId: locals.user!.id, username: locals.user!.username, resourceType: 'project', resourceId: projectId, detail: { oldOwnerId: currentOwner?.user_id, newOwnerId } });
+
   return json({ success: true });
 };
 
@@ -118,6 +121,8 @@ export const DELETE: RequestHandler = ({ locals, params }) => {
   });
 
   deleteTx();
+
+  logAudit({ action: 'delete', category: 'project', userId: locals.user!.id, username: locals.user!.username, resourceType: 'project', resourceId: projectId });
 
   return json({ success: true });
 };

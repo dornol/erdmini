@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type Database from 'better-sqlite3';
 
 import type { ResolvedApiKey } from '$lib/server/auth/api-key';
+import { logAudit } from '$lib/server/audit';
 import { checkAccess, getSchema, saveSchema, listUserProjects } from './db-helpers';
 import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo, addDomain, updateDomain, deleteDomain, suggestDomains } from './schema-ops';
 import { exportDDL, type DDLExportOptions } from '$lib/utils/ddl-export';
@@ -34,6 +35,19 @@ export function createMcpServer(
   function saveAndNotify(projectId: string, schema: ERDSchema): void {
     saveSchema(db, projectId, schema);
     notifyCollabSchemaChange(projectId, schema, 'mcp');
+  }
+
+  function mcpAudit(action: string, projectId: string, detail?: Record<string, unknown>): void {
+    logAudit({
+      action,
+      category: 'mcp',
+      userId: keyInfo.userId,
+      username: keyInfo.displayName,
+      resourceType: 'schema',
+      resourceId: projectId,
+      detail,
+      source: 'mcp',
+    });
   }
 
   // ==================
@@ -287,6 +301,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
       }
       const result = addTable(schema, opts);
+      mcpAudit('add_table', projectId, { name: opts.name });
       saveAndNotify(projectId, result.schema);
       return {
         content: [{ type: 'text', text: JSON.stringify({ tableId: result.tableId, name: opts.name || result.schema.tables.find(t => t.id === result.tableId)?.name }) }],
@@ -316,6 +331,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
       }
       const updated = updateTable(schema, tableId, patch);
+      mcpAudit('update_table', projectId, { tableId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Table updated' }] };
     },
@@ -338,6 +354,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
       }
       const updated = deleteTable(schema, tableId);
+      mcpAudit('delete_table', projectId, { tableId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Table deleted' }] };
     },
@@ -371,6 +388,7 @@ export function createMcpServer(
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
       }
+      mcpAudit('add_column', projectId, { tableId, name: colOpts.name });
       saveAndNotify(projectId, result.schema);
       return {
         content: [{ type: 'text', text: JSON.stringify({ columnId: result.columnId }) }],
@@ -410,6 +428,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Column ${columnId} not found` }], isError: true };
       }
       const updated = updateColumn(schema, tableId, columnId, patch as any);
+      mcpAudit('update_column', projectId, { tableId, columnId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Column updated' }] };
     },
@@ -437,6 +456,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Column ${columnId} not found` }], isError: true };
       }
       const updated = deleteColumn(schema, tableId, columnId);
+      mcpAudit('delete_column', projectId, { tableId, columnId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Column deleted' }] };
     },
@@ -470,6 +490,7 @@ export function createMcpServer(
       if (!result) {
         return { content: [{ type: 'text', text: 'Table not found' }], isError: true };
       }
+      mcpAudit('add_foreign_key', projectId, { tableId, referencedTableId });
       saveAndNotify(projectId, result.schema);
       return {
         content: [{ type: 'text', text: JSON.stringify({ fkId: result.fkId }) }],
@@ -499,6 +520,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Foreign key ${fkId} not found` }], isError: true };
       }
       const updated = deleteForeignKey(schema, tableId, fkId);
+      mcpAudit('delete_foreign_key', projectId, { tableId, fkId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Foreign key deleted' }] };
     },
@@ -525,6 +547,7 @@ export function createMcpServer(
         delete groupColors[group];
       }
       const updated: typeof schema = { ...schema, groupColors, updatedAt: new Date().toISOString() };
+      mcpAudit('update_group_color', projectId, { group, color });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: color ? `Group "${group}" color set to ${color}` : `Group "${group}" color cleared` }] };
     },
@@ -568,6 +591,7 @@ export function createMcpServer(
         schema.updatedAt = new Date().toISOString();
       }
 
+      mcpAudit('import_ddl', projectId, { dialect: dialect || 'mysql', tableCount: result.tables.length, replace: !!replace });
       saveAndNotify(projectId, schema);
 
       const summary = [`Imported ${result.tables.length} table(s)`];
@@ -632,6 +656,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
       }
       const result = addMemo(schema, opts);
+      mcpAudit('add_memo', projectId);
       saveAndNotify(projectId, result.schema);
       return {
         content: [{ type: 'text', text: JSON.stringify({ memoId: result.memoId }) }],
@@ -664,6 +689,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Memo ${memoId} not found` }], isError: true };
       }
       const updated = updateMemo(schema, memoId, patch);
+      mcpAudit('update_memo', projectId, { memoId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Memo updated' }] };
     },
@@ -687,6 +713,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Memo ${memoId} not found` }], isError: true };
       }
       const updated = deleteMemo(schema, memoId);
+      mcpAudit('delete_memo', projectId, { memoId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Memo deleted' }] };
     },
@@ -820,6 +847,7 @@ export function createMcpServer(
         parentId: opts.parentId,
       };
       const result = addDomain(schema, domainFields);
+      mcpAudit('add_domain', projectId, { name });
       saveAndNotify(projectId, result.schema);
       return {
         content: [{ type: 'text', text: JSON.stringify({ domainId: result.domainId, name }) }],
@@ -865,6 +893,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Domain ${domainId} not found` }], isError: true };
       }
       const updated = updateDomain(schema, domainId, patch as any);
+      mcpAudit('update_domain', projectId, { domainId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Domain updated (changes propagated to linked columns)' }] };
     },
@@ -887,6 +916,7 @@ export function createMcpServer(
         return { content: [{ type: 'text', text: `Domain ${domainId} not found` }], isError: true };
       }
       const updated = deleteDomain(schema, domainId);
+      mcpAudit('delete_domain', projectId, { domainId });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: 'Domain deleted (linked columns unlinked)' }] };
     },

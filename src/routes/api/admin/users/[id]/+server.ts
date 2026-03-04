@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { hashPassword } from '$lib/server/auth/password';
+import { logAudit } from '$lib/server/audit';
 import type { UserRow } from '$lib/types/auth';
 
 function requireAdmin(locals: App.Locals) {
@@ -80,6 +81,13 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     updates.push("updated_at = datetime('now')");
     values.push(params.id);
     db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+
+    if (status !== undefined) {
+      logAudit({ action: status === 'active' ? 'approve' : 'reject', category: 'user', userId: locals.user!.id, username: locals.user!.username, resourceType: 'user', resourceId: params.id });
+    } else {
+      const fields = Object.keys(body).filter(k => body[k] !== undefined && k !== 'status');
+      logAudit({ action: 'update', category: 'user', userId: locals.user!.id, username: locals.user!.username, resourceType: 'user', resourceId: params.id, detail: { fields } });
+    }
   }
 
   return json({ ok: true });
@@ -94,7 +102,7 @@ export const DELETE: RequestHandler = ({ params, locals }) => {
     return json({ error: 'Cannot delete yourself' }, { status: 400 });
   }
 
-  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(params.id) as Pick<UserRow, 'id' | 'role'> | undefined;
+  const user = db.prepare('SELECT id, username, role FROM users WHERE id = ?').get(params.id) as Pick<UserRow, 'id' | 'username' | 'role'> | undefined;
   if (!user) {
     return json({ error: 'User not found' }, { status: 404 });
   }
@@ -125,6 +133,8 @@ export const DELETE: RequestHandler = ({ params, locals }) => {
 
   // Delete user (cascades to sessions and oidc_identities)
   db.prepare('DELETE FROM users WHERE id = ?').run(params.id);
+
+  logAudit({ action: 'delete', category: 'user', userId: locals.user!.id, username: locals.user!.username, resourceType: 'user', resourceId: params.id, detail: { deletedUsername: user.username } });
 
   return json({ ok: true });
 };

@@ -106,7 +106,7 @@ export function findOrCreateOIDCUser(
   email: string | undefined,
   name: string | undefined,
   autoCreate: boolean,
-): { userId: string; status: string } | null {
+): { userId: string; status: string; created?: boolean } | null {
   // Check existing identity (join users to get status)
   const existing = db.prepare(
     `SELECT oi.user_id, u.status
@@ -134,7 +134,7 @@ export function findOrCreateOIDCUser(
     'INSERT INTO oidc_identities (id, user_id, provider_id, subject, email) VALUES (?, ?, ?, ?, ?)'
   ).run(identityId, userId, providerId, sub, email || null);
 
-  return { userId, status };
+  return { userId, status, created: true };
 }
 
 // Cleanup expired states (call periodically)

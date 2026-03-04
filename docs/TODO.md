@@ -112,9 +112,9 @@
 
 ## Large-Scale Improvements
 
-### 23. Audit Trail Logging
-- Log key activities in server mode: schema changes, MCP operations, admin settings, API key issuance, user registration/login
-- Design log storage format (DB table + query API + Admin UI)
+### ~~23. Audit Trail Logging~~ ✅
+- ~~Log key activities in server mode: schema changes, MCP operations, admin settings, API key issuance, user registration/login~~
+- ~~Design log storage format (DB table + query API + Admin UI)~~
 - Difficulty: Large
 
 ### ~~24. DDL Dialect Expansion (Oracle, H2, SQLite)~~ ✅

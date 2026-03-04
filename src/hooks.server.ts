@@ -22,9 +22,13 @@ export const handle: Handle = async ({ event, resolve }) => {
   const db = (await import('$lib/server/db')).default;
   const { setupAdmin } = await import('$lib/server/auth/setup');
   const { validateSession } = await import('$lib/server/auth/session');
+  const { startAuditCleanupScheduler } = await import('$lib/server/audit');
 
   // Ensure admin user exists (async password hashing)
   await setupAdmin(db);
+
+  // Start daily audit log cleanup (idempotent)
+  startAuditCleanupScheduler();
 
   // Check session cookie
   const sessionId = event.cookies.get('erdmini_session');

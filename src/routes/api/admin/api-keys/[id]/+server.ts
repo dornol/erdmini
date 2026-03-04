@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
+import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 
 function requireAdmin(locals: App.Locals) {
@@ -14,10 +15,14 @@ export const DELETE: RequestHandler = ({ params, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
+  const keyRow = db.prepare('SELECT name FROM api_keys WHERE id = ?').get(params.id) as { name: string } | undefined;
+
   const result = db.prepare('DELETE FROM api_keys WHERE id = ?').run(params.id);
   if (result.changes === 0) {
     return json({ error: 'API key not found' }, { status: 404 });
   }
+
+  logAudit({ action: 'delete', category: 'api-key', userId: locals.user!.id, username: locals.user!.username, resourceType: 'api-key', resourceId: params.id, detail: { name: keyRow?.name } });
 
   return json({ success: true });
 };
@@ -59,6 +64,9 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
       }
     }
   }
+
+  const fields = Object.keys({ name, scopes, expiresAt }).filter(k => ({ name, scopes, expiresAt } as Record<string, unknown>)[k] !== undefined);
+  logAudit({ action: 'update', category: 'api-key', userId: locals.user!.id, username: locals.user!.username, resourceType: 'api-key', resourceId: params.id, detail: { fields } });
 
   return json({ success: true });
 };

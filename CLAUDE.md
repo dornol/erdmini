@@ -85,7 +85,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (17 test files, 366 tests)
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (19 test files, 737 tests)
 - 40 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos, schemas)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts
@@ -93,6 +93,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 - **ID generation** uses 8-char alphanumeric (`Math.random().toString(36).slice(2,10)`), not UUIDs
 - **Tailwind CSS v4** — config via CSS (no `tailwind.config.js`)
 - **Migration system** is checksum-verified on startup — never modify applied SQL migration files, only add new `V###__description.sql` files
+- **TODO list** in `docs/TODO.md` — feature improvement backlog; check remaining items when asked about pending work
 
 ## Environment Variables
 
@@ -107,3 +108,5 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 | `PUBLIC_SITE_URL` | — | Canonical URL for SEO |
 | `PUBLIC_APP_URL` | `http://localhost:5173` | App URL for OIDC redirect URIs |
 | `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry in days |
+| `AUDIT_RETENTION_DAYS` | `720` | Audit log retention period in days |
+| `AUDIT_CLEANUP_HOUR` | `3` | Hour (0-23) for daily audit log cleanup |

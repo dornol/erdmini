@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
+import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import type { OIDCProviderRow } from '$lib/types/auth';
 
@@ -48,6 +49,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     enabled ? 1 : 0,
     autoCreateUsers ? 1 : 0,
   );
+
+  logAudit({ action: 'create', category: 'oidc-provider', userId: locals.user!.id, username: locals.user!.username, resourceType: 'provider', resourceId: id, detail: { displayName, issuerUrl } });
 
   return json({ id, displayName, issuerUrl }, { status: 201 });
 };

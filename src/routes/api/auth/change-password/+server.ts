@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { hashPassword, verifyPassword } from '$lib/server/auth/password';
+import { logAudit } from '$lib/server/audit';
 import type { UserRow } from '$lib/types/auth';
 
 export const PUT: RequestHandler = async ({ locals, request }) => {
@@ -28,6 +29,8 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 
   const newHash = await hashPassword(newPassword);
   db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newHash, user.id);
+
+  logAudit({ action: 'change_password', category: 'auth', userId: user.id, username: user.username, source: 'web' });
 
   return json({ ok: true });
 };

@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db, { getDbPath, closeDb, reinitDb } from '$lib/server/db';
+import { logAudit } from '$lib/server/audit';
 import { statSync, readFileSync, writeFileSync, unlinkSync, copyFileSync, existsSync, renameSync } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
@@ -59,6 +60,7 @@ export const GET: RequestHandler = ({ locals, url }) => {
     copyFileSync(dbPath, tempPath);
 
     const data = readFileSync(tempPath);
+    logAudit({ action: 'backup', category: 'backup', userId: locals.user!.id, username: locals.user!.username, detail: { sizeBytes: data.length }, source: 'web' });
     const now = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     return new Response(data, {
       headers: {
@@ -163,6 +165,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     // 6. Success — clean up safety backup
     try { if (existsSync(bakPath)) unlinkSync(bakPath); } catch { /* ignore */ }
+
+    logAudit({ action: 'restore', category: 'backup', userId: locals.user!.id, username: locals.user!.username, detail: { filename: file.name }, source: 'web' });
 
     return json({ success: true });
   } finally {

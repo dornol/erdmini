@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { hashPassword } from '$lib/server/auth/password';
+import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import type { UserRow } from '$lib/types/auth';
 
@@ -65,6 +66,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     `INSERT INTO users (id, username, display_name, email, password_hash, role)
      VALUES (?, ?, ?, ?, ?, ?)`
   ).run(id, username, displayName, email || null, passwordHash, role || 'user');
+
+  logAudit({ action: 'create', category: 'user', userId: locals.user!.id, username: locals.user!.username, resourceType: 'user', resourceId: id, detail: { newUsername: username, role: role || 'user' } });
 
   return json({ id, username, displayName, email, role: role || 'user' }, { status: 201 });
 };

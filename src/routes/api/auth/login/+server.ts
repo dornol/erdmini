@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { verifyPassword } from '$lib/server/auth/password';
 import { createSession } from '$lib/server/auth/session';
+import { logAudit } from '$lib/server/audit';
 import type { UserRow } from '$lib/types/auth';
 
 // Pre-computed hash for timing attack mitigation: always run argon2 even if user not found
@@ -52,10 +53,12 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
   const valid = await verifyPassword(hashToVerify, password);
 
   if (!user || !user.password_hash || !valid) {
+    logAudit({ action: 'login_failed', category: 'auth', detail: { username }, ip });
     return json({ error: 'Invalid credentials' }, { status: 401 });
   }
 
   if (user.status === 'pending') {
+    logAudit({ action: 'login_blocked', category: 'auth', userId: user.id, username: user.username, detail: { reason: 'pending' }, ip });
     return json({ error: 'pending_approval' }, { status: 403 });
   }
 
@@ -68,6 +71,8 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
     secure: url.protocol === 'https:',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   });
+
+  logAudit({ action: 'login', category: 'auth', userId: user.id, username: user.username, ip, source: 'web' });
 
   return json({
     user: {

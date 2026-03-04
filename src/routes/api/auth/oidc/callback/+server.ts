@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { handleCallback, findOrCreateOIDCUser, cleanupExpiredStates } from '$lib/server/auth/oidc';
 import { createSession } from '$lib/server/auth/session';
+import { logAudit } from '$lib/server/audit';
 import type { OIDCProviderRow, OIDCStateRow } from '$lib/types/auth';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
@@ -47,7 +48,12 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     );
 
     if (!result) {
+      logAudit({ action: 'oidc_login_failed', category: 'auth', detail: { provider: provider.display_name, error: 'auto_registration_disabled' } });
       throw redirect(303, '/login?error=auto_registration_disabled');
+    }
+
+    if (result.created) {
+      logAudit({ action: 'oidc_register', category: 'auth', userId: result.userId, username: email ?? name ?? sub, detail: { provider: provider.display_name, status: result.status } });
     }
 
     if (result.status === 'pending') {
@@ -64,6 +70,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       maxAge: 30 * 24 * 60 * 60,
     });
 
+    logAudit({ action: 'oidc_login', category: 'auth', userId: result.userId, username: email ?? name, detail: { provider: provider.display_name } });
+
     // Cleanup expired states occasionally
     cleanupExpiredStates(db);
 
@@ -77,6 +85,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       }
     }
     console.error('OIDC callback error:', e);
+    logAudit({ action: 'oidc_login_failed', category: 'auth', detail: { provider: provider.display_name, error: String(e) } });
     throw redirect(303, '/login?error=auth_failed');
   }
 };

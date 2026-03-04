@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { generateApiKey } from '$lib/server/auth/api-key';
+import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
 
@@ -74,6 +75,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }
     }
   }
+
+  logAudit({ action: 'create', category: 'api-key', userId: locals.user!.id, username: locals.user!.username, resourceType: 'api-key', resourceId: id, detail: { name, targetUserId, scopes: scopes?.length ?? 0 } });
 
   // Return the raw key only once
   return json({ id, key, name, userId: targetUserId, expiresAt: expiresAt || null }, { status: 201 });
