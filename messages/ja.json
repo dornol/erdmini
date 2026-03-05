@@ -402,5 +402,19 @@
   "admin_audit_oldest": "最古の記録: {date}",
   "admin_audit_purge": "古いログを削除",
   "admin_audit_purge_confirm": "{days}日以前の監査ログを削除します。元に戻せません。",
-  "admin_audit_purge_result": "{count}件のログを削除しました"
+  "admin_audit_purge_result": "{count}件のログを削除しました",
+  "snapshot_title": "スナップショット",
+  "snapshot_create": "スナップショット保存",
+  "snapshot_name_placeholder": "スナップショット名",
+  "snapshot_description_placeholder": "説明（任意）",
+  "snapshot_restore": "復元",
+  "snapshot_restore_confirm": "スナップショット「{name}」を復元しますか？現在のスキーマが置き換えられます。",
+  "snapshot_delete": "削除",
+  "snapshot_delete_confirm": "スナップショット「{name}」を削除しますか？",
+  "snapshot_empty": "スナップショットがありません",
+  "snapshot_saved": "スナップショットを保存しました",
+  "snapshot_restored": "スナップショットを復元しました",
+  "snapshot_compare": "比較",
+  "diff_from_snapshot": "スナップショットから",
+  "toolbar_snapshots": "スナップショット"
 }

@@ -23,6 +23,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import { collabClient } from '$lib/collab/collab-client';
   import { collabStore } from '$lib/store/collab.svelte';
+  import { snapshotStore } from '$lib/store/snapshot.svelte';
   import { handleServerMessage, sendPresence, sendOperation } from '$lib/collab/operation-bridge';
   import { browser } from '$app/environment';
   import { replaceState } from '$app/navigation';
@@ -72,6 +73,7 @@
   onMount(async () => {
     const provider = await getStorageProvider();
     await projectStore.init(provider);
+    await snapshotStore.init(provider, projectStore.index.activeProjectId);
 
     // Load shared schema from URL hash immediately after init (most reliable timing)
     await loadShareFromHash();

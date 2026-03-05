@@ -402,5 +402,19 @@
   "admin_audit_oldest": "最早记录: {date}",
   "admin_audit_purge": "清理旧日志",
   "admin_audit_purge_confirm": "删除 {days} 天前的审计日志？此操作不可撤销。",
-  "admin_audit_purge_result": "已删除 {count} 条日志"
+  "admin_audit_purge_result": "已删除 {count} 条日志",
+  "snapshot_title": "快照",
+  "snapshot_create": "保存快照",
+  "snapshot_name_placeholder": "快照名称",
+  "snapshot_description_placeholder": "描述（可选）",
+  "snapshot_restore": "恢复",
+  "snapshot_restore_confirm": "恢复快照 \"{name}\"？当前架构将被替换。",
+  "snapshot_delete": "删除",
+  "snapshot_delete_confirm": "删除快照 \"{name}\"？",
+  "snapshot_empty": "暂无快照",
+  "snapshot_saved": "快照已保存",
+  "snapshot_restored": "快照已恢复",
+  "snapshot_compare": "对比",
+  "diff_from_snapshot": "从快照",
+  "toolbar_snapshots": "快照"
 }

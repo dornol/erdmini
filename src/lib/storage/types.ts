@@ -1,4 +1,4 @@
-import type { ProjectIndex, ERDSchema } from '$lib/types/erd';
+import type { ProjectIndex, ERDSchema, SchemaSnapshot } from '$lib/types/erd';
 
 export interface CanvasData {
   x: number;
@@ -17,6 +17,12 @@ export interface StorageProvider {
   loadCanvasState(projectId: string): Promise<CanvasData | null>;
   saveCanvasState(projectId: string, data: CanvasData): Promise<void>;
   deleteCanvasState(projectId: string): Promise<void>;
+
+  /** Snapshots */
+  listSnapshots(projectId: string): Promise<SchemaSnapshot[]>;
+  saveSnapshot(projectId: string, snapshot: SchemaSnapshot): Promise<void>;
+  loadSnapshot(projectId: string, snapshotId: string): Promise<SchemaSnapshot | null>;
+  deleteSnapshot(projectId: string, snapshotId: string): Promise<void>;
 
   /** Load legacy single-schema (pre-project migration) */
   loadLegacySchema(): Promise<string | null>;

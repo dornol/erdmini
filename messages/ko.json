@@ -418,5 +418,19 @@
   "admin_audit_oldest": "최초 기록: {date}",
   "admin_audit_purge": "오래된 로그 삭제",
   "admin_audit_purge_confirm": "{days}일 이전의 감사 로그를 삭제합니다. 되돌릴 수 없습니다.",
-  "admin_audit_purge_result": "{count}건의 로그가 삭제되었습니다"
+  "admin_audit_purge_result": "{count}건의 로그가 삭제되었습니다",
+  "snapshot_title": "스냅샷",
+  "snapshot_create": "스냅샷 저장",
+  "snapshot_name_placeholder": "스냅샷 이름",
+  "snapshot_description_placeholder": "설명 (선택)",
+  "snapshot_restore": "복원",
+  "snapshot_restore_confirm": "스냅샷 \"{name}\"을(를) 복원하시겠습니까? 현재 스키마가 교체됩니다.",
+  "snapshot_delete": "삭제",
+  "snapshot_delete_confirm": "스냅샷 \"{name}\"을(를) 삭제하시겠습니까?",
+  "snapshot_empty": "저장된 스냅샷이 없습니다",
+  "snapshot_saved": "스냅샷이 저장되었습니다",
+  "snapshot_restored": "스냅샷이 복원되었습니다",
+  "snapshot_compare": "비교",
+  "diff_from_snapshot": "스냅샷에서",
+  "toolbar_snapshots": "스냅샷"
 }

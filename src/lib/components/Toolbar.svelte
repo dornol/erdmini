@@ -17,6 +17,7 @@
   import LintPanel from './LintPanel.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
   import SchemaDiffModal from './SchemaDiffModal.svelte';
+  import SnapshotPanel from './SnapshotPanel.svelte';
   import ShareProjectModal from './ShareProjectModal.svelte';
   import ApiKeysModal from './ApiKeysModal.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -531,6 +532,7 @@
   let showShareModal = $state(false);
   let showHistoryPanel = $state(false);
   let showDiffModal = $state(false);
+  let showSnapshotPanel = $state(false);
 
   const VIEW_MODES: { mode: ColumnDisplayMode; label: () => string }[] = [
     { mode: 'all', label: () => m.view_mode_all() },
@@ -970,7 +972,7 @@
     <div class="dropdown-wrap">
       <button
         class="btn-secondary btn-tools"
-        class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showDomainModal || canvasState.columnDisplayMode !== 'all'}
+        class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showSnapshotPanel || showDomainModal || canvasState.columnDisplayMode !== 'all'}
         onclick={() => (toggleDropdown('tools'))}
         aria-expanded={toolsOpen}
         aria-haspopup="menu"
@@ -1027,6 +1029,9 @@
           </button>
           <button class="dropdown-item" role="menuitem" onclick={() => { showDiffModal = !showDiffModal; closeDropdown(); }}>
             {m.diff_title()}
+          </button>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showSnapshotPanel = !showSnapshotPanel; closeDropdown(); }}>
+            {m.toolbar_snapshots()}
           </button>
         </div>
       {/if}
@@ -1299,6 +1304,13 @@
 
 {#if showDiffModal}
   <SchemaDiffModal onclose={() => (showDiffModal = false)} />
+{/if}
+
+{#if showSnapshotPanel}
+  <SnapshotPanel
+    onclose={() => (showSnapshotPanel = false)}
+    ondiff={(snapshotId) => { showSnapshotPanel = false; showDiffModal = true; }}
+  />
 {/if}
 
 {#if showApiKeysModal}

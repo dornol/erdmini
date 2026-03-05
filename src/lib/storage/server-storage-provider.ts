@@ -1,4 +1,4 @@
-import type { ProjectIndex, ERDSchema } from '$lib/types/erd';
+import type { ProjectIndex, ERDSchema, SchemaSnapshot } from '$lib/types/erd';
 import type { CanvasData, StorageProvider } from './types';
 
 export class ServerStorageProvider implements StorageProvider {
@@ -53,6 +53,32 @@ export class ServerStorageProvider implements StorageProvider {
 
   async deleteCanvasState(projectId: string): Promise<void> {
     await fetch(`/api/storage/canvas/${encodeURIComponent(projectId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async listSnapshots(projectId: string): Promise<SchemaSnapshot[]> {
+    const res = await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots`);
+    if (!res.ok) return [];
+    return (await res.json()) as SchemaSnapshot[];
+  }
+
+  async saveSnapshot(projectId: string, snapshot: SchemaSnapshot): Promise<void> {
+    await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(snapshot),
+    });
+  }
+
+  async loadSnapshot(projectId: string, snapshotId: string): Promise<SchemaSnapshot | null> {
+    const res = await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots/${encodeURIComponent(snapshotId)}`);
+    if (!res.ok) return null;
+    return (await res.json()) as SchemaSnapshot;
+  }
+
+  async deleteSnapshot(projectId: string, snapshotId: string): Promise<void> {
+    await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots/${encodeURIComponent(snapshotId)}`, {
       method: 'DELETE',
     });
   }

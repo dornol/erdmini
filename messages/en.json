@@ -418,5 +418,19 @@
   "admin_audit_oldest": "Oldest: {date}",
   "admin_audit_purge": "Purge Old Logs",
   "admin_audit_purge_confirm": "Delete audit logs older than {days} days? This cannot be undone.",
-  "admin_audit_purge_result": "{count} logs deleted"
+  "admin_audit_purge_result": "{count} logs deleted",
+  "snapshot_title": "Snapshots",
+  "snapshot_create": "Save Snapshot",
+  "snapshot_name_placeholder": "Snapshot name",
+  "snapshot_description_placeholder": "Description (optional)",
+  "snapshot_restore": "Restore",
+  "snapshot_restore_confirm": "Restore snapshot \"{name}\"? Current schema will be replaced.",
+  "snapshot_delete": "Delete",
+  "snapshot_delete_confirm": "Delete snapshot \"{name}\"?",
+  "snapshot_empty": "No snapshots saved",
+  "snapshot_saved": "Snapshot saved",
+  "snapshot_restored": "Snapshot restored",
+  "snapshot_compare": "Compare",
+  "diff_from_snapshot": "From Snapshot",
+  "toolbar_snapshots": "Snapshots"
 }

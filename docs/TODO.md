@@ -140,9 +140,10 @@
 - Currently only DDL text import is supported
 - Difficulty: Large
 
-### 27. Schema Snapshots / Branching
-- Create named snapshots and switch between schema variants after experimentation (like git branches)
-- Difficulty: Large
+### ~~27. Schema Snapshots~~ ✅
+- ~~Named snapshots: save current schema state, list/restore/delete, diff comparison~~
+- ~~Storage: IndexedDB (local mode), SQLite (server mode), REST API, MCP tools~~
+- ~~Branching (병행 편집) excluded — snapshots only~~
 
 ### ~~28. Schema Namespace (Multi-Schema per Project)~~ ✅
 - ~~`schema` field on tables/memos (e.g., `public`, `auth`, `billing`)~~

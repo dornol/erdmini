@@ -1,11 +1,12 @@
-import type { ProjectIndex, ERDSchema } from '$lib/types/erd';
+import type { ProjectIndex, ERDSchema, SchemaSnapshot } from '$lib/types/erd';
 import type { CanvasData, StorageProvider } from './types';
 
 const DB_NAME = 'erdmini';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_PROJECTS = 'projects';
 const STORE_SCHEMAS = 'schemas';
 const STORE_CANVAS = 'canvas';
+const STORE_SNAPSHOTS = 'snapshots';
 
 const PROJECTS_INDEX_KEY = 'index';
 
@@ -40,6 +41,9 @@ export class LocalStorageProvider implements StorageProvider {
 				}
 				if (!db.objectStoreNames.contains(STORE_CANVAS)) {
 					db.createObjectStore(STORE_CANVAS);
+				}
+				if (!db.objectStoreNames.contains(STORE_SNAPSHOTS)) {
+					db.createObjectStore(STORE_SNAPSHOTS);
 				}
 			};
 
@@ -176,7 +180,8 @@ export class LocalStorageProvider implements StorageProvider {
 	}
 
 	async deleteSchema(projectId: string): Promise<void> {
-		return this.idbDelete(STORE_SCHEMAS, projectId);
+		await this.idbDelete(STORE_SCHEMAS, projectId);
+		await this.deleteAllSnapshots(projectId);
 	}
 
 	async loadCanvasState(projectId: string): Promise<CanvasData | null> {
@@ -189,6 +194,63 @@ export class LocalStorageProvider implements StorageProvider {
 
 	async deleteCanvasState(projectId: string): Promise<void> {
 		return this.idbDelete(STORE_CANVAS, projectId);
+	}
+
+	async listSnapshots(projectId: string): Promise<SchemaSnapshot[]> {
+		const db = await this.openDB();
+		return new Promise<SchemaSnapshot[]>((resolve, reject) => {
+			const tx = db.transaction(STORE_SNAPSHOTS, 'readonly');
+			const store = tx.objectStore(STORE_SNAPSHOTS);
+			const results: SchemaSnapshot[] = [];
+			const request = store.openCursor();
+			const prefix = `${projectId}:`;
+			request.onsuccess = () => {
+				const cursor = request.result;
+				if (cursor) {
+					if (typeof cursor.key === 'string' && cursor.key.startsWith(prefix)) {
+						results.push(cursor.value as SchemaSnapshot);
+					}
+					cursor.continue();
+				} else {
+					results.sort((a, b) => b.createdAt - a.createdAt);
+					resolve(results);
+				}
+			};
+			request.onerror = () => reject(request.error);
+		});
+	}
+
+	async saveSnapshot(projectId: string, snapshot: SchemaSnapshot): Promise<void> {
+		return this.idbPut(STORE_SNAPSHOTS, `${projectId}:${snapshot.id}`, snapshot);
+	}
+
+	async loadSnapshot(projectId: string, snapshotId: string): Promise<SchemaSnapshot | null> {
+		return this.idbGet<SchemaSnapshot>(STORE_SNAPSHOTS, `${projectId}:${snapshotId}`);
+	}
+
+	async deleteSnapshot(projectId: string, snapshotId: string): Promise<void> {
+		return this.idbDelete(STORE_SNAPSHOTS, `${projectId}:${snapshotId}`);
+	}
+
+	async deleteAllSnapshots(projectId: string): Promise<void> {
+		const db = await this.openDB();
+		return new Promise<void>((resolve, reject) => {
+			const tx = db.transaction(STORE_SNAPSHOTS, 'readwrite');
+			const store = tx.objectStore(STORE_SNAPSHOTS);
+			const request = store.openCursor();
+			const prefix = `${projectId}:`;
+			request.onsuccess = () => {
+				const cursor = request.result;
+				if (cursor) {
+					if (typeof cursor.key === 'string' && cursor.key.startsWith(prefix)) {
+						cursor.delete();
+					}
+					cursor.continue();
+				}
+			};
+			tx.oncomplete = () => resolve();
+			tx.onerror = () => reject(tx.error);
+		});
 	}
 
 	async loadLegacySchema(): Promise<string | null> {

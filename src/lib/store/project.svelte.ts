@@ -1,6 +1,7 @@
 import type { ERDSchema, ProjectIndex, ProjectMeta } from '$lib/types/erd';
 import type { StorageProvider } from '$lib/storage/types';
 import { erdStore, defaultSchema, canvasState } from '$lib/store/erd.svelte';
+import { snapshotStore } from '$lib/store/snapshot.svelte';
 import { generateId, now } from '$lib/utils/common';
 
 function migrateSchema(raw: string): ERDSchema {
@@ -150,6 +151,7 @@ class ProjectStore {
     if (meta) meta.lastOpenedAt = now();
     await this.saveIndex();
     await this.loadProjectSchema(id);
+    await snapshotStore.init(this.provider, id);
   }
 
   async createProject(name: string) {
@@ -170,6 +172,7 @@ class ProjectStore {
     await this.saveIndex();
     erdStore.clearHistory();
     erdStore.loadSchema(schema);
+    await snapshotStore.init(this.provider, id);
   }
 
   async renameProject(id: string, name: string) {
@@ -192,6 +195,7 @@ class ProjectStore {
       await this.saveIndex();
       erdStore.clearHistory();
       await this.loadProjectSchema(next.id);
+      await snapshotStore.init(this.provider, next.id);
     } else {
       await this.saveIndex();
     }

@@ -976,5 +976,87 @@ export function createMcpServer(
     },
   );
 
+  // ==================
+  // SNAPSHOT TOOLS
+  // ==================
+
+  server.tool(
+    'list_snapshots',
+    'List all named snapshots for a project',
+    { projectId: z.string().max(256).describe('Project ID') },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const rows = db.prepare(
+        'SELECT id, name, description, created_at FROM schema_snapshots WHERE project_id = ? ORDER BY created_at DESC'
+      ).all(projectId) as { id: string; name: string; description: string | null; created_at: number }[];
+      return {
+        content: [{ type: 'text', text: JSON.stringify(rows.map((r) => ({
+          id: r.id, name: r.name, description: r.description || undefined, createdAt: r.created_at,
+        })), null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
+    'create_snapshot',
+    'Save the current schema as a named snapshot',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      name: z.string().max(256).describe('Snapshot name'),
+      description: z.string().max(1024).optional().describe('Snapshot description'),
+    },
+    async ({ projectId, name, description }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const id = Math.random().toString(36).slice(2, 10);
+      const now = Date.now();
+      db.prepare(
+        'INSERT INTO schema_snapshots (id, project_id, name, description, data, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).run(id, projectId, name, description || null, JSON.stringify(schema), now, keyInfo.userId);
+      mcpAudit('create_snapshot', projectId, { snapshotId: id, name });
+      return { content: [{ type: 'text', text: JSON.stringify({ id, name, createdAt: now }) }] };
+    },
+  );
+
+  server.tool(
+    'restore_snapshot',
+    'Restore a project schema from a named snapshot',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      snapshotId: z.string().max(256).describe('Snapshot ID'),
+    },
+    async ({ projectId, snapshotId }) => {
+      requireAccess(projectId, 'editor');
+      const row = db.prepare(
+        'SELECT data FROM schema_snapshots WHERE project_id = ? AND id = ?'
+      ).get(projectId, snapshotId) as { data: string } | undefined;
+      if (!row) {
+        return { content: [{ type: 'text', text: 'Snapshot not found' }], isError: true };
+      }
+      const schema = JSON.parse(row.data) as ERDSchema;
+      saveAndNotify(projectId, schema);
+      mcpAudit('restore_snapshot', projectId, { snapshotId });
+      return { content: [{ type: 'text', text: 'Snapshot restored' }] };
+    },
+  );
+
+  server.tool(
+    'delete_snapshot',
+    'Delete a named snapshot',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      snapshotId: z.string().max(256).describe('Snapshot ID'),
+    },
+    async ({ projectId, snapshotId }) => {
+      requireAccess(projectId, 'editor');
+      db.prepare('DELETE FROM schema_snapshots WHERE project_id = ? AND id = ?').run(projectId, snapshotId);
+      mcpAudit('delete_snapshot', projectId, { snapshotId });
+      return { content: [{ type: 'text', text: 'Snapshot deleted' }] };
+    },
+  );
+
   return server;
 }

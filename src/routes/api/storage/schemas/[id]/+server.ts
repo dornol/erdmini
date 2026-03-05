@@ -62,6 +62,7 @@ export const DELETE: RequestHandler = ({ params, locals }) => {
   }
 
   db.prepare('DELETE FROM schemas WHERE project_id = ?').run(params.id);
+  db.prepare('DELETE FROM schema_snapshots WHERE project_id = ?').run(params.id);
   db.prepare('DELETE FROM project_permissions WHERE project_id = ?').run(params.id);
   return json({ ok: true });
 };

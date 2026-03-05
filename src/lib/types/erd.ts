@@ -137,6 +137,14 @@ export interface ProjectMeta {
   lastOpenedAt: string;
 }
 
+export interface SchemaSnapshot {
+  id: string;
+  name: string;
+  description?: string;
+  snap: string;
+  createdAt: number;
+}
+
 export interface ProjectIndex {
   version: string;
   activeProjectId: string;

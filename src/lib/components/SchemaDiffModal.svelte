@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { snapshotStore } from '$lib/store/snapshot.svelte';
   import { diffSchemas, type SchemaDiff } from '$lib/utils/schema-diff';
   import type { ERDSchema } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
@@ -7,9 +8,10 @@
 
   let { onclose }: { onclose: () => void } = $props();
 
-  type SourceMode = 'history' | 'file';
+  type SourceMode = 'history' | 'file' | 'snapshot';
   let sourceMode = $state<SourceMode>('history');
   let selectedHistoryIdx = $state<number>(-1);
+  let selectedSnapshotId = $state<string>('');
   let uploadedSchema = $state<ERDSchema | null>(null);
   let uploadError = $state('');
   let diffResult = $state<SchemaDiff | null>(null);
@@ -24,13 +26,15 @@
     expandedTables = next;
   }
 
-  function doDiff() {
+  async function doDiff() {
     let prevSchema: ERDSchema | null = null;
 
     if (sourceMode === 'history' && selectedHistoryIdx >= 0 && selectedHistoryIdx < historyEntries.length) {
       prevSchema = JSON.parse(historyEntries[selectedHistoryIdx].snap);
     } else if (sourceMode === 'file' && uploadedSchema) {
       prevSchema = uploadedSchema;
+    } else if (sourceMode === 'snapshot' && selectedSnapshotId) {
+      prevSchema = await snapshotStore.getSnap(selectedSnapshotId);
     }
 
     if (!prevSchema) return;
@@ -98,6 +102,11 @@
             class:active={sourceMode === 'file'}
             onclick={() => (sourceMode = 'file')}
           >{m.diff_from_file()}</button>
+          <button
+            class="source-tab"
+            class:active={sourceMode === 'snapshot'}
+            onclick={() => (sourceMode = 'snapshot')}
+          >{m.diff_from_snapshot()}</button>
         </div>
 
         {#if sourceMode === 'history'}
@@ -114,13 +123,26 @@
               </select>
             {/if}
           </div>
-        {:else}
+        {:else if sourceMode === 'file'}
           <div class="source-body">
             <button class="btn-upload" onclick={handleFileUpload}>
               {uploadedSchema ? '✓ ' : ''}{m.diff_from_file()}
             </button>
             {#if uploadError}
               <span class="upload-error">{uploadError}</span>
+            {/if}
+          </div>
+        {:else}
+          <div class="source-body">
+            {#if snapshotStore.snapshots.length === 0}
+              <div class="source-empty">{m.snapshot_empty()}</div>
+            {:else}
+              <select class="history-select" bind:value={selectedSnapshotId}>
+                <option value="">{m.snapshot_title()}...</option>
+                {#each snapshotStore.snapshots as snap}
+                  <option value={snap.id}>{snap.name}</option>
+                {/each}
+              </select>
             {/if}
           </div>
         {/if}
@@ -132,7 +154,7 @@
         <button
           class="btn-compare"
           onclick={doDiff}
-          disabled={(sourceMode === 'history' && selectedHistoryIdx < 0) || (sourceMode === 'file' && !uploadedSchema)}
+          disabled={(sourceMode === 'history' && selectedHistoryIdx < 0) || (sourceMode === 'file' && !uploadedSchema) || (sourceMode === 'snapshot' && !selectedSnapshotId)}
         >
           {m.diff_compare()}
         </button>
