@@ -47,7 +47,7 @@ export function logAudit(entry: AuditEntry): void {
 
 // ── Schema Change Audit ──
 
-interface SchemaBlob {
+export interface SchemaBlob {
 	tables?: { id: string; name: string }[];
 	memos?: { id: string }[];
 }

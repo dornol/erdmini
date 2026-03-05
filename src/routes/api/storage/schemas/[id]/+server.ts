@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { checkProjectAccess } from '$lib/server/auth/guards';
-import { auditSchemaChanges } from '$lib/server/audit';
+import { auditSchemaChanges, type SchemaBlob } from '$lib/server/audit';
 
 export const GET: RequestHandler = ({ params, locals }) => {
   const err = checkProjectAccess(db, locals, params.id, 'viewer');
