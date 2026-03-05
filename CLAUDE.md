@@ -79,6 +79,17 @@ Only loaded in server mode. Includes:
 
 Tables and memos are DOM `div` elements with CSS `transform` (not Canvas/WebGL). FK lines are SVG overlaid on the canvas. Memos are sticky note cards (`MemoCard.svelte`) with drag, resize, inline editing, color selection, and table attachment (drag onto table to attach, moves with table). Schema namespaces filter visible tables/memos/FK lines via `SchemaTabBar.svelte`. This makes drag/selection/editing straightforward.
 
+### Component Modularization
+
+Large components are split into focused sub-components:
+- **`Toolbar.svelte`** → 7 dropdown components in `src/lib/components/toolbar/` (ProjectDropdown, ImportDropdown, ExportDropdown, ToolsDropdown, SettingsDropdown, ShortcutsDropdown, UserMenu)
+- **`Sidebar.svelte`** → `SidebarTableRow.svelte`, `SidebarGroupHeader.svelte`, `src/lib/utils/sidebar-rows.ts` (pure `buildVirtualRows()`)
+- **`DomainModal.svelte`** → `DomainCoverageDashboard.svelte`, `DomainEditForm.svelte`
+- **`admin/+page.svelte`** → 6 tab components in `src/routes/admin/_components/` (Users, OIDC, ApiKeys, Projects, Backup, Audit)
+- **`UniqueKeyModal` + `IndexModal`** → unified `ConstraintModal.svelte` (mode prop)
+- **Shared utilities**: `ColorDotPicker.svelte`, `ChangePasswordModal.svelte`, `src/lib/utils/image-export.ts`, `src/lib/server/auth/guards.ts` (`requireAdmin()`), `src/lib/utils/history-labels.ts` (`resolveHistoryLabel()`)
+- **CSS scoping pattern**: Parent uses `.parent-class :global(.child-class)` to cascade styles to child components
+
 ### i18n
 
 Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Chinese. Message files in `messages/`. Auto-generated code in `src/lib/paraglide/` (excluded from TypeScript). Locale strategy: `localStorage` → browser preference → Korean fallback.
@@ -87,7 +98,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (34 test files, 1273 tests)
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (39 test files, 1636 tests)
 - 41 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos, schemas)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts

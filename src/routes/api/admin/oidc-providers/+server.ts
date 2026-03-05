@@ -4,13 +4,7 @@ import db from '$lib/server/db';
 import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import type { OIDCProviderRow } from '$lib/types/auth';
-
-function requireAdmin(locals: App.Locals) {
-  if (!locals.user || locals.user.role !== 'admin') {
-    return json({ error: 'Forbidden' }, { status: 403 });
-  }
-  return null;
-}
+import { requireAdmin } from '$lib/server/auth/guards';
 
 export const GET: RequestHandler = ({ locals }) => {
   const err = requireAdmin(locals);

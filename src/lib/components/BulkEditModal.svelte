@@ -1,8 +1,8 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
-  import { TABLE_COLOR_IDS, TABLE_COLORS } from '$lib/constants/table-colors';
   import type { TableColorId } from '$lib/constants/table-colors';
+  import ColorDotPicker from './ColorDotPicker.svelte';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -87,27 +87,7 @@
           <span class="field-label">{m.bulk_edit_color()}</span>
         </label>
         {#if colorEnabled}
-          <div class="color-dots">
-            <button
-              class="color-dot color-dot-none"
-              class:active={!selectedColor}
-              title={m.table_color_none()}
-              onclick={() => (selectedColor = undefined)}
-            >
-              {#if !selectedColor}<span class="dot-check">✓</span>{/if}
-            </button>
-            {#each TABLE_COLOR_IDS as colorId}
-              <button
-                class="color-dot"
-                class:active={selectedColor === colorId}
-                style="background:{TABLE_COLORS[colorId].dot}"
-                title={colorId}
-                onclick={() => (selectedColor = colorId)}
-              >
-                {#if selectedColor === colorId}<span class="dot-check">✓</span>{/if}
-              </button>
-            {/each}
-          </div>
+          <ColorDotPicker value={selectedColor} onchange={(c) => (selectedColor = c as TableColorId | undefined)} />
         {/if}
       </div>
 
@@ -264,58 +244,6 @@
 
   .text-input:focus {
     border-color: #3b82f6;
-  }
-
-  .color-dots {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 22px);
-    gap: 5px;
-  }
-
-  .color-dot {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    transition: border-color 0.15s, transform 0.1s;
-    flex-shrink: 0;
-  }
-
-  .color-dot:hover {
-    transform: scale(1.15);
-  }
-
-  .color-dot.active {
-    border-color: #1e293b;
-    box-shadow: 0 0 0 1px white inset;
-  }
-
-  .color-dot-none {
-    background: #ffffff;
-    border: 2px dashed #cbd5e1;
-  }
-
-  .color-dot-none.active {
-    border-style: solid;
-    border-color: #1e293b;
-  }
-
-  .dot-check {
-    font-size: 11px;
-    color: #ffffff;
-    font-weight: 700;
-    line-height: 1;
-    text-shadow: 0 0 2px rgba(0,0,0,0.4);
-  }
-
-  .color-dot-none .dot-check {
-    color: #64748b;
-    text-shadow: none;
   }
 
   .modal-footer {

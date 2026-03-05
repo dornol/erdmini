@@ -6,8 +6,9 @@
   import FkModal from './FkModal.svelte';
   import UniqueKeyModal from './UniqueKeyModal.svelte';
   import IndexModal from './IndexModal.svelte';
+  import ColorDotPicker from './ColorDotPicker.svelte';
   import * as m from '$lib/paraglide/messages';
-  import { TABLE_COLOR_IDS, TABLE_COLORS } from '$lib/constants/table-colors';
+  import { TABLE_COLORS } from '$lib/constants/table-colors';
   import type { TableColorId } from '$lib/constants/table-colors';
   import { now } from '$lib/utils/common';
   import { getEffectiveColor } from '$lib/utils/table-color';
@@ -239,27 +240,7 @@
             <span class="inherited-text">{m.group_color_inherited()}</span>
           </div>
         {/if}
-        <div class="color-dots">
-          <button
-            class="color-dot color-dot-none"
-            class:active={!selectedTable.color}
-            title={m.table_color_none()}
-            onclick={() => erdStore.updateTableColor(selectedTable!.id, undefined)}
-          >
-            {#if !selectedTable.color}<span class="dot-check">✓</span>{/if}
-          </button>
-          {#each TABLE_COLOR_IDS as colorId}
-            <button
-              class="color-dot"
-              class:active={selectedTable.color === colorId}
-              style="background:{TABLE_COLORS[colorId].dot}"
-              title={colorId}
-              onclick={() => erdStore.updateTableColor(selectedTable!.id, colorId)}
-            >
-              {#if selectedTable.color === colorId}<span class="dot-check">✓</span>{/if}
-            </button>
-          {/each}
-        </div>
+        <ColorDotPicker value={selectedTable.color} onchange={(c) => erdStore.updateTableColor(selectedTable!.id, c)} />
         {#if selectedTable.color && inheritedColor}
           <button
             class="reset-to-group-btn"
@@ -888,58 +869,6 @@
     white-space: nowrap;
     flex: 1;
     min-width: 0;
-  }
-
-  .color-dots {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 22px);
-    gap: 5px;
-  }
-
-  .color-dot {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    transition: border-color 0.15s, transform 0.1s;
-    flex-shrink: 0;
-  }
-
-  .color-dot:hover {
-    transform: scale(1.15);
-  }
-
-  .color-dot.active {
-    border-color: #1e293b;
-    box-shadow: 0 0 0 1px white inset;
-  }
-
-  .color-dot-none {
-    background: #ffffff;
-    border: 2px dashed #cbd5e1;
-  }
-
-  .color-dot-none.active {
-    border-style: solid;
-    border-color: #1e293b;
-  }
-
-  .dot-check {
-    font-size: 11px;
-    color: #ffffff;
-    font-weight: 700;
-    line-height: 1;
-    text-shadow: 0 0 2px rgba(0,0,0,0.4);
-  }
-
-  .color-dot-none .dot-check {
-    color: #64748b;
-    text-shadow: none;
   }
 
   .color-inherited-hint {

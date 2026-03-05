@@ -7,13 +7,7 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import Database from 'better-sqlite3';
-
-function requireAdmin(locals: App.Locals) {
-  if (!locals.user || locals.user.role !== 'admin') {
-    return json({ error: 'Forbidden' }, { status: 403 });
-  }
-  return null;
-}
+import { requireAdmin } from '$lib/server/auth/guards';
 
 // GET /api/admin/backup — download DB backup or stats
 export const GET: RequestHandler = ({ locals, url }) => {

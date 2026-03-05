@@ -2,13 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { purgeOldAuditLogs, getAuditStats, logAudit } from '$lib/server/audit';
-
-function requireAdmin(locals: App.Locals) {
-	if (!locals.user || locals.user.role !== 'admin') {
-		return json({ error: 'Forbidden' }, { status: 403 });
-	}
-	return null;
-}
+import { requireAdmin } from '$lib/server/auth/guards';
 
 export const GET: RequestHandler = ({ locals, url }) => {
 	const err = requireAdmin(locals);

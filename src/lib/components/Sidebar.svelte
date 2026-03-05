@@ -3,39 +3,15 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import * as m from '$lib/paraglide/messages';
-  import { TABLE_COLORS, TABLE_COLOR_IDS } from '$lib/constants/table-colors';
-  import type { TableColorId } from '$lib/constants/table-colors';
+  import { TABLE_COLORS } from '$lib/constants/table-colors';
+  import ColorDotPicker from './ColorDotPicker.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import { getEffectiveColor } from '$lib/utils/table-color';
   import { now } from '$lib/utils/common';
   import VirtualList from './VirtualList.svelte';
-
-  // Height constants for virtual rows
-  const ROW_H_TABLE = 34;
-  const ROW_H_TABLE_COMMENT = 48; // 34 + 14 for comment line
-  const ROW_H_GROUP_HEADER = 28;
-  const COLOR_PICKER_DOT = 18;
-  const COLOR_PICKER_GAP = 4;
-  const COLOR_PICKER_PAD_X = 28 + 14; // left + right padding
-  const COLOR_PICKER_PAD_Y = 6 + 6;   // top + bottom padding
-  const COLOR_PICKER_ITEMS = 1 + TABLE_COLOR_IDS.length; // none + colors
-  function colorPickerHeight(width: number): number {
-    const usable = width - COLOR_PICKER_PAD_X;
-    const cols = Math.max(1, Math.floor((usable + COLOR_PICKER_GAP) / (COLOR_PICKER_DOT + COLOR_PICKER_GAP)));
-    const rowCount = Math.ceil(COLOR_PICKER_ITEMS / cols);
-    return rowCount * COLOR_PICKER_DOT + (rowCount - 1) * COLOR_PICKER_GAP + COLOR_PICKER_PAD_Y;
-  }
-  const ROW_H_NEW_GROUP = 36;
-  const ROW_H_EMPTY = 60;
-
-  type GroupData = { name: string; label: string; tables: import('$lib/types/erd').Table[] };
-
-  type VirtualRow =
-    | { type: 'table'; table: import('$lib/types/erd').Table; grouped: boolean; groupName: string; height: number; key: string }
-    | { type: 'group-header'; group: GroupData; height: number; key: string }
-    | { type: 'color-picker'; groupName: string; height: number; key: string }
-    | { type: 'new-group'; height: number; key: string }
-    | { type: 'empty-hint'; searching: boolean; height: number; key: string };
+  import SidebarTableRow from './SidebarTableRow.svelte';
+  import SidebarGroupHeader from './SidebarGroupHeader.svelte';
+  import { buildVirtualRows, type VirtualRow, type GroupData } from '$lib/utils/sidebar-rows';
 
   let {
     collapsed = false,
@@ -197,13 +173,6 @@
     const colorId = getEffectiveColor(table, erdStore.schema);
     if (!colorId) return null;
     const entry = TABLE_COLORS[colorId];
-    return entry?.dot ?? null;
-  }
-
-  function getGroupColorDot(groupName: string): string | null {
-    const colorId = erdStore.schema.groupColors?.[groupName];
-    if (!colorId) return null;
-    const entry = TABLE_COLORS[colorId as TableColorId];
     return entry?.dot ?? null;
   }
 
@@ -427,72 +396,20 @@
     dragOverGroup = null;
   }
 
-  function duplicateTable(e: MouseEvent, tableId: string) {
-    e.stopPropagation();
-    erdStore.duplicateTable(tableId);
-  }
-
   let virtualListRef = $state<ReturnType<typeof VirtualList> | null>(null);
 
-  const virtualRows = $derived.by((): VirtualRow[] => {
-    const rows: VirtualRow[] = [];
-    if (viewMode === 'flat') {
-      const tables = filteredTables();
-      if (tables.length === 0) {
-        rows.push({ type: 'empty-hint', searching: !!searchQuery.trim(), height: ROW_H_EMPTY, key: '__empty__' });
-      } else {
-        for (const table of tables) {
-          rows.push({
-            type: 'table',
-            table,
-            grouped: false,
-            groupName: '',
-            height: table.comment ? ROW_H_TABLE_COMMENT : ROW_H_TABLE,
-            key: table.id,
-          });
-        }
-      }
-    } else {
-      // Group view
-      if (!permissionStore.isReadOnly) {
-        rows.push({ type: 'new-group', height: ROW_H_NEW_GROUP, key: '__new_group__' });
-      }
-      const groups = groupedTables;
-      if (groups.length === 0) {
-        rows.push({ type: 'empty-hint', searching: !!searchQuery.trim(), height: ROW_H_EMPTY, key: '__empty__' });
-      } else {
-        for (const group of groups) {
-          rows.push({
-            type: 'group-header',
-            group,
-            height: ROW_H_GROUP_HEADER,
-            key: `__gh_${group.name}`,
-          });
-          if (groupColorPicker === group.name) {
-            rows.push({
-              type: 'color-picker',
-              groupName: group.name,
-              height: colorPickerHeight(sidebarWidth),
-              key: `__cp_${group.name}`,
-            });
-          }
-          if (!collapsedGroups.has(group.name)) {
-            for (const table of group.tables) {
-              rows.push({
-                type: 'table',
-                table,
-                grouped: true,
-                groupName: group.name,
-                height: table.comment ? ROW_H_TABLE_COMMENT : ROW_H_TABLE,
-                key: table.id,
-              });
-            }
-          }
-        }
-      }
-    }
-    return rows;
-  });
+  const virtualRows = $derived.by((): VirtualRow[] =>
+    buildVirtualRows({
+      viewMode,
+      filteredTables: filteredTables(),
+      groupedTables,
+      searchQuery,
+      collapsedGroups,
+      groupColorPicker,
+      sidebarWidth,
+      isReadOnly: permissionStore.isReadOnly,
+    })
+  );
 
   // Scroll reset on search/view/sort change
   $effect(() => {
@@ -632,14 +549,12 @@
     <VirtualList bind:this={virtualListRef} items={virtualRows} class="table-list thin-scrollbar" ondragover={onDragOverContainer}>
       {#snippet children(row: VirtualRow, _index: number)}
         {#if row.type === 'table'}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            class="table-item"
-            class:table-item-grouped={row.grouped}
-            class:active={erdStore.selectedTableIds.has(row.table.id)}
-            class:dragging={dragTableId === row.table.id}
-            draggable={row.grouped && !permissionStore.isReadOnly}
+          <SidebarTableRow
+            table={row.table}
+            grouped={row.grouped}
+            groupName={row.groupName}
+            active={erdStore.selectedTableIds.has(row.table.id)}
+            dragging={dragTableId === row.table.id}
             onclick={(e) => { internalClick = true; onItemClick(e, row.table.id); }}
             ondragstart={(e) => onTableDragStart(e, row.table.id)}
             ondragend={onTableDragEnd}
@@ -647,103 +562,29 @@
             ondrop={row.grouped ? (e) => onGroupDrop(e, row.groupName) : undefined}
             onmouseenter={(e) => showRichTooltip(e, row.table)}
             onmouseleave={hideRichTooltip}
-          >
-            <div class="item-info">
-              <div class="item-name-row">
-                {#if getColorDot(row.table)}
-                  <span class="item-color-dot" style="background:{getColorDot(row.table)}"></span>
-                {/if}
-                <span class="item-name">{row.table.name}</span>
-                {#if row.table.locked}<span class="item-lock" title="Locked">🔒</span>{/if}
-                <span class="badge badge-cols">{row.table.columns.length}</span>
-              </div>
-              {#if row.table.comment}
-                <span class="item-comment">{row.table.comment}</span>
-              {/if}
-            </div>
-            <div class="item-actions">
-              <button
-                class="item-action-btn"
-                title={m.action_duplicate()}
-                onclick={(e) => duplicateTable(e, row.table.id)}
-              >⧉</button>
-              <button
-                class="item-action-btn item-delete"
-                title={m.action_delete()}
-                onclick={async (e) => {
-                  e.stopPropagation();
-                  const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: row.table.name }), {
-                    title: m.dialog_delete_table_title(),
-                    confirmText: m.action_delete(),
-                    variant: 'danger',
-                  });
-                  if (ok) erdStore.deleteTable(row.table.id);
-                }}
-              >✕</button>
-            </div>
-          </div>
+          />
         {:else if row.type === 'group-header'}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            class="group-header"
-            class:drag-target={dragOverGroup === row.group.name}
-            onclick={() => toggleGroup(row.group.name)}
+          <SidebarGroupHeader
+            group={row.group}
+            collapsed={collapsedGroups.has(row.group.name)}
+            dragTarget={dragOverGroup === row.group.name}
+            editing={editingGroup === row.group.name}
+            editingName={editingGroupName}
+            ontoggle={() => toggleGroup(row.group.name)}
             ondragover={(e) => onGroupDragOver(e, row.group.name)}
             ondragleave={onGroupDragLeave}
             ondrop={(e) => onGroupDrop(e, row.group.name)}
-          >
-            <span class="group-chevron" class:collapsed={collapsedGroups.has(row.group.name)}>▸</span>
-            {#if row.group.name}
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <span
-                class="group-color-dot"
-                style="background:{getGroupColorDot(row.group.name) ?? 'transparent'};{getGroupColorDot(row.group.name) ? '' : 'border:1.5px dashed #94a3b8'}"
-                onclick={(e) => toggleGroupColorPicker(e, row.group.name)}
-                title={m.table_color()}
-              ></span>
-            {/if}
-            {#if editingGroup === row.group.name && row.group.name}
-              <input
-                class="group-edit-input"
-                type="text"
-                bind:value={editingGroupName}
-                onkeydown={(e) => { if (e.key === 'Enter') confirmEditGroup(); if (e.key === 'Escape') cancelEditGroup(); }}
-                onblur={confirmEditGroup}
-                onclick={(e) => e.stopPropagation()}
-                autofocus
-              />
-            {:else}
-              <span class="group-label">{row.group.label}</span>
-              {#if row.group.name && !permissionStore.isReadOnly}
-                <button
-                  class="group-edit-btn"
-                  title={m.sidebar_rename_group()}
-                  onclick={(e) => startEditGroup(e, row.group.name)}
-                >✎</button>
-              {/if}
-            {/if}
-            <span class="group-count">{row.group.tables.length}</span>
-          </div>
+            oncolorclick={(e) => toggleGroupColorPicker(e, row.group.name)}
+            oneditstart={(e) => startEditGroup(e, row.group.name)}
+            oneditconfirm={confirmEditGroup}
+            oneditcancel={cancelEditGroup}
+            oneditchange={(v) => { editingGroupName = v; }}
+          />
         {:else if row.type === 'color-picker'}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div class="group-color-picker" onclick={(e) => e.stopPropagation()}>
-            <button
-              class="gc-dot gc-dot-none"
-              class:active={!erdStore.schema.groupColors?.[row.groupName]}
-              title={m.table_color_none()}
-              onclick={() => setGroupColor(row.groupName, undefined)}
-            >{#if !erdStore.schema.groupColors?.[row.groupName]}✓{/if}</button>
-            {#each TABLE_COLOR_IDS as colorId}
-              <button
-                class="gc-dot"
-                class:active={erdStore.schema.groupColors?.[row.groupName] === colorId}
-                style="background:{TABLE_COLORS[colorId].dot}"
-                title={colorId}
-                onclick={() => setGroupColor(row.groupName, colorId)}
-              >{#if erdStore.schema.groupColors?.[row.groupName] === colorId}✓{/if}</button>
-            {/each}
+            <ColorDotPicker value={erdStore.schema.groupColors?.[row.groupName]} onchange={(c) => setGroupColor(row.groupName, c)} size="sm" />
           </div>
         {:else if row.type === 'new-group'}
           <div class="new-group-row">
@@ -1196,7 +1037,7 @@
     flex: 1;
   }
 
-  .table-item {
+  .sidebar :global(.table-item) {
     display: flex;
     align-items: flex-start;
     padding: 8px 14px;
@@ -1205,29 +1046,29 @@
     transition: background 0.1s;
   }
 
-  .table-item:hover {
+  .sidebar :global(.table-item:hover) {
     background: var(--app-hover-bg, #f1f5f9);
   }
 
-  .table-item.active {
+  .sidebar :global(.table-item.active) {
     background: var(--app-active-bg, #eff6ff);
     border-left: 3px solid #3b82f6;
     padding-left: 11px;
   }
 
-  .item-info {
+  .sidebar :global(.item-info) {
     flex: 1;
     overflow: hidden;
   }
 
-  .item-name-row {
+  .sidebar :global(.item-name-row) {
     display: flex;
     align-items: center;
     gap: 4px;
     min-width: 0;
   }
 
-  .item-name {
+  .sidebar :global(.item-name) {
     font-size: 13px;
     font-weight: 500;
     color: var(--app-text, #1e293b);
@@ -1238,13 +1079,13 @@
     min-width: 0;
   }
 
-  .item-lock {
+  .sidebar :global(.item-lock) {
     font-size: 10px;
     flex-shrink: 0;
     opacity: 0.6;
   }
 
-  .badge {
+  .sidebar :global(.badge) {
     font-size: 10px;
     padding: 1px 5px;
     border-radius: 3px;
@@ -1254,7 +1095,7 @@
     line-height: 1.4;
   }
 
-  .badge-cols {
+  .sidebar :global(.badge-cols) {
     background: var(--app-badge-bg, #f1f5f9);
     border-color: var(--app-badge-border, #e2e8f0);
     color: var(--app-text-muted, #64748b);
@@ -1376,7 +1217,7 @@
     padding-left: 4px;
   }
 
-  .item-comment {
+  .sidebar :global(.item-comment) {
     display: block;
     font-size: 11px;
     color: var(--app-text-faint, #94a3b8);
@@ -1387,7 +1228,7 @@
     white-space: nowrap;
   }
 
-  .item-actions {
+  .sidebar :global(.item-actions) {
     display: flex;
     gap: 2px;
     flex-shrink: 0;
@@ -1395,11 +1236,11 @@
     transition: opacity 0.15s;
   }
 
-  .table-item:hover .item-actions {
+  .sidebar :global(.table-item:hover .item-actions) {
     opacity: 1;
   }
 
-  .item-action-btn {
+  .sidebar :global(.item-action-btn) {
     background: none;
     border: none;
     color: var(--app-text-faint, #cbd5e1);
@@ -1410,12 +1251,12 @@
     transition: color 0.15s, background 0.15s;
   }
 
-  .item-action-btn:hover {
+  .sidebar :global(.item-action-btn:hover) {
     color: #3b82f6;
     background: var(--app-active-bg, #eff6ff);
   }
 
-  .item-delete:hover {
+  .sidebar :global(.item-delete:hover) {
     color: #ef4444;
     background: #fee2e2;
   }
@@ -1435,14 +1276,14 @@
     border-color: #93c5fd;
   }
 
-  .item-color-dot {
+  .sidebar :global(.item-color-dot) {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
   }
 
-  .group-header {
+  .sidebar :global(.group-header) {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -1453,11 +1294,11 @@
     user-select: none;
   }
 
-  .group-header:hover {
+  .sidebar :global(.group-header:hover) {
     background: var(--app-badge-bg, #e2e8f0);
   }
 
-  .group-chevron {
+  .sidebar :global(.group-chevron) {
     font-size: 10px;
     color: var(--app-text-muted, #64748b);
     transition: transform 0.15s;
@@ -1465,11 +1306,11 @@
     transform: rotate(90deg);
   }
 
-  .group-chevron.collapsed {
+  .sidebar :global(.group-chevron.collapsed) {
     transform: rotate(0deg);
   }
 
-  .group-label {
+  .sidebar :global(.group-label) {
     font-size: 11px;
     font-weight: 600;
     color: var(--app-text-secondary, #475569);
@@ -1478,7 +1319,7 @@
     letter-spacing: 0.03em;
   }
 
-  .group-count {
+  .sidebar :global(.group-count) {
     font-size: 10px;
     background: var(--app-badge-bg, #e2e8f0);
     color: var(--app-text-muted, #64748b);
@@ -1486,25 +1327,25 @@
     padding: 0 6px;
   }
 
-  .table-item-grouped.dragging {
+  .sidebar :global(.table-item-grouped.dragging) {
     opacity: 0.4;
   }
 
-  .group-header.drag-target {
+  .sidebar :global(.group-header.drag-target) {
     background: #dbeafe;
     border-bottom-color: #3b82f6;
     box-shadow: inset 0 0 0 1px #93c5fd;
   }
 
-  .table-item-grouped {
+  .sidebar :global(.table-item-grouped) {
     padding-left: 24px;
   }
 
-  .table-item-grouped.active {
+  .sidebar :global(.table-item-grouped.active) {
     padding-left: 21px;
   }
 
-  .group-color-dot {
+  .sidebar :global(.group-color-dot) {
     width: 10px;
     height: 10px;
     border-radius: 50%;
@@ -1513,55 +1354,14 @@
     transition: transform 0.1s;
   }
 
-  .group-color-dot:hover {
+  .sidebar :global(.group-color-dot:hover) {
     transform: scale(1.3);
   }
 
   .group-color-picker {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 18px);
-    gap: 4px;
     padding: 6px 14px 6px 28px;
     background: var(--app-panel-bg, #f8fafc);
     border-bottom: 1px solid var(--app-border, #e2e8f0);
-  }
-
-  .gc-dot {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    font-size: 10px;
-    color: #fff;
-    font-weight: 700;
-    text-shadow: 0 0 2px rgba(0,0,0,0.4);
-    transition: border-color 0.15s, transform 0.1s;
-  }
-
-  .gc-dot:hover {
-    transform: scale(1.15);
-  }
-
-  .gc-dot.active {
-    border-color: #1e293b;
-    box-shadow: 0 0 0 1px white inset;
-  }
-
-  .gc-dot-none {
-    background: #fff;
-    border: 1.5px dashed #cbd5e1;
-    color: #64748b;
-    text-shadow: none;
-  }
-
-  .gc-dot-none.active {
-    border-style: solid;
-    border-color: #1e293b;
   }
 
   .new-group-row {
@@ -1603,7 +1403,7 @@
     color: var(--app-text-faint, #94a3b8);
   }
 
-  .group-edit-input {
+  .sidebar :global(.group-edit-input) {
     flex: 1;
     padding: 1px 4px;
     font-size: 11px;
@@ -1618,7 +1418,7 @@
     min-width: 0;
   }
 
-  .group-edit-btn {
+  .sidebar :global(.group-edit-btn) {
     background: none;
     border: none;
     color: var(--app-text-faint, #94a3b8);
@@ -1630,11 +1430,11 @@
     flex-shrink: 0;
   }
 
-  .group-header:hover .group-edit-btn {
+  .sidebar :global(.group-header:hover .group-edit-btn) {
     opacity: 1;
   }
 
-  .group-edit-btn:hover {
+  .sidebar :global(.group-edit-btn:hover) {
     color: #3b82f6;
   }
 

@@ -1,14 +1,13 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
-  import { COLUMN_TYPES } from '$lib/types/erd';
-  import type { ColumnDomain, ColumnType } from '$lib/types/erd';
+  import type { ColumnDomain } from '$lib/types/erd';
   import { exportDomainsToXlsx, exportDomainTemplate, importDomainsFromXlsx } from '$lib/utils/domain-xlsx';
   import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
-  import { computeCoverageStats, computeImpact } from '$lib/utils/domain-analysis';
-  import { buildDomainTree, getDescendantIds, type DomainTreeNode } from '$lib/utils/domain-hierarchy';
+  import { buildDomainTree, type DomainTreeNode } from '$lib/utils/domain-hierarchy';
   import * as m from '$lib/paraglide/messages';
-  import SearchableSelect from './SearchableSelect.svelte';
+  import DomainCoverageDashboard from './DomainCoverageDashboard.svelte';
+  import DomainEditForm from './DomainEditForm.svelte';
 
   interface Props {
     onclose: () => void;
@@ -24,37 +23,11 @@
   let editingId = $state<string | null>(null);
   let addingNew = $state(false);
 
-  // Form fields for inline editing
-  let formName = $state('');
-  let formGroup = $state('');
-  let formType = $state<ColumnType>('VARCHAR');
-  let formLength = $state<number | undefined>(255);
-  let formNullable = $state(false);
-  let formPrimaryKey = $state(false);
-  let formUnique = $state(false);
-  let formAutoIncrement = $state(false);
-  let formScale = $state<number | undefined>(undefined);
-  let formCheck = $state('');
-  let formEnumValues = $state('');
-  let formDefaultValue = $state('');
-  let formComment = $state('');
-  let formParentId = $state<string | undefined>(undefined);
-
-  // Documentation form fields
-  let formDescription = $state('');
-  let formAlias = $state('');
-  let formDataStandard = $state('');
-  let formExample = $state('');
-  let formValidRange = $state('');
-  let formOwner = $state('');
-  let formTags = $state('');
-
   // Expanded detail row
   let expandedId = $state<string | null>(null);
 
-  // Coverage dashboard
-  let showCoverage = $state(false);
-  let coverageStats = $derived(computeCoverageStats(erdStore.schema));
+  // Edit form ref
+  let editFormRef = $state<ReturnType<typeof DomainEditForm> | null>(null);
 
   // Dictionary dropdown
   let showDictDropdown = $state(false);
@@ -95,12 +68,6 @@
 
   // Collapsed groups
   let collapsedGroups = $state(new Set<string>());
-
-  let hasLength = $derived(
-    formType === 'VARCHAR' || formType === 'CHAR' || formType === 'DECIMAL',
-  );
-  let hasScale = $derived(formType === 'DECIMAL');
-  let hasEnum = $derived(formType === 'ENUM');
 
   // Usage count map: domainId -> number of linked columns
   let domainUsageMap = $derived.by(() => {
@@ -189,151 +156,33 @@
     collapsedGroups = next;
   }
 
-  function resetForm() {
-    formName = '';
-    formGroup = '';
-    formType = 'VARCHAR';
-    formLength = 255;
-    formScale = undefined;
-    formCheck = '';
-    formEnumValues = '';
-    formNullable = false;
-    formPrimaryKey = false;
-    formUnique = false;
-    formAutoIncrement = false;
-    formDefaultValue = '';
-    formComment = '';
-    formDescription = '';
-    formAlias = '';
-    formDataStandard = '';
-    formExample = '';
-    formValidRange = '';
-    formOwner = '';
-    formTags = '';
-    formParentId = undefined;
+  function startEdit(domain: ColumnDomain) {
+    editingId = domain.id;
+    addingNew = false;
+    editFormRef?.loadDomain(domain);
+  }
+
+  function startAdd() {
+    editFormRef?.resetForm();
+    editingId = null;
+    addingNew = true;
+  }
+
+  function handleFormReset() {
     editingId = null;
     addingNew = false;
   }
 
-  function startEdit(domain: ColumnDomain) {
-    editingId = domain.id;
-    addingNew = false;
-    formName = domain.name;
-    formGroup = domain.group ?? '';
-    formType = domain.type;
-    formLength = domain.length;
-    formScale = domain.scale;
-    formCheck = domain.check ?? '';
-    formEnumValues = domain.enumValues?.join(', ') ?? '';
-    formNullable = domain.nullable;
-    formPrimaryKey = domain.primaryKey;
-    formUnique = domain.unique;
-    formAutoIncrement = domain.autoIncrement;
-    formDefaultValue = domain.defaultValue ?? '';
-    formComment = domain.comment ?? '';
-    formDescription = domain.description ?? '';
-    formAlias = domain.alias ?? '';
-    formDataStandard = domain.dataStandard ?? '';
-    formExample = domain.example ?? '';
-    formValidRange = domain.validRange ?? '';
-    formOwner = domain.owner ?? '';
-    formTags = domain.tags?.join(', ') ?? '';
-    formParentId = domain.parentId;
-  }
-
-  function startAdd() {
-    resetForm();
-    addingNew = true;
-  }
-
-  function parseEnumValues(raw: string): string[] | undefined {
-    const vals = raw.split(',').map(v => v.trim()).filter(Boolean);
-    return vals.length > 0 ? vals : undefined;
-  }
-
-  function parseTags(raw: string): string[] | undefined {
-    const vals = raw.split(',').map(v => v.trim()).filter(Boolean);
-    return vals.length > 0 ? vals : undefined;
-  }
-
-  async function saveEdit() {
-    if (!formName.trim()) return;
-    const fields = {
-      name: formName.trim(),
-      group: formGroup.trim() || undefined,
-      type: formType,
-      length: hasLength ? formLength : undefined,
-      scale: hasScale ? formScale : undefined,
-      check: formCheck.trim() || undefined,
-      enumValues: hasEnum ? parseEnumValues(formEnumValues) : undefined,
-      nullable: formNullable,
-      primaryKey: formPrimaryKey,
-      unique: formUnique,
-      autoIncrement: formAutoIncrement,
-      defaultValue: formDefaultValue || undefined,
-      comment: formComment || undefined,
-      description: formDescription.trim() || undefined,
-      alias: formAlias.trim() || undefined,
-      dataStandard: formDataStandard.trim() || undefined,
-      example: formExample.trim() || undefined,
-      validRange: formValidRange.trim() || undefined,
-      owner: formOwner.trim() || undefined,
-      tags: parseTags(formTags),
-      parentId: formParentId || undefined,
-    };
-    if (editingId) {
-      // Impact analysis: check if propagation fields changed
-      const impact = computeImpact(erdStore.schema, editingId, fields);
-      if (impact) {
-        const details = impact.entries.slice(0, 10).map(e => {
-          const changeStr = e.changes.map(c => `${c.field}: ${c.before} → ${c.after}`).join(', ');
-          return `• ${e.tableName}.${e.columnName}: ${changeStr}`;
-        }).join('\n');
-        const extra = impact.entries.length > 10 ? `\n... and ${impact.entries.length - 10} more` : '';
-        const msg = m.domain_impact_message({
-          columns: String(impact.columnCount),
-          tables: String(impact.tableCount),
-        }) + '\n\n' + details + extra;
-        const ok = await dialogStore.confirm(msg, {
-          title: m.domain_impact_title(),
-          confirmText: m.domain_impact_confirm(),
-        });
-        if (!ok) return;
-      }
-      erdStore.updateDomain(editingId, fields);
-    } else if (addingNew) {
-      erdStore.addDomain(fields);
-    }
-    resetForm();
-  }
-
-  function cancelEdit() {
-    resetForm();
-  }
-
-  function handleRowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveEdit();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelEdit();
-    }
-  }
-
   function handleRowClick(domain: ColumnDomain) {
     if (editingId === domain.id) return;
-    // If we're already editing something else, save it first
     if (editingId || addingNew) {
-      saveEdit();
+      editFormRef?.saveEdit();
     }
     startEdit(domain);
   }
 
-  // Click outside to save
   function handleTableClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
-    // Check if click is on the modal but outside any editing row or display row
     if (
       (editingId || addingNew) &&
       !target.closest('.editing-row') &&
@@ -341,7 +190,7 @@
       !target.closest('.display-row') &&
       !target.closest('.group-header-row')
     ) {
-      saveEdit();
+      editFormRef?.saveEdit();
     }
   }
 
@@ -411,20 +260,6 @@
     }
     return map;
   });
-
-  // Available parent options (for editing): exclude self and descendants
-  function getAvailableParents(selfId: string | null): { value: string; label: string }[] {
-    const excluded = new Set<string>();
-    if (selfId) {
-      excluded.add(selfId);
-      for (const id of getDescendantIds(selfId, erdStore.schema.domains)) {
-        excluded.add(id);
-      }
-    }
-    return erdStore.schema.domains
-      .filter(d => !excluded.has(d.id))
-      .map(d => ({ value: d.id, label: d.name }));
-  }
 
   function hasDocs(d: ColumnDomain): boolean {
     return !!(d.description || d.alias || d.dataStandard || d.example || d.validRange || d.owner || (d.tags && d.tags.length > 0));
@@ -533,53 +368,7 @@
 
     <div class="modal-body thin-scrollbar">
       <!-- Coverage dashboard -->
-      {#if coverageStats.totalColumns > 0}
-        <div class="coverage-panel">
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div class="coverage-header" onclick={() => showCoverage = !showCoverage}>
-            <span class="coverage-toggle">{showCoverage ? '▼' : '▶'}</span>
-            <span class="coverage-title">{m.domain_coverage()}</span>
-            <span class="coverage-summary">{m.domain_coverage_label({
-              percent: String(coverageStats.coveragePercent),
-              linked: String(coverageStats.linkedColumns),
-              total: String(coverageStats.totalColumns)
-            })}</span>
-          </div>
-          {#if showCoverage}
-            <div class="coverage-body">
-              <div class="coverage-bar-wrapper">
-                <div
-                  class="coverage-bar"
-                  class:green={coverageStats.coveragePercent > 80}
-                  class:yellow={coverageStats.coveragePercent > 50 && coverageStats.coveragePercent <= 80}
-                  class:red={coverageStats.coveragePercent <= 50}
-                  style="width: {coverageStats.coveragePercent}%"
-                ></div>
-              </div>
-              {#if coverageStats.groupBreakdown.length > 1}
-                <div class="coverage-groups">
-                  {#each coverageStats.groupBreakdown as gb}
-                    <div class="coverage-group-item">
-                      <span class="coverage-group-name">{gb.group}</span>
-                      <div class="coverage-minibar-wrapper">
-                        <div
-                          class="coverage-minibar"
-                          class:green={gb.percent > 80}
-                          class:yellow={gb.percent > 50 && gb.percent <= 80}
-                          class:red={gb.percent <= 50}
-                          style="width: {gb.percent}%"
-                        ></div>
-                      </div>
-                      <span class="coverage-group-pct">{gb.percent}%</span>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      {/if}
+      <DomainCoverageDashboard />
       <div class="table-wrapper thin-scrollbar">
         <table class="domain-table">
           <thead>
@@ -658,98 +447,14 @@
                   {#each domains as domain (domain.id)}
                     {@const usageCount = domainUsageMap.get(domain.id) ?? 0}
                     {#if editingId === domain.id}
-                      <!-- Editing row -->
-                      <!-- svelte-ignore a11y_no_static_element_interactions -->
-                      <tr class="editing-row" onkeydown={handleRowKeydown}>
-                        <td>
-                          <input class="cell-input cell-group" type="text" bind:value={formGroup} placeholder={m.domain_group_placeholder()} list="domain-groups-list" />
-                        </td>
-                        <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
-                        <td class="td-type-cell">
-                          <SearchableSelect
-                            options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
-                            value={formType}
-                            onchange={(v) => (formType = v as ColumnType)}
-                            size="sm"
-                          />
-                        </td>
-                        <td>
-                          {#if hasLength}
-                            <input class="cell-input cell-num" type="number" bind:value={formLength} min="1" max="65535" />
-                          {:else}
-                            <span class="td-mono">&mdash;</span>
-                          {/if}
-                        </td>
-                        <td class="td-check"><input type="checkbox" bind:checked={formNullable} /></td>
-                        <td class="td-check"><input type="checkbox" bind:checked={formPrimaryKey} /></td>
-                        <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
-                        <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
-                        <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
-                        <td>
-                          {#if hasScale}
-                            <input class="cell-input cell-num" type="number" bind:value={formScale} min="0" max="30" />
-                          {:else}
-                            <span class="td-mono">&mdash;</span>
-                          {/if}
-                        </td>
-                        <td><input class="cell-input" type="text" bind:value={formCheck} placeholder={m.column_check_placeholder()} /></td>
-                        <td>
-                          {#if hasEnum}
-                            <input class="cell-input" type="text" bind:value={formEnumValues} placeholder="a, b, c" />
-                          {:else}
-                            <span class="td-mono">&mdash;</span>
-                          {/if}
-                        </td>
-                        <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
-                        <td class="td-actions">
-                          <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>&#x2713;</button>
-                          <button class="icon-btn" onclick={cancelEdit}>&#x2715;</button>
-                        </td>
-                      </tr>
-                      <!-- Editing detail row for documentation fields -->
-                      <tr class="editing-row detail-edit-row">
-                        <td colspan={TABLE_COLSPAN}>
-                          <div class="detail-grid editing">
-                            <div class="detail-field">
-                              <label>{m.domain_parent()}</label>
-                              <select class="cell-input" bind:value={formParentId}>
-                                <option value={undefined}>{m.domain_parent_none()}</option>
-                                {#each getAvailableParents(editingId) as opt}
-                                  <option value={opt.value}>{opt.label}</option>
-                                {/each}
-                              </select>
-                            </div>
-                            <div class="detail-field wide">
-                              <label>{m.domain_description()}</label>
-                              <textarea class="cell-input cell-textarea" bind:value={formDescription} placeholder={m.domain_description_placeholder()} rows="2"></textarea>
-                            </div>
-                            <div class="detail-field">
-                              <label>{m.domain_alias()}</label>
-                              <input class="cell-input" type="text" bind:value={formAlias} placeholder={m.domain_alias_placeholder()} />
-                            </div>
-                            <div class="detail-field">
-                              <label>{m.domain_data_standard()}</label>
-                              <input class="cell-input" type="text" bind:value={formDataStandard} placeholder={m.domain_data_standard_placeholder()} />
-                            </div>
-                            <div class="detail-field">
-                              <label>{m.domain_example()}</label>
-                              <input class="cell-input" type="text" bind:value={formExample} placeholder={m.domain_example_placeholder()} />
-                            </div>
-                            <div class="detail-field">
-                              <label>{m.domain_valid_range()}</label>
-                              <input class="cell-input" type="text" bind:value={formValidRange} placeholder={m.domain_valid_range_placeholder()} />
-                            </div>
-                            <div class="detail-field">
-                              <label>{m.domain_owner()}</label>
-                              <input class="cell-input" type="text" bind:value={formOwner} placeholder={m.domain_owner_placeholder()} />
-                            </div>
-                            <div class="detail-field">
-                              <label>{m.domain_tags()}</label>
-                              <input class="cell-input" type="text" bind:value={formTags} placeholder={m.domain_tags_placeholder()} />
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
+                      <DomainEditForm
+                        bind:this={editFormRef}
+                        {editingId}
+                        {addingNew}
+                        {existingGroups}
+                        tableColspan={TABLE_COLSPAN}
+                        onreset={handleFormReset}
+                      />
                     {:else}
                       <!-- Display row -->
                       <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -843,107 +548,18 @@
 
             <!-- Add new row -->
             {#if addingNew}
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <tr class="editing-row add-row" onkeydown={handleRowKeydown}>
-                <td>
-                  <input class="cell-input cell-group" type="text" bind:value={formGroup} placeholder={m.domain_group_placeholder()} list="domain-groups-list" />
-                </td>
-                <td><input class="cell-input" type="text" bind:value={formName} placeholder={m.domain_name_placeholder()} /></td>
-                <td class="td-type-cell">
-                  <SearchableSelect
-                    options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
-                    value={formType}
-                    onchange={(v) => (formType = v as ColumnType)}
-                    size="sm"
-                  />
-                </td>
-                <td>
-                  {#if hasLength}
-                    <input class="cell-input cell-num" type="number" bind:value={formLength} min="1" max="65535" />
-                  {:else}
-                    <span class="td-mono">&mdash;</span>
-                  {/if}
-                </td>
-                <td class="td-check"><input type="checkbox" bind:checked={formNullable} /></td>
-                <td class="td-check"><input type="checkbox" bind:checked={formPrimaryKey} /></td>
-                <td class="td-check"><input type="checkbox" bind:checked={formUnique} /></td>
-                <td class="td-check"><input type="checkbox" bind:checked={formAutoIncrement} /></td>
-                <td><input class="cell-input" type="text" bind:value={formDefaultValue} placeholder={m.optional()} /></td>
-                <td>
-                  {#if hasScale}
-                    <input class="cell-input cell-num" type="number" bind:value={formScale} min="0" max="30" />
-                  {:else}
-                    <span class="td-mono">&mdash;</span>
-                  {/if}
-                </td>
-                <td><input class="cell-input" type="text" bind:value={formCheck} placeholder={m.column_check_placeholder()} /></td>
-                <td>
-                  {#if hasEnum}
-                    <input class="cell-input" type="text" bind:value={formEnumValues} placeholder="a, b, c" />
-                  {:else}
-                    <span class="td-mono">&mdash;</span>
-                  {/if}
-                </td>
-                <td><input class="cell-input" type="text" bind:value={formComment} placeholder={m.optional()} /></td>
-                <td class="td-actions">
-                  <button class="icon-btn save" onclick={saveEdit} disabled={!formName.trim()}>&#x2713;</button>
-                  <button class="icon-btn" onclick={cancelEdit}>&#x2715;</button>
-                </td>
-              </tr>
-              <tr class="editing-row detail-edit-row add-row">
-                <td colspan={TABLE_COLSPAN}>
-                  <div class="detail-grid editing">
-                    <div class="detail-field">
-                      <label>{m.domain_parent()}</label>
-                      <select class="cell-input" bind:value={formParentId}>
-                        <option value={undefined}>{m.domain_parent_none()}</option>
-                        {#each getAvailableParents(null) as opt}
-                          <option value={opt.value}>{opt.label}</option>
-                        {/each}
-                      </select>
-                    </div>
-                    <div class="detail-field wide">
-                      <label>{m.domain_description()}</label>
-                      <textarea class="cell-input cell-textarea" bind:value={formDescription} placeholder={m.domain_description_placeholder()} rows="2"></textarea>
-                    </div>
-                    <div class="detail-field">
-                      <label>{m.domain_alias()}</label>
-                      <input class="cell-input" type="text" bind:value={formAlias} placeholder={m.domain_alias_placeholder()} />
-                    </div>
-                    <div class="detail-field">
-                      <label>{m.domain_data_standard()}</label>
-                      <input class="cell-input" type="text" bind:value={formDataStandard} placeholder={m.domain_data_standard_placeholder()} />
-                    </div>
-                    <div class="detail-field">
-                      <label>{m.domain_example()}</label>
-                      <input class="cell-input" type="text" bind:value={formExample} placeholder={m.domain_example_placeholder()} />
-                    </div>
-                    <div class="detail-field">
-                      <label>{m.domain_valid_range()}</label>
-                      <input class="cell-input" type="text" bind:value={formValidRange} placeholder={m.domain_valid_range_placeholder()} />
-                    </div>
-                    <div class="detail-field">
-                      <label>{m.domain_owner()}</label>
-                      <input class="cell-input" type="text" bind:value={formOwner} placeholder={m.domain_owner_placeholder()} />
-                    </div>
-                    <div class="detail-field">
-                      <label>{m.domain_tags()}</label>
-                      <input class="cell-input" type="text" bind:value={formTags} placeholder={m.domain_tags_placeholder()} />
-                    </div>
-                  </div>
-                </td>
-              </tr>
+              <DomainEditForm
+                bind:this={editFormRef}
+                {editingId}
+                {addingNew}
+                {existingGroups}
+                tableColspan={TABLE_COLSPAN}
+                onreset={handleFormReset}
+              />
             {/if}
           </tbody>
         </table>
       </div>
-
-      <!-- Datalist for group autocomplete -->
-      <datalist id="domain-groups-list">
-        {#each existingGroups as g}
-          <option value={g}></option>
-        {/each}
-      </datalist>
 
     </div>
     {#if !addingNew}
@@ -1199,7 +815,7 @@
     opacity: 0.85;
   }
 
-  .domain-table tbody tr.editing-row {
+  .domain-table tbody :global(tr.editing-row) {
     background: #eff6ff;
     outline: 2px solid #3b82f6;
     outline-offset: -1px;
@@ -1301,7 +917,7 @@
     width: 32px;
   }
 
-  .td-check {
+  .modal :global(.td-check) {
     text-align: center;
     width: 32px;
   }
@@ -1326,7 +942,7 @@
   }
 
   /* Inline cell inputs */
-  .cell-input {
+  .modal :global(.cell-input) {
     border: 1px solid #cbd5e1;
     border-radius: 3px;
     padding: 5px 8px;
@@ -1339,20 +955,20 @@
     background: white;
   }
 
-  .cell-input:focus {
+  .modal :global(.cell-input:focus) {
     border-color: #3b82f6;
   }
 
-  .cell-num {
+  .modal :global(.cell-num) {
     width: 85px;
   }
 
-  .cell-group {
+  .modal :global(.cell-group) {
     width: 110px;
     min-width: 80px;
   }
 
-  .td-type-cell {
+  .modal :global(.td-type-cell) {
     min-width: 130px;
   }
 
@@ -1406,17 +1022,17 @@
     color: #1e293b;
   }
 
-  .icon-btn.save {
+  .modal :global(.icon-btn.save) {
     color: #16a34a;
     border-color: #bbf7d0;
   }
 
-  .icon-btn.save:hover {
+  .modal :global(.icon-btn.save:hover) {
     background: #dcfce7;
     color: #15803d;
   }
 
-  .icon-btn.save:disabled {
+  .modal :global(.icon-btn.save:disabled) {
     color: #94a3b8;
     border-color: #e2e8f0;
     cursor: not-allowed;
@@ -1452,113 +1068,6 @@
   }
 
   /* Coverage dashboard */
-  .coverage-panel {
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    overflow: hidden;
-  }
-
-  .coverage-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    cursor: pointer;
-    background: #f8fafc;
-    user-select: none;
-  }
-
-  .coverage-header:hover {
-    background: #f1f5f9;
-  }
-
-  .coverage-toggle {
-    font-size: 9px;
-    color: #94a3b8;
-  }
-
-  .coverage-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #475569;
-  }
-
-  .coverage-summary {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-left: auto;
-  }
-
-  .coverage-body {
-    padding: 10px 12px;
-    border-top: 1px solid #e2e8f0;
-  }
-
-  .coverage-bar-wrapper {
-    height: 8px;
-    background: #e2e8f0;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .coverage-bar {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.3s ease;
-  }
-
-  .coverage-bar.green { background: #22c55e; }
-  .coverage-bar.yellow { background: #f59e0b; }
-  .coverage-bar.red { background: #ef4444; }
-
-  .coverage-groups {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .coverage-group-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11px;
-  }
-
-  .coverage-group-name {
-    width: 100px;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 0;
-  }
-
-  .coverage-minibar-wrapper {
-    flex: 1;
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .coverage-minibar {
-    height: 100%;
-    border-radius: 2px;
-  }
-
-  .coverage-minibar.green { background: #22c55e; }
-  .coverage-minibar.yellow { background: #f59e0b; }
-  .coverage-minibar.red { background: #ef4444; }
-
-  .coverage-group-pct {
-    width: 32px;
-    text-align: right;
-    color: #64748b;
-    flex-shrink: 0;
-  }
-
   /* Dictionary dropdown */
   .dict-dropdown-wrapper {
     position: relative;
@@ -1622,7 +1131,7 @@
     gap: 8px 16px;
   }
 
-  .detail-grid.editing {
+  .modal :global(.detail-grid.editing) {
     gap: 6px 12px;
   }
 
@@ -1632,11 +1141,11 @@
     gap: 2px;
   }
 
-  .detail-field.wide {
+  .modal :global(.detail-field.wide) {
     grid-column: 1 / -1;
   }
 
-  .detail-field label {
+  .modal :global(.detail-field label) {
     font-size: 10px;
     font-weight: 600;
     color: #94a3b8;
@@ -1650,16 +1159,16 @@
     word-break: break-word;
   }
 
-  .detail-edit-row {
+  .modal :global(.detail-edit-row) {
     outline: none !important;
     border-top: none;
   }
 
-  .detail-edit-row td {
+  .modal :global(.detail-edit-row td) {
     padding-top: 0 !important;
   }
 
-  .cell-textarea {
+  .modal :global(.cell-textarea) {
     resize: vertical;
     font-family: inherit;
     min-height: 36px;

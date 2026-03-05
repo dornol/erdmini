@@ -37,6 +37,12 @@ export function createMcpServer(
     }
   }
 
+  function getSchemaOrFail(projectId: string): ERDSchema {
+    const schema = getSchema(db, projectId);
+    if (!schema) throw new Error('Project schema not found');
+    return schema;
+  }
+
   function saveAndNotify(projectId: string, schema: ERDSchema): void {
     saveSchema(db, projectId, schema);
     notifyCollabSchemaChange(projectId, schema, 'mcp');
@@ -77,10 +83,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       return {
         content: [{ type: 'text', text: JSON.stringify(schema, null, 2) }],
       };
@@ -93,10 +96,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const tables = schema.tables;
       const groups = [...new Set(tables.map(t => t.group || ''))];
       const summary = {
@@ -121,10 +121,7 @@ export function createMcpServer(
     },
     async ({ projectId, group, schema: schemaFilter }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       let tables = schema.tables;
       if (group !== undefined) {
         tables = tables.filter(t => (t.group || '') === group);
@@ -153,10 +150,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const defined = schema.schemas ?? [];
       const result = defined.map(name => ({
         name,
@@ -178,10 +172,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, tableName }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       if (!tableId && !tableName) {
         return { content: [{ type: 'text', text: 'Provide either tableId or tableName' }], isError: true };
       }
@@ -201,10 +192,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const groupMap = new Map<string, string[]>();
       for (const t of schema.tables) {
         const g = t.group || '(ungrouped)';
@@ -232,10 +220,7 @@ export function createMcpServer(
     },
     async ({ projectId, dialect, ...opts }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const options: Partial<DDLExportOptions> = {};
       if (opts.includeComments !== undefined) options.includeComments = opts.includeComments;
       if (opts.includeForeignKeys !== undefined) options.includeForeignKeys = opts.includeForeignKeys;
@@ -254,10 +239,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const issues = lintSchema(schema);
       return {
         content: [{ type: 'text', text: JSON.stringify(issues, null, 2) }],
@@ -274,10 +256,7 @@ export function createMcpServer(
     },
     async ({ projectId, format }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const diagram = format === 'mermaid' ? exportMermaid(schema) : exportPlantUML(schema);
       return { content: [{ type: 'text', text: diagram }] };
     },
@@ -301,10 +280,7 @@ export function createMcpServer(
     },
     async ({ projectId, ...opts }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = addTable(schema, opts);
       mcpAudit('add_table', projectId, { name: opts.name });
       saveAndNotify(projectId, result.schema);
@@ -328,10 +304,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, ...patch }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       if (!schema.tables.find(t => t.id === tableId)) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
       }
@@ -351,10 +324,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       if (!schema.tables.find(t => t.id === tableId)) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
       }
@@ -385,10 +355,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, ...colOpts }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = addColumn(schema, tableId, colOpts as any);
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -421,10 +388,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, columnId, ...patch }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const table = schema.tables.find(t => t.id === tableId);
       if (!table) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -449,10 +413,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, columnId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const table = schema.tables.find(t => t.id === tableId);
       if (!table) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -481,10 +442,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, columnIds, referencedTableId, referencedColumnIds, onDelete, onUpdate }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = addForeignKey(schema, tableId, {
         columnIds,
         referencedTableId,
@@ -513,10 +471,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, fkId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const table = schema.tables.find(t => t.id === tableId);
       if (!table) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -541,10 +496,7 @@ export function createMcpServer(
     },
     async ({ projectId, group, color }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const groupColors = { ...(schema.groupColors ?? {}) };
       if (color) {
         groupColors[group] = color;
@@ -619,10 +571,7 @@ export function createMcpServer(
     },
     async ({ projectId, schema: schemaFilter }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       let memoList = schema.memos ?? [];
       if (schemaFilter !== undefined) {
         memoList = memoList.filter(m => (m.schema || '') === schemaFilter);
@@ -656,10 +605,7 @@ export function createMcpServer(
     },
     async ({ projectId, ...opts }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = addMemo(schema, opts);
       mcpAudit('add_memo', projectId);
       saveAndNotify(projectId, result.schema);
@@ -685,10 +631,7 @@ export function createMcpServer(
     },
     async ({ projectId, memoId, ...patch }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const memos = schema.memos ?? [];
       if (!memos.find(m => m.id === memoId)) {
         return { content: [{ type: 'text', text: `Memo ${memoId} not found` }], isError: true };
@@ -709,10 +652,7 @@ export function createMcpServer(
     },
     async ({ projectId, memoId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const memos = schema.memos ?? [];
       if (!memos.find(m => m.id === memoId)) {
         return { content: [{ type: 'text', text: `Memo ${memoId} not found` }], isError: true };
@@ -734,10 +674,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       // Compute usage count per domain
       const usageMap = new Map<string, number>();
       for (const t of schema.tables) {
@@ -763,10 +700,7 @@ export function createMcpServer(
     },
     async ({ projectId, domainId, domainName }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       if (!domainId && !domainName) {
         return { content: [{ type: 'text', text: 'Provide either domainId or domainName' }], isError: true };
       }
@@ -824,10 +758,7 @@ export function createMcpServer(
     },
     async ({ projectId, name, type, ...opts }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const domainFields: Omit<ColumnDomain, 'id'> = {
         name,
         type: type as any,
@@ -890,10 +821,7 @@ export function createMcpServer(
     },
     async ({ projectId, domainId, ...patch }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       if (!(schema.domains ?? []).find(d => d.id === domainId)) {
         return { content: [{ type: 'text', text: `Domain ${domainId} not found` }], isError: true };
       }
@@ -913,10 +841,7 @@ export function createMcpServer(
     },
     async ({ projectId, domainId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       if (!(schema.domains ?? []).find(d => d.id === domainId)) {
         return { content: [{ type: 'text', text: `Domain ${domainId} not found` }], isError: true };
       }
@@ -933,10 +858,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const suggestions = suggestDomains(schema);
       if (suggestions.length === 0) {
         return { content: [{ type: 'text', text: 'No domain suggestions — all columns are unique or already linked to domains.' }] };
@@ -951,10 +873,7 @@ export function createMcpServer(
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const stats = computeCoverageStats(schema);
       return { content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }] };
     },
@@ -969,10 +888,7 @@ export function createMcpServer(
     },
     async ({ projectId, format }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const ctx = { schema, projectName: projectId };
       const result = format === 'markdown'
         ? exportDictionaryMarkdown(ctx)
@@ -1012,10 +928,7 @@ export function createMcpServer(
     },
     async ({ projectId, name, description }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const id = Math.random().toString(36).slice(2, 10);
       const now = Date.now();
       db.prepare(
@@ -1082,10 +995,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, fkId, ...patch }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = updateForeignKey(schema, tableId, fkId, patch as Parameters<typeof updateForeignKey>[3]);
       if (!result) {
         return { content: [{ type: 'text', text: 'Table or foreign key not found' }], isError: true };
@@ -1107,10 +1017,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, columnIds, name }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = addUniqueKey(schema, tableId, columnIds, name);
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -1131,10 +1038,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, uniqueKeyId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const updated = deleteUniqueKey(schema, tableId, uniqueKeyId);
       mcpAudit('delete_unique_key', projectId, { tableId, uniqueKeyId });
       saveAndNotify(projectId, updated);
@@ -1154,10 +1058,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, columnIds, unique, name }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = addIndex(schema, tableId, columnIds, unique ?? false, name);
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -1178,10 +1079,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, indexId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const updated = deleteIndex(schema, tableId, indexId);
       mcpAudit('delete_index', projectId, { tableId, indexId });
       saveAndNotify(projectId, updated);
@@ -1200,10 +1098,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId, columnId, toIndex }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = moveColumn(schema, tableId, columnId, toIndex);
       if (!result) {
         return { content: [{ type: 'text', text: 'Table or column not found, or index out of range' }], isError: true };
@@ -1223,10 +1118,7 @@ export function createMcpServer(
     },
     async ({ projectId, tableId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = duplicateTable(schema, tableId);
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -1249,10 +1141,7 @@ export function createMcpServer(
     },
     async ({ projectId, memoId, tableId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const updated = attachMemo(schema, memoId, tableId);
       mcpAudit('attach_memo', projectId, { memoId, tableId });
       saveAndNotify(projectId, updated);
@@ -1269,10 +1158,7 @@ export function createMcpServer(
     },
     async ({ projectId, memoId }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const updated = detachMemo(schema, memoId);
       mcpAudit('detach_memo', projectId, { memoId });
       saveAndNotify(projectId, updated);
@@ -1290,10 +1176,7 @@ export function createMcpServer(
     },
     async ({ projectId, type, groupByGroup }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const positions = computeLayout(schema.tables, type as LayoutType, { groupByGroup });
       const tables: Table[] = schema.tables.map(t => {
         const pos = positions.get(t.id);
@@ -1316,10 +1199,7 @@ export function createMcpServer(
     },
     async ({ projectId, oldName, newName }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const updated = renameGroup(schema, oldName, newName);
       mcpAudit('rename_group', projectId, { oldName, newName });
       saveAndNotify(projectId, updated);
@@ -1337,10 +1217,7 @@ export function createMcpServer(
     },
     async ({ projectId, oldName, newName }) => {
       requireAccess(projectId, 'editor');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const result = renameSchema(schema, oldName, newName);
       if (!result) {
         return { content: [{ type: 'text', text: 'Invalid or duplicate schema name' }], isError: true };
@@ -1366,10 +1243,7 @@ export function createMcpServer(
     },
     async ({ projectId, ...opts }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const options: Record<string, boolean> = {};
       if (opts.includeComments !== undefined) options.includeComments = opts.includeComments;
       if (opts.includeForeignKeys !== undefined) options.includeForeignKeys = opts.includeForeignKeys;
@@ -1442,10 +1316,7 @@ export function createMcpServer(
     },
     async ({ projectId, ...opts }) => {
       requireAccess(projectId, 'viewer');
-      const schema = getSchema(db, projectId);
-      if (!schema) {
-        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
-      }
+      const schema = getSchemaOrFail(projectId);
       const options: Record<string, boolean> = {};
       if (opts.includeComments !== undefined) options.includeComments = opts.includeComments;
       if (opts.includeForeignKeys !== undefined) options.includeForeignKeys = opts.includeForeignKeys;

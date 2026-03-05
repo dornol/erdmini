@@ -4,13 +4,7 @@ import db from '$lib/server/db';
 import { hashPassword } from '$lib/server/auth/password';
 import { logAudit } from '$lib/server/audit';
 import type { UserRow } from '$lib/types/auth';
-
-function requireAdmin(locals: App.Locals) {
-  if (!locals.user || locals.user.role !== 'admin') {
-    return json({ error: 'Forbidden' }, { status: 403 });
-  }
-  return null;
-}
+import { requireAdmin } from '$lib/server/auth/guards';
 
 export const GET: RequestHandler = ({ params, locals }) => {
   const err = requireAdmin(locals);

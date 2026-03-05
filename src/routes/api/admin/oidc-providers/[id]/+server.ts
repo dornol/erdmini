@@ -3,13 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { logAudit } from '$lib/server/audit';
 import { clearConfigCache } from '$lib/server/auth/oidc';
-
-function requireAdmin(locals: App.Locals) {
-  if (!locals.user || locals.user.role !== 'admin') {
-    return json({ error: 'Forbidden' }, { status: 403 });
-  }
-  return null;
-}
+import { requireAdmin } from '$lib/server/auth/guards';
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
   const err = requireAdmin(locals);
