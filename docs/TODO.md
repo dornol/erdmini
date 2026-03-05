@@ -187,7 +187,7 @@
 
 ### 32. ORM / Framework Schema Import
 - ORM 및 프레임워크 스키마 파일에서 직접 ERD 생성
-- **Prisma** (`schema.prisma`): model, @id, @relation, @unique, enum 파싱
+- ~~**Prisma** (`schema.prisma`): model, @id, @relation, @unique, enum 파싱~~ ✅ (Import + Export 구현 완료)
 - **Rails** (`schema.rb`): create_table, t.string/integer/references, add_index, add_foreign_key 파싱
 - **Django** (`models.py`): class Model, CharField, ForeignKey, ManyToManyField, Meta.unique_together 파싱
 - **TypeORM / Sequelize** (TypeScript): @Entity, @Column, @ManyToOne, @JoinColumn 데코레이터 파싱

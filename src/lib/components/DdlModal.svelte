@@ -6,7 +6,9 @@
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL, DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
+  import { exportPrisma } from '$lib/utils/prisma-export';
   import { importDDL, type DDLImportMessages } from '$lib/utils/ddl-import';
+  import { importPrisma } from '$lib/utils/prisma-import';
   import { computeLayout } from '$lib/utils/auto-layout';
   import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
@@ -22,12 +24,14 @@
 
   let activeTab = $state<'import' | 'export'>(untrack(() => mode));
 
-  type ExportFormat = 'ddl' | 'mermaid' | 'plantuml';
+  type ExportFormat = 'ddl' | 'mermaid' | 'plantuml' | 'prisma';
+  type ImportFormat = 'ddl' | 'prisma';
 
   const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
     { value: 'ddl', label: 'DDL' },
     { value: 'mermaid', label: 'Mermaid' },
     { value: 'plantuml', label: 'PlantUML' },
+    { value: 'prisma', label: 'Prisma' },
   ];
 
   const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
@@ -63,11 +67,13 @@
   let exportText = $derived.by(() => {
     if (exportFormat === 'mermaid') return exportMermaid(erdStore.schema);
     if (exportFormat === 'plantuml') return exportPlantUML(erdStore.schema);
+    if (exportFormat === 'prisma') return exportPrisma(erdStore.schema);
     return exportDDL(erdStore.schema, exportDialect, { ...ddlOptions, quoteStyle: ddlOptions.quoteStyle === 'none' ? 'none' : ddlOptions.quoteStyle || getDefaultQuoteStyle(exportDialect) });
   });
   let copyLabel = $state<'copy' | 'copied'>('copy');
 
   // Import state
+  let importFormat = $state<ImportFormat>('ddl');
   let importDialect = $state<Dialect>('mysql');
   let importText = $state('');
   let importErrors = $state<string[]>([]);
@@ -91,6 +97,8 @@
       a.download = `erdmini_${projName}.mmd`;
     } else if (exportFormat === 'plantuml') {
       a.download = `erdmini_${projName}.puml`;
+    } else if (exportFormat === 'prisma') {
+      a.download = `erdmini_${projName}.prisma`;
     } else {
       a.download = `erdmini_${projName}_${exportDialect}.sql`;
     }
@@ -101,7 +109,7 @@
   function openFile() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.sql,.txt';
+    input.accept = importFormat === 'prisma' ? '.prisma,.txt' : '.sql,.txt';
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
@@ -121,12 +129,22 @@
     importing = true;
 
     try {
-      const importMessages: DDLImportMessages = {
-        noCreateTable: () => m.ddl_import_no_create_table(),
-        tableParseError: (p) => m.ddl_import_table_parse_error(p),
-        fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
-      };
-      const result = await importDDL(importText, importDialect, importMessages);
+      let result;
+      if (importFormat === 'prisma') {
+        result = importPrisma(importText, {
+          noModels: () => m.prisma_import_no_models(),
+          implicitM2m: (p) => m.prisma_import_implicit_m2m(p),
+          noPkWarning: (p) => m.prisma_no_pk_warning(p),
+          fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
+        });
+      } else {
+        const importMessages: DDLImportMessages = {
+          noCreateTable: () => m.ddl_import_no_create_table(),
+          tableParseError: (p) => m.ddl_import_table_parse_error(p),
+          fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
+        };
+        result = await importDDL(importText, importDialect, importMessages);
+      }
       if (result.errors.length > 0) {
         importErrors = result.errors;
       }
@@ -226,7 +244,9 @@
         const layoutType = result.tables.some((t) => t.foreignKeys.length > 0) ? 'hierarchical' : 'grid';
         const positions = computeLayout(erdStore.schema.tables, layoutType);
         erdStore.applyLayout(positions);
-        importSuccess = m.ddl_import_success({ count: result.tables.length });
+        importSuccess = importFormat === 'prisma'
+          ? m.prisma_import_success({ count: result.tables.length })
+          : m.ddl_import_success({ count: result.tables.length });
       }
     } catch (e) {
       importErrors = [`Import error: ${e instanceof Error ? e.message : e}`];
@@ -294,7 +314,7 @@
             {copyLabel === 'copy' ? m.ddl_copy() : m.ddl_copied()}
           </button>
           <button class="btn-secondary" onclick={downloadFile}>
-            {exportFormat === 'mermaid' ? '.mmd' : exportFormat === 'plantuml' ? '.puml' : m.ddl_download()}
+            {exportFormat === 'mermaid' ? '.mmd' : exportFormat === 'plantuml' ? '.puml' : exportFormat === 'prisma' ? m.prisma_download() : m.ddl_download()}
           </button>
         </div>
         {#if exportFormat === 'ddl' && showDdlOptions}
@@ -341,15 +361,20 @@
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>
       {:else}
         <div class="import-controls">
-          <span class="label">Dialect:</span>
-          <div class="dialect-select-wrap">
-            <SearchableSelect
-              options={DIALECT_OPTIONS}
-              value={importDialect}
-              onchange={(v) => (importDialect = v as Dialect)}
-              size="md"
-            />
+          <div class="format-tabs">
+            <button class="format-tab" class:active={importFormat === 'ddl'} onclick={() => importFormat = 'ddl'}>DDL</button>
+            <button class="format-tab" class:active={importFormat === 'prisma'} onclick={() => importFormat = 'prisma'}>Prisma</button>
           </div>
+          {#if importFormat === 'ddl'}
+            <div class="dialect-select-wrap">
+              <SearchableSelect
+                options={DIALECT_OPTIONS}
+                value={importDialect}
+                onchange={(v) => (importDialect = v as Dialect)}
+                size="md"
+              />
+            </div>
+          {/if}
           <button class="btn-secondary" onclick={openFile}>{m.action_open_file()}</button>
           <div class="spacer"></div>
           <button class="btn-primary" onclick={doImport} disabled={importing}>
@@ -359,7 +384,7 @@
         <textarea
           class="code-area"
           bind:value={importText}
-          placeholder={m.ddl_paste_placeholder()}
+          placeholder={importFormat === 'prisma' ? m.prisma_paste_placeholder() : m.ddl_paste_placeholder()}
           spellcheck="false"
         ></textarea>
         {#if importSuccess}
