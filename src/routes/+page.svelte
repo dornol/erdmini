@@ -195,6 +195,8 @@
     unsubCollab();
     collabClient.disconnect();
     collabStore.reset();
+    clearTimeout(fullscreenBarTimer);
+    clearTimeout(saveTimer);
   });
 
   // Load permission when project changes (server mode only)

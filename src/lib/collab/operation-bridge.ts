@@ -1,6 +1,7 @@
 import { erdStore } from '$lib/store/erd.svelte';
 import { collabStore } from '$lib/store/collab.svelte';
 import { collabClient } from './collab-client';
+import { applyMemoPatch } from './memo-patch';
 import type { CollabOperation, ServerMessage } from '$lib/types/collab';
 import type { ERDSchema } from '$lib/types/erd';
 
@@ -221,7 +222,7 @@ export function applyRemoteOperation(op: CollabOperation) {
       case 'update-memo': {
         const memo = erdStore.schema.memos.find((m) => m.id === op.memoId);
         if (memo) {
-          Object.assign(memo, op.patch);
+          applyMemoPatch(memo, op.patch);
           erdStore.schema.updatedAt = new Date().toISOString();
         }
         break;

@@ -2,8 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { generateApiKey } from '$lib/server/auth/api-key';
+import { hasProjectAccess } from '$lib/server/auth/permissions';
 import { randomUUID } from 'crypto';
 import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
+
+const VALID_SCOPE_PERMISSIONS = new Set(['viewer', 'editor']);
 
 function requireUser(locals: App.Locals) {
   if (!locals.user) {
@@ -59,8 +62,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
          VALUES (?, ?, ?, ?)`
       );
       for (const scope of scopes) {
-        if (scope.projectId && scope.permission) {
-          insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
+        if (scope.projectId && scope.permission && VALID_SCOPE_PERMISSIONS.has(scope.permission)) {
+          if (hasProjectAccess(db, scope.projectId, locals.user!.id, locals.user!.role, 'viewer')) {
+            insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
+          }
         }
       }
     }

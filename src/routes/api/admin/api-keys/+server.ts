@@ -7,6 +7,8 @@ import { randomUUID } from 'crypto';
 import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
 import { requireAdmin } from '$lib/server/auth/guards';
 
+const VALID_SCOPE_PERMISSIONS = new Set(['viewer', 'editor', 'owner']);
+
 export const GET: RequestHandler = ({ locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
@@ -64,7 +66,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
        VALUES (?, ?, ?, ?)`
     );
     for (const scope of scopes) {
-      if (scope.projectId && scope.permission) {
+      if (scope.projectId && scope.permission && VALID_SCOPE_PERMISSIONS.has(scope.permission)) {
         insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
       }
     }

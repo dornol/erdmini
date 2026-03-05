@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import Database from 'better-sqlite3';
 import { requireAdmin } from '$lib/server/auth/guards';
+import { logger } from '$lib/server/logger';
 
 // GET /api/admin/backup — download DB backup or stats
 export const GET: RequestHandler = ({ locals, url }) => {
@@ -137,7 +138,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       copyFileSync(tempPath, dbPath);
     } catch {
       // Rollback: restore old DB
-      try { if (existsSync(bakPath)) renameSync(bakPath, dbPath); } catch { /* ignore */ }
+      try { if (existsSync(bakPath)) renameSync(bakPath, dbPath); } catch (rollbackErr) {
+        logger.error('[backup] Failed to rollback DB rename after copy failure', rollbackErr);
+      }
       reinitDb();
       return json({ error: 'Failed to copy backup file' }, { status: 500 });
     }
@@ -150,7 +153,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     } catch (e) {
       // Rollback: restore old DB
       closeDb();
-      try { if (existsSync(bakPath)) renameSync(bakPath, dbPath); } catch { /* ignore */ }
+      try { if (existsSync(bakPath)) renameSync(bakPath, dbPath); } catch (rollbackErr) {
+        logger.error('[backup] Failed to rollback DB after verification failure', rollbackErr);
+      }
       reinitDb();
       return json({
         error: `Restored DB failed to open: ${e instanceof Error ? e.message : 'unknown error'}`,

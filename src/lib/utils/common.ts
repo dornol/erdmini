@@ -1,5 +1,8 @@
+const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
+
 export function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  const arr = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(arr, v => ID_CHARS[v % ID_CHARS.length]).join('');
 }
 
 export function now(): string {

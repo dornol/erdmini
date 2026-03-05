@@ -111,22 +111,19 @@ export const DELETE: RequestHandler = ({ params, locals }) => {
     }
   }
 
-  // Transfer owned projects to the requesting admin
+  // Transfer ownership and delete user atomically
   const adminId = locals.user!.id;
-  db.prepare(
-    `UPDATE project_permissions SET user_id = ? WHERE user_id = ? AND permission = 'owner'`
-  ).run(adminId, params.id);
-
-  // Transfer project_index data
-  db.prepare(
-    `UPDATE project_index SET user_id = ? WHERE user_id = ?`
-  ).run(adminId, params.id);
-
-  // Remove any non-owner permissions
-  db.prepare('DELETE FROM project_permissions WHERE user_id = ?').run(params.id);
-
-  // Delete user (cascades to sessions and oidc_identities)
-  db.prepare('DELETE FROM users WHERE id = ?').run(params.id);
+  const deleteUser = db.transaction(() => {
+    db.prepare(
+      `UPDATE project_permissions SET user_id = ? WHERE user_id = ? AND permission = 'owner'`
+    ).run(adminId, params.id);
+    db.prepare(
+      `UPDATE project_index SET user_id = ? WHERE user_id = ?`
+    ).run(adminId, params.id);
+    db.prepare('DELETE FROM project_permissions WHERE user_id = ?').run(params.id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(params.id);
+  });
+  deleteUser();
 
   logAudit({ action: 'delete', category: 'user', userId: locals.user!.id, username: locals.user!.username, resourceType: 'user', resourceId: params.id, detail: { deletedUsername: user.username } });
 

@@ -5,6 +5,8 @@ import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import { requireAdmin } from '$lib/server/auth/guards';
 
+const VALID_SCOPE_PERMISSIONS = new Set(['viewer', 'editor', 'owner']);
+
 export const DELETE: RequestHandler = ({ params, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
@@ -52,7 +54,7 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
          VALUES (?, ?, ?, ?)`
       );
       for (const scope of scopes) {
-        if (scope.projectId && scope.permission) {
+        if (scope.projectId && scope.permission && VALID_SCOPE_PERMISSIONS.has(scope.permission)) {
           insertScope.run(randomUUID(), params.id, scope.projectId, scope.permission);
         }
       }

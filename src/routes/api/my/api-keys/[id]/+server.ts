@@ -1,7 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
+import { hasProjectAccess } from '$lib/server/auth/permissions';
 import { randomUUID } from 'crypto';
+
+const VALID_SCOPE_PERMISSIONS = new Set(['viewer', 'editor']);
 
 function requireUser(locals: App.Locals) {
   if (!locals.user) {
@@ -50,8 +53,10 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
          VALUES (?, ?, ?, ?)`
       );
       for (const scope of scopes) {
-        if (scope.projectId && scope.permission) {
-          insertScope.run(randomUUID(), params.id, scope.projectId, scope.permission);
+        if (scope.projectId && scope.permission && VALID_SCOPE_PERMISSIONS.has(scope.permission)) {
+          if (hasProjectAccess(db, scope.projectId, locals.user!.id, locals.user!.role, 'viewer')) {
+            insertScope.run(randomUUID(), params.id, scope.projectId, scope.permission);
+          }
         }
       }
     }
