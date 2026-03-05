@@ -10,9 +10,14 @@ import {
   findMapFieldAttribute,
   findMapBlockAttribute,
 } from '@loancrate/prisma-schema-parser';
+import {
+  findFirstAttribute,
+  getDeclarationAttributes,
+} from '@loancrate/prisma-schema-parser';
 import type {
   ModelDeclaration,
   EnumDeclaration,
+  EnumValue,
   FieldDeclaration,
   PrismaType,
   SchemaExpression,
@@ -121,6 +126,19 @@ function getDocComment(members: (FieldDeclaration | CommentBlock | { kind: strin
   return undefined;
 }
 
+function hasFieldIgnore(field: FieldDeclaration): boolean {
+  return !!findFirstAttribute(field.attributes, 'ignore');
+}
+
+function hasBlockIgnore(model: ModelDeclaration): boolean {
+  const attrs = getDeclarationAttributes(model);
+  return !!findFirstAttribute(attrs, 'ignore');
+}
+
+function hasUpdatedAt(field: FieldDeclaration): boolean {
+  return !!findFirstAttribute(field.attributes, 'updatedAt');
+}
+
 function findDbAttribute(field: FieldDeclaration): { nativeType: string; args: SchemaExpression[] } | undefined {
   if (!field.attributes) return undefined;
   for (const attr of field.attributes) {
@@ -151,14 +169,18 @@ export function importPrisma(
     return { tables: [], errors: [`Parse error: ${e instanceof Error ? e.message : e}`], warnings: [] };
   }
 
-  // Collect enums
+  // Collect enums (use @map name if present on individual values)
   const enumMap = new Map<string, string[]>();
   for (const decl of schema.declarations) {
     if (decl.kind === 'enum') {
       const enumDecl = decl as EnumDeclaration;
       const values = enumDecl.members
         .filter(m => m.kind === 'enumValue')
-        .map(m => (m as { kind: 'enumValue'; name: { value: string } }).name.value);
+        .map(m => {
+          const ev = m as EnumValue;
+          const mapAttr = findMapFieldAttribute(ev);
+          return mapAttr?.name ?? ev.name.value;
+        });
       enumMap.set(enumDecl.name.value, values);
     }
   }
@@ -200,6 +222,13 @@ export function importPrisma(
     if (decl.kind !== 'model' && decl.kind !== 'type' && decl.kind !== 'view') continue;
     const model = decl as ModelDeclaration;
     const modelName = model.name.value;
+
+    // Skip @@ignore models
+    if (hasBlockIgnore(model)) {
+      warnings.push(`Model "${modelName}" has @@ignore, skipped.`);
+      continue;
+    }
+
     const mapAttr = findMapBlockAttribute(model);
     const tableName = mapAttr?.name ?? modelName;
     const tableId = generateId();
@@ -221,7 +250,17 @@ export function importPrisma(
       const member = model.members[i];
       if (member.kind !== 'field') continue;
       const field = member as FieldDeclaration;
+
+      // Skip @ignore fields
+      if (hasFieldIgnore(field)) continue;
+
       const { name: typeName, isList, isOptional } = getBaseTypeName(field.type);
+
+      // Skip Unsupported("...") types with warning
+      if (field.type.kind === 'unsupported' || (field.type.kind === 'optional' && field.type.type.kind === 'unsupported') || (field.type.kind === 'list' && field.type.type.kind === 'unsupported')) {
+        warnings.push(`Unsupported type skipped: ${modelName}.${field.name.value}`);
+        continue;
+      }
 
       // Skip relation fields (type is another model or list of model)
       if (modelNames.has(typeName)) {
@@ -328,6 +367,11 @@ export function importPrisma(
           const val = expressionToString(expr);
           if (val !== '') defaultValue = val;
         }
+      }
+
+      // @updatedAt → default NOW() if no explicit default
+      if (hasUpdatedAt(field) && !defaultValue) {
+        defaultValue = 'NOW()';
       }
 
       // Unique
