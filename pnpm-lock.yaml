@@ -38,6 +38,9 @@ importers:
       openid-client:
         specifier: ^6.8.2
         version: 6.8.2
+      sql.js:
+        specifier: ^1.14.1
+        version: 1.14.1
       svg2pdf.js:
         specifier: ^2.7.0
         version: 2.7.0(jspdf@4.2.0)
@@ -1923,6 +1926,9 @@ packages:
   specificity@0.4.1:
     resolution: {integrity: sha512-1klA3Gi5PD1Wv9Q0wUoOQN1IWAuPu0D1U03ThXTr0cJ20+/iq2tHSDnK7Kk/0LXJ1ztUB2/1Os0wKmfyNgUQfg==}
     hasBin: true
+
+  sql.js@1.14.1:
+    resolution: {integrity: sha512-gcj8zBWU5cFsi9WUP+4bFNXAyF1iRpA3LLyS/DP5xlrNzGmPIizUeBggKa8DbDwdqaKwUcTEnChtd2grWo/x/A==}
 
   sqlite-wasm-kysely@0.3.0:
     resolution: {integrity: sha512-TzjBNv7KwRw6E3pdKdlRyZiTmUIE0UttT/Sl56MVwVARl/u5gp978KepazCJZewFUnlWHz9i3NQd4kOtP/Afdg==}
@@ -4066,6 +4072,8 @@ snapshots:
   source-map-js@1.2.1: {}
 
   specificity@0.4.1: {}
+
+  sql.js@1.14.1: {}
 
   sqlite-wasm-kysely@0.3.0(kysely@0.27.6):
     dependencies:

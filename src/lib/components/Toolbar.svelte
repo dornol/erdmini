@@ -19,6 +19,7 @@
   import ShareProjectModal from './ShareProjectModal.svelte';
   import ApiKeysModal from './ApiKeysModal.svelte';
   import EmbedModal from './EmbedModal.svelte';
+  import SqlPlaygroundModal from './SqlPlaygroundModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import { authStore } from '$lib/store/auth.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
@@ -453,6 +454,7 @@
   let showHistoryPanel = $state(false);
   let showDiffModal = $state(false);
   let showSnapshotPanel = $state(false);
+  let showSqlPlayground = $state(false);
 
   // Shared projects
   interface SharedProject {
@@ -801,7 +803,7 @@
     <div class="dropdown-wrap">
       <button
         class="btn-secondary btn-tools"
-        class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showSnapshotPanel || showDomainModal}
+        class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showSnapshotPanel || showDomainModal || showSqlPlayground}
         onclick={() => (toggleDropdown('tools'))}
         aria-expanded={toolsOpen}
         aria-haspopup="menu"
@@ -837,6 +839,10 @@
           </button>
           <button class="dropdown-item" role="menuitem" onclick={() => { showSnapshotPanel = !showSnapshotPanel; closeDropdown(); }}>
             {m.toolbar_snapshots()}
+          </button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" role="menuitem" onclick={() => { showSqlPlayground = true; closeDropdown(); }}>
+            {m.sql_playground_title()}
           </button>
           {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
             <div class="dropdown-sep"></div>
@@ -1130,6 +1136,10 @@
 
 {#if showEmbedModal}
   <EmbedModal onclose={() => (showEmbedModal = false)} />
+{/if}
+
+{#if showSqlPlayground}
+  <SqlPlaygroundModal onclose={() => (showSqlPlayground = false)} />
 {/if}
 
 {#if showChangePassword}

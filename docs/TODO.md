@@ -189,27 +189,14 @@
 - 각 포맷별 `src/lib/utils/orm-import-{format}.ts` 모듈
 - Difficulty: Large
 
-### 33. SQL Playground (Browser SQLite via WASM)
-- 브라우저에서 SQLite WASM(`sql.js`)으로 현재 스키마를 실제 DB로 생성하고 SQL 쿼리 실행
-- **스키마 동기화**: 현재 ERD → `exportDDL(schema, 'sqlite')` → CREATE TABLE 자동 실행
-- **SQL 에디터**: 쿼리 입력 → 실행 → 결과 테이블 표시 (SELECT, INSERT, UPDATE, DELETE)
-- **더미 데이터 자동 생성**:
-  - 컬럼 타입 기반: INT→시퀀스, VARCHAR→`'{colName}_1'`, BOOLEAN→랜덤, DATE→최근 30일, DECIMAL→범위 내 소수, ENUM→enumValues 랜덤, UUID→랜덤
-  - FK 의존 순서: 위상 정렬로 부모 테이블 먼저 INSERT → 자식에서 부모 ID 참조
-  - 테이블당 N행 (기본 5~10행, 사용자 조절 가능)
-  - "Generate Sample Data" 버튼 → INSERT문 자동 생성 및 실행
-- **활용 시나리오**:
-  - 스키마 설계 검증 (DDL이 실제로 동작하는지 확인)
-  - FK 제약 조건 테스트 (PRAGMA foreign_keys = ON)
-  - 더미 데이터로 JOIN/집계 쿼리 프로토타이핑
-  - NOT NULL / UNIQUE 제약 조건 동작 확인
-- **구현 방향**:
-  - `sql.js` WASM (~1MB) lazy load (Playground 열 때만 로드)
-  - Toolbar > Tools 드롭다운에 "SQL Playground" 메뉴 추가
-  - 스키마 변경 시 DB 재생성 (Reset 버튼) 또는 ALTER 반영
-  - 쿼리 히스토리 (최근 N개 localStorage 저장)
-  - 에러 메시지 친절하게 표시 (SQLite 에러 → 한글/영문)
-  - `src/lib/utils/dummy-data.ts` — 타입별 더미 값 생성 + FK 위상 정렬 INSERT
+### ~~33. SQL Playground (Browser SQLite via WASM)~~ ✅
+- ~~브라우저에서 SQLite WASM(`sql.js`)으로 현재 스키마를 실제 DB로 생성하고 SQL 쿼리 실행~~
+- ~~**스키마 동기화**: 현재 ERD → `exportDDL(schema, 'sqlite')` → CREATE TABLE 자동 실행~~
+- ~~**SQL 에디터**: 쿼리 입력 → 실행 → 결과 테이블 표시 (SELECT, INSERT, UPDATE, DELETE)~~
+- ~~**더미 데이터 자동 생성**: 컬럼 타입 기반 값 생성, FK 위상 정렬 순 INSERT, 테이블당 N행 조절~~
+- ~~**구현**: `sql.js` WASM lazy load, `SqlPlaygroundModal.svelte`, `dummy-data.ts` (위상 정렬 + 타입별 더미값 + INSERT 생성)~~
+- ~~Toolbar > Tools > SQL Playground, 쿼리 히스토리 (localStorage, max 20), Ctrl/Cmd+Enter 실행~~
+- ~~70 tests (unit + integration: E-commerce, Blog, HR, edge cases)~~
 - Difficulty: Medium
 
 ### 34. Migration SQL Generation (Schema Diff → DDL)
