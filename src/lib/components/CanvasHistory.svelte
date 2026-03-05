@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import * as m from '$lib/paraglide/messages';
   import HistoryEntryList from '$lib/components/HistoryEntryList.svelte';
 
@@ -11,6 +12,7 @@
   }
 </script>
 
+{#if !permissionStore.isReadOnly}
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="canvas-history">
   {#if panelOpen}
@@ -72,6 +74,7 @@
     </button>
   </div>
 </div>
+{/if}
 
 <style>
   .canvas-history {

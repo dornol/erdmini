@@ -118,7 +118,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="canvas-bottom-bar" class:disabled={permissionStore.isReadOnly}>
+<div class="canvas-bottom-bar">
   <!-- Auto-layout dropdown -->
   <div class="bar-dropdown-wrap">
     <button
@@ -317,11 +317,6 @@
     border-radius: 6px;
     padding: 2px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
-
-  .canvas-bottom-bar.disabled {
-    opacity: 0.5;
-    pointer-events: none;
   }
 
   .bar-dropdown-wrap {
