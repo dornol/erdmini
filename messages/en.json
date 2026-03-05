@@ -434,5 +434,9 @@
   "snapshot_restored": "Snapshot restored",
   "snapshot_compare": "Compare",
   "diff_from_snapshot": "From Snapshot",
-  "toolbar_snapshots": "Snapshots"
+  "toolbar_snapshots": "Snapshots",
+  "snapshot_auto_badge": "Auto",
+  "snapshot_filter_all": "All",
+  "snapshot_filter_manual": "Manual",
+  "snapshot_filter_auto": "Auto"
 }

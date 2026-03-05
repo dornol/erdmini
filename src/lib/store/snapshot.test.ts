@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { MAX_AUTO_SNAPSHOTS } from '$lib/store/snapshot.svelte';
 import type { SchemaSnapshot, ERDSchema, ProjectIndex, Column, ForeignKey, Table, Memo, ColumnDomain, UniqueKey, TableIndex } from '$lib/types/erd';
 import type { StorageProvider, CanvasData } from '$lib/storage/types';
 
@@ -1070,5 +1071,241 @@ describe('V007 migration SQL structure', () => {
     // Primary key is composite (project_id, id)
     const pk = ['project_id', 'id'];
     expect(pk).toEqual(['project_id', 'id']);
+  });
+});
+
+// ═══════════════════════════════════════════
+// 12. Auto-Snapshot Tests
+// ═══════════════════════════════════════════
+
+describe('Auto-snapshot isAuto field', () => {
+  it('SchemaSnapshot supports optional isAuto field', () => {
+    const snap: SchemaSnapshot = {
+      id: 'auto1',
+      name: 'Auto 2024-01-01 12:00',
+      snap: '{}',
+      createdAt: Date.now(),
+      isAuto: true,
+    };
+    expect(snap.isAuto).toBe(true);
+  });
+
+  it('isAuto is undefined by default (backward compatible)', () => {
+    const snap: SchemaSnapshot = {
+      id: 'manual1',
+      name: 'Manual Snapshot',
+      snap: '{}',
+      createdAt: Date.now(),
+    };
+    expect(snap.isAuto).toBeUndefined();
+  });
+
+  it('manual snapshots have isAuto undefined or false', () => {
+    const snap: SchemaSnapshot = {
+      id: 'manual1',
+      name: 'v1.0',
+      snap: '{}',
+      createdAt: Date.now(),
+    };
+    expect(snap.isAuto).toBeFalsy();
+  });
+
+  it('can filter auto vs manual snapshots from a list', () => {
+    const snapshots: SchemaSnapshot[] = [
+      makeSnap({ id: 'a1', name: 'Auto 1', isAuto: true }),
+      makeSnap({ id: 'm1', name: 'Manual 1' }),
+      makeSnap({ id: 'a2', name: 'Auto 2', isAuto: true }),
+      makeSnap({ id: 'm2', name: 'Manual 2' }),
+      makeSnap({ id: 'a3', name: 'Auto 3', isAuto: true }),
+    ];
+
+    const autoOnly = snapshots.filter((s) => s.isAuto);
+    const manualOnly = snapshots.filter((s) => !s.isAuto);
+
+    expect(autoOnly).toHaveLength(3);
+    expect(manualOnly).toHaveLength(2);
+    expect(autoOnly.every((s) => s.isAuto === true)).toBe(true);
+    expect(manualOnly.every((s) => !s.isAuto)).toBe(true);
+  });
+});
+
+describe('Auto-snapshot pruning logic', () => {
+  it('MAX_AUTO_SNAPSHOTS is 50', () => {
+    expect(MAX_AUTO_SNAPSHOTS).toBe(50);
+  });
+
+  it('auto pruning deletes oldest auto snapshots beyond limit', async () => {
+    const provider = new MockStorageProvider();
+    const projectId = 'proj1';
+
+    // Create MAX_AUTO_SNAPSHOTS + 5 auto snapshots
+    const total = MAX_AUTO_SNAPSHOTS + 5;
+    for (let i = 0; i < total; i++) {
+      const snap: SchemaSnapshot = {
+        id: `auto_${i}`,
+        name: `Auto ${i}`,
+        snap: '{}',
+        createdAt: i * 1000,
+        isAuto: true,
+      };
+      await provider.saveSnapshot(projectId, snap);
+    }
+
+    const allSnapshots = await provider.listSnapshots(projectId);
+    expect(allSnapshots).toHaveLength(total);
+
+    // Simulate pruning: keep only the newest MAX_AUTO_SNAPSHOTS auto snapshots
+    const autoSnapshots = allSnapshots.filter((s) => s.isAuto);
+    const toDelete = autoSnapshots.slice(MAX_AUTO_SNAPSHOTS);
+    for (const s of toDelete) {
+      await provider.deleteSnapshot(projectId, s.id);
+    }
+
+    const remaining = await provider.listSnapshots(projectId);
+    expect(remaining).toHaveLength(MAX_AUTO_SNAPSHOTS);
+    // All remaining are auto
+    expect(remaining.every((s) => s.isAuto)).toBe(true);
+    // The 5 oldest should be removed (createdAt 0-4000)
+    const deletedIds = toDelete.map((s) => s.id);
+    expect(remaining.some((s) => deletedIds.includes(s.id))).toBe(false);
+  });
+
+  it('manual snapshots are never pruned during auto cleanup', async () => {
+    const provider = new MockStorageProvider();
+    const projectId = 'proj1';
+
+    // Create 10 manual snapshots
+    for (let i = 0; i < 10; i++) {
+      await provider.saveSnapshot(projectId, makeSnap({
+        id: `manual_${i}`,
+        name: `Manual ${i}`,
+        createdAt: i * 1000,
+      }));
+    }
+
+    // Create MAX_AUTO_SNAPSHOTS + 3 auto snapshots
+    const autoTotal = MAX_AUTO_SNAPSHOTS + 3;
+    for (let i = 0; i < autoTotal; i++) {
+      await provider.saveSnapshot(projectId, {
+        id: `auto_${i}`,
+        name: `Auto ${i}`,
+        snap: '{}',
+        createdAt: 100000 + i * 1000,
+        isAuto: true,
+      });
+    }
+
+    const allSnapshots = await provider.listSnapshots(projectId);
+    expect(allSnapshots).toHaveLength(10 + autoTotal);
+
+    // Simulate pruning: only prune auto snapshots
+    const autoSnapshots = allSnapshots.filter((s) => s.isAuto);
+    const manualSnapshots = allSnapshots.filter((s) => !s.isAuto);
+    const toDelete = autoSnapshots.slice(MAX_AUTO_SNAPSHOTS);
+    for (const s of toDelete) {
+      await provider.deleteSnapshot(projectId, s.id);
+    }
+
+    const remaining = await provider.listSnapshots(projectId);
+    const remainingManual = remaining.filter((s) => !s.isAuto);
+    const remainingAuto = remaining.filter((s) => s.isAuto);
+
+    // All 10 manual snapshots preserved
+    expect(remainingManual).toHaveLength(10);
+    // Auto snapshots trimmed to limit
+    expect(remainingAuto).toHaveLength(MAX_AUTO_SNAPSHOTS);
+  });
+
+  it('no pruning needed when auto count is within limit', async () => {
+    const provider = new MockStorageProvider();
+    const projectId = 'proj1';
+
+    // Create exactly MAX_AUTO_SNAPSHOTS auto snapshots
+    for (let i = 0; i < MAX_AUTO_SNAPSHOTS; i++) {
+      await provider.saveSnapshot(projectId, {
+        id: `auto_${i}`,
+        name: `Auto ${i}`,
+        snap: '{}',
+        createdAt: i * 1000,
+        isAuto: true,
+      });
+    }
+
+    const allSnapshots = await provider.listSnapshots(projectId);
+    const autoSnapshots = allSnapshots.filter((s) => s.isAuto);
+    expect(autoSnapshots).toHaveLength(MAX_AUTO_SNAPSHOTS);
+
+    // No pruning needed
+    const toDelete = autoSnapshots.slice(MAX_AUTO_SNAPSHOTS);
+    expect(toDelete).toHaveLength(0);
+  });
+});
+
+describe('Auto-snapshot API mapping', () => {
+  it('maps is_auto DB column to isAuto correctly', () => {
+    const dbRow = {
+      id: 'snap1',
+      name: 'Auto 2024-01-01',
+      description: null as string | null,
+      data: '{}',
+      created_at: 1700000000000,
+      is_auto: 1,
+    };
+
+    const mapped = {
+      id: dbRow.id,
+      name: dbRow.name,
+      description: dbRow.description || undefined,
+      snap: dbRow.data,
+      createdAt: dbRow.created_at,
+      ...(dbRow.is_auto ? { isAuto: true } : {}),
+    };
+
+    expect(mapped.isAuto).toBe(true);
+  });
+
+  it('maps is_auto=0 to no isAuto field', () => {
+    const dbRow = {
+      id: 'snap2',
+      name: 'Manual',
+      description: null as string | null,
+      data: '{}',
+      created_at: 1700000000000,
+      is_auto: 0,
+    };
+
+    const mapped = {
+      id: dbRow.id,
+      name: dbRow.name,
+      description: dbRow.description || undefined,
+      snap: dbRow.data,
+      createdAt: dbRow.created_at,
+      ...(dbRow.is_auto ? { isAuto: true } : {}),
+    };
+
+    expect(mapped.isAuto).toBeUndefined();
+  });
+
+  it('POST body with isAuto maps to is_auto=1', () => {
+    const body = {
+      id: 'snap1',
+      name: 'Auto',
+      snap: '{}',
+      createdAt: Date.now(),
+      isAuto: true,
+    };
+    const isAutoParam = body.isAuto ? 1 : 0;
+    expect(isAutoParam).toBe(1);
+  });
+
+  it('POST body without isAuto maps to is_auto=0', () => {
+    const body = {
+      id: 'snap1',
+      name: 'Manual',
+      snap: '{}',
+      createdAt: Date.now(),
+    };
+    const isAutoParam = (body as any).isAuto ? 1 : 0;
+    expect(isAutoParam).toBe(0);
   });
 });

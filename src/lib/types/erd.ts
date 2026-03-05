@@ -143,6 +143,7 @@ export interface SchemaSnapshot {
   description?: string;
   snap: string;
   createdAt: number;
+  isAuto?: boolean;
 }
 
 export interface ProjectIndex {

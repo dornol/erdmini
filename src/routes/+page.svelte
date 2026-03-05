@@ -23,7 +23,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import { collabClient } from '$lib/collab/collab-client';
   import { collabStore } from '$lib/store/collab.svelte';
-  import { snapshotStore } from '$lib/store/snapshot.svelte';
+  import { snapshotStore, AUTO_SNAPSHOT_INTERVAL_MS } from '$lib/store/snapshot.svelte';
   import { handleServerMessage, sendPresence, sendOperation } from '$lib/collab/operation-bridge';
   import { browser } from '$app/environment';
   import { replaceState } from '$app/navigation';
@@ -425,6 +425,38 @@
     // Debounced save — avoid writing to storage on every drag frame
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => { await projectStore.saveCurrentSchema(); }, 300);
+  });
+
+  // Auto-snapshot: create periodic snapshots for persistent history
+  let lastAutoSnapshotSnap = '';
+  let autoSnapshotTimer: ReturnType<typeof setInterval> | undefined;
+  $effect(() => {
+    // Re-run when project changes
+    const _projectId = projectStore.index.activeProjectId;
+    clearInterval(autoSnapshotTimer);
+    lastAutoSnapshotSnap = JSON.stringify($state.snapshot(erdStore.schema));
+
+    autoSnapshotTimer = setInterval(async () => {
+      // Skip if tab is hidden or read-only
+      if (document.hidden || permissionStore.isReadOnly) return;
+
+      // In collab mode, only the lexicographically first peer creates auto-snapshots
+      if (collabStore.myPeerId && collabStore.peers.length > 0) {
+        const allPeerIds = [collabStore.myPeerId, ...collabStore.peers.map((p) => p.peerId)];
+        allPeerIds.sort();
+        if (allPeerIds[0] !== collabStore.myPeerId) return;
+      }
+
+      const currentSnap = JSON.stringify($state.snapshot(erdStore.schema));
+      if (currentSnap === lastAutoSnapshotSnap) return; // no changes
+
+      const now = new Date();
+      const name = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      await snapshotStore.createAuto(name);
+      lastAutoSnapshotSnap = currentSnap;
+    }, AUTO_SNAPSHOT_INTERVAL_MS);
+
+    return () => clearInterval(autoSnapshotTimer);
   });
 
   // Keyboard shortcuts

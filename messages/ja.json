@@ -418,5 +418,9 @@
   "snapshot_restored": "スナップショットを復元しました",
   "snapshot_compare": "比較",
   "diff_from_snapshot": "スナップショットから",
-  "toolbar_snapshots": "スナップショット"
+  "toolbar_snapshots": "スナップショット",
+  "snapshot_auto_badge": "自動",
+  "snapshot_filter_all": "すべて",
+  "snapshot_filter_manual": "手動",
+  "snapshot_filter_auto": "自動"
 }

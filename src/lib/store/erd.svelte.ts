@@ -38,7 +38,7 @@ function migrateFK(schema: ERDSchema) {
 
 export type HistoryEntry = { snap: string; label: string; detail: string; time: number };
 
-const MAX_HISTORY = 50;
+const MAX_HISTORY = 200;
 
 class ERDStore {
   schema = $state<ERDSchema>(defaultSchema());

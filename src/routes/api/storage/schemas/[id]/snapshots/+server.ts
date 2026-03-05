@@ -18,8 +18,8 @@ export const GET: RequestHandler = ({ params, locals }) => {
   }
 
   const rows = db.prepare(
-    'SELECT id, name, description, data, created_at FROM schema_snapshots WHERE project_id = ? ORDER BY created_at DESC'
-  ).all(params.id) as { id: string; name: string; description: string | null; data: string; created_at: number }[];
+    'SELECT id, name, description, data, created_at, is_auto FROM schema_snapshots WHERE project_id = ? ORDER BY created_at DESC'
+  ).all(params.id) as { id: string; name: string; description: string | null; data: string; created_at: number; is_auto: number }[];
 
   return json(rows.map((r) => ({
     id: r.id,
@@ -27,6 +27,7 @@ export const GET: RequestHandler = ({ params, locals }) => {
     description: r.description || undefined,
     snap: r.data,
     createdAt: r.created_at,
+    ...(r.is_auto ? { isAuto: true } : {}),
   })));
 };
 
@@ -38,8 +39,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
   const body = await request.json();
   db.prepare(
-    'INSERT INTO schema_snapshots (id, project_id, name, description, data, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(body.id, params.id, body.name, body.description || null, body.snap, body.createdAt, user.id);
+    'INSERT INTO schema_snapshots (id, project_id, name, description, data, created_at, created_by, is_auto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(body.id, params.id, body.name, body.description || null, body.snap, body.createdAt, user.id, body.isAuto ? 1 : 0);
 
   return json({ ok: true });
 };

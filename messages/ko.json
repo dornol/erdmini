@@ -434,5 +434,9 @@
   "snapshot_restored": "스냅샷이 복원되었습니다",
   "snapshot_compare": "비교",
   "diff_from_snapshot": "스냅샷에서",
-  "toolbar_snapshots": "스냅샷"
+  "toolbar_snapshots": "스냅샷",
+  "snapshot_auto_badge": "자동",
+  "snapshot_filter_all": "전체",
+  "snapshot_filter_manual": "수동",
+  "snapshot_filter_auto": "자동"
 }

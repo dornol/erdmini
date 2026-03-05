@@ -154,3 +154,42 @@
 - ~~DDL import: extracts schema from parsed statements~~
 - ~~MCP: `list_schemas` tool, schema filter on `list_tables`/`list_memos`~~
 - ~~Difficulty: Medium~~
+
+### ~~29. Auto-Snapshot + History Extension~~ ✅
+- ~~Periodic auto-snapshots (5-minute interval) with `isAuto` flag~~
+- ~~Auto-pruning: keeps max 50 auto-snapshots, manual snapshots untouched~~
+- ~~SnapshotPanel: Auto badge, filter toggle (All / Manual / Auto)~~
+- ~~MAX_HISTORY expanded from 50 to 200~~
+- ~~SQLite migration V008: `is_auto` column on `schema_snapshots`~~
+- ~~Collab mode: only lexicographically first peer creates auto-snapshots~~
+
+### 30. iframe Embed (Read-Only View)
+- 읽기 전용 다이어그램 뷰를 iframe으로 외부 사이트에 삽입
+- `/embed/:projectId` 라우트: 캔버스 + 테이블 + FK 라인만 렌더링 (Toolbar/Sidebar/Editor 제거)
+- 줌/패닝만 가능, 편집 불가
+- 서버 모드: 프로젝트별 공개/비공개 설정, 선택적 비밀번호 보호
+- 로컬 모드: URL 파라미터에 스키마 JSON 인코딩 (gzip + base64) 또는 공유 링크
+- 반응형 크기 조절 (`postMessage` 기반 auto-resize)
+- Difficulty: Medium
+
+### 31. DBML Import / Export
+- [DBML (Database Markup Language)](https://dbml.dbdiagram.io/) 포맷 지원
+- **Import**: DBML 텍스트 → ERDSchema 변환 파서
+  - Table, Column (타입, PK, unique, not null, default, note), Ref (1-1, 1-n, n-n), Enum, TableGroup, indexes
+  - DdlModal의 Import 탭에 DBML 포맷 옵션 추가
+- **Export**: ERDSchema → DBML 텍스트 생성
+  - DdlModal의 Export 탭에 DBML 포맷 옵션 추가
+  - 도메인 → Enum 매핑, 그룹 → TableGroup 매핑
+- `src/lib/utils/dbml-import.ts`, `src/lib/utils/dbml-export.ts` 신규 모듈
+- dbdiagram.io 사용자 마이그레이션 경로 제공
+- Difficulty: Large
+
+### 32. ORM / Framework Schema Import
+- ORM 및 프레임워크 스키마 파일에서 직접 ERD 생성
+- **Prisma** (`schema.prisma`): model, @id, @relation, @unique, enum 파싱
+- **Rails** (`schema.rb`): create_table, t.string/integer/references, add_index, add_foreign_key 파싱
+- **Django** (`models.py`): class Model, CharField, ForeignKey, ManyToManyField, Meta.unique_together 파싱
+- **TypeORM / Sequelize** (TypeScript): @Entity, @Column, @ManyToOne, @JoinColumn 데코레이터 파싱
+- DdlModal의 Import 탭에 포맷 선택 드롭다운 추가 (DDL / DBML / Prisma / Rails / Django)
+- 각 포맷별 `src/lib/utils/orm-import-{format}.ts` 모듈
+- Difficulty: Large

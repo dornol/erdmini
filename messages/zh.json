@@ -418,5 +418,9 @@
   "snapshot_restored": "快照已恢复",
   "snapshot_compare": "对比",
   "diff_from_snapshot": "从快照",
-  "toolbar_snapshots": "快照"
+  "toolbar_snapshots": "快照",
+  "snapshot_auto_badge": "自动",
+  "snapshot_filter_all": "全部",
+  "snapshot_filter_manual": "手动",
+  "snapshot_filter_auto": "自动"
 }

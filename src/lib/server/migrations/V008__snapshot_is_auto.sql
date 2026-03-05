@@ -1,0 +1,1 @@
+ALTER TABLE schema_snapshots ADD COLUMN is_auto INTEGER NOT NULL DEFAULT 0;

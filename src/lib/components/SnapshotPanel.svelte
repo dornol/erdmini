@@ -8,6 +8,15 @@
   let nameInput = $state('');
   let descInput = $state('');
   let saving = $state(false);
+  let filter = $state<'all' | 'manual' | 'auto'>('all');
+
+  const filteredSnapshots = $derived(
+    filter === 'all'
+      ? snapshotStore.snapshots
+      : filter === 'auto'
+        ? snapshotStore.snapshots.filter((s) => s.isAuto)
+        : snapshotStore.snapshots.filter((s) => !s.isAuto)
+  );
 
   async function handleSave() {
     const name = nameInput.trim();
@@ -81,14 +90,25 @@
     </button>
   </div>
 
+  <div class="snapshot-filter">
+    <button class="filter-btn" class:active={filter === 'all'} onclick={() => filter = 'all'}>{m.snapshot_filter_all()}</button>
+    <button class="filter-btn" class:active={filter === 'manual'} onclick={() => filter = 'manual'}>{m.snapshot_filter_manual()}</button>
+    <button class="filter-btn" class:active={filter === 'auto'} onclick={() => filter = 'auto'}>{m.snapshot_filter_auto()}</button>
+  </div>
+
   <div class="snapshot-body">
-    {#if snapshotStore.snapshots.length === 0}
+    {#if filteredSnapshots.length === 0}
       <div class="snapshot-empty">{m.snapshot_empty()}</div>
     {:else}
-      {#each snapshotStore.snapshots as snap (snap.id)}
+      {#each filteredSnapshots as snap (snap.id)}
         <div class="snapshot-item">
           <div class="snapshot-item-info">
-            <span class="snapshot-item-name">{snap.name}</span>
+            <span class="snapshot-item-name">
+              {snap.name}
+              {#if snap.isAuto}
+                <span class="snapshot-auto-badge">{m.snapshot_auto_badge()}</span>
+              {/if}
+            </span>
             {#if snap.description}
               <span class="snapshot-item-desc">{snap.description}</span>
             {/if}
@@ -297,5 +317,47 @@
 
   .snap-diff:hover {
     color: #60a5fa;
+  }
+
+  .snapshot-filter {
+    display: flex;
+    gap: 2px;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--app-border, #334155);
+    flex-shrink: 0;
+  }
+
+  .filter-btn {
+    flex: 1;
+    font-size: 11px;
+    padding: 3px 0;
+    background: none;
+    border: 1px solid var(--app-border, #475569);
+    border-radius: 4px;
+    color: var(--app-text-muted, #94a3b8);
+    cursor: pointer;
+  }
+
+  .filter-btn:hover {
+    background: var(--app-hover-bg, #334155);
+  }
+
+  .filter-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+  }
+
+  .snapshot-auto-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 1px 5px;
+    margin-left: 4px;
+    border-radius: 3px;
+    background: #6366f1;
+    color: white;
+    vertical-align: middle;
+    line-height: 1.4;
   }
 </style>
