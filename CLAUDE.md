@@ -106,6 +106,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 - **ID generation** uses 8-char alphanumeric via `crypto.getRandomValues()` (`generateId()` in `common.ts`), not UUIDs
 - **Tailwind CSS v4** — config via CSS (no `tailwind.config.js`)
 - **Migration system** is checksum-verified on startup — never modify applied SQL migration files, only add new `V###__description.sql` files
+- **App version** injected at build time via `__APP_VERSION__` (from `package.json`). Displayed in shortcuts panel (`?` button) and embed header
 - **TODO list** in `docs/TODO.md` — feature improvement backlog; check remaining items when asked about pending work
 
 ## Environment Variables
