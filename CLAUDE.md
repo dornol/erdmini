@@ -105,6 +105,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 - **Layout constants** in `src/lib/constants/layout.ts`: `TABLE_W=220`, `HEADER_H=37`, `ROW_H=26` — used for FK line routing, auto-layout, and SVG export
 - **ID generation** uses 8-char alphanumeric via `crypto.getRandomValues()` (`generateId()` in `common.ts`), not UUIDs
 - **Tailwind CSS v4** — config via CSS (no `tailwind.config.js`)
+- **DB access** uses raw `db.prepare()` (better-sqlite3) directly in route handlers — no ORM or repository layer by design. Domain-specific helpers exist where needed (`session.ts`, `api-key.ts`, `embed.ts`, `db-helpers.ts`), but a global abstraction layer is intentionally avoided to keep the "mini" philosophy
 - **Migration system** is checksum-verified on startup — never modify applied SQL migration files, only add new `V###__description.sql` files
 - **App version** injected at build time via `__APP_VERSION__` (from `package.json`). Displayed in shortcuts panel (`?` button) and embed header
 - **TODO list** in `docs/TODO.md` — feature improvement backlog; check remaining items when asked about pending work
