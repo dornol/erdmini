@@ -171,6 +171,75 @@ describe('normalizeType', () => {
   it('maps DOUBLE PRECISION → DECIMAL', () => {
     expect(normalizeType('DOUBLE PRECISION')).toBe('DECIMAL');
   });
+
+  it('maps SMALLSERIAL → SMALLINT', () => {
+    expect(normalizeType('SMALLSERIAL')).toBe('SMALLINT');
+  });
+
+  it('maps ENUM → ENUM', () => {
+    expect(normalizeType('ENUM')).toBe('ENUM');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Warnings (type normalization)
+// ─────────────────────────────────────────────
+describe('importDDL — warnings', () => {
+  it('generates warning for unknown type with table/column context', async () => {
+    // TIME is a valid SQL type the parser accepts, but normalizeType maps it to VARCHAR (unknown)
+    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, val TIME);`;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings[0]).toContain('TIME');
+    expect(result.warnings[0]).toContain('VARCHAR');
+    expect(result.warnings[0]).toContain('t1.val');
+  });
+
+  it('does not generate warning for known types', async () => {
+    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, name VARCHAR(100), flag BOOLEAN);`;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it('generates multiple warnings for multiple unknown types', async () => {
+    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, a TIME, b YEAR);`;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.warnings).toHaveLength(2);
+    expect(result.warnings[0]).toContain('TIME');
+    expect(result.warnings[1]).toContain('YEAR');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Custom messages parameter
+// ─────────────────────────────────────────────
+describe('importDDL — custom messages', () => {
+  it('uses custom noCreateTable message', async () => {
+    const customMsg = {
+      noCreateTable: () => 'CUSTOM_NO_TABLE',
+      tableParseError: ({ error }: { error: string }) => `CUSTOM_ERR: ${error}`,
+      fkResolveFailed: ({ detail }: { detail: string }) => `CUSTOM_FK: ${detail}`,
+    };
+    const result = await importDDL('SELECT 1;', 'mysql', customMsg);
+    expect(result.errors).toContain('CUSTOM_NO_TABLE');
+  });
+
+  it('uses custom fkResolveFailed message', async () => {
+    const customMsg = {
+      noCreateTable: () => 'CUSTOM_NO_TABLE',
+      tableParseError: ({ error }: { error: string }) => `CUSTOM_ERR: ${error}`,
+      fkResolveFailed: ({ detail }: { detail: string }) => `CUSTOM_FK: ${detail}`,
+    };
+    const sql = `
+      CREATE TABLE orders (
+        id INT PRIMARY KEY,
+        user_id INT,
+        FOREIGN KEY (user_id) REFERENCES nonexistent(id)
+      );
+    `;
+    const result = await importDDL(sql, 'mysql', customMsg);
+    expect(result.errors.some(e => e.startsWith('CUSTOM_FK:'))).toBe(true);
+  });
 });
 
 // ─────────────────────────────────────────────
@@ -660,6 +729,83 @@ describe('importDDL — MySQL', () => {
     expect(cols.find(c => c.name === 'b')!.nullable).toBe(true);
     expect(cols.find(c => c.name === 'c')!.nullable).toBe(true);
   });
+
+  // --- Composite FK ---
+  it('resolves composite foreign key (multi-column)', async () => {
+    const sql = `
+      CREATE TABLE parent (
+        a INT NOT NULL,
+        b INT NOT NULL,
+        PRIMARY KEY (a, b)
+      );
+      CREATE TABLE child (
+        id INT PRIMARY KEY,
+        pa INT,
+        pb INT,
+        FOREIGN KEY (pa, pb) REFERENCES parent(a, b)
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.errors).toHaveLength(0);
+    const child = result.tables.find(t => t.name === 'child')!;
+    expect(child.foreignKeys).toHaveLength(1);
+    expect(child.foreignKeys[0].columnIds).toHaveLength(2);
+    expect(child.foreignKeys[0].referencedColumnIds).toHaveLength(2);
+  });
+
+  // --- Grid position row wrapping ---
+  it('wraps grid position to next row after IMPORT_GRID_COLS tables', async () => {
+    const sql = Array.from({ length: 5 }, (_, i) =>
+      `CREATE TABLE t${i} (id INT PRIMARY KEY);`
+    ).join('\n');
+    const result = await importDDL(sql, 'mysql');
+    expect(result.tables).toHaveLength(5);
+    // First 4 tables on row 0, 5th table on row 1
+    const t0 = result.tables[0].position;
+    const t4 = result.tables[4].position;
+    expect(t4.y).toBeGreaterThan(t0.y);
+    // 5th table should be back at the first column x
+    expect(t4.x).toBe(t0.x);
+  });
+
+  // --- ENUM type ---
+  it('preserves ENUM type and values', async () => {
+    const sql = `CREATE TABLE t (id INT PRIMARY KEY, status ENUM('active','inactive'));`;
+    const result = await importDDL(sql, 'mysql');
+    const col = result.tables[0].columns.find(c => c.name === 'status')!;
+    expect(col.type).toBe('ENUM');
+  });
+
+  // --- SMALLSERIAL with autoIncrement ---
+  it('parses SMALLSERIAL as SMALLINT with autoIncrement', async () => {
+    const sql = `CREATE TABLE t (id SMALLSERIAL PRIMARY KEY);`;
+    const result = await importDDL(sql, 'postgresql');
+    const col = result.tables[0].columns[0];
+    expect(col.type).toBe('SMALLINT');
+    expect(col.autoIncrement).toBe(true);
+  });
+
+  // --- ALTER TABLE UNIQUE via AST (non-MSSQL) ---
+  it('handles ALTER TABLE ADD UNIQUE constraint', async () => {
+    const sql = `
+      CREATE TABLE t (id INT PRIMARY KEY, a INT, b INT);
+      ALTER TABLE t ADD CONSTRAINT uq_ab UNIQUE (a, b);
+    `;
+    const result = await importDDL(sql, 'postgresql');
+    expect(result.tables[0].uniqueKeys).toHaveLength(1);
+    expect(result.tables[0].uniqueKeys[0].columnIds).toHaveLength(2);
+  });
+
+  // --- Fallback per-statement parsing ---
+  it('falls back to per-statement parsing when full parse fails', async () => {
+    const sql = `
+      CREATE TABLE valid1 (id INT PRIMARY KEY, name VARCHAR(50));
+      INVALID SQL STATEMENT HERE;
+      CREATE TABLE valid2 (id INT PRIMARY KEY);
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.tables.length).toBeGreaterThanOrEqual(1);
+  });
 });
 
 // ═════════════════════════════════════════════
@@ -1034,6 +1180,98 @@ GO
     `;
     const result = await importDDL(sql, 'mssql');
     expect(result.tables).toHaveLength(2);
+  });
+
+  // --- ALTER FK deduplication ---
+  it('deduplicates inline FK and ALTER TABLE FK', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[parent] (
+        [id] INT NOT NULL,
+        CONSTRAINT [PK_parent] PRIMARY KEY ([id])
+      )
+      GO
+      CREATE TABLE [dbo].[child] (
+        [id] INT NOT NULL,
+        [parent_id] INT REFERENCES [parent]([id]),
+        CONSTRAINT [PK_child] PRIMARY KEY ([id])
+      )
+      GO
+      ALTER TABLE [dbo].[child] ADD CONSTRAINT [FK_child_parent]
+        FOREIGN KEY ([parent_id]) REFERENCES [dbo].[parent] ([id])
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    const child = result.tables.find(t => t.name === 'child')!;
+    // Should not have duplicate FKs
+    const fkKeys = child.foreignKeys.map(fk =>
+      `${fk.columnIds.join(',')}->${fk.referencedColumnIds.join(',')}`
+    );
+    const uniqueFKs = new Set(fkKeys);
+    expect(uniqueFKs.size).toBe(child.foreignKeys.length);
+  });
+
+  // --- Inline FK with missing ref columns resolves to PK ---
+  it('resolves inline FK with missing ref columns to PK', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[parent] (
+        [id] INT NOT NULL,
+        CONSTRAINT [PK_parent] PRIMARY KEY ([id])
+      )
+      GO
+      CREATE TABLE [dbo].[child] (
+        [id] INT NOT NULL,
+        [parent_id] INT REFERENCES [parent],
+        CONSTRAINT [PK_child] PRIMARY KEY ([id])
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    const child = result.tables.find(t => t.name === 'child')!;
+    expect(child.foreignKeys).toHaveLength(1);
+    const parent = result.tables.find(t => t.name === 'parent')!;
+    const pkCol = parent.columns.find(c => c.primaryKey)!;
+    expect(child.foreignKeys[0].referencedColumnIds).toContain(pkCol.id);
+  });
+
+  // --- ALTER UQ composite → uniqueKeys ---
+  it('applies composite ALTER TABLE UNIQUE to uniqueKeys', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[t] (
+        [id] INT NOT NULL,
+        [a] INT,
+        [b] INT,
+        CONSTRAINT [PK_t] PRIMARY KEY ([id])
+      )
+      GO
+      ALTER TABLE [dbo].[t] ADD CONSTRAINT [UQ_ab] UNIQUE ([a], [b])
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables[0].uniqueKeys).toHaveLength(1);
+    expect(result.tables[0].uniqueKeys[0].columnIds).toHaveLength(2);
+  });
+
+  // --- Inline FK ON DELETE CASCADE ---
+  it('extracts ON DELETE/UPDATE actions from inline FK', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[parent] (
+        [id] INT NOT NULL,
+        CONSTRAINT [PK_parent] PRIMARY KEY ([id])
+      )
+      GO
+      CREATE TABLE [dbo].[child] (
+        [id] INT NOT NULL,
+        [parent_id] INT,
+        CONSTRAINT [PK_child] PRIMARY KEY ([id]),
+        FOREIGN KEY ([parent_id]) REFERENCES [parent]([id]) ON DELETE CASCADE ON UPDATE SET NULL
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    const child = result.tables.find(t => t.name === 'child')!;
+    expect(child.foreignKeys).toHaveLength(1);
+    expect(child.foreignKeys[0].onDelete).toBe('CASCADE');
+    expect(child.foreignKeys[0].onUpdate).toBe('SET NULL');
   });
 });
 
