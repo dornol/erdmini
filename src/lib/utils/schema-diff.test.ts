@@ -433,6 +433,105 @@ describe('diffSchemas — name fallback matching', () => {
   });
 });
 
+describe('diffSchemas — enumValues diff', () => {
+  it('detects enumValues change', () => {
+    const prev = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'orders',
+        columns: [makeColumn({ id: 'c1', name: 'status', type: 'ENUM', enumValues: ['a', 'b'], nullable: false })],
+      }),
+    ]);
+    const curr = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'orders',
+        columns: [makeColumn({ id: 'c1', name: 'status', type: 'ENUM', enumValues: ['a', 'b', 'c'], nullable: false })],
+      }),
+    ]);
+    const diff = diffSchemas(prev, curr);
+    expect(diff.modifiedTables).toHaveLength(1);
+    expect(diff.modifiedTables[0].modifiedColumns[0].changes).toContain('enumValues changed');
+  });
+
+  it('no change when enumValues are identical', () => {
+    const prev = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'orders',
+        columns: [makeColumn({ id: 'c1', name: 'status', type: 'ENUM', enumValues: ['a', 'b'], nullable: false })],
+      }),
+    ]);
+    const diff = diffSchemas(prev, prev);
+    expect(diff.modifiedTables).toHaveLength(0);
+  });
+});
+
+describe('diffSchemas — UniqueKey diff', () => {
+  it('detects added unique key', () => {
+    const prev = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'users',
+        columns: [
+          makeColumn({ id: 'c1', name: 'email', type: 'VARCHAR', nullable: false }),
+          makeColumn({ id: 'c2', name: 'name', type: 'VARCHAR', nullable: false }),
+        ],
+      }),
+    ]);
+    const curr = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'users',
+        columns: [
+          makeColumn({ id: 'c1', name: 'email', type: 'VARCHAR', nullable: false }),
+          makeColumn({ id: 'c2', name: 'name', type: 'VARCHAR', nullable: false }),
+        ],
+        uniqueKeys: [{ id: 'uk1', columnIds: ['c1', 'c2'], name: 'uq_email_name' }],
+      }),
+    ]);
+    const diff = diffSchemas(prev, curr);
+    expect(diff.modifiedTables).toHaveLength(1);
+    expect(diff.modifiedTables[0].addedUniqueKeys).toHaveLength(1);
+    expect(diff.modifiedTables[0].addedUniqueKeys[0].id).toBe('uk1');
+  });
+
+  it('detects removed unique key', () => {
+    const prev = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'users',
+        columns: [makeColumn({ id: 'c1', name: 'email', type: 'VARCHAR', nullable: false })],
+        uniqueKeys: [{ id: 'uk1', columnIds: ['c1'], name: 'uq_email' }],
+      }),
+    ]);
+    const curr = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'users',
+        columns: [makeColumn({ id: 'c1', name: 'email', type: 'VARCHAR', nullable: false })],
+      }),
+    ]);
+    const diff = diffSchemas(prev, curr);
+    expect(diff.modifiedTables).toHaveLength(1);
+    expect(diff.modifiedTables[0].removedUniqueKeys).toHaveLength(1);
+    expect(diff.modifiedTables[0].removedUniqueKeys[0].id).toBe('uk1');
+  });
+
+  it('no change when unique keys are identical', () => {
+    const schema = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'users',
+        columns: [makeColumn({ id: 'c1', name: 'email', type: 'VARCHAR', nullable: false })],
+        uniqueKeys: [{ id: 'uk1', columnIds: ['c1'] }],
+      }),
+    ]);
+    const diff = diffSchemas(schema, schema);
+    expect(diff.modifiedTables).toHaveLength(0);
+  });
+});
+
 describe('diffSchemas — summary', () => {
   it('calculates correct summary counts', () => {
     const prev = makeSchema([

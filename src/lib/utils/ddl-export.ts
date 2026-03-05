@@ -44,7 +44,7 @@ function kw(keyword: string, upper: boolean): string {
   return upper ? keyword.toUpperCase() : keyword.toLowerCase();
 }
 
-function columnTypeSql(col: Column, dialect: Dialect, upper: boolean): string {
+function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tableName?: string): string {
   const len = col.length ? `(${col.length})` : '';
   const decimalLen = col.length
     ? `(${col.length}${col.scale != null ? `,${col.scale}` : ''})`
@@ -62,8 +62,8 @@ function columnTypeSql(col: Column, dialect: Dialect, upper: boolean): string {
   }
 
   if (dialect === 'postgresql') {
-    if (col.autoIncrement) return kw(col.type === 'BIGINT' ? 'BIGSERIAL' : 'SERIAL', upper);
-    if (col.type === 'ENUM') return `${kw('VARCHAR', upper)}(255)`;
+    if (col.autoIncrement) return kw(col.type === 'BIGINT' ? 'BIGSERIAL' : col.type === 'SMALLINT' ? 'SMALLSERIAL' : 'SERIAL', upper);
+    if (col.type === 'ENUM') return col.enumValues?.length && tableName ? `${tableName}_${col.name}_enum` : `${kw('VARCHAR', upper)}(255)`;
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
     if (col.type === 'DECIMAL') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
@@ -117,12 +117,12 @@ function columnTypeSql(col: Column, dialect: Dialect, upper: boolean): string {
   return kw(col.type, upper);
 }
 
-function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[]): string {
+function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[], tableName?: string): string {
   const ind = getIndent(opts.indent);
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
   const parts: string[] = [];
-  parts.push(`${ind}${q(col.name, qs)} ${columnTypeSql(col, dialect, up)}`);
+  parts.push(`${ind}${q(col.name, qs)} ${columnTypeSql(col, dialect, up, tableName)}`);
 
   // MSSQL: IDENTITY instead of AUTO_INCREMENT
   if (col.autoIncrement && dialect === 'mssql') {
@@ -187,7 +187,7 @@ function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions, 
   const tq = qualifiedTableName(table, dialect, qs);
 
   for (const col of table.columns) {
-    lines.push(columnSql(col, dialect, opts, domains));
+    lines.push(columnSql(col, dialect, opts, domains, table.name));
   }
 
   // SQLite: auto-increment PK is inline, skip from table-level PK clause
@@ -256,15 +256,16 @@ function commentOnStatements(table: Table, dialect: Dialect, opts: DDLExportOpti
 
 function mssqlComments(table: Table): string[] {
   const stmts: string[] = [];
+  const schemaName = table.schema ?? 'dbo';
   if (table.comment) {
     stmts.push(
-      `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${table.comment.replace(/'/g, "''")}', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'${table.name}';`,
+      `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${table.comment.replace(/'/g, "''")}', @level0type=N'SCHEMA', @level0name=N'${schemaName}', @level1type=N'TABLE', @level1name=N'${table.name}';`,
     );
   }
   for (const col of table.columns) {
     if (col.comment) {
       stmts.push(
-        `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${col.comment.replace(/'/g, "''")}', @level0type=N'SCHEMA', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'${table.name}', @level2type=N'COLUMN', @level2name=N'${col.name}';`,
+        `EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'${col.comment.replace(/'/g, "''")}', @level0type=N'SCHEMA', @level0name=N'${schemaName}', @level1type=N'TABLE', @level1name=N'${table.name}', @level2type=N'COLUMN', @level2name=N'${col.name}';`,
       );
     }
   }
@@ -325,6 +326,19 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
         sections.push(`${kw('CREATE SCHEMA IF NOT EXISTS', up)} ${q(sn, qs)};`);
       } else {
         sections.push(`IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '${sn}') EXEC('CREATE SCHEMA ${sn}');`);
+      }
+    }
+  }
+
+  // PostgreSQL: CREATE TYPE ... AS ENUM for ENUM columns
+  if (dialect === 'postgresql') {
+    for (const table of schema.tables) {
+      for (const col of table.columns) {
+        if (col.type === 'ENUM' && col.enumValues?.length) {
+          const enumName = `${table.name}_${col.name}_enum`;
+          const values = col.enumValues.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
+          sections.push(`${kw('CREATE TYPE', up)} ${q(enumName, qs)} ${kw('AS ENUM', up)} (${values});`);
+        }
       }
     }
   }

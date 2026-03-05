@@ -5,7 +5,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { importDDL } from './ddl-import';
-import type { Table } from '$lib/types/erd';
+import { exportDDL } from './ddl-export';
+import { diffSchemas } from './schema-diff';
+import type { ERDSchema, Table } from '$lib/types/erd';
 
 // ─── helpers ────────────────────────────────────────────────────
 function findTable(tables: Table[], name: string): Table {
@@ -201,7 +203,7 @@ CREATE TABLE wp_term_relationships (
 		expect(id.autoIncrement).toBe(true);
 		expect(id.type).toBe('BIGINT');
 		expect(findCol(t, 'user_login').type).toBe('VARCHAR');
-		expect(findCol(t, 'user_registered').type).toBe('TIMESTAMP'); // MySQL datetime → TIMESTAMP
+		expect(findCol(t, 'user_registered').type).toBe('DATETIME'); // MySQL DATETIME preserved
 		expect(findCol(t, 'user_status').type).toBe('INT');
 	});
 
@@ -1636,5 +1638,319 @@ create table main.sessions
 		expect(perms.uniqueKeys.length).toBeGreaterThanOrEqual(1);
 		const compositeUK = perms.uniqueKeys.find((uk) => uk.columnIds.length === 2);
 		expect(compositeUK).toBeDefined();
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// #35 DDL Export Quality — PostgreSQL ENUM round-trip
+// ═══════════════════════════════════════════════════════════════════
+describe('Integration: PostgreSQL ENUM export + MySQL ENUM round-trip', () => {
+	// Build schema in-memory (ENUM columns with enumValues)
+	function enumSchema(): ERDSchema {
+		return {
+			version: '1.0',
+			tables: [
+				{
+					id: 't1', name: 'orders', columns: [
+						{ id: 'c1', name: 'id', type: 'INT', nullable: false, primaryKey: true, unique: false, autoIncrement: true },
+						{ id: 'c2', name: 'customer_name', type: 'VARCHAR', length: 200, nullable: false, primaryKey: false, unique: false, autoIncrement: false },
+						{ id: 'c3', name: 'status', type: 'ENUM', enumValues: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], nullable: false, primaryKey: false, unique: false, autoIncrement: false },
+						{ id: 'c4', name: 'priority', type: 'ENUM', enumValues: ['low', 'medium', 'high', 'critical'], nullable: true, primaryKey: false, unique: false, autoIncrement: false },
+					], foreignKeys: [], uniqueKeys: [], indexes: [],
+				},
+			],
+			domains: [],
+			memos: [],
+		};
+	}
+
+	it('PG export generates CREATE TYPE ... AS ENUM before CREATE TABLE', () => {
+		const ddl = exportDDL(enumSchema(), 'postgresql');
+		expect(ddl).toContain("CREATE TYPE \"orders_status_enum\" AS ENUM ('pending', 'processing', 'shipped', 'delivered', 'cancelled');");
+		expect(ddl).toContain("CREATE TYPE \"orders_priority_enum\" AS ENUM ('low', 'medium', 'high', 'critical');");
+		expect(ddl.indexOf('CREATE TYPE')).toBeLessThan(ddl.indexOf('CREATE TABLE'));
+		// Column references enum type name (not VARCHAR)
+		expect(ddl).toContain('orders_status_enum');
+		expect(ddl).not.toContain('VARCHAR(255)');
+	});
+
+	it('MySQL export uses inline ENUM() — not CREATE TYPE', () => {
+		const mysqlDDL = exportDDL(enumSchema(), 'mysql');
+		expect(mysqlDDL).not.toContain('CREATE TYPE');
+		expect(mysqlDDL).toContain("ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled')");
+	});
+
+	it('MySQL ENUM round-trip: export → import preserves ENUM type', async () => {
+		const mysqlDDL = exportDDL(enumSchema(), 'mysql');
+		const reimported = await importDDL(mysqlDDL, 'mysql');
+		expect(reimported.errors).toHaveLength(0);
+
+		const orders = findTable(reimported.tables, 'orders');
+		const status = findCol(orders, 'status');
+		expect(status.type).toBe('ENUM');
+		// Note: DDL importer currently doesn't extract ENUM values from inline ENUM('a','b')
+		// enumValues extraction is a separate enhancement
+
+		const priority = findCol(orders, 'priority');
+		expect(priority.type).toBe('ENUM');
+	});
+
+	it('MSSQL/Oracle export falls back to NVARCHAR/VARCHAR2 for ENUM', () => {
+		const mssqlDDL = exportDDL(enumSchema(), 'mssql');
+		expect(mssqlDDL).not.toContain('CREATE TYPE');
+		expect(mssqlDDL).toContain('NVARCHAR(255)');
+
+		const oracleDDL = exportDDL(enumSchema(), 'oracle');
+		expect(oracleDDL).not.toContain('CREATE TYPE');
+		expect(oracleDDL).toContain('VARCHAR2(255)');
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// #35 DDL Export Quality — DATETIME preservation round-trip
+// ═══════════════════════════════════════════════════════════════════
+describe('Integration: DATETIME preservation', () => {
+	it('MySQL DATETIME columns preserved on import', async () => {
+		const DDL = `
+CREATE TABLE events (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  event_name VARCHAR(200) NOT NULL,
+  start_date DATETIME NOT NULL,
+  end_date DATETIME,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB;
+`;
+		const { tables } = await importDDL(DDL, 'mysql');
+		const events = findTable(tables, 'events');
+		// DATETIME preserved as DATETIME, TIMESTAMP stays TIMESTAMP
+		expect(findCol(events, 'start_date').type).toBe('DATETIME');
+		expect(findCol(events, 'end_date').type).toBe('DATETIME');
+		expect(findCol(events, 'created_at').type).toBe('TIMESTAMP');
+
+		// Export to MySQL → DATETIME columns remain DATETIME (MySQL supports it natively)
+		const schema: ERDSchema = { version: '1.0', tables, domains: [], memos: [] };
+		const exported = exportDDL(schema, 'mysql');
+		expect(exported).toContain('DATETIME');
+	});
+
+	it('MySQL DATETIME round-trip: export → re-import preserves type', async () => {
+		// Build DATETIME schema in-memory for clean round-trip
+		const schema: ERDSchema = {
+			version: '1.0', domains: [], memos: [],
+			tables: [{
+				id: 't1', name: 'events', foreignKeys: [], uniqueKeys: [], indexes: [],
+				columns: [
+					{ id: 'c1', name: 'id', type: 'BIGINT', nullable: false, primaryKey: true, unique: false, autoIncrement: true },
+					{ id: 'c2', name: 'start_date', type: 'DATETIME', nullable: false, primaryKey: false, unique: false, autoIncrement: false },
+					{ id: 'c3', name: 'created_at', type: 'TIMESTAMP', nullable: false, primaryKey: false, unique: false, autoIncrement: false },
+				],
+			}],
+		};
+		const exported = exportDDL(schema, 'mysql');
+		expect(exported).toContain('DATETIME');
+		const reimported = await importDDL(exported, 'mysql');
+		expect(reimported.tables).toHaveLength(1);
+		expect(findCol(findTable(reimported.tables, 'events'), 'start_date').type).toBe('DATETIME');
+	});
+
+	it('MSSQL DATETIME2 maps to DATETIME (preprocessed to datetime)', async () => {
+		const DDL = `
+CREATE TABLE [dbo].[logs] (
+  [id] INT IDENTITY(1,1) NOT NULL,
+  [message] NVARCHAR(500),
+  [logged_at] DATETIME2 NOT NULL,
+  CONSTRAINT [PK_logs] PRIMARY KEY ([id])
+)
+GO
+`;
+		const { tables } = await importDDL(DDL, 'mssql');
+		// MSSQL preprocessor converts DATETIME2 → datetime, then normalizeType maps datetime → DATETIME
+		expect(findCol(findTable(tables, 'logs'), 'logged_at').type).toBe('DATETIME');
+	});
+
+	it('PostgreSQL export converts DATETIME to TIMESTAMP', () => {
+		// Build schema with DATETIME column directly (PG doesn't natively support DATETIME in DDL)
+		const schema: ERDSchema = {
+			version: '1.0', domains: [], memos: [],
+			tables: [{
+				id: 't1', name: 'calendar', foreignKeys: [], uniqueKeys: [], indexes: [],
+				columns: [
+					{ id: 'c1', name: 'id', type: 'INT', nullable: false, primaryKey: true, unique: false, autoIncrement: true },
+					{ id: 'c2', name: 'event_date', type: 'DATETIME', nullable: false, primaryKey: false, unique: false, autoIncrement: false },
+					{ id: 'c3', name: 'reminder_at', type: 'TIMESTAMP', nullable: true, primaryKey: false, unique: false, autoIncrement: false },
+				],
+			}],
+		};
+		const exported = exportDDL(schema, 'postgresql');
+		// PG export maps DATETIME → TIMESTAMP
+		expect(exported).toContain('TIMESTAMP');
+		expect(exported).not.toContain('DATETIME');
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// #35 DDL Export Quality — SMALLSERIAL / BIGSERIAL round-trip
+// ═══════════════════════════════════════════════════════════════════
+describe('Integration: PostgreSQL SERIAL variants', () => {
+	it('SERIAL/BIGSERIAL/SMALLSERIAL import → export round-trip', async () => {
+		const DDL = `
+CREATE TABLE counters (
+  small_id SMALLSERIAL PRIMARY KEY,
+  normal_id SERIAL NOT NULL,
+  big_id BIGSERIAL NOT NULL
+);
+`;
+		const { tables, errors } = await importDDL(DDL, 'postgresql');
+		expect(errors).toHaveLength(0);
+		const t = findTable(tables, 'counters');
+		expect(findCol(t, 'small_id').type).toBe('SMALLINT');
+		expect(findCol(t, 'small_id').autoIncrement).toBe(true);
+		expect(findCol(t, 'normal_id').type).toBe('INT');
+		expect(findCol(t, 'normal_id').autoIncrement).toBe(true);
+		expect(findCol(t, 'big_id').type).toBe('BIGINT');
+		expect(findCol(t, 'big_id').autoIncrement).toBe(true);
+
+		// Export back to PG preserves SERIAL variants
+		const schema: ERDSchema = { version: '1.0', tables, domains: [], memos: [] };
+		const exported = exportDDL(schema, 'postgresql');
+		expect(exported).toContain('SMALLSERIAL');
+		expect(exported).toContain('SERIAL');
+		expect(exported).toContain('BIGSERIAL');
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// #35 DDL Export Quality — MSSQL schema-aware sp_addextendedproperty
+// ═══════════════════════════════════════════════════════════════════
+describe('Integration: MSSQL schema in comments', () => {
+	it('custom schema propagates to sp_addextendedproperty', async () => {
+		const DDL = `
+CREATE TABLE [sales].[invoices] (
+  [id] INT IDENTITY(1,1) NOT NULL,
+  [amount] DECIMAL(12,2) NOT NULL,
+  CONSTRAINT [PK_invoices] PRIMARY KEY ([id])
+)
+GO
+
+EXEC sp_addextendedproperty 'MS_Description', N'Sales invoices', 'SCHEMA', 'sales', 'TABLE', 'invoices'
+GO
+EXEC sp_addextendedproperty 'MS_Description', N'Invoice total', 'SCHEMA', 'sales', 'TABLE', 'invoices', 'COLUMN', 'amount'
+GO
+`;
+		const { tables, errors } = await importDDL(DDL, 'mssql');
+		expect(errors).toHaveLength(0);
+		const invoices = findTable(tables, 'invoices');
+		expect(invoices.schema).toBe('sales');
+		expect(invoices.comment).toBe('Sales invoices');
+
+		// Export — sp_addextendedproperty should use 'sales', not 'dbo'
+		const schema: ERDSchema = { version: '1.0', tables, domains: [], memos: [] };
+		const exported = exportDDL(schema, 'mssql');
+		expect(exported).toContain("@level0name=N'sales'");
+		expect(exported).not.toContain("@level0name=N'dbo'");
+		expect(exported).toContain('CREATE SCHEMA');
+	});
+
+	it('default dbo schema in sp_addextendedproperty when no schema', async () => {
+		const DDL = `
+CREATE TABLE [products] (
+  [id] INT IDENTITY(1,1) NOT NULL,
+  [name] NVARCHAR(200) NOT NULL,
+  CONSTRAINT [PK_products] PRIMARY KEY ([id])
+)
+GO
+
+EXEC sp_addextendedproperty 'MS_Description', N'Product catalog', 'SCHEMA', 'dbo', 'TABLE', 'products'
+GO
+`;
+		const { tables } = await importDDL(DDL, 'mssql');
+		const schema: ERDSchema = { version: '1.0', tables, domains: [], memos: [] };
+		const exported = exportDDL(schema, 'mssql');
+		expect(exported).toContain("@level0name=N'dbo'");
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// #35 DDL Export Quality — Schema Diff with UniqueKeys + enumValues
+// ═══════════════════════════════════════════════════════════════════
+describe('Integration: Schema Diff — UniqueKey + ENUM changes', () => {
+	it('detects added UniqueKey via import diff', async () => {
+		const DDL_V1 = `
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  username VARCHAR(100) NOT NULL
+);
+`;
+		const DDL_V2 = `
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  username VARCHAR(100) NOT NULL,
+  UNIQUE (email, username)
+);
+`;
+		const v1 = await importDDL(DDL_V1, 'postgresql');
+		const v2 = await importDDL(DDL_V2, 'postgresql');
+		const s1: ERDSchema = { version: '1.0', tables: v1.tables, domains: [], memos: [] };
+		const s2: ERDSchema = { version: '1.0', tables: v2.tables, domains: [], memos: [] };
+
+		// Match by name since IDs differ
+		const diff = diffSchemas(s1, s2);
+		expect(diff.modifiedTables).toHaveLength(1);
+		expect(diff.modifiedTables[0].addedUniqueKeys.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('detects enumValues change between schema versions (in-memory)', () => {
+		const base = {
+			id: 't1', name: 'accounts', foreignKeys: [] as any[], uniqueKeys: [] as any[], indexes: [] as any[],
+		};
+		const s1: ERDSchema = {
+			version: '1.0', domains: [], memos: [],
+			tables: [{ ...base, columns: [
+				{ id: 'c1', name: 'id', type: 'INT' as const, nullable: false, primaryKey: true, unique: false, autoIncrement: true },
+				{ id: 'c2', name: 'status', type: 'ENUM' as const, enumValues: ['active', 'inactive'], nullable: false, primaryKey: false, unique: false, autoIncrement: false },
+			]}],
+		};
+		const s2: ERDSchema = {
+			version: '1.0', domains: [], memos: [],
+			tables: [{ ...base, columns: [
+				{ id: 'c1', name: 'id', type: 'INT' as const, nullable: false, primaryKey: true, unique: false, autoIncrement: true },
+				{ id: 'c2', name: 'status', type: 'ENUM' as const, enumValues: ['active', 'inactive', 'suspended'], nullable: false, primaryKey: false, unique: false, autoIncrement: false },
+			]}],
+		};
+
+		const diff = diffSchemas(s1, s2);
+		expect(diff.modifiedTables).toHaveLength(1);
+		const colDiff = diff.modifiedTables[0].modifiedColumns.find(c => c.columnName === 'status');
+		expect(colDiff).toBeDefined();
+		expect(colDiff!.changes).toContain('enumValues changed');
+	});
+
+	it('detects removed UniqueKey between schema versions', async () => {
+		const DDL_V1 = `
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  sku VARCHAR(50) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  UNIQUE (sku, name)
+);
+`;
+		const DDL_V2 = `
+CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  sku VARCHAR(50) NOT NULL,
+  name VARCHAR(200) NOT NULL
+);
+`;
+		const v1 = await importDDL(DDL_V1, 'postgresql');
+		const v2 = await importDDL(DDL_V2, 'postgresql');
+		const s1: ERDSchema = { version: '1.0', tables: v1.tables, domains: [], memos: [] };
+		const s2: ERDSchema = { version: '1.0', tables: v2.tables, domains: [], memos: [] };
+
+		const diff = diffSchemas(s1, s2);
+		expect(diff.modifiedTables).toHaveLength(1);
+		expect(diff.modifiedTables[0].removedUniqueKeys.length).toBeGreaterThanOrEqual(1);
 	});
 });

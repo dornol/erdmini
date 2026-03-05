@@ -22,12 +22,14 @@ export function normalizeType(raw: string): ColumnType {
 
   if (base === 'SERIAL') return 'INT';
   if (base === 'BIGSERIAL') return 'BIGINT';
+  if (base === 'SMALLSERIAL') return 'SMALLINT';
   if (base === 'INTEGER') return 'INT';
   if (base === 'TINYINT' || base === 'MEDIUMINT') return base === 'TINYINT' ? 'SMALLINT' : 'INT';
   if (base === 'TINYTEXT' || base === 'MEDIUMTEXT' || base === 'LONGTEXT') return 'TEXT';
   if (base === 'TINYBLOB' || base === 'BLOB' || base === 'MEDIUMBLOB' || base === 'LONGBLOB') return 'TEXT';
   if (base === 'BOOL' || base === 'BIT') return 'BOOLEAN';
-  if (base === 'DATETIME' || base === 'TIMESTAMP' || base === 'TIMESTAMPTZ' || base === 'DATETIME2') return 'TIMESTAMP';
+  if (base === 'DATETIME') return 'DATETIME';
+  if (base === 'TIMESTAMP' || base === 'TIMESTAMPTZ' || base === 'DATETIME2') return 'TIMESTAMP';
   if (base === 'NUMERIC' || base === 'REAL' || base === 'MONEY' || base === 'DOUBLE PRECISION') return 'DECIMAL';
   if (base === 'VARBINARY' || base === 'IMAGE') return 'TEXT';
   if (base === 'CHARACTER VARYING' || base === 'NVARCHAR' || base === 'NVARCHAR2') return 'VARCHAR';
@@ -454,7 +456,8 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
           const isUnique = !!def.unique;
           const autoInc = !!def.auto_increment || !!def.identity ||
             rawType.toUpperCase() === 'SERIAL' ||
-            rawType.toUpperCase() === 'BIGSERIAL';
+            rawType.toUpperCase() === 'BIGSERIAL' ||
+            rawType.toUpperCase() === 'SMALLSERIAL';
           const defaultValue = extractDefaultValue(def.default_val);
 
           // Comment from MySQL inline COMMENT

@@ -33,8 +33,8 @@ describe('normalizeType', () => {
     expect(normalizeType('BOOL')).toBe('BOOLEAN');
   });
 
-  it('maps DATETIME → TIMESTAMP', () => {
-    expect(normalizeType('DATETIME')).toBe('TIMESTAMP');
+  it('maps DATETIME → DATETIME (preserved)', () => {
+    expect(normalizeType('DATETIME')).toBe('DATETIME');
   });
 
   it('maps DATETIME2 → TIMESTAMP', () => {
@@ -967,7 +967,7 @@ GO
   });
 
   // --- Type mapping ---
-  it('maps MSSQL types: NVARCHAR→VARCHAR, BIT→BOOLEAN, DATETIME2→TIMESTAMP', async () => {
+  it('maps MSSQL types: NVARCHAR→VARCHAR, BIT→BOOLEAN, DATETIME2→DATETIME', async () => {
     const sql = `
       CREATE TABLE [dbo].[test] (
         [a] NVARCHAR(100),

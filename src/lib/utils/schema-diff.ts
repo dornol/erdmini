@@ -1,4 +1,4 @@
-import type { Column, ERDSchema, ForeignKey, Table, TableIndex } from '$lib/types/erd';
+import type { Column, ERDSchema, ForeignKey, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 
 export interface ColumnDiff {
   columnName: string;
@@ -18,6 +18,8 @@ export interface TableDiff {
   removedFKs: ForeignKey[];
   addedIndexes: TableIndex[];
   removedIndexes: TableIndex[];
+  addedUniqueKeys: UniqueKey[];
+  removedUniqueKeys: UniqueKey[];
   propertyChanges: string[];
 }
 
@@ -40,6 +42,7 @@ function diffColumn(prev: Column, curr: Column): string[] {
   if ((prev.defaultValue ?? '') !== (curr.defaultValue ?? '')) changes.push(`default: ${prev.defaultValue ?? '-'} → ${curr.defaultValue ?? '-'}`);
   if ((prev.comment ?? '') !== (curr.comment ?? '')) changes.push(`comment changed`);
   if ((prev.check ?? '') !== (curr.check ?? '')) changes.push(`check: ${prev.check ?? '-'} → ${curr.check ?? '-'}`);
+  if (JSON.stringify(prev.enumValues ?? []) !== JSON.stringify(curr.enumValues ?? [])) changes.push(`enumValues changed`);
   if (prev.name !== curr.name) changes.push(`name: ${prev.name} → ${curr.name}`);
   return changes;
 }
@@ -55,6 +58,8 @@ function diffTable(prevTable: Table, currTable: Table, prevTables: Table[], curr
     removedFKs: [],
     addedIndexes: [],
     removedIndexes: [],
+    addedUniqueKeys: [],
+    removedUniqueKeys: [],
     propertyChanges: [],
   };
 
@@ -128,6 +133,17 @@ function diffTable(prevTable: Table, currTable: Table, prevTables: Table[], curr
     if (!currIdxIds.has(idx.id)) diff.removedIndexes.push(idx);
   }
 
+  // UniqueKey diffs
+  const prevUkIds = new Set((prevTable.uniqueKeys ?? []).map((uk) => uk.id));
+  const currUkIds = new Set((currTable.uniqueKeys ?? []).map((uk) => uk.id));
+
+  for (const uk of currTable.uniqueKeys ?? []) {
+    if (!prevUkIds.has(uk.id)) diff.addedUniqueKeys.push(uk);
+  }
+  for (const uk of prevTable.uniqueKeys ?? []) {
+    if (!currUkIds.has(uk.id)) diff.removedUniqueKeys.push(uk);
+  }
+
   const hasChanges =
     diff.addedColumns.length > 0 ||
     diff.removedColumns.length > 0 ||
@@ -136,6 +152,8 @@ function diffTable(prevTable: Table, currTable: Table, prevTables: Table[], curr
     diff.removedFKs.length > 0 ||
     diff.addedIndexes.length > 0 ||
     diff.removedIndexes.length > 0 ||
+    diff.addedUniqueKeys.length > 0 ||
+    diff.removedUniqueKeys.length > 0 ||
     diff.propertyChanges.length > 0;
 
   return hasChanges ? diff : null;

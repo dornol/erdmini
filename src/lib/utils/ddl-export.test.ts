@@ -390,7 +390,7 @@ describe('exportDDL — Common features', () => {
     expect(ddl).not.toContain('CONSTRAINT');
   });
 
-  it('generates ENUM fallback to VARCHAR(255) for PostgreSQL', () => {
+  it('generates CREATE TYPE for PostgreSQL ENUM with values', () => {
     const schema = makeSchema([
       makeTable({
         name: 'test',
@@ -398,8 +398,8 @@ describe('exportDDL — Common features', () => {
       }),
     ]);
     const ddl = exportDDL(schema, 'postgresql');
-    expect(ddl).toContain('VARCHAR(255)');
-    expect(ddl).not.toContain('ENUM');
+    expect(ddl).toContain("CREATE TYPE \"test_status_enum\" AS ENUM ('a', 'b');");
+    expect(ddl).toContain('test_status_enum');
   });
 
   it('generates ENUM fallback to NVARCHAR(255) for MSSQL', () => {
@@ -971,5 +971,117 @@ describe('exportDDL — H2', () => {
     ]);
     const ddl = exportDDL(schema, 'h2');
     expect(ddl).toContain('DECIMAL(10,2)');
+  });
+});
+
+describe('exportDDL — PostgreSQL ENUM', () => {
+  it('generates CREATE TYPE ... AS ENUM before CREATE TABLE', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'orders',
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ name: 'status', type: 'ENUM', enumValues: ['pending', 'active', 'closed'], nullable: false }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain("CREATE TYPE \"orders_status_enum\" AS ENUM ('pending', 'active', 'closed');");
+    expect(ddl).toContain('orders_status_enum');
+    // CREATE TYPE should appear before CREATE TABLE
+    const typeIdx = ddl.indexOf('CREATE TYPE');
+    const tableIdx = ddl.indexOf('CREATE TABLE');
+    expect(typeIdx).toBeLessThan(tableIdx);
+  });
+
+  it('uses VARCHAR(255) for ENUM without enumValues', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'status', type: 'ENUM', nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).not.toContain('CREATE TYPE');
+    expect(ddl).toContain('VARCHAR(255)');
+  });
+
+  it('does not generate CREATE TYPE for MySQL ENUM', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'orders',
+        columns: [
+          makeColumn({ name: 'status', type: 'ENUM', enumValues: ['a', 'b'], nullable: false }),
+        ],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).not.toContain('CREATE TYPE');
+    expect(ddl).toContain("ENUM('a', 'b')");
+  });
+});
+
+describe('exportDDL — PostgreSQL SMALLSERIAL', () => {
+  it('maps SMALLINT autoIncrement to SMALLSERIAL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'id', type: 'SMALLINT', autoIncrement: true, primaryKey: true, nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain('SMALLSERIAL');
+  });
+
+  it('maps BIGINT autoIncrement to BIGSERIAL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'id', type: 'BIGINT', autoIncrement: true, primaryKey: true, nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain('BIGSERIAL');
+  });
+
+  it('maps INT autoIncrement to SERIAL', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'id', type: 'INT', autoIncrement: true, primaryKey: true, nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'postgresql');
+    expect(ddl).toContain('SERIAL');
+    expect(ddl).not.toContain('SMALLSERIAL');
+    expect(ddl).not.toContain('BIGSERIAL');
+  });
+});
+
+describe('exportDDL — MSSQL schema in sp_addextendedproperty', () => {
+  it('uses table.schema instead of hardcoded dbo', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'users',
+        schema: 'sales',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false, comment: 'PK' })],
+        comment: 'User table',
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mssql');
+    expect(ddl).toContain("@level0name=N'sales'");
+    expect(ddl).not.toContain("@level0name=N'dbo'");
+  });
+
+  it('defaults to dbo when no schema set', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'users',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+        comment: 'User table',
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mssql');
+    expect(ddl).toContain("@level0name=N'dbo'");
   });
 });

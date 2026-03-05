@@ -248,6 +248,16 @@
                       <div class="diff-change-row removed">- {idx.name || 'index'}</div>
                     {/each}
                   {/if}
+
+                  {#if td.addedUniqueKeys.length > 0 || td.removedUniqueKeys.length > 0}
+                    <div class="diff-section-label">Unique Key</div>
+                    {#each td.addedUniqueKeys as uk}
+                      <div class="diff-change-row added">+ {uk.name || 'unique key'}</div>
+                    {/each}
+                    {#each td.removedUniqueKeys as uk}
+                      <div class="diff-change-row removed">- {uk.name || 'unique key'}</div>
+                    {/each}
+                  {/if}
                 </div>
               {/if}
             </div>
