@@ -93,7 +93,7 @@ export function createMcpServer(
 
   server.tool(
     'list_projects',
-    'List all ERD projects accessible to the authenticated user',
+    'List all ERD projects accessible to the authenticated user. Returns array of {id, name, updatedAt}. Use get_project_by_name for name-based search. Use the project ID from results to call other tools.',
     {},
     async () => {
       const projects = listUserProjects(db, keyInfo.userId, keyInfo.userRole, keyInfo.scopes);
@@ -105,7 +105,7 @@ export function createMcpServer(
 
   server.tool(
     'get_schema',
-    'Get the full ERD schema JSON for a project',
+    'Get the full ERD schema JSON for a project. Returns complete schema with all tables, columns, foreignKeys, domains, memos, schemas. WARNING: Can be very large for big schemas — prefer get_schema_summary or list_tables for overview.',
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
@@ -118,7 +118,7 @@ export function createMcpServer(
 
   server.tool(
     'get_schema_summary',
-    'Get a high-level summary of a project schema (table/column/FK/index counts, groups, domains)',
+    'Get a high-level summary: table/column/FK/index counts, group names, domain list. Best starting point to understand a project before diving into details.',
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
@@ -139,7 +139,7 @@ export function createMcpServer(
 
   server.tool(
     'list_tables',
-    'List tables with summary info (no full column data). Optionally filter by group.',
+    'List tables with summary info (id, name, schema, group, color, columnCount, fkCount, pkColumns). Does NOT include full column data — use get_table for that. Supports group and schema filters.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       group: z.string().max(256).optional().describe('Filter by group name (exact match)'),
@@ -190,7 +190,7 @@ export function createMcpServer(
 
   server.tool(
     'get_table',
-    'Get full details of a single table by ID or name (columns, foreignKeys, uniqueKeys, indexes)',
+    'Get full details of a single table: all columns (with type, PK, FK, domain info), foreignKeys, uniqueKeys, indexes. Look up by ID or name. Returns the complete Table object.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).optional().describe('Table ID (provide tableId or tableName)'),
@@ -234,7 +234,7 @@ export function createMcpServer(
 
   server.tool(
     'export_ddl',
-    'Export DDL SQL for a project schema (supports mysql, postgresql, mariadb, mssql, sqlite, oracle, h2)',
+    'Export DDL SQL (CREATE TABLE statements) for the project. Returns raw SQL text. Supports 7 dialects with options for comments, FK constraints, indexes, domain annotations, and keyword casing.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql', 'sqlite', 'oracle', 'h2']).describe('SQL dialect'),
@@ -261,7 +261,7 @@ export function createMcpServer(
 
   server.tool(
     'lint_schema',
-    'Run schema lint validation and return issues',
+    'Run schema lint: checks for missing PKs, orphan FK targets, SET NULL on NOT NULL columns, duplicate names, circular FKs, empty tables, domain hierarchy cycles. Returns array of {rule, severity, message, tableId, tableName}.',
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
@@ -275,7 +275,7 @@ export function createMcpServer(
 
   server.tool(
     'export_diagram',
-    'Export ERD as Mermaid or PlantUML diagram',
+    'Export ERD as Mermaid or PlantUML text diagram. Returns diagram source code that can be rendered by diagram tools.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       format: z.enum(['mermaid', 'plantuml']).describe('Diagram format'),
@@ -294,7 +294,7 @@ export function createMcpServer(
 
   server.tool(
     'add_table',
-    'Add a new table to the ERD schema',
+    'Add a new table. Returns {tableId, name}. By default creates an auto-increment PK "id" column (set withPk=false to skip). Position is auto-calculated to avoid overlap. For creating many tables at once, use bulk_add_tables instead.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).optional().describe('Table name (auto-generated if omitted)'),
@@ -318,7 +318,7 @@ export function createMcpServer(
 
   server.tool(
     'update_table',
-    'Update table properties (name, comment, color, group, schema)',
+    'Update table properties. Only provided fields are changed; omitted fields remain unchanged. Pass empty string to clear comment, color, group, or schema.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -343,7 +343,7 @@ export function createMcpServer(
 
   server.tool(
     'delete_table',
-    'Delete a table and clean up FK references',
+    'Delete a table. Automatically removes FK references from other tables pointing to it. For deleting multiple tables, use delete_tables.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID to delete'),
@@ -363,7 +363,7 @@ export function createMcpServer(
 
   server.tool(
     'add_column',
-    'Add a column to a table',
+    'Add a column to a table. Returns {columnId}. Defaults: type=VARCHAR, nullable=true. Setting primaryKey=true auto-sets nullable=false. For adding many columns at once, use bulk_add_columns.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -398,7 +398,7 @@ export function createMcpServer(
 
   server.tool(
     'update_column',
-    'Update column properties',
+    'Update column properties. Only provided fields are changed. Setting primaryKey=true auto-sets nullable=false. Set domainId to empty string to unlink from domain.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -436,7 +436,7 @@ export function createMcpServer(
 
   server.tool(
     'delete_column',
-    'Delete a column and clean up FK/UQ references',
+    'Delete a column. Automatically removes any FK, unique key, and index references that include this column.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -461,7 +461,7 @@ export function createMcpServer(
 
   server.tool(
     'add_foreign_key',
-    'Add a foreign key relationship between tables',
+    'Add a FK from source table columns to referenced table columns. Returns {fkId}. Supports composite FKs (multiple column pairs). Defaults: onDelete=RESTRICT, onUpdate=RESTRICT. Column IDs must exist in their respective tables.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Source table ID'),
@@ -543,7 +543,7 @@ export function createMcpServer(
 
   server.tool(
     'import_ddl',
-    'Import DDL SQL to create/update tables in a project',
+    'Import DDL SQL (CREATE TABLE statements) to create tables. By default merges with existing tables (skips tables with same name). Set replace=true to replace entire schema. Supports 7 SQL dialects.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       sql: z.string().max(1048576).describe('DDL SQL statements'),
@@ -579,7 +579,7 @@ export function createMcpServer(
 
   server.tool(
     'list_memos',
-    'List all memos in a project with summary info',
+    'List all memos with summary (id, content preview, position, color, attachedTableId). Optionally filter by schema namespace.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       schema: z.string().max(256).optional().describe('Filter by schema namespace'),
@@ -607,7 +607,7 @@ export function createMcpServer(
 
   server.tool(
     'add_memo',
-    'Add a new sticky memo to the ERD canvas',
+    'Add a sticky note memo to the canvas. Returns {memoId}. Use attach_memo to pin it to a table afterward.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       content: z.string().max(10000).optional().describe('Memo text content'),
@@ -632,7 +632,7 @@ export function createMcpServer(
 
   server.tool(
     'update_memo',
-    'Update memo properties (content, color, position, size, locked)',
+    'Update memo properties. Only provided fields are changed. Set locked=true to prevent UI editing.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       memoId: z.string().max(256).describe('Memo ID'),
@@ -685,7 +685,7 @@ export function createMcpServer(
 
   server.tool(
     'list_domains',
-    'List all column domains in a project with usage counts',
+    'List all column domains (reusable column templates) with usage counts showing how many columns are linked to each domain.',
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
@@ -707,7 +707,7 @@ export function createMcpServer(
 
   server.tool(
     'get_domain',
-    'Get full details of a domain by ID or name, including linked columns',
+    'Get domain details by ID or name: type, constraints, linked columns, effective values (with hierarchy inheritance), child domains.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       domainId: z.string().max(256).optional().describe('Domain ID (provide domainId or domainName)'),
@@ -746,7 +746,7 @@ export function createMcpServer(
 
   server.tool(
     'add_domain',
-    'Add a new column domain (reusable column template)',
+    'Create a reusable column domain (template). Returns {domainId, name}. Domains define type, constraints, and metadata that propagate to linked columns. Set parentId for domain hierarchy.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).describe('Domain name'),
@@ -808,7 +808,7 @@ export function createMcpServer(
 
   server.tool(
     'update_domain',
-    'Update domain properties and propagate changes to linked columns',
+    'Update domain properties. Changes automatically propagate to all linked columns and child domains in the hierarchy.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       domainId: z.string().max(256).describe('Domain ID'),
@@ -849,7 +849,7 @@ export function createMcpServer(
 
   server.tool(
     'delete_domain',
-    'Delete a domain and unlink all columns that reference it',
+    'Delete a domain. All linked columns are unlinked. Child domains are re-parented to the deleted domain\'s parent.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       domainId: z.string().max(256).describe('Domain ID to delete'),
@@ -869,7 +869,7 @@ export function createMcpServer(
 
   server.tool(
     'suggest_domains',
-    'Analyze unlinked columns and suggest potential domain candidates based on type/name similarity',
+    'Analyze unlinked columns and suggest domain candidates. Groups columns by matching (type, length, scale, baseName) that appear 2+ times. Sorted by frequency.',
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
@@ -884,7 +884,7 @@ export function createMcpServer(
 
   server.tool(
     'domain_coverage',
-    'Get domain coverage statistics for a project (total columns, linked columns, coverage percentage, group breakdown)',
+    'Get domain coverage statistics: total columns, linked columns, coverage percentage, and per-group breakdown.',
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
@@ -896,7 +896,7 @@ export function createMcpServer(
 
   server.tool(
     'export_domain_dictionary',
-    'Export a domain data dictionary in markdown or html format',
+    'Export a domain data dictionary listing all domains with their types, constraints, descriptions, and linked columns. Available in markdown or HTML format.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       format: z.enum(['markdown', 'html']).describe('Output format'),
@@ -918,7 +918,7 @@ export function createMcpServer(
 
   server.tool(
     'list_snapshots',
-    'List all named snapshots for a project',
+    'List all named snapshots (save points) for a project. Returns {id, name, description, createdAt}. Use snapshot IDs with compare_snapshots or export_migration_sql.',
     { projectId: z.string().max(256).describe('Project ID') },
     async ({ projectId }) => {
       requireAccess(projectId, 'viewer');
@@ -935,7 +935,7 @@ export function createMcpServer(
 
   server.tool(
     'create_snapshot',
-    'Save the current schema as a named snapshot',
+    'Save the current schema state as a named snapshot. Use before making large changes so you can compare or roll back later.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).describe('Snapshot name'),
@@ -956,7 +956,7 @@ export function createMcpServer(
 
   server.tool(
     'restore_snapshot',
-    'Restore a project schema from a named snapshot',
+    'Restore a project schema from a snapshot, replacing the current schema entirely. This is irreversible — consider creating a snapshot of the current state first.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       snapshotId: z.string().max(256).describe('Snapshot ID'),
@@ -997,7 +997,7 @@ export function createMcpServer(
 
   server.tool(
     'update_foreign_key',
-    'Update an existing foreign key (columns, referenced table/columns, referential actions)',
+    'Update an existing FK. Can change column mappings, referenced table, or referential actions (CASCADE, SET NULL, RESTRICT, NO ACTION). Only provided fields are changed.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID containing the FK'),
@@ -1023,7 +1023,7 @@ export function createMcpServer(
 
   server.tool(
     'add_unique_key',
-    'Add a unique key constraint to a table',
+    'Add a unique key constraint on one or more columns. Returns {ukId}. Supports composite unique keys.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -1063,7 +1063,7 @@ export function createMcpServer(
 
   server.tool(
     'add_index',
-    'Add an index to a table',
+    'Add an index on one or more columns. Returns {indexId}. Set unique=true for a unique index.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -1104,7 +1104,7 @@ export function createMcpServer(
 
   server.tool(
     'move_column',
-    'Reorder a column within a table by moving it to a new position',
+    'Reorder a column within a table. toIndex is 0-based position in the column list.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -1126,7 +1126,7 @@ export function createMcpServer(
 
   server.tool(
     'duplicate_table',
-    'Create a copy of a table with new IDs (columns copied, FKs/UKs/indexes not copied)',
+    'Create a copy of a table with new IDs. Columns are copied; FKs, unique keys, and indexes are NOT copied. Returns {newTableId}.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID to duplicate'),
@@ -1148,7 +1148,7 @@ export function createMcpServer(
 
   server.tool(
     'attach_memo',
-    'Attach a memo to a table (memo moves with the table)',
+    'Pin a memo to a table so it moves together when the table is dragged on the canvas.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       memoId: z.string().max(256).describe('Memo ID'),
@@ -1166,7 +1166,7 @@ export function createMcpServer(
 
   server.tool(
     'detach_memo',
-    'Detach a memo from its attached table',
+    'Unpin a memo from its attached table so it becomes a free-floating memo.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       memoId: z.string().max(256).describe('Memo ID'),
@@ -1183,7 +1183,7 @@ export function createMcpServer(
 
   server.tool(
     'auto_layout',
-    'Automatically arrange all tables using the specified layout algorithm',
+    'Automatically arrange all tables on the canvas. Algorithms: grid (rows/cols), hierarchical (FK-based tree with barycenter), radial (force-directed). Set groupByGroup=true to cluster by group.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       type: z.enum(['grid', 'hierarchical', 'radial']).describe('Layout algorithm'),
@@ -1206,7 +1206,7 @@ export function createMcpServer(
 
   server.tool(
     'rename_group',
-    'Rename a table group (updates all tables and group colors)',
+    'Rename a table group. All tables in the old group are moved to the new name, and group color is preserved.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       oldName: z.string().max(256).describe('Current group name'),
@@ -1224,7 +1224,7 @@ export function createMcpServer(
 
   server.tool(
     'rename_schema',
-    'Rename a schema namespace (updates tables, memos, and schemas list)',
+    'Rename a schema namespace. All tables and memos assigned to the old name are updated to the new name.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       oldName: z.string().max(256).describe('Current schema namespace name'),
@@ -1249,7 +1249,7 @@ export function createMcpServer(
 
   server.tool(
     'export_prisma',
-    'Export Prisma schema for a project',
+    'Export as Prisma schema (.prisma format) with models, relations, enums, and indexes.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       includeComments: z.boolean().optional().describe('Include comments as /// doc comments'),
@@ -1271,7 +1271,7 @@ export function createMcpServer(
 
   server.tool(
     'import_prisma',
-    'Import Prisma schema to create/update tables in a project',
+    'Import Prisma schema source code. Parses models, enums, @relation, @id, @unique, @@index. By default merges; set replace=true to replace entire schema.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       source: z.string().max(1048576).describe('Prisma schema source code'),
@@ -1306,7 +1306,7 @@ export function createMcpServer(
 
   server.tool(
     'export_dbml',
-    'Export DBML schema for a project',
+    'Export as DBML (Database Markup Language) format. Options to include comments, foreign key Ref statements, and index blocks.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       includeComments: z.boolean().optional().describe('Include comments and notes'),
@@ -1328,7 +1328,7 @@ export function createMcpServer(
 
   server.tool(
     'import_dbml',
-    'Import DBML schema to create/update tables in a project',
+    'Import DBML source code. Parses Table, Column, Enum, Ref, Indexes blocks. By default merges; set replace=true to replace entire schema.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       source: z.string().max(1048576).describe('DBML source code'),
@@ -1363,7 +1363,7 @@ export function createMcpServer(
 
   server.tool(
     'delete_tables',
-    'Delete multiple tables at once and clean up FK references',
+    'Delete multiple tables at once. Automatically cleans up FK references and detaches memos from deleted tables.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableIds: z.array(z.string().max(256)).min(1).max(500).describe('Array of table IDs to delete'),
@@ -1386,7 +1386,7 @@ export function createMcpServer(
 
   server.tool(
     'bulk_add_tables',
-    'Create multiple tables at once with columns and properties',
+    'Create multiple tables at once, each with optional columns and properties. Returns array of {name, tableId}. Much more efficient than calling add_table + add_column individually. Max 100 tables per call.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tables: z.array(z.object({
@@ -1448,7 +1448,7 @@ export function createMcpServer(
 
   server.tool(
     'bulk_add_columns',
-    'Add multiple columns to a table at once',
+    'Add multiple columns to a table in a single call. Returns array of {name, columnId}. Max 200 columns per call. More efficient than calling add_column individually.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
@@ -1496,7 +1496,7 @@ export function createMcpServer(
 
   server.tool(
     'add_schema',
-    'Add a new schema namespace',
+    'Add a new schema namespace (e.g. "public", "auth", "billing"). Use update_table to assign tables to it. Use list_schemas to see existing namespaces.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).describe('Schema namespace name'),
@@ -1516,7 +1516,7 @@ export function createMcpServer(
 
   server.tool(
     'delete_schema',
-    'Delete a schema namespace (tables and memos in it will become unassigned)',
+    'Delete a schema namespace. Tables and memos in it become unassigned (not deleted). Use rename_schema to rename instead.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).describe('Schema namespace name to delete'),
@@ -1540,7 +1540,7 @@ export function createMcpServer(
 
   server.tool(
     'get_project_by_name',
-    'Find a project by name (partial match, case-insensitive)',
+    'Find projects by name (case-insensitive partial match). Returns matching projects with IDs. Use this when you know the project name but not its ID.',
     {
       name: z.string().max(256).describe('Project name to search for'),
     },
@@ -1557,7 +1557,7 @@ export function createMcpServer(
 
   server.tool(
     'get_table_by_name',
-    'Find a table by name within a project (exact or partial match)',
+    'Find tables by name within a project. Returns matching tables with columns, FK counts, and metadata. Default is partial match; set exact=true for exact match.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).describe('Table name to search for'),
@@ -1590,7 +1590,7 @@ export function createMcpServer(
 
   server.tool(
     'search_columns',
-    'Search columns across all tables by name, type, or domain',
+    'Search columns across ALL tables. Filter by name (partial match), type, domainId, or hasNoDomain. Returns {tableName, tableId, columnId, columnName, type, domainId} for each match.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).optional().describe('Column name pattern (case-insensitive partial match)'),
@@ -1629,7 +1629,7 @@ export function createMcpServer(
 
   server.tool(
     'find_orphan_tables',
-    'Find tables with no foreign key connections (neither referencing nor referenced)',
+    'Find tables with no FK connections — neither having FKs nor being referenced by other tables. Useful for identifying isolated tables that may need relationships.',
     {
       projectId: z.string().max(256).describe('Project ID'),
     },
@@ -1663,7 +1663,7 @@ export function createMcpServer(
 
   server.tool(
     'compare_snapshots',
-    'Compare two snapshots or a snapshot with the current schema and return differences',
+    'Diff two snapshots or a snapshot vs current schema. Use "current" as snapshotId to compare against the live schema. Returns added/removed/modified tables with column-level details.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       snapshotId: z.string().max(256).describe('First snapshot ID (or "current" for current schema)'),
@@ -1693,7 +1693,7 @@ export function createMcpServer(
 
   server.tool(
     'export_migration_sql',
-    'Generate ALTER TABLE migration SQL between two snapshots or snapshot vs current schema',
+    'Generate ALTER TABLE migration DDL between two snapshots (or snapshot vs "current"). Produces CREATE/DROP TABLE, ADD/DROP/ALTER COLUMN, FK, and index statements. Supports all 7 SQL dialects.',
     {
       projectId: z.string().max(256).describe('Project ID'),
       snapshotId: z.string().max(256).describe('Base snapshot ID (or "current")'),
