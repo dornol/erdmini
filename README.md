@@ -33,7 +33,7 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - Background left-click drag / **right-click drag** / **Space+drag** panning
 - Table card drag-to-move (with grid snap option)
 - Minimap (click to move viewport)
-- Undo / Redo (Ctrl+Z / Ctrl+Shift+Z, up to 50 steps)
+- Undo / Redo (Ctrl+Z / Ctrl+Shift+Z, up to 200 steps)
 - History panel (visual timeline, click to jump to a specific point)
 - Align and distribute tools (left/center/right/top/middle/bottom align, horizontal/vertical equal distribution)
 - Image export (PNG, SVG, PDF)
@@ -94,14 +94,15 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - DDL import: auto-extract schema from parsed statements
 
 ### DDL Import / Export
-- **4 dialects supported**: MySQL / PostgreSQL / MariaDB / MSSQL
+- **7 dialects supported**: MySQL / PostgreSQL / MariaDB / MSSQL / SQLite / Oracle / H2
 - **Export options**: indentation, quoting style, keyword case, include/exclude comments/indexes/FKs
 - **Import**: DDL parsing → automatic table/column generation, auto-layout after import
 - **Diagram export**: Mermaid, PlantUML
 
 ### Schema Tools
-- **Schema validation / linting**: 8 rules (missing PK, missing FK target, duplicates, circular FKs, etc.)
+- **Schema validation / linting**: 9 rules (missing PK, missing FK target, duplicates, circular FKs, domain circular hierarchy, etc.)
 - **Schema version diff**: compare against history or uploaded file, color-coded
+- **Schema snapshots**: Named save / restore / diff / auto-snapshot (5 min interval, max 50)
 - **URL sharing**: compress schema → share via URL hash
 
 ### Sticky Memos
@@ -153,7 +154,10 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 - **Sharing**: User search → grant permissions, read-only mode
 - **Real-time collaboration**: WebSocket sync, connected user cursor display, LWW conflict resolution
 - **Admin**: User CRUD, OIDC provider management, API key management
-- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 32 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces), collab integration
+- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 48 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces, snapshots), collab integration
+- **Audit trail**: Action logging (auth, schema changes, admin ops), configurable retention, admin UI
+- **Embed**: Read-only iframe embed with token-based access and optional password protection
+- **Structured logging**: JSON Lines (`LOG_FORMAT=json`) or text output, `LOG_LEVEL` filtering — 12-factor app compatible
 
 ---
 
@@ -195,7 +199,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (366 tests)
+pnpm test         # vitest (31 files, 1123 tests)
 pnpm check        # svelte-check type checking
 ```
 
@@ -215,6 +219,38 @@ docker compose logs erdmini | grep Password
 docker compose --profile local up -d erdmini-local
 ```
 
-For details on environment variables, volume management, reverse proxy, and MCP configuration, see [DOCKER.md](DOCKER.md)
+For details on volume management, reverse proxy, and MCP configuration, see [DOCKER.md](DOCKER.md)
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `PUBLIC_STORAGE_MODE` | `local` | `local` (SPA + IndexedDB) or `server` (Node.js + SQLite) |
+| `DB_PATH` | `data/erdmini.db` | SQLite file path (server mode) |
+| `PORT` | `3000` | HTTP port (server mode) |
+| `ADMIN_USERNAME` | `admin` | Initial admin username |
+| `ADMIN_PASSWORD` | auto-generated | Initial admin password (printed to logs on first run) |
+| `BASE_PATH` | — | Subdirectory deployment path (e.g., `/erdmini`) |
+| `PUBLIC_SITE_URL` | — | Canonical URL for SEO |
+| `PUBLIC_APP_URL` | `http://localhost:5173` | App URL for OIDC redirect URIs |
+| `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry in days |
+| `AUDIT_RETENTION_DAYS` | `720` | Audit log retention period in days |
+| `AUDIT_CLEANUP_HOUR` | `3` | Hour (0-23) for daily audit log cleanup |
+| `LOG_FORMAT` | `text` | `json` (structured JSON Lines to stdout) or `text` (bracket prefix) |
+| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+
+---
+
+## Security
+
+- **XSS**: Svelte auto-escaping for all user input; `{@html}` used only for JSON-LD with `</` escape
+- **CSRF**: JSON-only APIs (SvelteKit origin validation), session cookie `httpOnly` + `sameSite: lax` + `secure`
+- **WebSocket**: Origin header validation + session authentication
+- **MCP**: Bearer token auth (not cookie-based, immune to CSRF)
+- **Headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (except `/embed`), `Referrer-Policy: strict-origin-when-cross-origin`
+
+---
 
 For the full feature list, see [docs/prd/FEATURES.md](docs/prd/FEATURES.md)
