@@ -69,7 +69,7 @@ Only loaded in server mode. Includes:
 
 ### Real-time Collaboration
 
-- **`collab-server.js`** (plain JS, not TypeScript): WebSocket room manager. Runs in Vite dev plugin and production `server.js`. Handles join/leave/operation/presence/sync messages with session auth and permission checks.
+- **`collab-server.js`** (plain JS, not TypeScript): WebSocket room manager. Runs in Vite dev plugin and production `server.js`. Handles join/leave/operation/presence/sync messages with session auth, permission checks, and Origin header validation (CSRF defense-in-depth).
 - **`src/lib/collab/collab-client.ts`**: Browser WebSocket client with auto-reconnect (exponential backoff).
 - **`src/lib/collab/operation-bridge.ts`**: Translates `CollabOperation` ↔ `erdStore` mutations. Sets `_isRemoteOp` flag to suppress undo history for remote changes.
 - **`globalThis.__erdmini_notifySchemaChange`**: Bridges TypeScript server code → JS collab server without circular imports.
@@ -111,3 +111,23 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 | `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry in days |
 | `AUDIT_RETENTION_DAYS` | `720` | Audit log retention period in days |
 | `AUDIT_CLEANUP_HOUR` | `3` | Hour (0-23) for daily audit log cleanup |
+
+## Security
+
+### XSS Protection
+- Svelte default text rendering — all user input (table/column names, memos, comments) auto-escaped
+- `{@html}` used only in `+layout.svelte` for JSON-LD structured data, with `</` escape (`safeJsonLd()`)
+- No `innerHTML`, `eval()`, `document.write()` usage in codebase
+- Response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (except `/embed`), `Referrer-Policy: strict-origin-when-cross-origin`
+
+### CSRF Protection
+- All state-changing APIs use JSON bodies — SvelteKit origin validation covers these automatically
+- Session cookie: `httpOnly`, `sameSite: lax`, `secure` (HTTPS)
+- WebSocket upgrade: Origin header validation + session authentication
+- MCP endpoint: Bearer token auth (not cookie-based, immune to CSRF)
+- No `Access-Control-Allow-Origin` headers set (same-origin only)
+
+### Local Mode Security
+- Schema data stored in IndexedDB (browser same-origin policy)
+- localStorage stores UI preferences only (theme, grid, line type) — no schema data
+- Server mode: schema stored in SQLite only, no browser persistence of schema data
