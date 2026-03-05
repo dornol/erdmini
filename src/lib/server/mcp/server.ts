@@ -9,6 +9,8 @@ import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColu
 import { exportDDL, type DDLExportOptions } from '$lib/utils/ddl-export';
 import { exportPrisma } from '$lib/utils/prisma-export';
 import { importPrisma } from '$lib/utils/prisma-import';
+import { exportDBML } from '$lib/utils/dbml-export';
+import { importDBML } from '$lib/utils/dbml-import';
 import { lintSchema } from '$lib/utils/schema-lint';
 import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
 import { importDDL } from '$lib/utils/ddl-import';
@@ -1419,6 +1421,82 @@ export function createMcpServer(
       saveAndNotify(projectId, schema);
 
       const summary = [`Imported ${result.tables.length} model(s) from Prisma schema`];
+      if (result.errors.length > 0) summary.push(`Errors: ${result.errors.join('; ')}`);
+      if (result.warnings.length > 0) summary.push(`Warnings: ${result.warnings.join('; ')}`);
+      return { content: [{ type: 'text', text: summary.join('\n') }] };
+    },
+  );
+
+  // ==================
+  // DBML TOOLS
+  // ==================
+
+  server.tool(
+    'export_dbml',
+    'Export DBML schema for a project',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      includeComments: z.boolean().optional().describe('Include comments and notes'),
+      includeForeignKeys: z.boolean().optional().describe('Include Ref statements'),
+      includeIndexes: z.boolean().optional().describe('Include Indexes blocks'),
+    },
+    async ({ projectId, ...opts }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const options: Record<string, boolean> = {};
+      if (opts.includeComments !== undefined) options.includeComments = opts.includeComments;
+      if (opts.includeForeignKeys !== undefined) options.includeForeignKeys = opts.includeForeignKeys;
+      if (opts.includeIndexes !== undefined) options.includeIndexes = opts.includeIndexes;
+
+      const dbml = exportDBML(schema, options);
+      return { content: [{ type: 'text', text: dbml }] };
+    },
+  );
+
+  server.tool(
+    'import_dbml',
+    'Import DBML schema to create/update tables in a project',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      source: z.string().max(1048576).describe('DBML source code'),
+      replace: z.boolean().optional().describe('Replace existing schema (default: false, merges)'),
+    },
+    async ({ projectId, source, replace }) => {
+      requireAccess(projectId, 'editor');
+      const result = importDBML(source);
+
+      if (result.errors.length > 0 && result.tables.length === 0) {
+        return {
+          content: [{ type: 'text', text: `Import failed:\n${result.errors.join('\n')}` }],
+          isError: true,
+        };
+      }
+
+      let schema = getSchema(db, projectId);
+      if (!schema || replace) {
+        schema = {
+          version: '1',
+          tables: result.tables,
+          domains: [],
+          memos: [],
+          groupColors: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      } else {
+        const existingNames = new Set(schema.tables.map(t => t.name.toLowerCase()));
+        const newTables = result.tables.filter(t => !existingNames.has(t.name.toLowerCase()));
+        schema.tables = [...schema.tables, ...newTables];
+        schema.updatedAt = new Date().toISOString();
+      }
+
+      mcpAudit('import_dbml', projectId, { tableCount: result.tables.length, replace: !!replace });
+      saveAndNotify(projectId, schema);
+
+      const summary = [`Imported ${result.tables.length} table(s) from DBML`];
       if (result.errors.length > 0) summary.push(`Errors: ${result.errors.join('; ')}`);
       if (result.warnings.length > 0) summary.push(`Warnings: ${result.warnings.join('; ')}`);
       return { content: [{ type: 'text', text: summary.join('\n') }] };

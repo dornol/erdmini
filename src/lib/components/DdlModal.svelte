@@ -7,8 +7,10 @@
   import { exportDDL, DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { exportPrisma } from '$lib/utils/prisma-export';
+  import { exportDBML } from '$lib/utils/dbml-export';
   import { importDDL, type DDLImportMessages } from '$lib/utils/ddl-import';
   import { importPrisma } from '$lib/utils/prisma-import';
+  import { importDBML } from '$lib/utils/dbml-import';
   import { computeLayout } from '$lib/utils/auto-layout';
   import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
@@ -24,14 +26,15 @@
 
   let activeTab = $state<'import' | 'export'>(untrack(() => mode));
 
-  type ExportFormat = 'ddl' | 'mermaid' | 'plantuml' | 'prisma';
-  type ImportFormat = 'ddl' | 'prisma';
+  type ExportFormat = 'ddl' | 'mermaid' | 'plantuml' | 'prisma' | 'dbml';
+  type ImportFormat = 'ddl' | 'prisma' | 'dbml';
 
   const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
     { value: 'ddl', label: 'DDL' },
     { value: 'mermaid', label: 'Mermaid' },
     { value: 'plantuml', label: 'PlantUML' },
     { value: 'prisma', label: 'Prisma' },
+    { value: 'dbml', label: 'DBML' },
   ];
 
   const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
@@ -68,6 +71,7 @@
     if (exportFormat === 'mermaid') return exportMermaid(erdStore.schema);
     if (exportFormat === 'plantuml') return exportPlantUML(erdStore.schema);
     if (exportFormat === 'prisma') return exportPrisma(erdStore.schema);
+    if (exportFormat === 'dbml') return exportDBML(erdStore.schema);
     return exportDDL(erdStore.schema, exportDialect, { ...ddlOptions, quoteStyle: ddlOptions.quoteStyle === 'none' ? 'none' : ddlOptions.quoteStyle || getDefaultQuoteStyle(exportDialect) });
   });
   let copyLabel = $state<'copy' | 'copied'>('copy');
@@ -99,6 +103,8 @@
       a.download = `erdmini_${projName}.puml`;
     } else if (exportFormat === 'prisma') {
       a.download = `erdmini_${projName}.prisma`;
+    } else if (exportFormat === 'dbml') {
+      a.download = `erdmini_${projName}.dbml`;
     } else {
       a.download = `erdmini_${projName}_${exportDialect}.sql`;
     }
@@ -109,7 +115,7 @@
   function openFile() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = importFormat === 'prisma' ? '.prisma,.txt' : '.sql,.txt';
+    input.accept = importFormat === 'prisma' ? '.prisma,.txt' : importFormat === 'dbml' ? '.dbml,.txt' : '.sql,.txt';
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
@@ -130,7 +136,13 @@
 
     try {
       let result;
-      if (importFormat === 'prisma') {
+      if (importFormat === 'dbml') {
+        result = importDBML(importText, {
+          noTables: () => m.dbml_import_no_tables(),
+          noPkWarning: (p) => m.dbml_no_pk_warning(p),
+          fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
+        });
+      } else if (importFormat === 'prisma') {
         result = importPrisma(importText, {
           noModels: () => m.prisma_import_no_models(),
           implicitM2m: (p) => m.prisma_import_implicit_m2m(p),
@@ -246,7 +258,9 @@
         erdStore.applyLayout(positions);
         importSuccess = importFormat === 'prisma'
           ? m.prisma_import_success({ count: result.tables.length })
-          : m.ddl_import_success({ count: result.tables.length });
+          : importFormat === 'dbml'
+            ? m.dbml_import_success({ count: result.tables.length })
+            : m.ddl_import_success({ count: result.tables.length });
       }
     } catch (e) {
       importErrors = [`Import error: ${e instanceof Error ? e.message : e}`];
@@ -314,7 +328,7 @@
             {copyLabel === 'copy' ? m.ddl_copy() : m.ddl_copied()}
           </button>
           <button class="btn-secondary" onclick={downloadFile}>
-            {exportFormat === 'mermaid' ? '.mmd' : exportFormat === 'plantuml' ? '.puml' : exportFormat === 'prisma' ? m.prisma_download() : m.ddl_download()}
+            {exportFormat === 'mermaid' ? '.mmd' : exportFormat === 'plantuml' ? '.puml' : exportFormat === 'prisma' ? m.prisma_download() : exportFormat === 'dbml' ? m.dbml_download() : m.ddl_download()}
           </button>
         </div>
         {#if exportFormat === 'ddl' && showDdlOptions}
@@ -364,6 +378,7 @@
           <div class="format-tabs">
             <button class="format-tab" class:active={importFormat === 'ddl'} onclick={() => importFormat = 'ddl'}>DDL</button>
             <button class="format-tab" class:active={importFormat === 'prisma'} onclick={() => importFormat = 'prisma'}>Prisma</button>
+            <button class="format-tab" class:active={importFormat === 'dbml'} onclick={() => importFormat = 'dbml'}>DBML</button>
           </div>
           {#if importFormat === 'ddl'}
             <div class="dialect-select-wrap">
@@ -384,7 +399,7 @@
         <textarea
           class="code-area"
           bind:value={importText}
-          placeholder={importFormat === 'prisma' ? m.prisma_paste_placeholder() : m.ddl_paste_placeholder()}
+          placeholder={importFormat === 'prisma' ? m.prisma_paste_placeholder() : importFormat === 'dbml' ? m.dbml_paste_placeholder() : m.ddl_paste_placeholder()}
           spellcheck="false"
         ></textarea>
         {#if importSuccess}

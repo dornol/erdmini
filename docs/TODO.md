@@ -173,17 +173,12 @@
 - ~~프로젝트 삭제 시 embed 토큰 cascade 삭제~~
 - Difficulty: Medium
 
-### 31. DBML Import / Export
-- [DBML (Database Markup Language)](https://dbml.dbdiagram.io/) 포맷 지원
-- **Import**: DBML 텍스트 → ERDSchema 변환 파서
-  - Table, Column (타입, PK, unique, not null, default, note), Ref (1-1, 1-n, n-n), Enum, TableGroup, indexes
-  - DdlModal의 Import 탭에 DBML 포맷 옵션 추가
-- **Export**: ERDSchema → DBML 텍스트 생성
-  - DdlModal의 Export 탭에 DBML 포맷 옵션 추가
-  - 도메인 → Enum 매핑, 그룹 → TableGroup 매핑
-- `src/lib/utils/dbml-import.ts`, `src/lib/utils/dbml-export.ts` 신규 모듈
-- dbdiagram.io 사용자 마이그레이션 경로 제공
-- Difficulty: Large
+### ~~31. DBML Import / Export~~ ✅
+- ~~[DBML (Database Markup Language)](https://dbml.dbdiagram.io/) 포맷 지원~~ ✅ (Import + Export 구현 완료)
+- ~~**Import**: DBML 텍스트 → ERDSchema 변환 파서~~ ✅
+- ~~**Export**: ERDSchema → DBML 텍스트 생성~~ ✅
+- `src/lib/utils/dbml-import.ts`, `src/lib/utils/dbml-export.ts`, DdlModal 통합, MCP 도구 (export_dbml, import_dbml)
+- 89 tests (53 import + 36 export)
 
 ### 32. ORM / Framework Schema Import
 - ORM 및 프레임워크 스키마 파일에서 직접 ERD 생성
