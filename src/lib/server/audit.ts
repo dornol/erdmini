@@ -1,5 +1,6 @@
 import db from '$lib/server/db';
 import { env } from '$env/dynamic/private';
+import { logger } from './logger';
 
 export interface AuditEntry {
 	userId?: string | null;
@@ -31,9 +32,16 @@ export function logAudit(entry: AuditEntry): void {
 			entry.ip ?? null,
 			entry.source ?? 'web'
 		);
+		logger.info('audit', entry.action, {
+			category: entry.category,
+			...(entry.userId && { userId: entry.userId }),
+			...(entry.resourceType && { resourceType: entry.resourceType }),
+			...(entry.resourceId && { resourceId: entry.resourceId }),
+			...(entry.source && { source: entry.source }),
+		});
 	} catch (e) {
 		// 감사 로그 실패가 본래 작업을 중단시키면 안 됨
-		console.warn('[audit] logAudit failed:', (e as Error).message);
+		logger.warn('audit', 'logAudit failed', { error: (e as Error).message });
 	}
 }
 

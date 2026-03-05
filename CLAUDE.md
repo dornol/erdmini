@@ -66,6 +66,7 @@ Only loaded in server mode. Includes:
 - **`auth/`**: Password hashing (argon2), sessions (30-day, cookie-based), API keys (`erd_` prefix + SHA-256), OIDC (PKCE flow via openid-client), permission hierarchy (viewer < editor < owner, admin bypasses).
 - **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. 48 tools: CRUD for tables/columns/FKs/memos/domains, FK update, unique key/index CRUD, column reorder, table duplicate, memo attach/detach, auto-layout, group/schema rename, schema read/export/lint/diagram/DDL, domain analysis/coverage/dictionary, schema namespace listing, snapshots. Write ops call `notifyCollabSchemaChange()`.
 - **`embed.ts`**: Embed token CRUD — `generateEmbedToken()` (32-byte hex), `createEmbedToken()`, `validateEmbedToken()`, `verifyEmbedPassword()` (argon2), `listEmbedTokens()`, `deleteEmbedToken()`, `deleteProjectEmbedTokens()`. Migration V009 creates `embed_tokens` table.
+- **`logger.ts`**: Structured logger — `LOG_FORMAT=json` outputs JSON Lines to stdout, `LOG_FORMAT=text` (default) outputs `[module] message`. `LOG_LEVEL` filters (debug/info/warn/error). Uses `process.env` (not `$env`) for compatibility with plain JS files. Companion `logger.js` at project root for `server.js`/`collab-server.js`.
 
 ### Real-time Collaboration
 
@@ -86,7 +87,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (30 test files, 1096 tests)
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (31 test files, 1123 tests)
 - 41 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos, schemas)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts
@@ -111,6 +112,8 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 | `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry in days |
 | `AUDIT_RETENTION_DAYS` | `720` | Audit log retention period in days |
 | `AUDIT_CLEANUP_HOUR` | `3` | Hour (0-23) for daily audit log cleanup |
+| `LOG_FORMAT` | `text` | `json` (structured JSON Lines) or `text` (bracket prefix) |
+| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 
 ## Security
 

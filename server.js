@@ -2,6 +2,10 @@ import { createServer } from 'http';
 import { handler } from './build/handler.js';
 import Database from 'better-sqlite3';
 import { initCollabServer } from './collab-server.js';
+import { createLogger } from './logger.js';
+
+const log = createLogger('server');
+const collabLog = createLogger('collab');
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = process.env.DB_PATH || 'data/erdmini.db';
@@ -19,25 +23,25 @@ try {
   const collab = initCollabServer(server, collabDb);
   wss = collab.wss;
   globalThis.__erdmini_notifySchemaChange = collab.notifySchemaChange;
-  console.log('[collab] WebSocket server initialized');
+  collabLog.info('WebSocket server initialized');
 } catch (e) {
-  console.warn('[collab] Could not initialize WebSocket server:', e.message);
-  console.warn('[collab] Real-time collaboration will be disabled');
+  collabLog.warn('Could not initialize WebSocket server', { error: e.message });
+  collabLog.warn('Real-time collaboration will be disabled');
 }
 
 // Prevent unhandled socket errors from crashing the server
 process.on('uncaughtException', (err) => {
   if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
-    console.warn('[server] Connection reset:', err.message);
+    log.warn('Connection reset', { error: err.message });
   } else {
-    console.error('[server] Uncaught exception:', err);
+    log.error('Uncaught exception', { error: err.message, stack: err.stack });
     process.exit(1);
   }
 });
 
 // Graceful shutdown
 function shutdown(signal) {
-  console.log(`[server] Received ${signal}, shutting down...`);
+  log.info(`Received ${signal}, shutting down...`);
 
   // Close WebSocket server and all connections
   if (wss) {
@@ -53,13 +57,13 @@ function shutdown(signal) {
     if (collabDb) {
       try { collabDb.close(); } catch { /* ignore */ }
     }
-    console.log('[server] Shutdown complete');
+    log.info('Shutdown complete');
     process.exit(0);
   });
 
   // Force exit after 5 seconds if graceful shutdown stalls
   setTimeout(() => {
-    console.warn('[server] Forcing exit after timeout');
+    log.warn('Forcing exit after timeout');
     process.exit(1);
   }, 5000);
 }
@@ -68,5 +72,5 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  log.info(`Listening on port ${PORT}`, { port: Number(PORT) });
 });

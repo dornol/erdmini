@@ -4,6 +4,7 @@ import db from '$lib/server/db';
 import { handleCallback, findOrCreateOIDCUser, cleanupExpiredStates } from '$lib/server/auth/oidc';
 import { createSession } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
+import { logger } from '$lib/server/logger';
 import type { OIDCProviderRow, OIDCStateRow } from '$lib/types/auth';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
@@ -84,7 +85,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
         throw e;
       }
     }
-    console.error('OIDC callback error:', e);
+    logger.error('auth', 'OIDC callback error', { error: e instanceof Error ? e.message : String(e) });
     logAudit({ action: 'oidc_login_failed', category: 'auth', detail: { provider: provider.display_name, error: String(e) } });
     throw redirect(303, '/login?error=auth_failed');
   }

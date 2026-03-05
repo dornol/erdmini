@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { createHash } from 'crypto';
+import { logger } from './logger';
 
 interface MigrationFile {
 	version: number;
@@ -140,7 +141,7 @@ export function runMigrations(db: InstanceType<typeof Database>): void {
 	if (applied.length === 0 && pendingMigrations.length > 0) {
 		const baselineVersion = detectBaseline(db);
 		if (baselineVersion > 0) {
-			console.log(`[migrate] Existing DB detected — baselining at V${String(baselineVersion).padStart(3, '0')}`);
+			logger.info('migrate', `Existing DB detected — baselining at V${String(baselineVersion).padStart(3, '0')}`);
 			const insertBaseline = db.prepare(
 				'INSERT INTO schema_migrations (version, description, checksum, success) VALUES (?, ?, ?, 1)'
 			);
@@ -148,7 +149,7 @@ export function runMigrations(db: InstanceType<typeof Database>): void {
 				for (const m of migrations) {
 					if (m.version <= baselineVersion) {
 						insertBaseline.run(m.version, m.description, m.checksum);
-						console.log(`[migrate]   V${String(m.version).padStart(3, '0')} — baselined`);
+						logger.info('migrate', `V${String(m.version).padStart(3, '0')} — baselined`);
 					}
 				}
 			});
@@ -174,7 +175,7 @@ function executeMigrations(db: InstanceType<typeof Database>, migrations: Migrat
 		const versionStr = `V${String(migration.version).padStart(3, '0')}`;
 		const savepointName = `migration_${migration.version}`;
 
-		console.log(`[migrate] Applying ${versionStr}__${migration.description.replace(/ /g, '_')}…`);
+		logger.info('migrate', `Applying ${versionStr}__${migration.description.replace(/ /g, '_')}…`);
 
 		// Record attempt with success=0
 		db.prepare(
@@ -188,7 +189,7 @@ function executeMigrations(db: InstanceType<typeof Database>, migrations: Migrat
 
 			// Mark success
 			db.prepare('UPDATE schema_migrations SET success = 1 WHERE version = ?').run(migration.version);
-			console.log(`[migrate]   ${versionStr} — applied`);
+			logger.info('migrate', `${versionStr} — applied`);
 		} catch (err) {
 			// Rollback the migration SQL, but keep the success=0 record
 			try {

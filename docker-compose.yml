@@ -11,6 +11,8 @@ services:
     environment:
       - PUBLIC_STORAGE_MODE=server
       - DB_PATH=/data/erdmini.db
+      # - LOG_FORMAT=json
+      # - LOG_LEVEL=info
     restart: unless-stopped
     stop_grace_period: 10s
 

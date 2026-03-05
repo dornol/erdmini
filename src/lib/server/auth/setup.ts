@@ -2,6 +2,7 @@ import { randomUUID, randomBytes } from 'crypto';
 import type Database from 'better-sqlite3';
 import { hashPassword } from './password';
 import { env } from '$env/dynamic/private';
+import { logger } from '../logger';
 
 function generateRandomPassword(length = 16): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
@@ -23,12 +24,16 @@ export async function setupAdmin(db: Database.Database): Promise<void> {
      VALUES (?, ?, ?, 'admin', ?)`
   ).run(adminId, username, 'Admin', passwordHash);
 
-  console.log('============================================');
-  console.log('  INITIAL ADMIN CREDENTIALS (shown once)');
-  console.log(`  Username: ${username}`);
-  console.log(`  Password: ${password}`);
-  console.log('  Please change the password after login!');
-  console.log('============================================');
+  if (process.env.LOG_FORMAT?.toLowerCase() === 'json') {
+    logger.info('auth', 'Initial admin credentials created', { username, password: '***' });
+  } else {
+    console.log('============================================');
+    console.log('  INITIAL ADMIN CREDENTIALS (shown once)');
+    console.log(`  Username: ${username}`);
+    console.log(`  Password: ${password}`);
+    console.log('  Please change the password after login!');
+    console.log('============================================');
+  }
 
   // Migrate existing singleton project_index data to admin user
   const singleton = db.prepare(

@@ -2,6 +2,9 @@
 // Works independently of SvelteKit's module system
 import { WebSocketServer } from 'ws';
 import { randomBytes } from 'node:crypto';
+import { createLogger } from './logger.js';
+
+const log = createLogger('collab');
 
 const PEER_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6',
@@ -287,7 +290,7 @@ export function createCollabHandler(db) {
   function handleUpgrade(request, socket, head) {
     // Always add error handler to prevent unhandled crash
     socket.on('error', (err) => {
-      console.warn('[collab] Socket error during upgrade:', err.message);
+      log.warn('Socket error during upgrade', { error: err.message });
     });
 
     const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
@@ -344,7 +347,7 @@ export function initCollabServer(server, db) {
     // Add error handler for ALL upgrade sockets (including non-collab)
     if (!socket.listenerCount('error')) {
       socket.on('error', (err) => {
-        console.warn('[collab] Socket error:', err.message);
+        log.warn('Socket error', { error: err.message });
       });
     }
     handleUpgrade(request, socket, head);
