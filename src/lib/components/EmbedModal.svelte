@@ -93,7 +93,19 @@
   }
 
   async function copyText(text: string, tokenId: string, type: 'url' | 'iframe') {
-    await navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for non-secure contexts or permission denied
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
     copiedId = tokenId;
     copiedType = type;
     setTimeout(() => { copiedId = null; copiedType = null; }, 2000);
@@ -165,6 +177,12 @@
                 {/if}
                 <span class="token-date">{formatDate(tok.createdAt)}</span>
               </div>
+              <input
+                class="embed-url-display"
+                readonly
+                value={getEmbedUrl(tok.token)}
+                onclick={(e) => (e.currentTarget as HTMLInputElement).select()}
+              />
               <div class="token-actions">
                 <button
                   class="btn-copy"
@@ -332,6 +350,24 @@
     color: #64748b;
     font-size: 11px;
     margin-left: auto;
+  }
+  .embed-url-display {
+    width: 100%;
+    padding: 5px 8px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+    font-family: monospace;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+    cursor: text;
+    outline: none;
+  }
+  .embed-url-display:focus {
+    border-color: #3b82f6;
+    color: #e2e8f0;
   }
   .token-actions {
     display: flex;

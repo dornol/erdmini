@@ -237,6 +237,25 @@
     flex-direction: column;
     height: 100vh;
     background: #0f172a;
+
+    /* Dark mode CSS variables for shared components (SchemaTabBar, etc.) */
+    --app-panel-bg: #1e293b;
+    --app-card-bg: #1e293b;
+    --app-border: #334155;
+    --app-border-light: #1e293b;
+    --app-text: #f1f5f9;
+    --app-text-secondary: #cbd5e1;
+    --app-text-muted: #94a3b8;
+    --app-text-faint: #64748b;
+    --app-input-bg: #0f172a;
+    --app-input-border: #475569;
+    --app-hover-bg: #334155;
+    --app-active-bg: #1e3a5f;
+    --app-popup-bg: #1e293b;
+    --app-popup-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+    --app-badge-bg: #334155;
+    --app-badge-border: #475569;
+    --app-scrollbar: #475569;
   }
   .embed-header {
     display: flex;
@@ -273,6 +292,7 @@
   }
   .embed-canvas-wrap {
     flex: 1;
+    display: flex;
     position: relative;
     overflow: hidden;
   }
