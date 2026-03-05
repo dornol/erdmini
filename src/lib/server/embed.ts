@@ -1,13 +1,10 @@
 import crypto from 'crypto';
 import type Database from 'better-sqlite3';
 import { hashPassword, verifyPassword } from './auth/password';
+import { generateId } from '$lib/utils/common';
 
 export function generateEmbedToken(): string {
   return crypto.randomBytes(32).toString('hex');
-}
-
-export function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
 }
 
 export async function createEmbedToken(

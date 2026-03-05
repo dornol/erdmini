@@ -19,7 +19,6 @@ vi.mock('./auth/password', () => ({
 
 import {
 	generateEmbedToken,
-	generateId,
 	createEmbedToken,
 	validateEmbedToken,
 	verifyEmbedPassword,
@@ -27,6 +26,7 @@ import {
 	deleteEmbedToken,
 	deleteProjectEmbedTokens,
 } from './embed';
+import { generateId } from '$lib/utils/common';
 import type Database from 'better-sqlite3';
 
 const db = { prepare: mockPrepare } as unknown as Database.Database;
@@ -64,10 +64,9 @@ describe('embed', () => {
 	// ── generateId ──────────────────────────────────────────────────
 
 	describe('generateId', () => {
-		it('returns alphanumeric string up to 8 chars', () => {
+		it('returns 8-char alphanumeric string', () => {
 			const id = generateId();
-			expect(id.length).toBeGreaterThan(0);
-			expect(id.length).toBeLessThanOrEqual(8);
+			expect(id).toHaveLength(8);
 			expect(/^[a-z0-9]+$/.test(id)).toBe(true);
 		});
 

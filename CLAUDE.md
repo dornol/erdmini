@@ -64,7 +64,7 @@ Only loaded in server mode. Includes:
 - **`migrate.ts`**: Flyway-style migration runner. Auto-discovers `migrations/*.sql` via `import.meta.glob`, tracks versions in `schema_migrations` table with SHA-256 checksums, supports baseline detection for existing DBs.
 - **`migrations/`**: Versioned SQL files (`V001__initial_schema.sql`, etc.). Add new `V###__description.sql` files for schema changes — never modify applied migrations.
 - **`auth/`**: Password hashing (argon2), sessions (30-day, cookie-based), API keys (`erd_` prefix + SHA-256), OIDC (PKCE flow via openid-client), permission hierarchy (viewer < editor < owner, admin bypasses).
-- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. 48 tools: CRUD for tables/columns/FKs/memos/domains, FK update, unique key/index CRUD, column reorder, table duplicate, memo attach/detach, auto-layout, group/schema rename, schema read/export/lint/diagram/DDL, domain analysis/coverage/dictionary, schema namespace listing, snapshots. Write ops call `notifyCollabSchemaChange()`.
+- **`mcp/`**: Stateless MCP server at `/mcp` route. Fresh `McpServer` per POST request. `Authorization: Bearer` token auth with scoped API key permissions. 61 tools: CRUD for tables/columns/FKs/memos/domains, FK update, unique key/index CRUD, column reorder, table duplicate, memo attach/detach, auto-layout, group/schema rename, schema read/export/lint/diagram/DDL, domain analysis/coverage/dictionary, schema namespace CRUD, snapshots, bulk ops (delete_tables, bulk_add_tables, bulk_add_columns), search (get_project_by_name, get_table_by_name, search_columns, find_orphan_tables), snapshot diff/migration SQL. Write ops call `notifyCollabSchemaChange()`.
 - **`embed.ts`**: Embed token CRUD — `generateEmbedToken()` (32-byte hex), `createEmbedToken()`, `validateEmbedToken()`, `verifyEmbedPassword()` (argon2), `listEmbedTokens()`, `deleteEmbedToken()`, `deleteProjectEmbedTokens()`. Migration V009 creates `embed_tokens` table.
 - **`logger.ts`**: Structured logger — `LOG_FORMAT=json` outputs JSON Lines to stdout, `LOG_FORMAT=text` (default) outputs `[module] message`. `LOG_LEVEL` filters (debug/info/warn/error). Uses `process.env` (not `$env`) for compatibility with plain JS files. Companion `logger.js` at project root for `server.js`/`collab-server.js`.
 
@@ -98,12 +98,12 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (39 test files, 1636 tests)
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (41 test files, 1756 tests)
 - 41 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos, schemas)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts
 - **Layout constants** in `src/lib/constants/layout.ts`: `TABLE_W=220`, `HEADER_H=37`, `ROW_H=26` — used for FK line routing, auto-layout, and SVG export
-- **ID generation** uses 8-char alphanumeric (`Math.random().toString(36).slice(2,10)`), not UUIDs
+- **ID generation** uses 8-char alphanumeric via `crypto.getRandomValues()` (`generateId()` in `common.ts`), not UUIDs
 - **Tailwind CSS v4** — config via CSS (no `tailwind.config.js`)
 - **Migration system** is checksum-verified on startup — never modify applied SQL migration files, only add new `V###__description.sql` files
 - **TODO list** in `docs/TODO.md` — feature improvement backlog; check remaining items when asked about pending work
