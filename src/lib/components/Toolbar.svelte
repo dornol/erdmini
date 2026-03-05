@@ -692,6 +692,12 @@
     color: #e2e8f0;
   }
 
+  .toolbar :global(.shortcuts-version) {
+    color: #64748b;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
   .toolbar :global(.btn-user) {
     display: flex;
     align-items: center;

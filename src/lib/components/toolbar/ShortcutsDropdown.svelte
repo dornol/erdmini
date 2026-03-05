@@ -78,6 +78,7 @@
           </svg>
           GitHub
         </a>
+        <span class="shortcuts-version">v{__APP_VERSION__}</span>
       </div>
     </div>
   {/if}

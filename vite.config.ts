@@ -6,6 +6,7 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import type { Plugin } from 'vite';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 function collabDevPlugin(): Plugin {
   return {
@@ -74,7 +75,12 @@ function collabDevPlugin(): Plugin {
   };
 }
 
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   server: {
     host: true,
     port: 3000,
