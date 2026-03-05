@@ -24,7 +24,12 @@
 		document.documentElement.lang = languageStore.current;
 	});
 
-	const jsonLd = $derived(JSON.stringify({
+	// Sanitize JSON-LD to prevent </script> injection inside {@html}
+	function safeJsonLd(obj: Record<string, unknown>): string {
+		return JSON.stringify(obj).replace(/<\//g, '<\\/');
+	}
+
+	const jsonLd = $derived(safeJsonLd({
 		'@context': 'https://schema.org',
 		'@type': 'SoftwareApplication',
 		name: 'erdmini',
@@ -46,7 +51,7 @@
 		inLanguage: ['en', 'ko', 'ja', 'zh']
 	}));
 
-	const faqJsonLd = $derived(JSON.stringify({
+	const faqJsonLd = $derived(safeJsonLd({
 		'@context': 'https://schema.org',
 		'@type': 'FAQPage',
 		mainEntity: [

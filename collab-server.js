@@ -295,6 +295,24 @@ export function createCollabHandler(db) {
       return false;
     }
 
+    // Origin validation — reject cross-origin WebSocket upgrades (CSRF defense-in-depth)
+    const origin = request.headers.origin;
+    const host = request.headers.host;
+    if (origin && host) {
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost !== host) {
+          socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+          socket.destroy();
+          return true;
+        }
+      } catch {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return true;
+      }
+    }
+
     const result = authenticateUpgrade(request, db);
     if (!result) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
