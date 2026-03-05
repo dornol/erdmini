@@ -547,13 +547,174 @@ describe('generateDummyData', () => {
 		expect(getInserts(result.sql, 'products')).toHaveLength(2);
 	});
 
-	it('all-autoIncrement table is skipped (no INSERT generated)', () => {
+	it('all-autoIncrement table uses DEFAULT VALUES', () => {
 		const t = makeTable({
 			id: 'a', name: 'seq',
 			columns: [makeColumn({ id: 'c1', name: 'id', type: 'INT', autoIncrement: true })],
 		});
 		const result = generateDummyData(makeSchema([t]), 3);
-		expect(result.sql).not.toContain('INSERT');
+		const inserts = result.sql.match(/INSERT INTO "seq" DEFAULT VALUES;/g);
+		expect(inserts).toHaveLength(3);
+	});
+
+	it('all-autoIncrement parent provides PK values for FK children', () => {
+		const parent = makeTable({
+			id: 'p', name: 'parent',
+			columns: [makeColumn({ id: 'p1', name: 'id', type: 'INT', primaryKey: true, autoIncrement: true })],
+		});
+		const child = makeTable({
+			id: 'c', name: 'child',
+			columns: [
+				makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true }),
+				makeColumn({ id: 'c2', name: 'parent_id', type: 'INT' }),
+			],
+			foreignKeys: [makeFK({ id: 'fk1', columnIds: ['c2'], referencedTableId: 'p', referencedColumnIds: ['p1'] })],
+		});
+		const result = generateDummyData(makeSchema([child, parent]), 3);
+		// Parent should use DEFAULT VALUES
+		const parentInserts = result.sql.match(/INSERT INTO "parent" DEFAULT VALUES;/g);
+		expect(parentInserts).toHaveLength(3);
+		// Child should reference parent PKs (1, 2, 3)
+		const childInserts = getInserts(result.sql, 'child');
+		expect(childInserts).toHaveLength(3);
+		for (const line of childInserts) {
+			const vals = parseInsertValues(line);
+			const parentId = parseInt(vals[1]);
+			expect(parentId).toBeGreaterThanOrEqual(1);
+			expect(parentId).toBeLessThanOrEqual(3);
+		}
+	});
+
+	it('PK+FK column generates unique values (no UNIQUE constraint violation)', () => {
+		// Simulates: table_1.id2 is PK and FK → table_2.id (autoIncrement)
+		const table2 = makeTable({
+			id: 't2', name: 'table_2',
+			columns: [makeColumn({ id: 't2c1', name: 'id', type: 'INT', primaryKey: true, autoIncrement: true })],
+		});
+		const table1 = makeTable({
+			id: 't1', name: 'table_1',
+			columns: [makeColumn({ id: 't1c1', name: 'id2', type: 'INT', primaryKey: true })],
+			foreignKeys: [makeFK({ id: 'fk1', columnIds: ['t1c1'], referencedTableId: 't2', referencedColumnIds: ['t2c1'] })],
+		});
+		const result = generateDummyData(makeSchema([table1, table2]), 5);
+		const inserts = getInserts(result.sql, 'table_1');
+		// Should be limited to parent's row count (5) and all unique
+		expect(inserts).toHaveLength(5);
+		const values = inserts.map((l) => parseInsertValues(l)[0]);
+		const uniqueValues = new Set(values);
+		expect(uniqueValues.size).toBe(5);
+	});
+
+	it('PK+FK column with unresolvable parent uses unique sequential values', () => {
+		// Parent has no trackable PKs (e.g., parent not in schema)
+		const child = makeTable({
+			id: 'c', name: 'orphan',
+			columns: [makeColumn({ id: 'c1', name: 'ref_id', type: 'INT', primaryKey: true })],
+			foreignKeys: [makeFK({ id: 'fk1', columnIds: ['c1'], referencedTableId: 'missing', referencedColumnIds: ['x'] })],
+		});
+		const result = generateDummyData(makeSchema([child]), 5);
+		const inserts = getInserts(result.sql, 'orphan');
+		expect(inserts).toHaveLength(5);
+		const values = inserts.map((l) => parseInt(parseInsertValues(l)[0]));
+		// Should be sequential: 1, 2, 3, 4, 5
+		expect(values).toEqual([1, 2, 3, 4, 5]);
+	});
+
+	it('UNIQUE+FK column limits rows to parent count', () => {
+		const parent = makeTable({
+			id: 'p', name: 'roles',
+			columns: [makeColumn({ id: 'p1', name: 'id', type: 'INT', primaryKey: true })],
+		});
+		const child = makeTable({
+			id: 'c', name: 'user_roles',
+			columns: [
+				makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true }),
+				makeColumn({ id: 'c2', name: 'role_id', type: 'INT', unique: true }),
+			],
+			foreignKeys: [makeFK({ id: 'fk1', columnIds: ['c2'], referencedTableId: 'p', referencedColumnIds: ['p1'] })],
+		});
+		// Request 10 rows but parent only has 3
+		const result = generateDummyData(makeSchema([child, parent]), 10);
+		// parent: 10 rows (manual PK), child: limited to 3 (unique FK)
+		const parentInserts = getInserts(result.sql, 'roles');
+		expect(parentInserts).toHaveLength(10);
+		const childInserts = getInserts(result.sql, 'user_roles');
+		expect(childInserts).toHaveLength(10); // effectiveRows = min(10, 10) = 10
+		// role_id values should all be unique
+		const roleIds = childInserts.map((l) => parseInsertValues(l)[1]);
+		const uniqueRoleIds = new Set(roleIds);
+		expect(uniqueRoleIds.size).toBe(10);
+	});
+
+	it('non-PK UNIQUE column (no FK) generates unique values', () => {
+		const t = makeTable({
+			id: 'a', name: 'users',
+			columns: [
+				makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true, autoIncrement: true }),
+				makeColumn({ id: 'c2', name: 'name', type: 'VARCHAR' }),
+				makeColumn({ id: 'c3', name: 'email', type: 'VARCHAR', unique: true }),
+			],
+		});
+		const result = generateDummyData(makeSchema([t]), 10);
+		const inserts = getInserts(result.sql, 'users');
+		expect(inserts).toHaveLength(10);
+		const emails = inserts.map((l) => parseInsertValues(l)[1]); // email is 2nd in insertCols (after name, id excluded)
+		const uniqueEmails = new Set(emails);
+		expect(uniqueEmails.size).toBe(10);
+	});
+
+	it('UniqueKey member column generates unique values', () => {
+		const t = makeTable({
+			id: 'a', name: 'items',
+			columns: [
+				makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true }),
+				makeColumn({ id: 'c2', name: 'code', type: 'VARCHAR' }),
+				makeColumn({ id: 'c3', name: 'label', type: 'VARCHAR' }),
+			],
+			uniqueKeys: [{ id: 'uk1', name: 'uk_code', columnIds: ['c2'] }],
+		});
+		const result = generateDummyData(makeSchema([t]), 5);
+		const inserts = getInserts(result.sql, 'items');
+		const codes = inserts.map((l) => parseInsertValues(l)[1]);
+		const uniqueCodes = new Set(codes);
+		expect(uniqueCodes.size).toBe(5);
+	});
+
+	it('full user scenario: table_1(PK+FK), table_2(AI only), User(UNIQUE email)', () => {
+		const table2 = makeTable({
+			id: 't2', name: 'table_2',
+			columns: [makeColumn({ id: 't2c1', name: 'id', type: 'INT', primaryKey: true, autoIncrement: true })],
+		});
+		const table1 = makeTable({
+			id: 't1', name: 'table_1',
+			columns: [makeColumn({ id: 't1c1', name: 'id2', type: 'INT', primaryKey: true })],
+			foreignKeys: [makeFK({ id: 'fk1', columnIds: ['t1c1'], referencedTableId: 't2', referencedColumnIds: ['t2c1'] })],
+		});
+		const userTable = makeTable({
+			id: 'u', name: 'User',
+			columns: [
+				makeColumn({ id: 'uc1', name: 'id', type: 'INT', primaryKey: true, autoIncrement: true }),
+				makeColumn({ id: 'uc2', name: 'name', type: 'VARCHAR', nullable: true }),
+				makeColumn({ id: 'uc3', name: 'email', type: 'VARCHAR', unique: true }),
+			],
+		});
+		const result = generateDummyData(makeSchema([table1, table2, userTable]), 5);
+
+		// table_2: DEFAULT VALUES (autoIncrement only)
+		const t2Inserts = result.sql.match(/INSERT INTO "table_2" DEFAULT VALUES;/g);
+		expect(t2Inserts).toHaveLength(5);
+
+		// table_1: PK+FK, unique values referencing table_2 PKs
+		const t1Inserts = getInserts(result.sql, 'table_1');
+		expect(t1Inserts).toHaveLength(5);
+		const t1Values = t1Inserts.map((l) => parseInsertValues(l)[0]);
+		expect(new Set(t1Values).size).toBe(5); // all unique
+
+		// User: email should be unique
+		const userInserts = getInserts(result.sql, 'User');
+		expect(userInserts).toHaveLength(5);
+		const emails = userInserts.map((l) => parseInsertValues(l)[1]); // name=idx0, email=idx1
+		expect(new Set(emails).size).toBe(5);
 	});
 
 	it('multi-level chain: data flows correctly through A → B → C', () => {
@@ -758,10 +919,18 @@ describe('Integration: E-commerce schema', () => {
 	});
 
 	it('order_items FK values reference valid parent PKs', () => {
-		// autoIncrement → PK not in INSERT → no PK tracking for autoIncrement tables
-		// This actually tests the cycle/missing-parent fallback path
 		const result = generateDummyData(schema, 3);
 		expect(result.sql).toContain('INSERT INTO "order_items"');
+		// autoIncrement parents now track PKs via DEFAULT VALUES
+		const oiInserts = getInserts(result.sql, 'order_items');
+		for (const line of oiInserts) {
+			const vals = parseInsertValues(line);
+			// order_id (idx 0) and product_id (idx 1) should reference valid PKs (1..3)
+			expect(parseInt(vals[0])).toBeGreaterThanOrEqual(1);
+			expect(parseInt(vals[0])).toBeLessThanOrEqual(3);
+			expect(parseInt(vals[1])).toBeGreaterThanOrEqual(1);
+			expect(parseInt(vals[1])).toBeLessThanOrEqual(3);
+		}
 	});
 
 	it('ENUM column generates valid enum values', () => {
@@ -778,9 +947,12 @@ describe('Integration: E-commerce schema', () => {
 	it('self-referencing category uses NULL for parent_id', () => {
 		const result = generateDummyData(schema, 3);
 		const catInserts = getInserts(result.sql, 'categories');
-		// At least the first row should have NULL (no parent PK exists for autoIncrement)
-		const firstVals = parseInsertValues(catInserts[0]);
-		expect(firstVals).toContain('NULL');
+		// Self-ref with nullable column → NULL for all rows
+		for (const line of catInserts) {
+			const vals = parseInsertValues(line);
+			// parent_id is the 2nd column (name=idx0, parent_id=idx1)
+			expect(vals[1]).toBe('NULL');
+		}
 	});
 });
 

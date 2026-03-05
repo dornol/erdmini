@@ -159,12 +159,35 @@ export function generateDummyData(schema: ERDSchema, rowsPerTable: number = 10):
 	// Track generated PK values per table for FK references
 	const pkValues = new Map<string, (string | number)[]>();
 
+	// Per-column counters to ensure unique values for UNIQUE columns
+	const uniqueCounters = new Map<string, number>(); // "tableId:colId" → counter
+
 	const lines: string[] = ['BEGIN;'];
 
 	for (const table of sorted) {
 		// Determine which columns to include (skip autoIncrement)
 		const insertCols = table.columns.filter((c) => !c.autoIncrement);
-		if (insertCols.length === 0) continue;
+		if (insertCols.length === 0) {
+			// All columns are autoIncrement — use DEFAULT VALUES
+			lines.push('');
+			const autoIncrementPkValues: number[] = [];
+			for (let i = 0; i < rowsPerTable; i++) {
+				lines.push(`INSERT INTO "${table.name}" DEFAULT VALUES;`);
+				autoIncrementPkValues.push(i + 1);
+			}
+			pkValues.set(table.id, autoIncrementPkValues);
+			continue;
+		}
+
+		// Collect unique column IDs (explicit unique flag + unique key members)
+		const uniqueColIds = new Set<string>();
+		for (const col of table.columns) {
+			if (col.unique) uniqueColIds.add(col.id);
+		}
+		for (const uk of table.uniqueKeys ?? []) {
+			// Single-column unique keys need unique values per column
+			if (uk.columnIds.length === 1) uniqueColIds.add(uk.columnIds[0]);
+		}
 
 		// Build FK column → parent PK values mapping
 		const fkParentMap = new Map<string, (string | number)[]>();
@@ -191,9 +214,26 @@ export function generateDummyData(schema: ERDSchema, rowsPerTable: number = 10):
 
 		const tablePkValues: (string | number)[] = [];
 
+		// Determine effective row count: if a FK column is also PK or UNIQUE,
+		// we can only generate as many rows as there are unique parent values
+		let effectiveRows = rowsPerTable;
+		for (const fk of table.foreignKeys) {
+			if (fk.referencedTableId === table.id) continue;
+			const parentPks = pkValues.get(fk.referencedTableId);
+			if (!parentPks || parentPks.length === 0) continue;
+			// Check if any FK column is PK or UNIQUE — must not repeat parent values
+			const needsUnique = fk.columnIds.some((colId) => {
+				const col = table.columns.find((c) => c.id === colId);
+				return col && (col.primaryKey || col.unique || uniqueColIds.has(col.id));
+			});
+			if (needsUnique) {
+				effectiveRows = Math.min(effectiveRows, parentPks.length);
+			}
+		}
+
 		lines.push('');
 
-		for (let i = 0; i < rowsPerTable; i++) {
+		for (let i = 0; i < effectiveRows; i++) {
 			const values: string[] = [];
 			let pkVal: string | number | null = null;
 
@@ -203,13 +243,21 @@ export function generateDummyData(schema: ERDSchema, rowsPerTable: number = 10):
 
 				if (parentIds !== undefined) {
 					if (parentIds.length > 0) {
-						val = parentIds[i % parentIds.length];
+						// If this FK column is PK or UNIQUE, use each parent value only once
+						if (col.primaryKey || col.unique || uniqueColIds.has(col.id)) {
+							val = parentIds[i]; // no modulo — effectiveRows guarantees i < parentIds.length
+						} else {
+							val = parentIds[i % parentIds.length];
+						}
 					} else {
-						// Self-ref or cycle: nullable → NULL, non-nullable → reference own rows
+						// Empty parent IDs: self-ref, cycle, or unresolvable parent
 						if (col.nullable) {
 							val = null;
+						} else if (col.primaryKey || col.unique || uniqueColIds.has(col.id)) {
+							// PK/UNIQUE columns must have unique values — always use sequential
+							val = i + 1;
 						} else {
-							// Use previously generated PKs from this table
+							// Non-unique, non-nullable: reference own rows if available
 							if (tablePkValues.length > 0) {
 								val = tablePkValues[i % tablePkValues.length];
 							} else {
@@ -217,6 +265,14 @@ export function generateDummyData(schema: ERDSchema, rowsPerTable: number = 10):
 							}
 						}
 					}
+				} else if (!col.primaryKey && uniqueColIds.has(col.id)) {
+					// Non-PK UNIQUE columns: use per-column counter to avoid collisions
+					const key = `${table.id}:${col.id}`;
+					const cnt = uniqueCounters.get(key) ?? 0;
+					uniqueCounters.set(key, cnt + 1);
+					// Offset by table index * rowsPerTable to avoid cross-table collisions
+					const tableIdx = sorted.indexOf(table);
+					val = generateDummyValue(col, tableIdx * rowsPerTable + cnt);
 				} else {
 					val = generateDummyValue(col, i);
 				}

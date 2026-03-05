@@ -50,7 +50,7 @@
   }
 
   function applySchema(database: Database) {
-    const ddl = exportDDL(erdStore.schema, 'sqlite', { includeComments: false });
+    const ddl = exportDDL(erdStore.schema, 'sqlite', { includeComments: false, includeForeignKeys: false });
     try {
       database.exec(ddl);
       schemaStatus = m.sql_playground_schema_synced({ count: String(erdStore.schema.tables.length) });
@@ -67,9 +67,9 @@
     (async () => {
       try {
         const SQL = await import('sql.js');
-        const initFn = SQL.default ?? SQL;
+        const initFn = SQL.default;
         const sqlPromise = initFn({
-          locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
+          locateFile: () => `${import.meta.env.BASE_URL}sql-wasm.wasm`,
         });
         const sqlInstance = await sqlPromise;
         if (closed) return;
@@ -104,15 +104,25 @@
 
     const start = performance.now();
     try {
-      const results = db.exec(query);
-      executionTime = Math.round(performance.now() - start);
+      const trimmedQuery = query.trim().replace(/;+$/, '');
+      const isSelect = /^\s*(SELECT|PRAGMA|EXPLAIN)\b/i.test(trimmedQuery);
 
-      if (results.length > 0) {
-        const last = results[results.length - 1];
-        resultColumns = last.columns;
-        resultRows = last.values;
-        resultMessage = m.sql_playground_rows_returned({ count: String(last.values.length) });
+      if (isSelect) {
+        // Use prepare/step to get column info even for 0-row results
+        const stmt = db.prepare(trimmedQuery);
+        const columns = stmt.getColumnNames();
+        const rows: any[][] = [];
+        while (stmt.step()) {
+          rows.push(stmt.get());
+        }
+        stmt.free();
+        executionTime = Math.round(performance.now() - start);
+        resultColumns = columns;
+        resultRows = rows;
+        resultMessage = m.sql_playground_rows_returned({ count: String(rows.length) });
       } else {
+        db.run(trimmedQuery);
+        executionTime = Math.round(performance.now() - start);
         const modified = db.getRowsModified();
         if (modified > 0) {
           resultMessage = m.sql_playground_rows_affected({ count: String(modified) });
@@ -136,9 +146,9 @@
 
     try { db.close(); } catch {}
     const SQL = await import('sql.js');
-    const initFn = SQL.default ?? SQL;
+    const initFn = SQL.default;
     const sqlInstance = await initFn({
-      locateFile: (file: string) => `https://sql.js.org/dist/${file}`,
+      locateFile: () => `${import.meta.env.BASE_URL}sql-wasm.wasm`,
     });
     db = new sqlInstance.Database();
     applySchema(db);
@@ -151,6 +161,10 @@
 
   function generateData() {
     if (!db) return;
+    // Clear existing data before inserting
+    for (const table of erdStore.schema.tables) {
+      try { db.exec(`DELETE FROM "${table.name}";`); } catch {}
+    }
     const { sql, tableCount } = generateDummyData(erdStore.schema, rowsPerTable);
     if (!sql) return;
     try {
@@ -224,6 +238,12 @@
           placeholder={m.sql_playground_query_placeholder()}
           spellcheck="false"
           class="sp-textarea"
+          onkeydown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              executeQuery();
+            }
+          }}
         ></textarea>
       </div>
 

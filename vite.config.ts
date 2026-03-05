@@ -95,7 +95,7 @@ export default defineConfig({
     collabDevPlugin(),
   ],
   optimizeDeps: {
-    exclude: ['sql.js'],
+    include: ['sql.js'],
   },
   test: {
     include: ['src/**/*.test.ts'],

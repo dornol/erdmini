@@ -219,6 +219,8 @@
       erdStore.selectedMemoId = savedMemoSelection.size > 0 ? [...savedMemoSelection][0] : null;
     }
     if (e.key === ' ') {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
       e.preventDefault();
       isSpaceHeld = true;
     }
