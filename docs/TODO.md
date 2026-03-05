@@ -130,15 +130,14 @@
 
 ## Long-Term Vision
 
-### 25. AI Schema Generation
-- Automatically generate a schema from a natural language description (e.g., "Create a blog system")
-- Requires LLM integration
-- Difficulty: Large
+### ~~25. AI Schema Generation~~ ✅ (MCP로 대체)
+- ~~Automatically generate a schema from a natural language description (e.g., "Create a blog system")~~
+- MCP 서버(48 tools)가 이미 구현되어 있으므로, AI 클라이언트(Claude 등)가 `add_table`, `add_column`, `add_foreign_key` 등을 직접 호출하여 스키마 생성 가능
+- 별도 LLM 연동 기능 불필요 — MCP 인프라가 이 역할을 수행
 
-### 26. Live DB Connection & Reverse Engineering
-- Connect to a live database and automatically extract the schema
-- Currently only DDL text import is supported
-- Difficulty: Large
+### ~~26. Live DB Connection & Reverse Engineering~~ — Won't Do
+- ~~Connect to a live database and automatically extract the schema~~
+- 제외 사유: erdmini의 "mini" 철학에 맞지 않음. DB 크레덴셜 관리 보안 부담, DB 드라이버 의존성으로 번들 사이즈 증가. DDL/Prisma/DBML import로 역공학 경로 이미 충분.
 
 ### ~~27. Schema Snapshots~~ ✅
 - ~~Named snapshots: save current schema state, list/restore/delete, diff comparison~~
@@ -189,3 +188,26 @@
 - DdlModal의 Import 탭에 포맷 선택 드롭다운 추가 (DDL / DBML / Prisma / Rails / Django)
 - 각 포맷별 `src/lib/utils/orm-import-{format}.ts` 모듈
 - Difficulty: Large
+
+### 33. SQL Playground (Browser SQLite via WASM)
+- 브라우저에서 SQLite WASM(`sql.js`)으로 현재 스키마를 실제 DB로 생성하고 SQL 쿼리 실행
+- **스키마 동기화**: 현재 ERD → `exportDDL(schema, 'sqlite')` → CREATE TABLE 자동 실행
+- **SQL 에디터**: 쿼리 입력 → 실행 → 결과 테이블 표시 (SELECT, INSERT, UPDATE, DELETE)
+- **더미 데이터 자동 생성**:
+  - 컬럼 타입 기반: INT→시퀀스, VARCHAR→`'{colName}_1'`, BOOLEAN→랜덤, DATE→최근 30일, DECIMAL→범위 내 소수, ENUM→enumValues 랜덤, UUID→랜덤
+  - FK 의존 순서: 위상 정렬로 부모 테이블 먼저 INSERT → 자식에서 부모 ID 참조
+  - 테이블당 N행 (기본 5~10행, 사용자 조절 가능)
+  - "Generate Sample Data" 버튼 → INSERT문 자동 생성 및 실행
+- **활용 시나리오**:
+  - 스키마 설계 검증 (DDL이 실제로 동작하는지 확인)
+  - FK 제약 조건 테스트 (PRAGMA foreign_keys = ON)
+  - 더미 데이터로 JOIN/집계 쿼리 프로토타이핑
+  - NOT NULL / UNIQUE 제약 조건 동작 확인
+- **구현 방향**:
+  - `sql.js` WASM (~1MB) lazy load (Playground 열 때만 로드)
+  - Toolbar > Tools 드롭다운에 "SQL Playground" 메뉴 추가
+  - 스키마 변경 시 DB 재생성 (Reset 버튼) 또는 ALTER 반영
+  - 쿼리 히스토리 (최근 N개 localStorage 저장)
+  - 에러 메시지 친절하게 표시 (SQLite 에러 → 한글/영문)
+  - `src/lib/utils/dummy-data.ts` — 타입별 더미 값 생성 + FK 위상 정렬 INSERT
+- Difficulty: Medium
