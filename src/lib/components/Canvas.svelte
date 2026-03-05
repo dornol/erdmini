@@ -6,6 +6,7 @@
   import type { Table, Memo } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import CanvasHistory from './CanvasHistory.svelte';
+  import CanvasBottomBar from './CanvasBottomBar.svelte';
   import Minimap from './Minimap.svelte';
   import CollabCursors from './CollabCursors.svelte';
   import { collabStore } from '$lib/store/collab.svelte';
@@ -377,6 +378,7 @@
   ontouchstart={onTouchStart}
   oncontextmenu={onContextMenu}
   data-theme={themeStore.current}
+  class:hide-grid={!canvasState.showGrid}
   style="cursor: {fkDragStore.active ? 'crosshair' : isMarquee ? 'crosshair' : isSpaceHeld ? (isPanning ? 'grabbing' : 'grab') : isPanning ? 'grabbing' : 'default'}"
 >
   <div
@@ -402,6 +404,7 @@
   {/if}
 
   <CanvasHistory />
+  <CanvasBottomBar />
 
   {#if erdStore.schema.tables.length > 0 || erdStore.schema.memos.length > 0}
     <Minimap />
@@ -647,7 +650,7 @@
   }
 
   /* ── Theme: Minimal ── */
-  /* 패턴 없음, hairline 테두리, 그림자 없음, 울트라 클린 */
+  /* hairline 테두리, 그림자 없음, 울트라 클린 */
   .canvas-viewport[data-theme="minimal"] {
     --erd-canvas-bg: #fafafa;
     --erd-canvas-dot: #e5e5e5;
@@ -655,7 +658,8 @@
     --erd-card-shadow: none;
     --erd-header-text-transform: none;
     --erd-header-letter-spacing: normal;
-    background-image: none;
+    background-image: radial-gradient(circle, #e0e0e0 0.5px, transparent 0.5px);
+    background-size: 24px 24px;
     --erd-card-bg: white;
     --erd-card-border: #e5e5e5;
     --erd-card-border-width: 1px;
@@ -794,6 +798,10 @@
     height: 16px;
     background: var(--erd-zoom-border);
     flex-shrink: 0;
+  }
+
+  .canvas-viewport.hide-grid {
+    background-image: none !important;
   }
 
 </style>

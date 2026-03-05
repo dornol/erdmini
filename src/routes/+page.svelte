@@ -40,6 +40,8 @@
     if (savedLineType === 'straight' || savedLineType === 'orthogonal') {
       canvasState.lineType = savedLineType as LineType;
     }
+    const savedShowGrid = localStorage.getItem('erdmini_show_grid');
+    if (savedShowGrid === 'false') canvasState.showGrid = false;
     const savedActiveSchema = localStorage.getItem('erdmini_active_schema');
     if (savedActiveSchema) canvasState.activeSchema = savedActiveSchema;
     const savedViewports = localStorage.getItem('erdmini_schema_viewports');
@@ -97,6 +99,15 @@
       localStorage.removeItem('erdmini_line_type');
     } else {
       localStorage.setItem('erdmini_line_type', lt);
+    }
+  });
+
+  // Persist show grid
+  $effect(() => {
+    if (canvasState.showGrid) {
+      localStorage.removeItem('erdmini_show_grid');
+    } else {
+      localStorage.setItem('erdmini_show_grid', 'false');
     }
   });
 
