@@ -1,4 +1,4 @@
-import type { Column, ColumnDomain, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table } from '$lib/types/erd';
+import type { Column, ColumnDomain, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table, UniqueKey, TableIndex } from '$lib/types/erd';
 import { DOMAIN_FIELDS } from '$lib/types/erd';
 import { propagateWithHierarchy } from '$lib/utils/domain-hierarchy';
 
@@ -426,4 +426,268 @@ export function suggestDomains(schema: ERDSchema): DomainSuggestion[] {
       columns: g.columns,
     }))
     .sort((a, b) => b.columns.length - a.columns.length);
+}
+
+// ---- FK update ----
+
+export function updateForeignKey(
+  schema: ERDSchema,
+  tableId: string,
+  fkId: string,
+  patch: {
+    columnIds?: string[];
+    referencedTableId?: string;
+    referencedColumnIds?: string[];
+    onDelete?: ReferentialAction;
+    onUpdate?: ReferentialAction;
+  },
+): ERDSchema | null {
+  const table = schema.tables.find(t => t.id === tableId);
+  if (!table) return null;
+  const fk = table.foreignKeys.find(f => f.id === fkId);
+  if (!fk) return null;
+
+  if (patch.referencedTableId && !schema.tables.find(t => t.id === patch.referencedTableId)) return null;
+
+  return {
+    ...schema,
+    tables: schema.tables.map(t => {
+      if (t.id !== tableId) return t;
+      return {
+        ...t,
+        foreignKeys: t.foreignKeys.map(f =>
+          f.id === fkId ? { ...f, ...patch } : f
+        ),
+      };
+    }),
+    updatedAt: now(),
+  };
+}
+
+// ---- Unique Key operations ----
+
+export function addUniqueKey(
+  schema: ERDSchema,
+  tableId: string,
+  columnIds: string[],
+  name?: string,
+): { schema: ERDSchema; ukId: string } | null {
+  const table = schema.tables.find(t => t.id === tableId);
+  if (!table) return null;
+
+  const ukId = generateId();
+  const uk: UniqueKey = { id: ukId, columnIds, ...(name ? { name } : {}) };
+
+  return {
+    schema: {
+      ...schema,
+      tables: schema.tables.map(t =>
+        t.id === tableId ? { ...t, uniqueKeys: [...(t.uniqueKeys || []), uk] } : t
+      ),
+      updatedAt: now(),
+    },
+    ukId,
+  };
+}
+
+export function deleteUniqueKey(
+  schema: ERDSchema,
+  tableId: string,
+  ukId: string,
+): ERDSchema {
+  return {
+    ...schema,
+    tables: schema.tables.map(t => {
+      if (t.id !== tableId) return t;
+      return {
+        ...t,
+        uniqueKeys: (t.uniqueKeys || []).filter(uk => uk.id !== ukId),
+      };
+    }),
+    updatedAt: now(),
+  };
+}
+
+// ---- Index operations ----
+
+export function addIndex(
+  schema: ERDSchema,
+  tableId: string,
+  columnIds: string[],
+  unique: boolean,
+  name?: string,
+): { schema: ERDSchema; indexId: string } | null {
+  const table = schema.tables.find(t => t.id === tableId);
+  if (!table) return null;
+
+  const indexId = generateId();
+  const idx: TableIndex = { id: indexId, columnIds, unique, ...(name ? { name } : {}) };
+
+  return {
+    schema: {
+      ...schema,
+      tables: schema.tables.map(t =>
+        t.id === tableId ? { ...t, indexes: [...(t.indexes || []), idx] } : t
+      ),
+      updatedAt: now(),
+    },
+    indexId,
+  };
+}
+
+export function deleteIndex(
+  schema: ERDSchema,
+  tableId: string,
+  indexId: string,
+): ERDSchema {
+  return {
+    ...schema,
+    tables: schema.tables.map(t => {
+      if (t.id !== tableId) return t;
+      return {
+        ...t,
+        indexes: (t.indexes || []).filter(idx => idx.id !== indexId),
+      };
+    }),
+    updatedAt: now(),
+  };
+}
+
+// ---- Column reorder ----
+
+export function moveColumn(
+  schema: ERDSchema,
+  tableId: string,
+  columnId: string,
+  toIndex: number,
+): ERDSchema | null {
+  const table = schema.tables.find(t => t.id === tableId);
+  if (!table) return null;
+
+  const fromIndex = table.columns.findIndex(c => c.id === columnId);
+  if (fromIndex === -1) return null;
+  if (toIndex < 0 || toIndex >= table.columns.length) return null;
+  if (fromIndex === toIndex) {
+    return { ...schema, updatedAt: now() };
+  }
+
+  const cols = [...table.columns];
+  const [moved] = cols.splice(fromIndex, 1);
+  cols.splice(toIndex, 0, moved);
+
+  return {
+    ...schema,
+    tables: schema.tables.map(t =>
+      t.id === tableId ? { ...t, columns: cols } : t
+    ),
+    updatedAt: now(),
+  };
+}
+
+// ---- Table duplicate ----
+
+export function duplicateTable(
+  schema: ERDSchema,
+  tableId: string,
+): { schema: ERDSchema; newTableId: string } | null {
+  const table = schema.tables.find(t => t.id === tableId);
+  if (!table) return null;
+
+  const newTableId = generateId();
+  const newColumns = table.columns.map(c => ({ ...c, id: generateId() }));
+
+  const newTable: Table = {
+    ...table,
+    id: newTableId,
+    name: `${table.name}_copy`,
+    columns: newColumns,
+    foreignKeys: [],
+    uniqueKeys: [],
+    indexes: [],
+    position: { x: table.position.x + 40, y: table.position.y + 40 },
+  };
+
+  return {
+    schema: { ...schema, tables: [...schema.tables, newTable], updatedAt: now() },
+    newTableId,
+  };
+}
+
+// ---- Memo attach/detach ----
+
+export function attachMemo(
+  schema: ERDSchema,
+  memoId: string,
+  tableId: string,
+): ERDSchema {
+  const memos = schema.memos ?? [];
+  return {
+    ...schema,
+    memos: memos.map(m =>
+      m.id === memoId ? { ...m, attachedTableId: tableId } : m
+    ),
+    updatedAt: now(),
+  };
+}
+
+export function detachMemo(
+  schema: ERDSchema,
+  memoId: string,
+): ERDSchema {
+  const memos = schema.memos ?? [];
+  return {
+    ...schema,
+    memos: memos.map(m =>
+      m.id === memoId ? { ...m, attachedTableId: undefined } : m
+    ),
+    updatedAt: now(),
+  };
+}
+
+// ---- Rename group ----
+
+export function renameGroup(
+  schema: ERDSchema,
+  oldName: string,
+  newName: string,
+): ERDSchema {
+  if (oldName === newName) return { ...schema, updatedAt: now() };
+
+  const tables = schema.tables.map(t =>
+    t.group === oldName ? { ...t, group: newName } : t
+  );
+
+  const groupColors = { ...(schema.groupColors ?? {}) };
+  if (oldName in groupColors) {
+    groupColors[newName] = groupColors[oldName];
+    delete groupColors[oldName];
+  }
+
+  return { ...schema, tables, groupColors, updatedAt: now() };
+}
+
+// ---- Rename schema namespace ----
+
+export function renameSchema(
+  schema: ERDSchema,
+  oldName: string,
+  newName: string,
+): ERDSchema | null {
+  if (!newName) return null;
+  if (oldName === newName) return { ...schema, updatedAt: now() };
+
+  const schemas = schema.schemas ?? [];
+  if (schemas.includes(newName)) return null;
+
+  const tables = schema.tables.map(t =>
+    t.schema === oldName ? { ...t, schema: newName } : t
+  );
+
+  const memos = (schema.memos ?? []).map(m =>
+    m.schema === oldName ? { ...m, schema: newName } : m
+  );
+
+  const newSchemas = schemas.map(s => s === oldName ? newName : s);
+
+  return { ...schema, tables, memos, schemas: newSchemas, updatedAt: now() };
 }

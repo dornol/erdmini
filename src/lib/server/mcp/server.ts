@@ -5,17 +5,18 @@ import type Database from 'better-sqlite3';
 import type { ResolvedApiKey } from '$lib/server/auth/api-key';
 import { logAudit } from '$lib/server/audit';
 import { checkAccess, getSchema, saveSchema, listUserProjects } from './db-helpers';
-import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo, addDomain, updateDomain, deleteDomain, suggestDomains } from './schema-ops';
+import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo, addDomain, updateDomain, deleteDomain, suggestDomains, updateForeignKey, addUniqueKey, deleteUniqueKey, addIndex, deleteIndex, moveColumn, duplicateTable, attachMemo, detachMemo, renameGroup, renameSchema } from './schema-ops';
 import { exportDDL, type DDLExportOptions } from '$lib/utils/ddl-export';
 import { lintSchema } from '$lib/utils/schema-lint';
 import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
 import { importDDL } from '$lib/utils/ddl-import';
-import type { ColumnDomain, Dialect, ERDSchema, ReferentialAction } from '$lib/types/erd';
+import type { ColumnDomain, Dialect, ERDSchema, ReferentialAction, Table } from '$lib/types/erd';
 import { TABLE_COLOR_IDS } from '$lib/constants/table-colors';
 import { notifyCollabSchemaChange } from '$lib/server/collab-notify';
 import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
 import { computeCoverageStats } from '$lib/utils/domain-analysis';
 import { resolveEffectiveDomain, getDescendantIds } from '$lib/utils/domain-hierarchy';
+import { computeLayout, type LayoutType } from '$lib/utils/auto-layout';
 
 export function createMcpServer(
   db: Database.Database,
@@ -1055,6 +1056,294 @@ export function createMcpServer(
       db.prepare('DELETE FROM schema_snapshots WHERE project_id = ? AND id = ?').run(projectId, snapshotId);
       mcpAudit('delete_snapshot', projectId, { snapshotId });
       return { content: [{ type: 'text', text: 'Snapshot deleted' }] };
+    },
+  );
+
+  // ==================
+  // ADDITIONAL WRITE TOOLS
+  // ==================
+
+  server.tool(
+    'update_foreign_key',
+    'Update an existing foreign key (columns, referenced table/columns, referential actions)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID containing the FK'),
+      fkId: z.string().max(256).describe('Foreign key ID to update'),
+      columnIds: z.array(z.string().max(256)).max(100).optional().describe('New source column IDs'),
+      referencedTableId: z.string().max(256).optional().describe('New referenced table ID'),
+      referencedColumnIds: z.array(z.string().max(256)).max(100).optional().describe('New referenced column IDs'),
+      onDelete: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional().describe('ON DELETE action'),
+      onUpdate: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional().describe('ON UPDATE action'),
+    },
+    async ({ projectId, tableId, fkId, ...patch }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const result = updateForeignKey(schema, tableId, fkId, patch as Parameters<typeof updateForeignKey>[3]);
+      if (!result) {
+        return { content: [{ type: 'text', text: 'Table or foreign key not found' }], isError: true };
+      }
+      mcpAudit('update_foreign_key', projectId, { tableId, fkId });
+      saveAndNotify(projectId, result);
+      return { content: [{ type: 'text', text: 'Foreign key updated' }] };
+    },
+  );
+
+  server.tool(
+    'add_unique_key',
+    'Add a unique key constraint to a table',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      columnIds: z.array(z.string().max(256)).max(100).describe('Column IDs for the unique key'),
+      name: z.string().max(256).optional().describe('Optional constraint name'),
+    },
+    async ({ projectId, tableId, columnIds, name }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const result = addUniqueKey(schema, tableId, columnIds, name);
+      if (!result) {
+        return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
+      }
+      mcpAudit('add_unique_key', projectId, { tableId, columnIds });
+      saveAndNotify(projectId, result.schema);
+      return { content: [{ type: 'text', text: JSON.stringify({ ukId: result.ukId }) }] };
+    },
+  );
+
+  server.tool(
+    'delete_unique_key',
+    'Delete a unique key constraint from a table',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      uniqueKeyId: z.string().max(256).describe('Unique key ID to delete'),
+    },
+    async ({ projectId, tableId, uniqueKeyId }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const updated = deleteUniqueKey(schema, tableId, uniqueKeyId);
+      mcpAudit('delete_unique_key', projectId, { tableId, uniqueKeyId });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Unique key deleted' }] };
+    },
+  );
+
+  server.tool(
+    'add_index',
+    'Add an index to a table',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      columnIds: z.array(z.string().max(256)).max(100).describe('Column IDs for the index'),
+      unique: z.boolean().optional().describe('Whether the index is unique (default: false)'),
+      name: z.string().max(256).optional().describe('Optional index name'),
+    },
+    async ({ projectId, tableId, columnIds, unique, name }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const result = addIndex(schema, tableId, columnIds, unique ?? false, name);
+      if (!result) {
+        return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
+      }
+      mcpAudit('add_index', projectId, { tableId, columnIds, unique });
+      saveAndNotify(projectId, result.schema);
+      return { content: [{ type: 'text', text: JSON.stringify({ indexId: result.indexId }) }] };
+    },
+  );
+
+  server.tool(
+    'delete_index',
+    'Delete an index from a table',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      indexId: z.string().max(256).describe('Index ID to delete'),
+    },
+    async ({ projectId, tableId, indexId }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const updated = deleteIndex(schema, tableId, indexId);
+      mcpAudit('delete_index', projectId, { tableId, indexId });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Index deleted' }] };
+    },
+  );
+
+  server.tool(
+    'move_column',
+    'Reorder a column within a table by moving it to a new position',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      columnId: z.string().max(256).describe('Column ID to move'),
+      toIndex: z.number().int().min(0).describe('Target position index (0-based)'),
+    },
+    async ({ projectId, tableId, columnId, toIndex }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const result = moveColumn(schema, tableId, columnId, toIndex);
+      if (!result) {
+        return { content: [{ type: 'text', text: 'Table or column not found, or index out of range' }], isError: true };
+      }
+      mcpAudit('move_column', projectId, { tableId, columnId, toIndex });
+      saveAndNotify(projectId, result);
+      return { content: [{ type: 'text', text: 'Column moved' }] };
+    },
+  );
+
+  server.tool(
+    'duplicate_table',
+    'Create a copy of a table with new IDs (columns copied, FKs/UKs/indexes not copied)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID to duplicate'),
+    },
+    async ({ projectId, tableId }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const result = duplicateTable(schema, tableId);
+      if (!result) {
+        return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
+      }
+      mcpAudit('duplicate_table', projectId, { tableId, newTableId: result.newTableId });
+      saveAndNotify(projectId, result.schema);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ newTableId: result.newTableId }) }],
+      };
+    },
+  );
+
+  server.tool(
+    'attach_memo',
+    'Attach a memo to a table (memo moves with the table)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      memoId: z.string().max(256).describe('Memo ID'),
+      tableId: z.string().max(256).describe('Table ID to attach to'),
+    },
+    async ({ projectId, memoId, tableId }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const updated = attachMemo(schema, memoId, tableId);
+      mcpAudit('attach_memo', projectId, { memoId, tableId });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Memo attached to table' }] };
+    },
+  );
+
+  server.tool(
+    'detach_memo',
+    'Detach a memo from its attached table',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      memoId: z.string().max(256).describe('Memo ID'),
+    },
+    async ({ projectId, memoId }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const updated = detachMemo(schema, memoId);
+      mcpAudit('detach_memo', projectId, { memoId });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: 'Memo detached from table' }] };
+    },
+  );
+
+  server.tool(
+    'auto_layout',
+    'Automatically arrange all tables using the specified layout algorithm',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      type: z.enum(['grid', 'hierarchical', 'radial']).describe('Layout algorithm'),
+      groupByGroup: z.boolean().optional().describe('Layout groups separately (default: false)'),
+    },
+    async ({ projectId, type, groupByGroup }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const positions = computeLayout(schema.tables, type as LayoutType, { groupByGroup });
+      const tables: Table[] = schema.tables.map(t => {
+        const pos = positions.get(t.id);
+        return pos ? { ...t, position: pos } : t;
+      });
+      const updated: ERDSchema = { ...schema, tables, updatedAt: new Date().toISOString() };
+      mcpAudit('auto_layout', projectId, { type, groupByGroup });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: `Layout applied: ${type} (${tables.length} tables)` }] };
+    },
+  );
+
+  server.tool(
+    'rename_group',
+    'Rename a table group (updates all tables and group colors)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      oldName: z.string().max(256).describe('Current group name'),
+      newName: z.string().max(256).describe('New group name'),
+    },
+    async ({ projectId, oldName, newName }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const updated = renameGroup(schema, oldName, newName);
+      mcpAudit('rename_group', projectId, { oldName, newName });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: `Group renamed: "${oldName}" → "${newName}"` }] };
+    },
+  );
+
+  server.tool(
+    'rename_schema',
+    'Rename a schema namespace (updates tables, memos, and schemas list)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      oldName: z.string().max(256).describe('Current schema namespace name'),
+      newName: z.string().max(256).describe('New schema namespace name'),
+    },
+    async ({ projectId, oldName, newName }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchema(db, projectId);
+      if (!schema) {
+        return { content: [{ type: 'text', text: 'Project schema not found' }], isError: true };
+      }
+      const result = renameSchema(schema, oldName, newName);
+      if (!result) {
+        return { content: [{ type: 'text', text: 'Invalid or duplicate schema name' }], isError: true };
+      }
+      mcpAudit('rename_schema', projectId, { oldName, newName });
+      saveAndNotify(projectId, result);
+      return { content: [{ type: 'text', text: `Schema renamed: "${oldName}" → "${newName}"` }] };
     },
   );
 

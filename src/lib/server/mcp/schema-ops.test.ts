@@ -7,6 +7,9 @@ import {
   addMemo, updateMemo, deleteMemo,
   addDomain, updateDomain, deleteDomain,
   suggestDomains,
+  updateForeignKey, addUniqueKey, deleteUniqueKey,
+  addIndex, deleteIndex, moveColumn, duplicateTable,
+  attachMemo, detachMemo, renameGroup, renameSchema,
 } from './schema-ops';
 
 function emptySchema(): ERDSchema {
@@ -833,5 +836,298 @@ describe('suggestDomains', () => {
 
   it('returns empty for empty schema', () => {
     expect(suggestDomains(emptySchema())).toEqual([]);
+  });
+});
+
+// ═══════════════════════════════════════════
+// updateForeignKey
+// ═══════════════════════════════════════════
+
+describe('updateForeignKey', () => {
+  it('updates referential actions', () => {
+    const fk = { id: 'fk1', columnIds: ['c1'], referencedTableId: 'users', referencedColumnIds: ['id'], onDelete: 'RESTRICT' as const, onUpdate: 'RESTRICT' as const };
+    const s = emptySchema();
+    s.tables = [makeTable('users'), makeTable('orders', { foreignKeys: [fk] })];
+    const result = updateForeignKey(s, 'orders', 'fk1', { onDelete: 'CASCADE', onUpdate: 'SET NULL' });
+    expect(result).not.toBeNull();
+    const updatedFk = result!.tables[1].foreignKeys[0];
+    expect(updatedFk.onDelete).toBe('CASCADE');
+    expect(updatedFk.onUpdate).toBe('SET NULL');
+  });
+
+  it('updates columnIds and referencedColumnIds', () => {
+    const fk = { id: 'fk1', columnIds: ['c1'], referencedTableId: 'users', referencedColumnIds: ['id'], onDelete: 'RESTRICT' as const, onUpdate: 'RESTRICT' as const };
+    const s = emptySchema();
+    s.tables = [makeTable('users'), makeTable('orders', { foreignKeys: [fk] })];
+    const result = updateForeignKey(s, 'orders', 'fk1', { columnIds: ['c2'], referencedColumnIds: ['uid'] });
+    expect(result!.tables[1].foreignKeys[0].columnIds).toEqual(['c2']);
+    expect(result!.tables[1].foreignKeys[0].referencedColumnIds).toEqual(['uid']);
+  });
+
+  it('returns null for non-existent FK', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    expect(updateForeignKey(s, 't1', 'nonexistent', { onDelete: 'CASCADE' })).toBeNull();
+  });
+
+  it('returns null for non-existent referenced table', () => {
+    const fk = { id: 'fk1', columnIds: ['c1'], referencedTableId: 'users', referencedColumnIds: ['id'], onDelete: 'RESTRICT' as const, onUpdate: 'RESTRICT' as const };
+    const s = emptySchema();
+    s.tables = [makeTable('orders', { foreignKeys: [fk] })];
+    expect(updateForeignKey(s, 'orders', 'fk1', { referencedTableId: 'nonexistent' })).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════
+// addUniqueKey / deleteUniqueKey
+// ═══════════════════════════════════════════
+
+describe('addUniqueKey', () => {
+  it('adds unique key to table', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { columns: [makeCol('c1', 'email'), makeCol('c2', 'name')] })];
+    const result = addUniqueKey(s, 't1', ['c1', 'c2']);
+    expect(result).not.toBeNull();
+    expect(result!.schema.tables[0].uniqueKeys).toHaveLength(1);
+    expect(result!.schema.tables[0].uniqueKeys[0].columnIds).toEqual(['c1', 'c2']);
+    expect(result!.ukId).toMatch(/^[a-z0-9]{8}$/);
+  });
+
+  it('supports optional name', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = addUniqueKey(s, 't1', ['c1'], 'uk_email');
+    expect(result!.schema.tables[0].uniqueKeys[0].name).toBe('uk_email');
+  });
+
+  it('returns null for non-existent table', () => {
+    expect(addUniqueKey(emptySchema(), 'nonexistent', ['c1'])).toBeNull();
+  });
+});
+
+describe('deleteUniqueKey', () => {
+  it('removes unique key from table', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { uniqueKeys: [{ id: 'uk1', columnIds: ['c1'] }, { id: 'uk2', columnIds: ['c2'] }] })];
+    const result = deleteUniqueKey(s, 't1', 'uk1');
+    expect(result.tables[0].uniqueKeys).toHaveLength(1);
+    expect(result.tables[0].uniqueKeys[0].id).toBe('uk2');
+  });
+});
+
+// ═══════════════════════════════════════════
+// addIndex / deleteIndex
+// ═══════════════════════════════════════════
+
+describe('addIndex', () => {
+  it('adds non-unique index', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = addIndex(s, 't1', ['c1'], false);
+    expect(result).not.toBeNull();
+    expect(result!.schema.tables[0].indexes).toHaveLength(1);
+    expect(result!.schema.tables[0].indexes[0].unique).toBe(false);
+    expect(result!.indexId).toMatch(/^[a-z0-9]{8}$/);
+  });
+
+  it('adds unique index with name', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = addIndex(s, 't1', ['c1', 'c2'], true, 'idx_email_name');
+    expect(result!.schema.tables[0].indexes[0].unique).toBe(true);
+    expect(result!.schema.tables[0].indexes[0].name).toBe('idx_email_name');
+  });
+
+  it('returns null for non-existent table', () => {
+    expect(addIndex(emptySchema(), 'nonexistent', ['c1'], false)).toBeNull();
+  });
+});
+
+describe('deleteIndex', () => {
+  it('removes index from table', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { indexes: [{ id: 'idx1', columnIds: ['c1'], unique: false }, { id: 'idx2', columnIds: ['c2'], unique: true }] })];
+    const result = deleteIndex(s, 't1', 'idx1');
+    expect(result.tables[0].indexes).toHaveLength(1);
+    expect(result.tables[0].indexes[0].id).toBe('idx2');
+  });
+});
+
+// ═══════════════════════════════════════════
+// moveColumn
+// ═══════════════════════════════════════════
+
+describe('moveColumn', () => {
+  it('moves column to new position', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { columns: [makeCol('c1', 'a'), makeCol('c2', 'b'), makeCol('c3', 'c')] })];
+    const result = moveColumn(s, 't1', 'c1', 2);
+    expect(result).not.toBeNull();
+    expect(result!.tables[0].columns.map(c => c.id)).toEqual(['c2', 'c3', 'c1']);
+  });
+
+  it('returns null for out-of-range index', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { columns: [makeCol('c1', 'a')] })];
+    expect(moveColumn(s, 't1', 'c1', 5)).toBeNull();
+    expect(moveColumn(s, 't1', 'c1', -1)).toBeNull();
+  });
+
+  it('returns null for non-existent column', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { columns: [makeCol('c1', 'a')] })];
+    expect(moveColumn(s, 't1', 'nonexistent', 0)).toBeNull();
+  });
+
+  it('same position is a no-op (still updates timestamp)', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { columns: [makeCol('c1', 'a'), makeCol('c2', 'b')] })];
+    const result = moveColumn(s, 't1', 'c1', 0);
+    expect(result).not.toBeNull();
+    expect(result!.tables[0].columns.map(c => c.id)).toEqual(['c1', 'c2']);
+  });
+});
+
+// ═══════════════════════════════════════════
+// duplicateTable
+// ═══════════════════════════════════════════
+
+describe('duplicateTable', () => {
+  it('copies columns with new IDs', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('users', { name: 'users', columns: [makeCol('c1', 'id'), makeCol('c2', 'email')] })];
+    const result = duplicateTable(s, 'users');
+    expect(result).not.toBeNull();
+    expect(result!.schema.tables).toHaveLength(2);
+    const copy = result!.schema.tables[1];
+    expect(copy.name).toBe('users_copy');
+    expect(copy.columns).toHaveLength(2);
+    expect(copy.columns[0].name).toBe('id');
+    expect(copy.columns[0].id).not.toBe('c1');
+    expect(copy.columns[1].name).toBe('email');
+  });
+
+  it('offsets position by +40,+40', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { position: { x: 100, y: 200 } })];
+    const result = duplicateTable(s, 't1');
+    expect(result!.schema.tables[1].position).toEqual({ x: 140, y: 240 });
+  });
+
+  it('does not copy FKs, uniqueKeys, or indexes', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', {
+      foreignKeys: [{ id: 'fk1', columnIds: ['c1'], referencedTableId: 'x', referencedColumnIds: ['id'], onDelete: 'CASCADE', onUpdate: 'NO ACTION' }],
+      uniqueKeys: [{ id: 'uk1', columnIds: ['c1'] }],
+      indexes: [{ id: 'idx1', columnIds: ['c1'], unique: false }],
+    })];
+    const result = duplicateTable(s, 't1');
+    const copy = result!.schema.tables[1];
+    expect(copy.foreignKeys).toHaveLength(0);
+    expect(copy.uniqueKeys).toHaveLength(0);
+    expect(copy.indexes).toHaveLength(0);
+  });
+
+  it('returns null for non-existent table', () => {
+    expect(duplicateTable(emptySchema(), 'nonexistent')).toBeNull();
+  });
+});
+
+// ═══════════════════════════════════════════
+// attachMemo / detachMemo
+// ═══════════════════════════════════════════
+
+describe('attachMemo', () => {
+  it('attaches memo to table', () => {
+    const s = emptySchema();
+    s.memos = [{ id: 'm1', content: 'Note', position: { x: 0, y: 0 }, width: 200, height: 150 }];
+    const result = attachMemo(s, 'm1', 't1');
+    expect(result.memos[0].attachedTableId).toBe('t1');
+  });
+});
+
+describe('detachMemo', () => {
+  it('detaches memo from table', () => {
+    const s = emptySchema();
+    s.memos = [{ id: 'm1', content: 'Note', position: { x: 0, y: 0 }, width: 200, height: 150, attachedTableId: 't1' }];
+    const result = detachMemo(s, 'm1');
+    expect(result.memos[0].attachedTableId).toBeUndefined();
+  });
+
+  it('no-op for non-existent memo', () => {
+    const s = emptySchema();
+    s.memos = [{ id: 'm1', content: 'Note', position: { x: 0, y: 0 }, width: 200, height: 150 }];
+    const result = detachMemo(s, 'nonexistent');
+    expect(result.memos).toHaveLength(1);
+  });
+});
+
+// ═══════════════════════════════════════════
+// renameGroup
+// ═══════════════════════════════════════════
+
+describe('renameGroup', () => {
+  it('updates group on all matching tables', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { group: 'auth' }), makeTable('t2', { group: 'auth' }), makeTable('t3', { group: 'billing' })];
+    const result = renameGroup(s, 'auth', 'identity');
+    expect(result.tables[0].group).toBe('identity');
+    expect(result.tables[1].group).toBe('identity');
+    expect(result.tables[2].group).toBe('billing');
+  });
+
+  it('moves groupColors entry', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { group: 'old' })];
+    s.groupColors = { old: '#FF0000' };
+    const result = renameGroup(s, 'old', 'new');
+    expect(result.groupColors).toEqual({ new: '#FF0000' });
+  });
+
+  it('same name is a no-op (updates timestamp)', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', { group: 'auth' })];
+    const result = renameGroup(s, 'auth', 'auth');
+    expect(result.tables[0].group).toBe('auth');
+    expect(result.updatedAt).not.toBe(s.updatedAt);
+  });
+});
+
+// ═══════════════════════════════════════════
+// renameSchema
+// ═══════════════════════════════════════════
+
+describe('renameSchema', () => {
+  it('updates tables, memos, and schemas list', () => {
+    const s = emptySchema();
+    s.schemas = ['public', 'auth'];
+    s.tables = [makeTable('t1', { schema: 'public' }), makeTable('t2', { schema: 'auth' })];
+    s.memos = [{ id: 'm1', content: '', position: { x: 0, y: 0 }, width: 100, height: 100, schema: 'public' }];
+    const result = renameSchema(s, 'public', 'main');
+    expect(result).not.toBeNull();
+    expect(result!.schemas).toEqual(['main', 'auth']);
+    expect(result!.tables[0].schema).toBe('main');
+    expect(result!.tables[1].schema).toBe('auth');
+    expect(result!.memos[0].schema).toBe('main');
+  });
+
+  it('rejects duplicate name', () => {
+    const s = emptySchema();
+    s.schemas = ['public', 'auth'];
+    expect(renameSchema(s, 'public', 'auth')).toBeNull();
+  });
+
+  it('rejects empty name', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    expect(renameSchema(s, 'public', '')).toBeNull();
+  });
+
+  it('same name is a no-op', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    const result = renameSchema(s, 'public', 'public');
+    expect(result).not.toBeNull();
+    expect(result!.schemas).toEqual(['public']);
   });
 });
