@@ -122,6 +122,7 @@ class ERDStore {
     this._isUndoRedoing = true;
     this.schema = JSON.parse(target.snap);
     this._undoVersion++;
+    this._emitOp({ kind: 'load-schema', schema: this.schema });
   }
 
   private _emitOp(op: import('$lib/types/collab').CollabOperation) {
@@ -769,6 +770,7 @@ class ERDStore {
   reorderSchemas(schemas: string[]) {
     this.schema.schemas = schemas;
     this.schema.updatedAt = now();
+    this._emitOp({ kind: 'reorder-schemas', schemas });
   }
 
   deleteSchema(name: string) {
@@ -808,6 +810,12 @@ class ERDStore {
     this.selectedTableIds = new Set();
     this.selectedMemoId = null;
     this.selectedMemoIds = new Set();
+    this.editingColumnInfo = null;
+    this.editingMemoId = null;
+    this.hoveredColumnInfo = null;
+    this.hoveredFkInfo = [];
+    this.hoveredUkInfo = null;
+    this.hoveredIdxInfo = null;
     this._emitOp({ kind: 'load-schema', schema });
   }
 }

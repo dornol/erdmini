@@ -246,6 +246,10 @@ export function applyRemoteOperation(op: CollabOperation) {
         erdStore.renameSchema(op.oldName, op.newName);
         break;
       }
+      case 'reorder-schemas': {
+        erdStore.reorderSchemas(op.schemas);
+        break;
+      }
       case 'update-table-schema': {
         erdStore.updateTableSchema(op.tableId, op.schema || undefined);
         break;

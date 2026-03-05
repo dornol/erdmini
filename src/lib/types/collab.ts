@@ -54,6 +54,7 @@ export type CollabOperation =
   | { kind: 'add-schema'; name: string }
   | { kind: 'delete-schema'; name: string }
   | { kind: 'rename-schema'; oldName: string; newName: string }
+  | { kind: 'reorder-schemas'; schemas: string[] }
   | { kind: 'update-table-schema'; tableId: string; schema: string }
   | { kind: 'load-schema'; schema: ERDSchema };
 

@@ -70,9 +70,9 @@
 - ~~Generic VirtualList.svelte component (binary search, overscan, scrollToIndex)~~
 - ~~Sidebar: flatten into VirtualRow and apply virtual scroll~~
 
-### 17. Accessibility (A11y) Improvements
-- ARIA labels, keyboard navigation, screen reader support
-- Difficulty: Large
+### ~~17. Accessibility (A11y) Improvements~~ — Won't Do
+- ~~ARIA labels, keyboard navigation, screen reader support~~
+- Skipped: ERD 편집기는 캔버스 기반 시각적 도구로 완전한 스크린 리더 지원이 비현실적. 모달/드롭다운/커맨드 팔레트 등 실용적 접근성은 이미 구현됨.
 
 ### ~~18. FK Line Type Selection~~ ✅
 - ~~Allow users to choose FK line rendering style: curved (current bezier), straight, orthogonal (right-angle)~~
