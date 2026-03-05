@@ -2,7 +2,10 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { snapshotStore } from '$lib/store/snapshot.svelte';
   import { diffSchemas, type SchemaDiff } from '$lib/utils/schema-diff';
-  import type { ERDSchema } from '$lib/types/erd';
+  import type { Dialect, ERDSchema } from '$lib/types/erd';
+  import type { DDLExportOptions } from '$lib/utils/ddl-export';
+  import { DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle } from '$lib/utils/ddl-export';
+  import { generateMigrationSQL } from '$lib/utils/migration-sql';
   import * as m from '$lib/paraglide/messages';
   import { resolveHistoryLabel } from '$lib/utils/history-labels';
 
@@ -16,6 +19,22 @@
   let uploadError = $state('');
   let diffResult = $state<SchemaDiff | null>(null);
   let expandedTables = $state<Set<string>>(new Set());
+
+  // Migration SQL state
+  let showMigrationSql = $state(false);
+  let migrationDialect = $state<Dialect>('postgresql');
+  let migrationSql = $state('');
+  let copied = $state(false);
+
+  const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
+    { value: 'mysql', label: 'MySQL' },
+    { value: 'postgresql', label: 'PostgreSQL' },
+    { value: 'mariadb', label: 'MariaDB' },
+    { value: 'mssql', label: 'MSSQL' },
+    { value: 'sqlite', label: 'SQLite' },
+    { value: 'oracle', label: 'Oracle' },
+    { value: 'h2', label: 'H2' },
+  ];
 
   let historyEntries = $derived(erdStore.historyEntries);
 
@@ -43,6 +62,55 @@
     diffResult = diffSchemas(prevSchema, curr);
     // Expand all modified tables by default
     expandedTables = new Set(diffResult.modifiedTables.map((t) => t.tableId));
+    // Reset migration panel
+    showMigrationSql = false;
+    migrationSql = '';
+  }
+
+  function loadDdlOptions(): Partial<DDLExportOptions> {
+    try {
+      const saved = localStorage.getItem('erdmini_ddl_options');
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return {};
+  }
+
+  function generateMigration() {
+    if (!diffResult) return;
+    const savedOpts = loadDdlOptions();
+    const ddlOpts: Partial<DDLExportOptions> = {
+      ...savedOpts,
+      quoteStyle: savedOpts.quoteStyle ?? getDefaultQuoteStyle(migrationDialect),
+    };
+    migrationSql = generateMigrationSQL(
+      diffResult,
+      migrationDialect,
+      ddlOpts,
+      erdStore.schema.tables,
+    );
+    showMigrationSql = true;
+  }
+
+  function onDialectChange() {
+    if (showMigrationSql) generateMigration();
+  }
+
+  async function copyToClipboard() {
+    try {
+      await navigator.clipboard.writeText(migrationSql);
+      copied = true;
+      setTimeout(() => (copied = false), 2000);
+    } catch { /* ignore */ }
+  }
+
+  function downloadSql() {
+    const blob = new Blob([migrationSql], { type: 'text/sql;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `migration_${migrationDialect}_${new Date().toISOString().slice(0, 10)}.sql`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function handleFileUpload() {
@@ -78,6 +146,11 @@
     const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
     return `${time} — ${entry.detail || resolveHistoryLabel(entry.label)}`;
   }
+
+  let hasChanges = $derived(
+    diffResult != null &&
+    (diffResult.addedTables.length > 0 || diffResult.removedTables.length > 0 || diffResult.modifiedTables.length > 0),
+  );
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -162,13 +235,52 @@
 
       <!-- Diff result -->
       {#if diffResult}
-        <div class="diff-summary">
-          {m.diff_summary({
-            added: diffResult.summary.added,
-            removed: diffResult.summary.removed,
-            modified: diffResult.summary.modified,
-          })}
+        <div class="diff-summary-row">
+          <div class="diff-summary">
+            {m.diff_summary({
+              added: diffResult.summary.added,
+              removed: diffResult.summary.removed,
+              modified: diffResult.summary.modified,
+            })}
+          </div>
+          {#if hasChanges}
+            <div class="migration-controls">
+              <select class="dialect-select" bind:value={migrationDialect} onchange={onDialectChange}>
+                {#each DIALECT_OPTIONS as opt}
+                  <option value={opt.value}>{opt.label}</option>
+                {/each}
+              </select>
+              <button class="btn-migration" onclick={generateMigration}>
+                {m.migration_export()}
+              </button>
+            </div>
+          {/if}
         </div>
+
+        <!-- Migration SQL preview -->
+        {#if showMigrationSql}
+          <div class="migration-section">
+            <div class="migration-header">
+              <span class="migration-title">{m.migration_sql_title()}</span>
+              <div class="migration-actions">
+                <button class="btn-action" onclick={copyToClipboard}>
+                  {copied ? m.migration_copied() : m.migration_copy()}
+                </button>
+                <button class="btn-action" onclick={downloadSql}>
+                  {m.migration_download()}
+                </button>
+              </div>
+            </div>
+            {#if migrationSql}
+              {#if migrationDialect === 'sqlite' && migrationSql.includes('PRAGMA')}
+                <div class="migration-note">{m.migration_recreate_note()}</div>
+              {/if}
+              <pre class="migration-preview">{migrationSql}</pre>
+            {:else}
+              <div class="migration-empty">{m.migration_no_changes()}</div>
+            {/if}
+          </div>
+        {/if}
 
         <div class="diff-results">
           {#if diffResult.addedTables.length === 0 && diffResult.removedTables.length === 0 && diffResult.modifiedTables.length === 0}
@@ -283,7 +395,7 @@
     background: var(--app-popup-bg, white);
     border-radius: 10px;
     box-shadow: var(--app-popup-shadow, 0 20px 60px rgba(0, 0, 0, 0.3));
-    width: 600px;
+    width: 640px;
     max-width: 95vw;
     max-height: 80vh;
     display: flex;
@@ -431,6 +543,13 @@
     cursor: not-allowed;
   }
 
+  .diff-summary-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   .diff-summary {
     font-size: 13px;
     font-weight: 500;
@@ -439,6 +558,108 @@
     background: var(--app-badge-bg, #f1f5f9);
     border-radius: 6px;
     border: 1px solid var(--app-border, #e2e8f0);
+    flex: 1;
+  }
+
+  .migration-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .dialect-select {
+    font-size: 12px;
+    padding: 5px 8px;
+    border: 1px solid var(--app-input-border, #e2e8f0);
+    border-radius: 5px;
+    background: var(--app-input-bg, white);
+    color: var(--app-text, #1e293b);
+    outline: none;
+  }
+
+  .btn-migration {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border: none;
+    border-radius: 5px;
+    background: #8b5cf6;
+    color: white;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-migration:hover {
+    background: #7c3aed;
+  }
+
+  .migration-section {
+    border: 1px solid var(--app-border, #e2e8f0);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .migration-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--app-badge-bg, #f1f5f9);
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
+  }
+
+  .migration-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--app-text, #1e293b);
+  }
+
+  .migration-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .btn-action {
+    font-size: 11px;
+    padding: 3px 10px;
+    border: 1px solid var(--app-input-border, #e2e8f0);
+    border-radius: 4px;
+    background: var(--app-input-bg, white);
+    color: var(--app-text-secondary, #475569);
+    cursor: pointer;
+  }
+
+  .btn-action:hover {
+    background: var(--app-hover-bg, #f1f5f9);
+  }
+
+  .migration-note {
+    font-size: 11px;
+    color: var(--app-text-muted, #64748b);
+    padding: 6px 12px;
+    background: #fef9c3;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
+  }
+
+  .migration-preview {
+    font-size: 11px;
+    font-family: 'Menlo', 'Consolas', monospace;
+    padding: 10px 12px;
+    margin: 0;
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--app-text, #1e293b);
+    background: var(--app-input-bg, white);
+  }
+
+  .migration-empty {
+    font-size: 12px;
+    color: var(--app-text-muted, #64748b);
+    padding: 16px 12px;
+    text-align: center;
   }
 
   .diff-results {

@@ -27,24 +27,24 @@ export const DEFAULT_DDL_OPTIONS: DDLExportOptions = {
   upperCaseKeywords: true,
 };
 
-function getIndent(indent: DDLExportOptions['indent']): string {
+export function getIndent(indent: DDLExportOptions['indent']): string {
   if (indent === '4spaces') return '    ';
   if (indent === 'tab') return '\t';
   return '  ';
 }
 
-function q(name: string, style: DDLExportOptions['quoteStyle']): string {
+export function q(name: string, style: DDLExportOptions['quoteStyle']): string {
   if (style === 'none') return name;
   if (style === 'backtick') return `\`${name}\``;
   if (style === 'bracket') return `[${name}]`;
   return `"${name}"`; // double
 }
 
-function kw(keyword: string, upper: boolean): string {
+export function kw(keyword: string, upper: boolean): string {
   return upper ? keyword.toUpperCase() : keyword.toLowerCase();
 }
 
-function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tableName?: string): string {
+export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tableName?: string): string {
   const len = col.length ? `(${col.length})` : '';
   const decimalLen = col.length
     ? `(${col.length}${col.scale != null ? `,${col.scale}` : ''})`
@@ -117,7 +117,7 @@ function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tableName?
   return kw(col.type, upper);
 }
 
-function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[], tableName?: string): string {
+export function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[], tableName?: string): string {
   const ind = getIndent(opts.indent);
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
@@ -172,14 +172,14 @@ function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions, domain
   return parts.join(' ');
 }
 
-function qualifiedTableName(table: Table, dialect: Dialect, qs: DDLExportOptions['quoteStyle']): string {
+export function qualifiedTableName(table: Table, dialect: Dialect, qs: DDLExportOptions['quoteStyle']): string {
   if (table.schema && dialect !== 'sqlite') {
     return `${q(table.schema, qs)}.${q(table.name, qs)}`;
   }
   return q(table.name, qs);
 }
 
-function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[]): string {
+export function createTableSql(table: Table, dialect: Dialect, opts: DDLExportOptions, domains?: ColumnDomain[]): string {
   const ind = getIndent(opts.indent);
   const qs = opts.quoteStyle;
   const up = opts.upperCaseKeywords;
@@ -272,7 +272,7 @@ function mssqlComments(table: Table): string[] {
   return stmts;
 }
 
-function alterTableFkSql(
+export function alterTableFkSql(
   table: Table,
   dialect: Dialect,
   allTables: Table[],

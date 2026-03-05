@@ -199,25 +199,13 @@
 - ~~70 tests (unit + integration: E-commerce, Blog, HR, edge cases)~~
 - Difficulty: Medium
 
-### 34. Migration SQL Generation (Schema Diff → DDL)
-- 기존 `schema-diff.ts`의 `SchemaDiff` 결과를 dialect별 `ALTER TABLE` DDL로 변환
-- `generateMigrationSQL(diff: SchemaDiff, dialect: Dialect): string`
-- **지원 명령**:
-  - `CREATE TABLE` (추가된 테이블)
-  - `DROP TABLE` (삭제된 테이블)
-  - `ALTER TABLE ... RENAME TO` (이름 변경)
-  - `ALTER TABLE ... ADD COLUMN` (추가된 컬럼)
-  - `ALTER TABLE ... DROP COLUMN` (삭제된 컬럼)
-  - `ALTER TABLE ... MODIFY / ALTER COLUMN` (타입, nullable, default 변경)
-  - `ALTER TABLE ... ADD/DROP CONSTRAINT` (FK, 인덱스 변경)
-- **dialect별 차이 처리**:
-  - MySQL: `MODIFY COLUMN`, `AUTO_INCREMENT`
-  - PostgreSQL: `ALTER COLUMN ... TYPE`, `SET/DROP NOT NULL`, `SET/DROP DEFAULT`
-  - SQLite: `ALTER TABLE`은 ADD/RENAME만 지원 → DROP COLUMN은 recreate table 패턴
-  - Oracle: `MODIFY (column type)`, `GENERATED AS IDENTITY`
-  - MSSQL: `ALTER COLUMN`, `IDENTITY` 제약
-- **SchemaDiffModal 통합**: "Export Migration SQL" 버튼, dialect 선택 드롭다운
-- **활용**: DB migration 스크립트 자동 생성, Git 기반 스키마 버전 관리
+### ~~34. Migration SQL Generation (Schema Diff → DDL)~~ ✅
+- ~~기존 `schema-diff.ts`의 `SchemaDiff` 결과를 dialect별 `ALTER TABLE` DDL로 변환~~
+- ~~`generateMigrationSQL(diff: SchemaDiff, dialect: Dialect, options?, currTables?): string`~~
+- ~~**지원 명령**: CREATE/DROP TABLE, RENAME TABLE, ADD/DROP/ALTER COLUMN, ADD/DROP FK/INDEX/UNIQUE KEY~~
+- ~~**dialect별 차이 처리**: MySQL MODIFY COLUMN, PG ALTER COLUMN TYPE/SET/DROP, SQLite recreate-table, Oracle MODIFY, MSSQL ALTER COLUMN~~
+- ~~**SchemaDiffModal 통합**: dialect 드롭다운 + "Export Migration SQL" 버튼 + SQL 미리보기 + 복사/다운로드~~
+- ~~71 tests (unit + dialect + integration)~~
 - Difficulty: Large
 
 ### ~~35. DDL Export 품질 개선 (Minor Gaps)~~ ✅
