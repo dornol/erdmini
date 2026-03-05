@@ -11,10 +11,15 @@
   import CollabCursors from './CollabCursors.svelte';
   import { collabStore } from '$lib/store/collab.svelte';
   import { sendPresence } from '$lib/collab/operation-bridge';
+  import { computeGridBgStyle } from '$lib/utils/canvas-grid';
 
   let { children } = $props();
 
   let viewportEl: HTMLDivElement;
+
+  // Grid background that follows pan/zoom
+  const gridBgStyle = $derived(computeGridBgStyle(canvasState.x, canvasState.y, canvasState.scale, themeStore.current));
+
   let isPanning = $state(false);
   let panStart = { x: 0, y: 0 };
 
@@ -379,7 +384,7 @@
   oncontextmenu={onContextMenu}
   data-theme={themeStore.current}
   class:hide-grid={!canvasState.showGrid}
-  style="cursor: {fkDragStore.active ? 'crosshair' : isMarquee ? 'crosshair' : isSpaceHeld ? (isPanning ? 'grabbing' : 'grab') : isPanning ? 'grabbing' : 'default'}"
+  style="cursor: {fkDragStore.active ? 'crosshair' : isMarquee ? 'crosshair' : isSpaceHeld ? (isPanning ? 'grabbing' : 'grab') : isPanning ? 'grabbing' : 'default'}; {gridBgStyle}"
 >
   <div
     class="canvas-world"

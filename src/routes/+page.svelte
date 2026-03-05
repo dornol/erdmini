@@ -18,6 +18,7 @@
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
+  import { filterBySchema } from '$lib/utils/canvas-grid';
   import { getStorageProvider } from '$lib/storage';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { authStore } from '$lib/store/auth.svelte';
@@ -53,16 +54,8 @@
   let sidebarCollapsed = $state(false);
   let commandPaletteOpen = $state(false);
 
-  const visibleTables = $derived(
-    canvasState.activeSchema === '(all)'
-      ? erdStore.schema.tables
-      : erdStore.schema.tables.filter((t) => (t.schema ?? '') === canvasState.activeSchema)
-  );
-  const visibleMemos = $derived(
-    canvasState.activeSchema === '(all)'
-      ? erdStore.schema.memos
-      : erdStore.schema.memos.filter((mm) => (mm.schema ?? '') === canvasState.activeSchema)
-  );
+  const visibleTables = $derived(filterBySchema(erdStore.schema.tables, canvasState.activeSchema));
+  const visibleMemos = $derived(filterBySchema(erdStore.schema.memos, canvasState.activeSchema));
   let showBulkEditModal = $state(false);
   let viewportWidth = $state(768);
   let forceDesktop = $state(false);
@@ -727,13 +720,13 @@
       <!-- Fullscreen Presentation Mode -->
       <div class="fullscreen-canvas">
         <Canvas>
-          <RelationLines />
+          <RelationLines {visibleTables} />
           {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div class="fullscreen-table-wrapper">
               <MemoCard {memo} />
             </div>
           {/each}
-          {#each erdStore.schema.tables as table (table.id)}
+          {#each visibleTables as table (table.id)}
             <div class="fullscreen-table-wrapper">
               <TableCard {table} />
             </div>

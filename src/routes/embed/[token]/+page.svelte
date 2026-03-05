@@ -10,6 +10,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
+  import { filterBySchema } from '$lib/utils/canvas-grid';
 
   type ViewState = 'loading' | 'password' | 'ready' | 'error';
 
@@ -21,16 +22,8 @@
 
   const token = $derived($page.params.token);
 
-  const visibleTables = $derived(
-    canvasState.activeSchema === '(all)'
-      ? erdStore.schema.tables
-      : erdStore.schema.tables.filter((t) => (t.schema ?? '') === canvasState.activeSchema)
-  );
-  const visibleMemos = $derived(
-    canvasState.activeSchema === '(all)'
-      ? erdStore.schema.memos
-      : erdStore.schema.memos.filter((mm) => (mm.schema ?? '') === canvasState.activeSchema)
-  );
+  const visibleTables = $derived(filterBySchema(erdStore.schema.tables, canvasState.activeSchema));
+  const visibleMemos = $derived(filterBySchema(erdStore.schema.memos, canvasState.activeSchema));
 
   async function loadEmbed(password?: string) {
     try {
