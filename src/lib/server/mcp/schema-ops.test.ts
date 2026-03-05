@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ERDSchema, Table, Column, ForeignKey, Memo, ColumnDomain } from '$lib/types/erd';
 import {
-  addTable, updateTable, deleteTable,
+  addTable, updateTable, deleteTable, deleteTables,
   addColumn, updateColumn, deleteColumn,
   addForeignKey, deleteForeignKey,
   addMemo, updateMemo, deleteMemo,
@@ -10,6 +10,7 @@ import {
   updateForeignKey, addUniqueKey, deleteUniqueKey,
   addIndex, deleteIndex, moveColumn, duplicateTable,
   attachMemo, detachMemo, renameGroup, renameSchema,
+  addSchemaNamespace, deleteSchemaNamespace,
 } from './schema-ops';
 
 function emptySchema(): ERDSchema {
@@ -1140,5 +1141,192 @@ describe('renameSchema', () => {
     const result = renameSchema(s, 'public', 'public');
     expect(result).not.toBeNull();
     expect(result!.schemas).toEqual(['public']);
+  });
+});
+
+// ═══════════════════════════════════════════
+// deleteTables (bulk)
+// ═══════════════════════════════════════════
+
+describe('deleteTables', () => {
+  it('removes multiple tables at once', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1'), makeTable('t2'), makeTable('t3')];
+    const result = deleteTables(s, ['t1', 't3']);
+    expect(result.tables).toHaveLength(1);
+    expect(result.tables[0].id).toBe('t2');
+  });
+
+  it('cleans up FKs referencing deleted tables', () => {
+    const s = emptySchema();
+    s.tables = [
+      makeTable('t1', { foreignKeys: [{ id: 'fk1', columnIds: ['c1'], referencedTableId: 't2', referencedColumnIds: ['c2'], onDelete: 'RESTRICT', onUpdate: 'RESTRICT' }] }),
+      makeTable('t2'),
+      makeTable('t3', { foreignKeys: [{ id: 'fk2', columnIds: ['c3'], referencedTableId: 't1', referencedColumnIds: ['c1'], onDelete: 'CASCADE', onUpdate: 'CASCADE' }] }),
+    ];
+    const result = deleteTables(s, ['t2']);
+    expect(result.tables.find(t => t.id === 't1')!.foreignKeys).toHaveLength(0);
+    expect(result.tables.find(t => t.id === 't3')!.foreignKeys).toHaveLength(1);
+  });
+
+  it('clears attachedTableId on memos attached to deleted tables', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1'), makeTable('t2')];
+    s.memos = [
+      { id: 'm1', content: '', position: { x: 0, y: 0 }, width: 200, height: 150, attachedTableId: 't1' },
+      { id: 'm2', content: '', position: { x: 0, y: 0 }, width: 200, height: 150, attachedTableId: 't2' },
+    ];
+    const result = deleteTables(s, ['t1']);
+    expect(result.memos!.find(m => m.id === 'm1')!.attachedTableId).toBeUndefined();
+    expect(result.memos!.find(m => m.id === 'm2')!.attachedTableId).toBe('t2');
+  });
+
+  it('handles non-existent table IDs gracefully', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = deleteTables(s, ['t1', 'nonexistent']);
+    expect(result.tables).toHaveLength(0);
+  });
+
+  it('empty array is a no-op', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = deleteTables(s, []);
+    expect(result.tables).toHaveLength(1);
+  });
+
+  it('updates updatedAt timestamp', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = deleteTables(s, ['t1']);
+    expect(result.updatedAt).not.toBe(s.updatedAt);
+  });
+});
+
+// ═══════════════════════════════════════════
+// addSchemaNamespace
+// ═══════════════════════════════════════════
+
+describe('addSchemaNamespace', () => {
+  it('adds schema to empty schemas list', () => {
+    const s = emptySchema();
+    const result = addSchemaNamespace(s, 'public');
+    expect(result).not.toBeNull();
+    expect(result!.schemas).toEqual(['public']);
+  });
+
+  it('appends schema to existing list', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    const result = addSchemaNamespace(s, 'auth');
+    expect(result).not.toBeNull();
+    expect(result!.schemas).toEqual(['public', 'auth']);
+  });
+
+  it('returns null for duplicate name', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    expect(addSchemaNamespace(s, 'public')).toBeNull();
+  });
+
+  it('handles schema with no schemas array (undefined)', () => {
+    const s = emptySchema();
+    delete (s as any).schemas;
+    const result = addSchemaNamespace(s, 'public');
+    expect(result).not.toBeNull();
+    expect(result!.schemas).toEqual(['public']);
+  });
+
+  it('updates updatedAt timestamp', () => {
+    const s = emptySchema();
+    const result = addSchemaNamespace(s, 'public');
+    expect(result!.updatedAt).not.toBe(s.updatedAt);
+  });
+});
+
+// ═══════════════════════════════════════════
+// deleteSchemaNamespace
+// ═══════════════════════════════════════════
+
+describe('deleteSchemaNamespace', () => {
+  it('removes schema from schemas list', () => {
+    const s = emptySchema();
+    s.schemas = ['public', 'auth'];
+    const result = deleteSchemaNamespace(s, 'public');
+    expect(result.schemas).toEqual(['auth']);
+  });
+
+  it('unsets schema on tables in deleted namespace', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    s.tables = [
+      makeTable('t1', { schema: 'public' } as any),
+      makeTable('t2', { schema: 'auth' } as any),
+      makeTable('t3'),
+    ];
+    const result = deleteSchemaNamespace(s, 'public');
+    expect((result.tables[0] as any).schema).toBeUndefined();
+    expect((result.tables[1] as any).schema).toBe('auth');
+    expect((result.tables[2] as any).schema).toBeUndefined();
+  });
+
+  it('unsets schema on memos in deleted namespace', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    s.memos = [
+      { id: 'm1', content: '', position: { x: 0, y: 0 }, width: 200, height: 150, schema: 'public' },
+      { id: 'm2', content: '', position: { x: 0, y: 0 }, width: 200, height: 150, schema: 'other' },
+    ];
+    const result = deleteSchemaNamespace(s, 'public');
+    expect(result.memos![0].schema).toBeUndefined();
+    expect(result.memos![1].schema).toBe('other');
+  });
+
+  it('deleting non-existent schema is a no-op on schemas list', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    const result = deleteSchemaNamespace(s, 'nonexistent');
+    expect(result.schemas).toEqual(['public']);
+  });
+
+  it('updates updatedAt timestamp', () => {
+    const s = emptySchema();
+    s.schemas = ['public'];
+    const result = deleteSchemaNamespace(s, 'public');
+    expect(result.updatedAt).not.toBe(s.updatedAt);
+  });
+});
+
+// ═══════════════════════════════════════════
+// addColumn — check & domainId support
+// ═══════════════════════════════════════════
+
+describe('addColumn — check & domainId', () => {
+  it('stores check constraint expression', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = addColumn(s, 't1', { name: 'age', type: 'INT', check: 'age > 0' });
+    expect(result).not.toBeNull();
+    const col = result!.schema.tables[0].columns[0];
+    expect(col.check).toBe('age > 0');
+  });
+
+  it('stores domainId', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = addColumn(s, 't1', { name: 'email', type: 'VARCHAR', domainId: 'dom_email' });
+    expect(result).not.toBeNull();
+    const col = result!.schema.tables[0].columns[0];
+    expect(col.domainId).toBe('dom_email');
+  });
+
+  it('omits check and domainId when not provided', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1')];
+    const result = addColumn(s, 't1', { name: 'foo' });
+    expect(result).not.toBeNull();
+    const col = result!.schema.tables[0].columns[0];
+    expect(col.check).toBeUndefined();
+    expect(col.domainId).toBeUndefined();
   });
 });

@@ -5,7 +5,7 @@ import type Database from 'better-sqlite3';
 import type { ResolvedApiKey } from '$lib/server/auth/api-key';
 import { logAudit } from '$lib/server/audit';
 import { checkAccess, getSchema, saveSchema, listUserProjects } from './db-helpers';
-import { addTable, updateTable, deleteTable, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo, addDomain, updateDomain, deleteDomain, suggestDomains, updateForeignKey, addUniqueKey, deleteUniqueKey, addIndex, deleteIndex, moveColumn, duplicateTable, attachMemo, detachMemo, renameGroup, renameSchema } from './schema-ops';
+import { addTable, updateTable, deleteTable, deleteTables, addColumn, updateColumn, deleteColumn, addForeignKey, deleteForeignKey, addMemo, updateMemo, deleteMemo, addDomain, updateDomain, deleteDomain, suggestDomains, updateForeignKey, addUniqueKey, deleteUniqueKey, addIndex, deleteIndex, moveColumn, duplicateTable, attachMemo, detachMemo, renameGroup, renameSchema, addSchemaNamespace, deleteSchemaNamespace } from './schema-ops';
 import { exportDDL, type DDLExportOptions } from '$lib/utils/ddl-export';
 import { exportPrisma } from '$lib/utils/prisma-export';
 import { importPrisma } from '$lib/utils/prisma-import';
@@ -15,12 +15,16 @@ import { lintSchema } from '$lib/utils/schema-lint';
 import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
 import { importDDL } from '$lib/utils/ddl-import';
 import type { ColumnDomain, Dialect, ERDSchema, ReferentialAction, Table } from '$lib/types/erd';
+import { COLUMN_TYPES } from '$lib/types/erd';
+import { generateId } from '$lib/utils/common';
 import { TABLE_COLOR_IDS } from '$lib/constants/table-colors';
 import { notifyCollabSchemaChange } from '$lib/server/collab-notify';
 import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
 import { computeCoverageStats } from '$lib/utils/domain-analysis';
 import { resolveEffectiveDomain, getDescendantIds } from '$lib/utils/domain-hierarchy';
 import { computeLayout, type LayoutType } from '$lib/utils/auto-layout';
+import { diffSchemas } from '$lib/utils/schema-diff';
+import { generateMigrationSQL } from '$lib/utils/migration-sql';
 
 export function createMcpServer(
   db: Database.Database,
@@ -30,6 +34,28 @@ export function createMcpServer(
     name: 'erdmini',
     version: '1.0.0',
   });
+
+  function mergeOrReplaceSchema(
+    projectId: string,
+    importedTables: Table[],
+    replace?: boolean,
+  ): ERDSchema {
+    const existing = getSchema(db, projectId);
+    if (!existing || replace) {
+      return {
+        version: '1',
+        tables: importedTables,
+        domains: [],
+        memos: [],
+        groupColors: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    const existingNames = new Set(existing.tables.map(t => t.name.toLowerCase()));
+    const newTables = importedTables.filter(t => !existingNames.has(t.name.toLowerCase()));
+    return { ...existing, tables: [...existing.tables, ...newTables], updatedAt: new Date().toISOString() };
+  }
 
   function requireAccess(projectId: string, level: 'viewer' | 'editor' | 'owner'): void {
     if (!checkAccess(db, projectId, keyInfo.userId, keyInfo.userRole, level, keyInfo.scopes)) {
@@ -342,7 +368,7 @@ export function createMcpServer(
       projectId: z.string().max(256).describe('Project ID'),
       tableId: z.string().max(256).describe('Table ID'),
       name: z.string().max(256).optional().describe('Column name'),
-      type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).optional().describe('Column type'),
+      type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Column type'),
       length: z.number().optional().describe('Column length'),
       scale: z.number().optional().describe('Decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
@@ -352,6 +378,8 @@ export function createMcpServer(
       defaultValue: z.string().max(1024).optional().describe('Default value expression'),
       comment: z.string().max(4096).optional().describe('Column comment'),
       enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
+      check: z.string().max(1024).optional().describe('CHECK constraint expression'),
+      domainId: z.string().max(256).optional().describe('Domain ID to link'),
     },
     async ({ projectId, tableId, ...colOpts }) => {
       requireAccess(projectId, 'editor');
@@ -376,7 +404,7 @@ export function createMcpServer(
       tableId: z.string().max(256).describe('Table ID'),
       columnId: z.string().max(256).describe('Column ID'),
       name: z.string().max(256).optional().describe('New column name'),
-      type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).optional().describe('New column type'),
+      type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('New column type'),
       length: z.number().optional().describe('New length'),
       scale: z.number().optional().describe('New decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
@@ -385,6 +413,9 @@ export function createMcpServer(
       autoIncrement: z.boolean().optional().describe('Auto increment'),
       defaultValue: z.string().max(1024).optional().describe('Default value expression'),
       comment: z.string().max(4096).optional().describe('Column comment'),
+      enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
+      check: z.string().max(1024).optional().describe('CHECK constraint expression'),
+      domainId: z.string().max(256).optional().describe('Domain ID to link (empty string to unlink)'),
     },
     async ({ projectId, tableId, columnId, ...patch }) => {
       requireAccess(projectId, 'editor');
@@ -530,23 +561,7 @@ export function createMcpServer(
         };
       }
 
-      let schema = getSchema(db, projectId);
-      if (!schema || replace) {
-        schema = {
-          version: '1',
-          tables: result.tables,
-          domains: [],
-          memos: [],
-          groupColors: {},
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      } else {
-        const existingNames = new Set(schema.tables.map(t => t.name.toLowerCase()));
-        const newTables = result.tables.filter(t => !existingNames.has(t.name.toLowerCase()));
-        schema.tables = [...schema.tables, ...newTables];
-        schema.updatedAt = new Date().toISOString();
-      }
+      const schema = mergeOrReplaceSchema(projectId, result.tables, replace);
 
       mcpAudit('import_ddl', projectId, { dialect: dialect || 'mysql', tableCount: result.tables.length, replace: !!replace });
       saveAndNotify(projectId, schema);
@@ -735,7 +750,7 @@ export function createMcpServer(
     {
       projectId: z.string().max(256).describe('Project ID'),
       name: z.string().max(256).describe('Domain name'),
-      type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).describe('Column type'),
+      type: z.enum(COLUMN_TYPES as [string, ...string[]]).describe('Column type'),
       length: z.number().optional().describe('Column length'),
       scale: z.number().optional().describe('Decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL (default: false)'),
@@ -798,7 +813,7 @@ export function createMcpServer(
       projectId: z.string().max(256).describe('Project ID'),
       domainId: z.string().max(256).describe('Domain ID'),
       name: z.string().max(256).optional().describe('New domain name'),
-      type: z.enum(['INT', 'BIGINT', 'SMALLINT', 'VARCHAR', 'CHAR', 'TEXT', 'BOOLEAN', 'DATE', 'DATETIME', 'TIMESTAMP', 'DECIMAL', 'FLOAT', 'DOUBLE', 'JSON', 'UUID', 'ENUM']).optional().describe('New column type'),
+      type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('New column type'),
       length: z.number().optional().describe('New length'),
       scale: z.number().optional().describe('New decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
@@ -929,7 +944,7 @@ export function createMcpServer(
     async ({ projectId, name, description }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
-      const id = Math.random().toString(36).slice(2, 10);
+      const id = generateId();
       const now = Date.now();
       db.prepare(
         'INSERT INTO schema_snapshots (id, project_id, name, description, data, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -1273,23 +1288,7 @@ export function createMcpServer(
         };
       }
 
-      let schema = getSchema(db, projectId);
-      if (!schema || replace) {
-        schema = {
-          version: '1',
-          tables: result.tables,
-          domains: [],
-          memos: [],
-          groupColors: {},
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      } else {
-        const existingNames = new Set(schema.tables.map(t => t.name.toLowerCase()));
-        const newTables = result.tables.filter(t => !existingNames.has(t.name.toLowerCase()));
-        schema.tables = [...schema.tables, ...newTables];
-        schema.updatedAt = new Date().toISOString();
-      }
+      const schema = mergeOrReplaceSchema(projectId, result.tables, replace);
 
       mcpAudit('import_prisma', projectId, { tableCount: result.tables.length, replace: !!replace });
       saveAndNotify(projectId, schema);
@@ -1346,23 +1345,7 @@ export function createMcpServer(
         };
       }
 
-      let schema = getSchema(db, projectId);
-      if (!schema || replace) {
-        schema = {
-          version: '1',
-          tables: result.tables,
-          domains: [],
-          memos: [],
-          groupColors: {},
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      } else {
-        const existingNames = new Set(schema.tables.map(t => t.name.toLowerCase()));
-        const newTables = result.tables.filter(t => !existingNames.has(t.name.toLowerCase()));
-        schema.tables = [...schema.tables, ...newTables];
-        schema.updatedAt = new Date().toISOString();
-      }
+      const schema = mergeOrReplaceSchema(projectId, result.tables, replace);
 
       mcpAudit('import_dbml', projectId, { tableCount: result.tables.length, replace: !!replace });
       saveAndNotify(projectId, schema);
@@ -1371,6 +1354,373 @@ export function createMcpServer(
       if (result.errors.length > 0) summary.push(`Errors: ${result.errors.join('; ')}`);
       if (result.warnings.length > 0) summary.push(`Warnings: ${result.warnings.join('; ')}`);
       return { content: [{ type: 'text', text: summary.join('\n') }] };
+    },
+  );
+
+  // ==================
+  // BULK TOOLS
+  // ==================
+
+  server.tool(
+    'delete_tables',
+    'Delete multiple tables at once and clean up FK references',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableIds: z.array(z.string().max(256)).min(1).max(500).describe('Array of table IDs to delete'),
+    },
+    async ({ projectId, tableIds }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchemaOrFail(projectId);
+      const existing = new Set(schema.tables.map(t => t.id));
+      const notFound = tableIds.filter(id => !existing.has(id));
+      if (notFound.length === tableIds.length) {
+        return { content: [{ type: 'text', text: 'None of the specified tables were found' }], isError: true };
+      }
+      const updated = deleteTables(schema, tableIds);
+      mcpAudit('delete_tables', projectId, { tableIds, count: tableIds.length - notFound.length });
+      saveAndNotify(projectId, updated);
+      const msg = `Deleted ${tableIds.length - notFound.length} table(s)`;
+      return { content: [{ type: 'text', text: notFound.length > 0 ? `${msg} (not found: ${notFound.join(', ')})` : msg }] };
+    },
+  );
+
+  server.tool(
+    'bulk_add_tables',
+    'Create multiple tables at once with columns and properties',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tables: z.array(z.object({
+        name: z.string().max(256).describe('Table name'),
+        comment: z.string().max(4096).optional().describe('Table comment'),
+        color: z.enum(TABLE_COLOR_IDS as [string, ...string[]]).optional().describe('Table header color'),
+        group: z.string().max(256).optional().describe('Group name'),
+        schema: z.string().max(256).optional().describe('Schema namespace'),
+        withPk: z.boolean().optional().describe('Add default PK column (default: true)'),
+        columns: z.array(z.object({
+          name: z.string().max(256).describe('Column name'),
+          type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Column type'),
+          length: z.number().optional().describe('Column length'),
+          scale: z.number().optional().describe('Decimal scale'),
+          nullable: z.boolean().optional().describe('Allow NULL'),
+          primaryKey: z.boolean().optional().describe('Primary key'),
+          unique: z.boolean().optional().describe('Unique'),
+          autoIncrement: z.boolean().optional().describe('Auto increment'),
+          defaultValue: z.string().max(1024).optional().describe('Default value'),
+          comment: z.string().max(4096).optional().describe('Column comment'),
+          enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
+          check: z.string().max(1024).optional().describe('CHECK constraint'),
+          domainId: z.string().max(256).optional().describe('Domain ID'),
+        })).optional().describe('Columns to add after creation'),
+      })).min(1).max(100).describe('Array of tables to create'),
+    },
+    async ({ projectId, tables: tableDefs }) => {
+      requireAccess(projectId, 'editor');
+      let schema = getSchemaOrFail(projectId);
+      const created: { name: string; tableId: string }[] = [];
+
+      for (const def of tableDefs) {
+        const result = addTable(schema, {
+          name: def.name,
+          comment: def.comment,
+          color: def.color,
+          group: def.group,
+          schema: def.schema,
+          withPk: def.withPk,
+        });
+        schema = result.schema;
+        created.push({ name: def.name, tableId: result.tableId });
+
+        if (def.columns) {
+          for (const col of def.columns) {
+            const colResult = addColumn(schema, result.tableId, col as any);
+            if (colResult) schema = colResult.schema;
+          }
+        }
+      }
+
+      mcpAudit('bulk_add_tables', projectId, { count: created.length });
+      saveAndNotify(projectId, schema);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ created }) }],
+      };
+    },
+  );
+
+  server.tool(
+    'bulk_add_columns',
+    'Add multiple columns to a table at once',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      tableId: z.string().max(256).describe('Table ID'),
+      columns: z.array(z.object({
+        name: z.string().max(256).optional().describe('Column name'),
+        type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Column type'),
+        length: z.number().optional().describe('Column length'),
+        scale: z.number().optional().describe('Decimal scale'),
+        nullable: z.boolean().optional().describe('Allow NULL'),
+        primaryKey: z.boolean().optional().describe('Primary key'),
+        unique: z.boolean().optional().describe('Unique'),
+        autoIncrement: z.boolean().optional().describe('Auto increment'),
+        defaultValue: z.string().max(1024).optional().describe('Default value'),
+        comment: z.string().max(4096).optional().describe('Column comment'),
+        enumValues: z.array(z.string().max(256)).max(1000).optional().describe('ENUM values'),
+        check: z.string().max(1024).optional().describe('CHECK constraint'),
+        domainId: z.string().max(256).optional().describe('Domain ID'),
+      })).min(1).max(200).describe('Array of columns to add'),
+    },
+    async ({ projectId, tableId, columns }) => {
+      requireAccess(projectId, 'editor');
+      let schema = getSchemaOrFail(projectId);
+      if (!schema.tables.find(t => t.id === tableId)) {
+        return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
+      }
+      const created: { name?: string; columnId: string }[] = [];
+      for (const col of columns) {
+        const result = addColumn(schema, tableId, col as any);
+        if (result) {
+          schema = result.schema;
+          created.push({ name: col.name, columnId: result.columnId });
+        }
+      }
+      mcpAudit('bulk_add_columns', projectId, { tableId, count: created.length });
+      saveAndNotify(projectId, schema);
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ created }) }],
+      };
+    },
+  );
+
+  // ==================
+  // SCHEMA NAMESPACE TOOLS
+  // ==================
+
+  server.tool(
+    'add_schema',
+    'Add a new schema namespace',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      name: z.string().max(256).describe('Schema namespace name'),
+    },
+    async ({ projectId, name }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchemaOrFail(projectId);
+      const updated = addSchemaNamespace(schema, name);
+      if (!updated) {
+        return { content: [{ type: 'text', text: `Schema namespace '${name}' already exists` }], isError: true };
+      }
+      mcpAudit('add_schema', projectId, { name });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: `Schema namespace '${name}' added` }] };
+    },
+  );
+
+  server.tool(
+    'delete_schema',
+    'Delete a schema namespace (tables and memos in it will become unassigned)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      name: z.string().max(256).describe('Schema namespace name to delete'),
+    },
+    async ({ projectId, name }) => {
+      requireAccess(projectId, 'editor');
+      const schema = getSchemaOrFail(projectId);
+      if (!(schema.schemas ?? []).includes(name)) {
+        return { content: [{ type: 'text', text: `Schema namespace '${name}' not found` }], isError: true };
+      }
+      const updated = deleteSchemaNamespace(schema, name);
+      mcpAudit('delete_schema', projectId, { name });
+      saveAndNotify(projectId, updated);
+      return { content: [{ type: 'text', text: `Schema namespace '${name}' deleted` }] };
+    },
+  );
+
+  // ==================
+  // SEARCH / ANALYSIS TOOLS
+  // ==================
+
+  server.tool(
+    'get_project_by_name',
+    'Find a project by name (partial match, case-insensitive)',
+    {
+      name: z.string().max(256).describe('Project name to search for'),
+    },
+    async ({ name }) => {
+      const projects = listUserProjects(db, keyInfo.userId, keyInfo.userRole, keyInfo.scopes);
+      const lower = name.toLowerCase();
+      const matches = projects.filter((p: any) => p.name?.toLowerCase().includes(lower));
+      if (matches.length === 0) {
+        return { content: [{ type: 'text', text: 'No projects found matching that name' }], isError: true };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(matches, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'get_table_by_name',
+    'Find a table by name within a project (exact or partial match)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      name: z.string().max(256).describe('Table name to search for'),
+      exact: z.boolean().optional().describe('Exact match only (default: false, partial match)'),
+    },
+    async ({ projectId, name, exact }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchemaOrFail(projectId);
+      const lower = name.toLowerCase();
+      const matches = exact
+        ? schema.tables.filter(t => t.name.toLowerCase() === lower)
+        : schema.tables.filter(t => t.name.toLowerCase().includes(lower));
+      if (matches.length === 0) {
+        return { content: [{ type: 'text', text: `No tables found matching '${name}'` }], isError: true };
+      }
+      const results = matches.map(t => ({
+        id: t.id,
+        name: t.name,
+        columns: t.columns.map(c => ({ id: c.id, name: c.name, type: c.type, primaryKey: c.primaryKey })),
+        foreignKeyCount: t.foreignKeys.length,
+        uniqueKeyCount: (t.uniqueKeys || []).length,
+        indexCount: (t.indexes || []).length,
+        group: t.group,
+        schema: t.schema,
+        comment: t.comment,
+      }));
+      return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    'search_columns',
+    'Search columns across all tables by name, type, or domain',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      name: z.string().max(256).optional().describe('Column name pattern (case-insensitive partial match)'),
+      type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Filter by column type'),
+      domainId: z.string().max(256).optional().describe('Filter by domain ID'),
+      hasNoDomain: z.boolean().optional().describe('Only columns without a domain'),
+    },
+    async ({ projectId, name, type, domainId, hasNoDomain }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchemaOrFail(projectId);
+      const results: { tableName: string; tableId: string; columnId: string; columnName: string; type: string; domainId?: string }[] = [];
+      const lowerName = name?.toLowerCase();
+
+      for (const table of schema.tables) {
+        for (const col of table.columns) {
+          if (lowerName && !col.name.toLowerCase().includes(lowerName)) continue;
+          if (type && col.type !== type) continue;
+          if (domainId && col.domainId !== domainId) continue;
+          if (hasNoDomain && col.domainId) continue;
+          results.push({
+            tableName: table.name,
+            tableId: table.id,
+            columnId: col.id,
+            columnName: col.name,
+            type: col.type,
+            domainId: col.domainId,
+          });
+        }
+      }
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ count: results.length, columns: results }, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
+    'find_orphan_tables',
+    'Find tables with no foreign key connections (neither referencing nor referenced)',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+    },
+    async ({ projectId }) => {
+      requireAccess(projectId, 'viewer');
+      const schema = getSchemaOrFail(projectId);
+
+      const connectedIds = new Set<string>();
+      for (const table of schema.tables) {
+        if (table.foreignKeys.length > 0) {
+          connectedIds.add(table.id);
+          for (const fk of table.foreignKeys) {
+            connectedIds.add(fk.referencedTableId);
+          }
+        }
+      }
+
+      const orphans = schema.tables
+        .filter(t => !connectedIds.has(t.id))
+        .map(t => ({ id: t.id, name: t.name, columnCount: t.columns.length, group: t.group, schema: t.schema }));
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ count: orphans.length, tables: orphans }, null, 2) }],
+      };
+    },
+  );
+
+  // ==================
+  // SNAPSHOT COMPARISON TOOLS
+  // ==================
+
+  server.tool(
+    'compare_snapshots',
+    'Compare two snapshots or a snapshot with the current schema and return differences',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      snapshotId: z.string().max(256).describe('First snapshot ID (or "current" for current schema)'),
+      snapshotId2: z.string().max(256).describe('Second snapshot ID (or "current" for current schema)'),
+    },
+    async ({ projectId, snapshotId, snapshotId2 }) => {
+      requireAccess(projectId, 'viewer');
+
+      const loadSnapshot = (id: string): ERDSchema => {
+        if (id === 'current') return getSchemaOrFail(projectId);
+        const row = db.prepare(
+          'SELECT data FROM schema_snapshots WHERE id = ? AND project_id = ?'
+        ).get(id, projectId) as { data: string } | undefined;
+        if (!row) throw new Error(`Snapshot ${id} not found`);
+        return JSON.parse(row.data) as ERDSchema;
+      };
+
+      const prev = loadSnapshot(snapshotId);
+      const curr = loadSnapshot(snapshotId2);
+      const diff = diffSchemas(prev, curr);
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(diff, null, 2) }],
+      };
+    },
+  );
+
+  server.tool(
+    'export_migration_sql',
+    'Generate ALTER TABLE migration SQL between two snapshots or snapshot vs current schema',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      snapshotId: z.string().max(256).describe('Base snapshot ID (or "current")'),
+      snapshotId2: z.string().max(256).describe('Target snapshot ID (or "current")'),
+      dialect: z.enum(['mysql', 'postgresql', 'mariadb', 'mssql', 'sqlite', 'oracle', 'h2']).optional().describe('SQL dialect (default: mysql)'),
+    },
+    async ({ projectId, snapshotId, snapshotId2, dialect }) => {
+      requireAccess(projectId, 'viewer');
+
+      const loadSnapshot = (id: string): ERDSchema => {
+        if (id === 'current') return getSchemaOrFail(projectId);
+        const row = db.prepare(
+          'SELECT data FROM schema_snapshots WHERE id = ? AND project_id = ?'
+        ).get(id, projectId) as { data: string } | undefined;
+        if (!row) throw new Error(`Snapshot ${id} not found`);
+        return JSON.parse(row.data) as ERDSchema;
+      };
+
+      const prev = loadSnapshot(snapshotId);
+      const curr = loadSnapshot(snapshotId2);
+      const diff = diffSchemas(prev, curr);
+      const sql = generateMigrationSQL(diff, (dialect || 'mysql') as Dialect, undefined, curr.tables);
+
+      if (!sql.trim()) {
+        return { content: [{ type: 'text', text: 'No differences found — no migration SQL needed' }] };
+      }
+      return { content: [{ type: 'text', text: sql }] };
     },
   );
 

@@ -132,7 +132,7 @@
 
 ### ~~25. AI Schema Generation~~ ✅ (MCP로 대체)
 - ~~Automatically generate a schema from a natural language description (e.g., "Create a blog system")~~
-- MCP 서버(48 tools)가 이미 구현되어 있으므로, AI 클라이언트(Claude 등)가 `add_table`, `add_column`, `add_foreign_key` 등을 직접 호출하여 스키마 생성 가능
+- MCP 서버(61 tools)가 이미 구현되어 있으므로, AI 클라이언트(Claude 등)가 `add_table`, `add_column`, `add_foreign_key` 등을 직접 호출하여 스키마 생성 가능
 - 별도 LLM 연동 기능 불필요 — MCP 인프라가 이 역할을 수행
 
 ### ~~26. Live DB Connection & Reverse Engineering~~ — Won't Do

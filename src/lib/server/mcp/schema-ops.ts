@@ -1,10 +1,7 @@
 import type { Column, ColumnDomain, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table, UniqueKey, TableIndex } from '$lib/types/erd';
 import { DOMAIN_FIELDS } from '$lib/types/erd';
 import { propagateWithHierarchy } from '$lib/utils/domain-hierarchy';
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
-}
+import { generateId } from '$lib/utils/common';
 
 function now(): string {
   return new Date().toISOString();
@@ -131,6 +128,8 @@ export function addColumn(
     defaultValue?: string;
     comment?: string;
     enumValues?: string[];
+    check?: string;
+    domainId?: string;
   },
 ): { schema: ERDSchema; columnId: string } | null {
   const table = schema.tables.find(t => t.id === tableId);
@@ -150,6 +149,8 @@ export function addColumn(
     defaultValue: column?.defaultValue,
     comment: column?.comment,
     enumValues: column?.enumValues,
+    check: column?.check,
+    domainId: column?.domainId,
   };
 
   // PK implies NOT NULL
@@ -665,6 +666,52 @@ export function renameGroup(
   }
 
   return { ...schema, tables, groupColors, updatedAt: now() };
+}
+
+// ---- Delete multiple tables ----
+
+export function deleteTables(schema: ERDSchema, tableIds: string[]): ERDSchema {
+  const idSet = new Set(tableIds);
+  return {
+    ...schema,
+    tables: schema.tables
+      .filter(t => !idSet.has(t.id))
+      .map(t => ({
+        ...t,
+        foreignKeys: t.foreignKeys.filter(fk => !idSet.has(fk.referencedTableId)),
+      })),
+    memos: (schema.memos ?? []).map(m =>
+      m.attachedTableId && idSet.has(m.attachedTableId)
+        ? { ...m, attachedTableId: undefined }
+        : m
+    ),
+    updatedAt: now(),
+  };
+}
+
+// ---- Schema namespace CRUD ----
+
+export function addSchemaNamespace(
+  schema: ERDSchema,
+  name: string,
+): ERDSchema | null {
+  const schemas = schema.schemas ?? [];
+  if (schemas.includes(name)) return null;
+  return { ...schema, schemas: [...schemas, name], updatedAt: now() };
+}
+
+export function deleteSchemaNamespace(
+  schema: ERDSchema,
+  name: string,
+): ERDSchema {
+  const schemas = (schema.schemas ?? []).filter(s => s !== name);
+  const tables = schema.tables.map(t =>
+    t.schema === name ? { ...t, schema: undefined } : t
+  );
+  const memos = (schema.memos ?? []).map(m =>
+    m.schema === name ? { ...m, schema: undefined } : m
+  );
+  return { ...schema, schemas, tables, memos, updatedAt: now() };
 }
 
 // ---- Rename schema namespace ----
