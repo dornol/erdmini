@@ -492,7 +492,7 @@ export function createMcpServer(
     {
       projectId: z.string().max(256).describe('Project ID'),
       group: z.string().max(256).describe('Group name'),
-      color: z.string().max(32).optional().describe('CSS color value (e.g. "#ff6600"). Omit or empty string to clear'),
+      color: z.enum(TABLE_COLOR_IDS as [string, ...string[]]).optional().describe('Color ID: red, orange, amber, green, teal, blue, purple, pink, lime, cyan, indigo, rose, slate, brown. Omit to clear'),
     },
     async ({ projectId, group, color }) => {
       requireAccess(projectId, 'editor');
