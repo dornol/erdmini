@@ -663,8 +663,7 @@
     --erd-card-shadow: none;
     --erd-header-text-transform: none;
     --erd-header-letter-spacing: normal;
-    background-image: radial-gradient(circle, #e0e0e0 0.5px, transparent 0.5px);
-    background-size: 24px 24px;
+    background-image: radial-gradient(circle, #c8c8c8 0.8px, transparent 0.8px);
     --erd-card-bg: white;
     --erd-card-border: #e5e5e5;
     --erd-card-border-width: 1px;

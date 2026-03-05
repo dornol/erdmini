@@ -24,7 +24,7 @@
 		document.documentElement.lang = languageStore.current;
 	});
 
-	// Sanitize JSON-LD to prevent </script> injection inside {@html}
+	// Sanitize JSON-LD to prevent script injection
 	function safeJsonLd(obj: Record<string, unknown>): string {
 		return JSON.stringify(obj).replace(/<\//g, '<\\/');
 	}

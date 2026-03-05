@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { erdStore, canvasState, type ColumnDisplayMode, type LineType } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
@@ -57,12 +57,13 @@
   let lintIssueCount = $derived(lintSchema(erdStore.schema).length);
 
   // Dropdown state — only one open at a time
-  type DropdownId = 'project' | 'file' | 'tools' | 'settings' | 'shortcuts' | 'userMenu';
+  type DropdownId = 'project' | 'import' | 'export' | 'tools' | 'settings' | 'shortcuts' | 'userMenu';
   let activeDropdown = $state<DropdownId | null>(null);
   function toggleDropdown(id: DropdownId) { activeDropdown = activeDropdown === id ? null : id; }
   function closeDropdown() { activeDropdown = null; }
   let projectOpen = $derived(activeDropdown === 'project');
-  let fileOpen = $derived(activeDropdown === 'file');
+  let importOpen = $derived(activeDropdown === 'import');
+  let exportOpen = $derived(activeDropdown === 'export');
   let toolsOpen = $derived(activeDropdown === 'tools');
   let settingsOpen = $derived(activeDropdown === 'settings');
   let shortcutsOpen = $derived(activeDropdown === 'shortcuts');
@@ -453,18 +454,6 @@
   let showDiffModal = $state(false);
   let showSnapshotPanel = $state(false);
 
-  const VIEW_MODES: { mode: ColumnDisplayMode; label: () => string }[] = [
-    { mode: 'all', label: () => m.view_mode_all() },
-    { mode: 'pk-fk-only', label: () => m.view_mode_pk_fk() },
-    { mode: 'names-only', label: () => m.view_mode_names_only() },
-  ];
-
-  const LINE_TYPES: { type: LineType; label: () => string }[] = [
-    { type: 'bezier', label: () => m.line_type_bezier() },
-    { type: 'straight', label: () => m.line_type_straight() },
-    { type: 'orthogonal', label: () => m.line_type_orthogonal() },
-  ];
-
   // Shared projects
   interface SharedProject {
     projectId: string;
@@ -731,41 +720,60 @@
     <button class="btn-primary" onclick={addTable} disabled={permissionStore.isReadOnly}>
       {m.toolbar_add_table()}
     </button>
-    <button class="btn-secondary" onclick={addMemo} disabled={permissionStore.isReadOnly}>
+    <button class="btn-memo" onclick={addMemo} disabled={permissionStore.isReadOnly}>
       {m.toolbar_add_memo()}
     </button>
 
     <span class="separator"></span>
 
-    <!-- File dropdown (Import + Export merged) -->
+    <!-- Import dropdown -->
     <div class="dropdown-wrap">
       <button
         class="btn-secondary"
-        onclick={() => (toggleDropdown('file'))}
-        aria-expanded={fileOpen}
+        onclick={() => (toggleDropdown('import'))}
+        aria-expanded={importOpen}
         aria-haspopup="menu"
       >
-        {m.toolbar_file()} ▾
+        {m.toolbar_import()} ▾
       </button>
-      {#if fileOpen}
+      {#if importOpen}
         <div
           class="dropdown-menu"
           role="menu"
           tabindex="-1"
           onmouseleave={() => (closeDropdown())}
         >
-          <div class="dropdown-section-label">{m.toolbar_import()}</div>
           <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'import'; closeDropdown(); }}>
             DDL
           </button>
           <button class="dropdown-item" role="menuitem" onclick={() => { importJson(); closeDropdown(); }}>
             JSON
           </button>
+          <div class="dropdown-sep"></div>
           <button class="dropdown-item" role="menuitem" onclick={() => { importBackup(); closeDropdown(); }}>
             {m.toolbar_restore_all()}
           </button>
-          <div class="dropdown-sep"></div>
-          <div class="dropdown-section-label">{m.toolbar_export()}</div>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Export dropdown -->
+    <div class="dropdown-wrap">
+      <button
+        class="btn-secondary"
+        onclick={() => (toggleDropdown('export'))}
+        aria-expanded={exportOpen}
+        aria-haspopup="menu"
+      >
+        {m.toolbar_export()} ▾
+      </button>
+      {#if exportOpen}
+        <div
+          class="dropdown-menu"
+          role="menu"
+          tabindex="-1"
+          onmouseleave={() => (closeDropdown())}
+        >
           <button class="dropdown-item" role="menuitem" onclick={() => { modalMode = 'export'; closeDropdown(); }}>
             DDL
           </button>
@@ -793,7 +801,7 @@
     <div class="dropdown-wrap">
       <button
         class="btn-secondary btn-tools"
-        class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showSnapshotPanel || showDomainModal || canvasState.columnDisplayMode !== 'all'}
+        class:tools-active={showLintPanel || showHistoryPanel || showDiffModal || showSnapshotPanel || showDomainModal}
         onclick={() => (toggleDropdown('tools'))}
         aria-expanded={toolsOpen}
         aria-haspopup="menu"
@@ -820,30 +828,6 @@
               <span class="lint-badge">{lintIssueCount}</span>
             {/if}
           </button>
-          <div class="dropdown-sep"></div>
-          <div class="dropdown-section-label">{m.view_mode_title()}</div>
-          {#each VIEW_MODES as vm}
-            <button
-              class="dropdown-item"
-              class:active={canvasState.columnDisplayMode === vm.mode}
-              role="menuitem"
-              onclick={() => { canvasState.columnDisplayMode = vm.mode; closeDropdown(); }}
-            >
-              {vm.label()}
-            </button>
-          {/each}
-          <div class="dropdown-sep"></div>
-          <div class="dropdown-section-label">{m.line_type_title()}</div>
-          {#each LINE_TYPES as lt}
-            <button
-              class="dropdown-item"
-              class:active={canvasState.lineType === lt.type}
-              role="menuitem"
-              onclick={() => { canvasState.lineType = lt.type; closeDropdown(); }}
-            >
-              {lt.label()}
-            </button>
-          {/each}
           <div class="dropdown-sep"></div>
           <button class="dropdown-item" role="menuitem" onclick={() => { showHistoryPanel = !showHistoryPanel; closeDropdown(); }}>
             {m.history_title()}
@@ -1268,6 +1252,28 @@
 
   .btn-primary:hover {
     background: #2563eb;
+  }
+
+  .btn-memo {
+    background: #f59e0b;
+    color: #1e293b;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .btn-memo:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-memo:hover {
+    background: #d97706;
   }
 
   .btn-secondary {

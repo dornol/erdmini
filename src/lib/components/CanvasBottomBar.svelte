@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { erdStore, canvasState } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState, type ColumnDisplayMode, type LineType } from '$lib/store/erd.svelte';
   import { computeLayout } from '$lib/utils/auto-layout';
   import type { LayoutType, LayoutOptions } from '$lib/utils/auto-layout';
   import { HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
@@ -7,11 +7,29 @@
   import { now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
 
-  let activeDropdown = $state<'layout' | 'align' | null>(null);
-  function toggleDropdown(id: 'layout' | 'align') { activeDropdown = activeDropdown === id ? null : id; }
+  type BarDropdown = 'layout' | 'columns' | 'lines' | 'align';
+  let activeDropdown = $state<BarDropdown | null>(null);
+  function toggleDropdown(id: BarDropdown) { activeDropdown = activeDropdown === id ? null : id; }
   function closeDropdown() { activeDropdown = null; }
   let layoutOpen = $derived(activeDropdown === 'layout');
+  let columnsOpen = $derived(activeDropdown === 'columns');
+  let linesOpen = $derived(activeDropdown === 'lines');
   let alignOpen = $derived(activeDropdown === 'align');
+
+  const VIEW_MODES: { mode: ColumnDisplayMode; label: () => string; short: () => string }[] = [
+    { mode: 'all', label: () => m.view_mode_all(), short: () => m.view_mode_all() },
+    { mode: 'pk-fk-only', label: () => m.view_mode_pk_fk(), short: () => 'PK/FK' },
+    { mode: 'names-only', label: () => m.view_mode_names_only(), short: () => m.view_mode_names_only() },
+  ];
+
+  const LINE_TYPES: { type: LineType; label: () => string }[] = [
+    { type: 'bezier', label: () => m.line_type_bezier() },
+    { type: 'straight', label: () => m.line_type_straight() },
+    { type: 'orthogonal', label: () => m.line_type_orthogonal() },
+  ];
+
+  let currentViewLabel = $derived(VIEW_MODES.find(v => v.mode === canvasState.columnDisplayMode)?.short() ?? '');
+  let currentLineLabel = $derived(LINE_TYPES.find(l => l.type === canvasState.lineType)?.label() ?? '');
 
   // Auto-arrange
   function applyLayout(type: LayoutType, options?: LayoutOptions) {
@@ -151,6 +169,68 @@
             </button>
           {/each}
         {/if}
+      </div>
+    {/if}
+  </div>
+
+  <!-- Column display mode dropdown -->
+  <div class="bar-dropdown-wrap">
+    <button
+      class="bar-btn"
+      onclick={() => toggleDropdown('columns')}
+      aria-expanded={columnsOpen}
+      aria-haspopup="menu"
+      title={m.view_mode_title()}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+        <rect x="1" y="2" width="14" height="3" rx="0.5"/>
+        <rect x="1" y="7" width="14" height="3" rx="0.5"/>
+        <rect x="1" y="12" width="14" height="3" rx="0.5" opacity="0.4"/>
+      </svg>
+      <span class="bar-btn-label">{currentViewLabel}</span>
+    </button>
+    {#if columnsOpen}
+      <div class="bar-dropdown-menu" role="menu" tabindex="-1" onmouseleave={() => closeDropdown()}>
+        {#each VIEW_MODES as vm}
+          <button
+            class="bar-dropdown-item"
+            class:bar-dropdown-item-active={canvasState.columnDisplayMode === vm.mode}
+            role="menuitem"
+            onclick={() => { canvasState.columnDisplayMode = vm.mode; closeDropdown(); }}
+          >
+            {vm.label()}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <!-- Line style dropdown -->
+  <div class="bar-dropdown-wrap">
+    <button
+      class="bar-btn"
+      onclick={() => toggleDropdown('lines')}
+      aria-expanded={linesOpen}
+      aria-haspopup="menu"
+      title={m.line_type_title()}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+        <path d="M2 14 C2 6, 14 10, 14 2"/>
+      </svg>
+      <span class="bar-btn-label">{currentLineLabel}</span>
+    </button>
+    {#if linesOpen}
+      <div class="bar-dropdown-menu" role="menu" tabindex="-1" onmouseleave={() => closeDropdown()}>
+        {#each LINE_TYPES as lt}
+          <button
+            class="bar-dropdown-item"
+            class:bar-dropdown-item-active={canvasState.lineType === lt.type}
+            role="menuitem"
+            onclick={() => { canvasState.lineType = lt.type; closeDropdown(); }}
+          >
+            {lt.label()}
+          </button>
+        {/each}
       </div>
     {/if}
   </div>
@@ -331,6 +411,11 @@
   .bar-dropdown-item:hover {
     background: var(--erd-zoom-border);
     color: var(--erd-zoom-btn);
+  }
+
+  .bar-dropdown-item-active {
+    color: var(--erd-zoom-btn);
+    font-weight: 600;
   }
 
   .bar-dropdown-divider {
