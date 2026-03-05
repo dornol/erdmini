@@ -18,6 +18,7 @@
   import SnapshotPanel from './SnapshotPanel.svelte';
   import ShareProjectModal from './ShareProjectModal.svelte';
   import ApiKeysModal from './ApiKeysModal.svelte';
+  import EmbedModal from './EmbedModal.svelte';
   import * as m from '$lib/paraglide/messages';
   import { authStore } from '$lib/store/auth.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
@@ -447,6 +448,7 @@
   }
 
   let showShareModal = $state(false);
+  let showEmbedModal = $state(false);
   let showHistoryPanel = $state(false);
   let showDiffModal = $state(false);
   let showSnapshotPanel = $state(false);
@@ -852,6 +854,12 @@
           <button class="dropdown-item" role="menuitem" onclick={() => { showSnapshotPanel = !showSnapshotPanel; closeDropdown(); }}>
             {m.toolbar_snapshots()}
           </button>
+          {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
+            <div class="dropdown-sep"></div>
+            <button class="dropdown-item" role="menuitem" onclick={() => { showEmbedModal = true; closeDropdown(); }}>
+              {m.embed_title()}
+            </button>
+          {/if}
         </div>
       {/if}
     </div>
@@ -1134,6 +1142,10 @@
 
 {#if showApiKeysModal}
   <ApiKeysModal onclose={() => (showApiKeysModal = false)} />
+{/if}
+
+{#if showEmbedModal}
+  <EmbedModal onclose={() => (showEmbedModal = false)} />
 {/if}
 
 {#if showChangePassword}

@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
 
 // Public paths that don't require auth
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/oidc', '/robots.txt', '/sitemap.xml', '/llms.txt', '/mcp'];
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/oidc', '/robots.txt', '/sitemap.xml', '/llms.txt', '/mcp', '/embed', '/api/embed/view'];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(p => pathname.startsWith(p));
@@ -64,7 +64,9 @@ export const handle: Handle = async ({ event, resolve }) => {
   const response = await resolve(event);
 
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
+  if (!event.url.pathname.startsWith('/embed')) {
+    response.headers.set('X-Frame-Options', 'DENY');
+  }
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
   return response;

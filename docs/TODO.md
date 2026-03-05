@@ -163,13 +163,14 @@
 - ~~SQLite migration V008: `is_auto` column on `schema_snapshots`~~
 - ~~Collab mode: only lexicographically first peer creates auto-snapshots~~
 
-### 30. iframe Embed (Read-Only View)
-- 읽기 전용 다이어그램 뷰를 iframe으로 외부 사이트에 삽입
-- `/embed/:projectId` 라우트: 캔버스 + 테이블 + FK 라인만 렌더링 (Toolbar/Sidebar/Editor 제거)
-- 줌/패닝만 가능, 편집 불가
-- 서버 모드: 프로젝트별 공개/비공개 설정, 선택적 비밀번호 보호
-- 로컬 모드: URL 파라미터에 스키마 JSON 인코딩 (gzip + base64) 또는 공유 링크
-- 반응형 크기 조절 (`postMessage` 기반 auto-resize)
+### ~~30. iframe Embed (Read-Only View)~~ ✅
+- ~~읽기 전용 다이어그램 뷰를 iframe으로 외부 사이트에 삽입~~
+- ~~`/embed/[token]` 라우트: 캔버스 + 테이블 + FK 라인 + 메모 + SchemaTabBar 렌더링 (Toolbar/Sidebar/Editor 제거)~~
+- ~~줌/패닝만 가능, 편집 불가 (permissionStore → viewer)~~
+- ~~서버 모드 전용: 토큰 기반 접근 + 선택적 비밀번호 보호 (argon2) + 만료일 설정~~
+- ~~EmbedModal: 토큰 생성/삭제, URL/iframe 코드 복사~~
+- ~~embed_tokens SQLite 테이블 (V009 마이그레이션), hooks.server.ts X-Frame-Options 조건부 해제~~
+- ~~프로젝트 삭제 시 embed 토큰 cascade 삭제~~
 - Difficulty: Medium
 
 ### 31. DBML Import / Export
