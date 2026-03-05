@@ -3,25 +3,12 @@ import type { StorageProvider } from '$lib/storage/types';
 import { erdStore, defaultSchema, canvasState } from '$lib/store/erd.svelte';
 import { snapshotStore } from '$lib/store/snapshot.svelte';
 import { generateId, now } from '$lib/utils/common';
+import { normalizeSchema } from '$lib/utils/schema-normalize';
 
 function migrateSchema(raw: string): ERDSchema {
   try {
     const parsed = JSON.parse(raw) as ERDSchema;
-    if (!parsed.domains) parsed.domains = [];
-    for (const table of parsed.tables) {
-      if (!table.uniqueKeys) table.uniqueKeys = [];
-      if (!table.indexes) table.indexes = [];
-      for (const fk of table.foreignKeys) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const r = fk as any;
-        if (r.columnId && !fk.columnIds) {
-          fk.columnIds = [r.columnId];
-          fk.referencedColumnIds = [r.referencedColumnId];
-          delete r.columnId;
-          delete r.referencedColumnId;
-        }
-      }
-    }
+    normalizeSchema(parsed);
     return parsed;
   } catch {
     return defaultSchema();
@@ -30,6 +17,7 @@ function migrateSchema(raw: string): ERDSchema {
 
 class ProjectStore {
   index = $state<ProjectIndex>({ version: '1', activeProjectId: '', projects: [] });
+  storageFull = $state(false);
   private _initialized = $state(false);
   private provider!: StorageProvider;
   private _saving = false;
@@ -129,14 +117,14 @@ class ProjectStore {
       await this.provider.saveCanvasState(id, {
         x: canvasState.x, y: canvasState.y, scale: canvasState.scale,
       });
-      erdStore.storageFull = false;
+      this.storageFull = false;
       const meta = this.index.projects.find((p) => p.id === id);
       if (meta) {
         meta.updatedAt = now();
         await this.saveIndex();
       }
     } catch {
-      erdStore.storageFull = true;
+      this.storageFull = true;
     } finally {
       this._saving = false;
     }

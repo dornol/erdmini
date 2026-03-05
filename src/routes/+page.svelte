@@ -15,6 +15,7 @@
   import { erdStore, canvasState, type ColumnDisplayMode, type LineType } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
+  import { downloadBlob } from '$lib/utils/blob-download';
   import type { ERDSchema } from '$lib/types/erd';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
@@ -579,17 +580,11 @@
       </div>
     {:else}
       <!-- Normal Mode -->
-      {#if erdStore.storageFull && !storageBannerDismissed}
+      {#if projectStore.storageFull && !storageBannerDismissed}
         <div class="storage-banner">
           <span class="storage-msg">{m.storage_full_warning()}</span>
           <button class="storage-export-btn" onclick={() => {
-            const blob = new Blob([JSON.stringify($state.snapshot(erdStore.schema), null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'erdmini-backup.json';
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadBlob(JSON.stringify($state.snapshot(erdStore.schema), null, 2), 'erdmini-backup.json', 'application/json');
           }}>{m.storage_full_export()}</button>
           <button class="storage-close-btn" onclick={() => (storageBannerDismissed = true)}>✕</button>
         </div>

@@ -6,6 +6,7 @@
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL, DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
+  import { downloadBlob } from '$lib/utils/blob-download';
   import { exportPrisma } from '$lib/utils/prisma-export';
   import { exportDBML } from '$lib/utils/dbml-export';
   import { importDDL, type DDLImportMessages } from '$lib/utils/ddl-import';
@@ -93,23 +94,9 @@
 
   function downloadFile() {
     const projName = sanitizeFilename(projectStore.activeProject?.name ?? 'schema');
-    const blob = new Blob([exportText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    if (exportFormat === 'mermaid') {
-      a.download = `erdmini_${projName}.mmd`;
-    } else if (exportFormat === 'plantuml') {
-      a.download = `erdmini_${projName}.puml`;
-    } else if (exportFormat === 'prisma') {
-      a.download = `erdmini_${projName}.prisma`;
-    } else if (exportFormat === 'dbml') {
-      a.download = `erdmini_${projName}.dbml`;
-    } else {
-      a.download = `erdmini_${projName}_${exportDialect}.sql`;
-    }
-    a.click();
-    URL.revokeObjectURL(url);
+    const extMap: Record<string, string> = { mermaid: '.mmd', plantuml: '.puml', prisma: '.prisma', dbml: '.dbml' };
+    const ext = extMap[exportFormat] ?? `_${exportDialect}.sql`;
+    downloadBlob(exportText, `erdmini_${projName}${ext}`, 'text/plain');
   }
 
   function openFile() {

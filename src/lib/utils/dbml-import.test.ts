@@ -489,12 +489,12 @@ describe('importDBML', () => {
         Table t5 { id int [pk] }
       `);
       // First row
-      expect(result.tables[0].position.x).toBe(50);
-      expect(result.tables[0].position.y).toBe(50);
-      expect(result.tables[1].position.x).toBe(350); // 300 + 50
+      expect(result.tables[0].position.x).toBe(40);
+      expect(result.tables[0].position.y).toBe(40);
+      expect(result.tables[1].position.x).toBe(340); // 300 + 40
       // Second row (5th table)
-      expect(result.tables[4].position.x).toBe(50);
-      expect(result.tables[4].position.y).toBe(270); // 220 + 50
+      expect(result.tables[4].position.x).toBe(40);
+      expect(result.tables[4].position.y).toBe(260); // 220 + 40
     });
   });
 

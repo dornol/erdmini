@@ -8,6 +8,7 @@
   import { generateMigrationSQL } from '$lib/utils/migration-sql';
   import * as m from '$lib/paraglide/messages';
   import { resolveHistoryLabel } from '$lib/utils/history-labels';
+  import { downloadBlob } from '$lib/utils/blob-download';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -104,13 +105,7 @@
   }
 
   function downloadSql() {
-    const blob = new Blob([migrationSql], { type: 'text/sql;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `migration_${migrationDialect}_${new Date().toISOString().slice(0, 10)}.sql`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(migrationSql, `migration_${migrationDialect}_${new Date().toISOString().slice(0, 10)}.sql`, 'text/sql;charset=utf-8');
   }
 
   function handleFileUpload() {

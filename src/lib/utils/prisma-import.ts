@@ -26,10 +26,7 @@ import type {
 import type { Column, ColumnType, ReferentialAction, Table, UniqueKey, TableIndex } from '$lib/types/erd';
 import type { ImportResult } from '$lib/utils/ddl-import-types';
 import { generateId } from '$lib/utils/common';
-
-const GRID_COLS = 4;
-const GRID_GAP_X = 300;
-const GRID_GAP_Y = 220;
+import { IMPORT_GRID_COLS, IMPORT_GRID_GAP_X, IMPORT_GRID_GAP_Y, IMPORT_GRID_OFFSET } from '$lib/constants/layout';
 
 // Prisma scalar type → ERD ColumnType
 const PRISMA_TYPE_MAP: Record<string, ColumnType> = {
@@ -446,8 +443,8 @@ export function importPrisma(
       warnings.push(msg.noPkWarning({ model: tableName }));
     }
 
-    const col = tableIndex % GRID_COLS;
-    const row = Math.floor(tableIndex / GRID_COLS);
+    const col = tableIndex % IMPORT_GRID_COLS;
+    const row = Math.floor(tableIndex / IMPORT_GRID_COLS);
 
     tables.push({
       id: tableId,
@@ -456,7 +453,7 @@ export function importPrisma(
       foreignKeys: [],
       uniqueKeys,
       indexes,
-      position: { x: 40 + col * GRID_GAP_X, y: 40 + row * GRID_GAP_Y },
+      position: { x: IMPORT_GRID_OFFSET + col * IMPORT_GRID_GAP_X, y: IMPORT_GRID_OFFSET + row * IMPORT_GRID_GAP_Y },
       comment: tableComment,
     });
     tableIndex++;

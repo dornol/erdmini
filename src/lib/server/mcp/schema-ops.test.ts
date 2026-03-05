@@ -435,6 +435,17 @@ describe('deleteColumn', () => {
     expect(result.tables[0].uniqueKeys).toHaveLength(1);
     expect(result.tables[0].uniqueKeys![0].id).toBe('uk2');
   });
+
+  it('removes indexes that include the deleted column', () => {
+    const s = emptySchema();
+    s.tables = [makeTable('t1', {
+      columns: [makeCol('c1', 'a'), makeCol('c2', 'b')],
+      indexes: [{ id: 'idx1', columnIds: ['c1'], unique: false }, { id: 'idx2', columnIds: ['c2'], unique: false }],
+    })];
+    const result = deleteColumn(s, 't1', 'c1');
+    expect(result.tables[0].indexes).toHaveLength(1);
+    expect(result.tables[0].indexes![0].id).toBe('idx2');
+  });
 });
 
 // ═══════════════════════════════════════════

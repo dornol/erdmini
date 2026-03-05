@@ -6,6 +6,7 @@
   import { exportPdf } from '$lib/utils/pdf-export';
   import { exportCanvasImage } from '$lib/utils/image-export';
   import { sanitizeFilename } from '$lib/utils/common';
+  import { downloadBlob } from '$lib/utils/blob-download';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -19,25 +20,13 @@
 
   function exportJson() {
     const json = JSON.stringify(erdStore.schema, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'schema')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(json, `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'schema')}.json`, 'application/json');
   }
 
   function exportSvgFile() {
     const svg = exportSvg(erdStore.schema, themeStore.current, canvasState.lineType);
     if (!svg) return;
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'diagram')}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(svg, `erdmini_${sanitizeFilename(projectStore.activeProject?.name ?? 'diagram')}.svg`, 'image/svg+xml');
   }
 
   async function exportPdfFile() {
@@ -56,13 +45,7 @@
 
   async function exportBackup() {
     const json = await projectStore.exportAll();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `erdmini_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(json, `erdmini_backup_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
   }
 </script>
 

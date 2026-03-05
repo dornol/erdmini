@@ -201,6 +201,7 @@ export function deleteColumn(schema: ERDSchema, tableId: string, columnId: strin
           columns: t.columns.filter(c => c.id !== columnId),
           foreignKeys: t.foreignKeys.filter(fk => !fk.columnIds.includes(columnId)),
           uniqueKeys: (t.uniqueKeys || []).filter(uk => !uk.columnIds.includes(columnId)),
+          indexes: (t.indexes || []).filter(idx => !idx.columnIds.includes(columnId)),
         };
       }
       // Remove FKs in other tables that reference this column

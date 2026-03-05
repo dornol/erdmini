@@ -1,21 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
-import { hasProjectAccess } from '$lib/server/auth/permissions';
-
-function getUserInfo(locals: App.Locals) {
-  return {
-    id: locals.user?.id ?? 'singleton',
-    role: locals.user?.role ?? 'user',
-    isLocal: !locals.user,
-  };
-}
+import { getUserInfo, checkProjectAccess } from '$lib/server/auth/guards';
 
 export const GET: RequestHandler = ({ params, locals }) => {
-  const user = getUserInfo(locals);
-  if (!user.isLocal && !hasProjectAccess(db, params.id, user.id, user.role, 'viewer')) {
-    return json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const err = checkProjectAccess(db, locals, params.id, 'viewer');
+  if (err) return err;
 
   const rows = db.prepare(
     'SELECT id, name, description, data, created_at, is_auto FROM schema_snapshots WHERE project_id = ? ORDER BY created_at DESC'
@@ -32,12 +22,14 @@ export const GET: RequestHandler = ({ params, locals }) => {
 };
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
-  const user = getUserInfo(locals);
-  if (!user.isLocal && !hasProjectAccess(db, params.id, user.id, user.role, 'editor')) {
-    return json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const err = checkProjectAccess(db, locals, params.id, 'editor');
+  if (err) return err;
 
   const body = await request.json();
+  if (!body || typeof body !== 'object' || typeof body.id !== 'string' || typeof body.name !== 'string' || typeof body.snap !== 'string') {
+    return json({ error: 'Invalid snapshot: id, name, and snap are required strings' }, { status: 400 });
+  }
+  const user = getUserInfo(locals);
   db.prepare(
     'INSERT INTO schema_snapshots (id, project_id, name, description, data, created_at, created_by, is_auto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(body.id, params.id, body.name, body.description || null, body.snap, body.createdAt, user.id, body.isAuto ? 1 : 0);

@@ -1,10 +1,7 @@
 import type { Column, ColumnType, ReferentialAction, Table, UniqueKey, TableIndex } from '$lib/types/erd';
 import type { ImportResult } from '$lib/utils/ddl-import-types';
 import { generateId } from '$lib/utils/common';
-
-const GRID_COLS = 4;
-const GRID_GAP_X = 300;
-const GRID_GAP_Y = 220;
+import { IMPORT_GRID_COLS, IMPORT_GRID_GAP_X, IMPORT_GRID_GAP_Y, IMPORT_GRID_OFFSET } from '$lib/constants/layout';
 
 export interface DBMLImportMessages {
   noTables: () => string;
@@ -216,8 +213,8 @@ export function importDBML(
       uniqueKeys,
       indexes,
       position: {
-        x: (idx % GRID_COLS) * GRID_GAP_X + 50,
-        y: Math.floor(idx / GRID_COLS) * GRID_GAP_Y + 50,
+        x: (idx % IMPORT_GRID_COLS) * IMPORT_GRID_GAP_X + IMPORT_GRID_OFFSET,
+        y: Math.floor(idx / IMPORT_GRID_COLS) * IMPORT_GRID_GAP_Y + IMPORT_GRID_OFFSET,
       },
       ...(schema ? { schema } : {}),
       ...(tableNote ? { comment: tableNote } : {}),

@@ -1,7 +1,12 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { generateId, now } from '$lib/utils/common';
-import { TABLE_W } from '$lib/constants/layout';
 import { propagateWithHierarchy, getDescendantIds } from '$lib/utils/domain-hierarchy';
+import { normalizeSchema } from '$lib/utils/schema-normalize';
+import { canvasState } from '$lib/store/canvas.svelte';
+
+// Re-export for backward compatibility
+export { canvasState } from '$lib/store/canvas.svelte';
+export type { ColumnDisplayMode, LineType } from '$lib/store/canvas.svelte';
 
 function getNextTableName(tables: Table[]): string {
   let i = 1;
@@ -21,20 +26,6 @@ export function defaultSchema(): ERDSchema {
   };
 }
 
-function migrateFK(schema: ERDSchema) {
-  for (const table of schema.tables) {
-    for (const fk of table.foreignKeys) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = fk as any;
-      if (raw.columnId && !fk.columnIds) {
-        fk.columnIds = [raw.columnId];
-        fk.referencedColumnIds = [raw.referencedColumnId];
-        delete raw.columnId;
-        delete raw.referencedColumnId;
-      }
-    }
-  }
-}
 
 export type HistoryEntry = { snap: string; label: string; detail: string; time: number };
 
@@ -52,8 +43,6 @@ class ERDStore {
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
   hoveredUkInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
   hoveredIdxInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
-  storageFull = $state(false);
-
   // Undo/Redo
   private _undoStack: HistoryEntry[] = [];
   private _redoStack: HistoryEntry[] = [];
@@ -147,10 +136,7 @@ class ERDStore {
   }
 
   addTable(viewportWidth = 800, viewportHeight = 600) {
-    const { x, y, scale } = canvasState;
-    const worldX = (viewportWidth / 2 - x) / scale;
-    const worldY = (viewportHeight / 2 - y) / scale;
-
+    const { x: worldX, y: worldY } = canvasState.viewportCenterToWorld(viewportWidth, viewportHeight);
     const id = generateId();
     const name = getNextTableName(this.schema.tables);
     const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
@@ -392,6 +378,10 @@ class ERDStore {
     // Remove UniqueKeys that reference this column
     if (table.uniqueKeys) {
       table.uniqueKeys = table.uniqueKeys.filter((uk) => !uk.columnIds.includes(columnId));
+    }
+    // Remove Indexes that reference this column
+    if (table.indexes) {
+      table.indexes = table.indexes.filter((idx) => !idx.columnIds.includes(columnId));
     }
     // Remove FKs in other tables that reference this column
     for (const t of this.schema.tables) {
@@ -648,9 +638,7 @@ class ERDStore {
 
   // Memo CRUD
   addMemo(viewportWidth = 800, viewportHeight = 600) {
-    const { x, y, scale } = canvasState;
-    const worldX = (viewportWidth / 2 - x) / scale;
-    const worldY = (viewportHeight / 2 - y) / scale;
+    const { x: worldX, y: worldY } = canvasState.viewportCenterToWorld(viewportWidth, viewportHeight);
     const id = generateId();
     const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
     const memo: Memo = {
@@ -794,16 +782,7 @@ class ERDStore {
   }
 
   loadSchema(schema: ERDSchema) {
-    if (!schema.domains) schema.domains = [];
-    if (!schema.memos) schema.memos = [];
-    if (!schema.groupColors) schema.groupColors = {};
-    migrateFK(schema);
-    for (const table of schema.tables) {
-      if (!table.uniqueKeys) table.uniqueKeys = [];
-      for (const col of table.columns) {
-        if (col.primaryKey && col.nullable) col.nullable = false;
-      }
-    }
+    normalizeSchema(schema);
     this.schema = schema;
     this.schema.updatedAt = now();
     this.selectedTableId = null;
@@ -821,37 +800,3 @@ class ERDStore {
 }
 
 export const erdStore = new ERDStore();
-
-export type ColumnDisplayMode = 'all' | 'pk-fk-only' | 'names-only';
-export type LineType = 'bezier' | 'straight' | 'orthogonal';
-
-class CanvasState {
-  x = $state(0);
-  y = $state(0);
-  scale = $state(1);
-  snapToGrid = $state(false);
-  showGrid = $state(true);
-  gridSize = 20;
-  columnDisplayMode = $state<ColumnDisplayMode>('all');
-  lineType = $state<LineType>('bezier');
-  tableWidths = $state<Map<string, number>>(new Map());
-  activeSchema = $state<string>('(all)');
-  schemaViewports = $state<Record<string, { x: number; y: number; scale: number }>>({});
-
-  snap(v: number): number {
-    return this.snapToGrid ? Math.round(v / this.gridSize) * this.gridSize : v;
-  }
-
-  getTableW(tableId: string): number {
-    return this.tableWidths.get(tableId) ?? TABLE_W;
-  }
-
-  setTableWidth(tableId: string, width: number) {
-    if (this.tableWidths.get(tableId) !== width) {
-      this.tableWidths.set(tableId, width);
-      this.tableWidths = new Map(this.tableWidths);
-    }
-  }
-}
-
-export const canvasState = new CanvasState();

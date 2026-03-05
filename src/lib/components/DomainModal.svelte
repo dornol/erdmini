@@ -6,6 +6,7 @@
   import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
   import { buildDomainTree, type DomainTreeNode } from '$lib/utils/domain-hierarchy';
   import * as m from '$lib/paraglide/messages';
+  import { downloadBlob } from '$lib/utils/blob-download';
   import DomainCoverageDashboard from './DomainCoverageDashboard.svelte';
   import DomainEditForm from './DomainEditForm.svelte';
 
@@ -31,16 +32,6 @@
 
   // Dictionary dropdown
   let showDictDropdown = $state(false);
-
-  function downloadBlob(content: string, filename: string, mimeType: string) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
 
   function handleDictExport(format: 'html' | 'markdown' | 'xlsx') {
     showDictDropdown = false;
