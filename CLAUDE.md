@@ -98,7 +98,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (43 test files, 1850 tests)
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (43 test files, 1857 tests)
 - 41 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos, schemas)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts

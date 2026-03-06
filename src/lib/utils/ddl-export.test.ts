@@ -1085,3 +1085,65 @@ describe('exportDDL — MSSQL schema in sp_addextendedproperty', () => {
     expect(ddl).toContain("@level0name=N'dbo'");
   });
 });
+
+describe('exportDDL — FK label (UI-only field)', () => {
+  function schemaWithFKLabel(label?: string) {
+    const userId = 'u_id';
+    const orderUserId = 'o_user_id';
+    return makeSchema([
+      makeTable({
+        id: 'tbl_users',
+        name: 'users',
+        columns: [
+          makeColumn({ id: userId, name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+        ],
+      }),
+      makeTable({
+        id: 'tbl_orders',
+        name: 'orders',
+        columns: [
+          makeColumn({ id: orderUserId, name: 'user_id', type: 'INT', nullable: false }),
+        ],
+        foreignKeys: [{
+          id: 'fk_1',
+          columnIds: [orderUserId],
+          referencedTableId: 'tbl_users',
+          referencedColumnIds: [userId],
+          onDelete: 'CASCADE',
+          onUpdate: 'RESTRICT',
+          ...(label != null ? { label } : {}),
+        }],
+      }),
+    ]);
+  }
+
+  it('FK with label produces same DDL as FK without label (MySQL)', () => {
+    const withLabel = exportDDL(schemaWithFKLabel('places order'), 'mysql');
+    const withoutLabel = exportDDL(schemaWithFKLabel(), 'mysql');
+    expect(withLabel).toBe(withoutLabel);
+  });
+
+  it('FK with label produces same DDL as FK without label (PostgreSQL)', () => {
+    const withLabel = exportDDL(schemaWithFKLabel('places order'), 'postgresql');
+    const withoutLabel = exportDDL(schemaWithFKLabel(), 'postgresql');
+    expect(withLabel).toBe(withoutLabel);
+  });
+
+  it('FK with label produces same DDL as FK without label (MSSQL)', () => {
+    const withLabel = exportDDL(schemaWithFKLabel('places order'), 'mssql');
+    const withoutLabel = exportDDL(schemaWithFKLabel(), 'mssql');
+    expect(withLabel).toBe(withoutLabel);
+  });
+
+  it('FK with label produces same DDL as FK without label (SQLite)', () => {
+    const withLabel = exportDDL(schemaWithFKLabel('places order'), 'sqlite');
+    const withoutLabel = exportDDL(schemaWithFKLabel(), 'sqlite');
+    expect(withLabel).toBe(withoutLabel);
+  });
+
+  it('FK label does not appear in DDL output', () => {
+    const ddl = exportDDL(schemaWithFKLabel('places order'), 'mysql');
+    expect(ddl).not.toContain('places order');
+    expect(ddl).toContain('FOREIGN KEY');
+  });
+});

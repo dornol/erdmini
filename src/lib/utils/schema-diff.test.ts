@@ -549,3 +549,40 @@ describe('diffSchemas — summary', () => {
     expect(diff.summary).toEqual({ added: 1, removed: 1, modified: 1 });
   });
 });
+
+describe('diffSchemas — FK with label', () => {
+  function mkUsers() {
+    return makeTable({ id: 't1', name: 'users', columns: [makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true, nullable: false })] });
+  }
+  function mkOrders(fks: import('$lib/types/erd').ForeignKey[] = []) {
+    return makeTable({ id: 't2', name: 'orders', columns: [makeColumn({ id: 'c2', name: 'user_id', type: 'INT', nullable: false })], foreignKeys: fks });
+  }
+  const labeledFk = {
+    id: 'fk1', columnIds: ['c2'], referencedTableId: 't1', referencedColumnIds: ['c1'],
+    onDelete: 'CASCADE' as const, onUpdate: 'RESTRICT' as const, label: 'places order',
+  };
+
+  it('detects FK addition with label', () => {
+    resetIdCounter();
+    const prev = makeSchema([mkUsers(), mkOrders()]);
+    resetIdCounter();
+    const curr = makeSchema([mkUsers(), mkOrders([labeledFk])]);
+    const diff = diffSchemas(prev, curr);
+    const modified = diff.modifiedTables.find((t) => t.tableName === 'orders');
+    expect(modified).toBeDefined();
+    expect(modified!.addedFKs).toHaveLength(1);
+    expect(modified!.addedFKs[0].label).toBe('places order');
+  });
+
+  it('detects FK removal preserving label info', () => {
+    resetIdCounter();
+    const prev = makeSchema([mkUsers(), mkOrders([labeledFk])]);
+    resetIdCounter();
+    const curr = makeSchema([mkUsers(), mkOrders()]);
+    const diff = diffSchemas(prev, curr);
+    const modified = diff.modifiedTables.find((t) => t.tableName === 'orders');
+    expect(modified).toBeDefined();
+    expect(modified!.removedFKs).toHaveLength(1);
+    expect(modified!.removedFKs[0].label).toBe('places order');
+  });
+});

@@ -225,5 +225,6 @@
 - ~~**Cross-Project Copy/Paste**: Ctrl+C 선택 테이블 JSON 복사, Ctrl+V 붙여넣기 (ID 전체 재생성, FK 재매핑, UK/Index 재매핑, 이름 충돌 회피)~~
 - ~~**Column Delete in Popup**: ColumnEditPopup에 🗑 삭제 버튼 추가~~
 - ~~**Embed CommandPalette**: 임베드 모드에서도 Ctrl+F/K 캔버스 검색 지원~~
-- 19 new tests (14 table-templates + 5 SVG FK label)
+- ~~**FK Popover**: FK 라인 클릭 시 정보 팝오버 + 라벨 편집/FK 편집/삭제 액션 (기존 single-click-to-delete 대체)~~
+- 26 new tests (14 table-templates + 5 SVG FK label + 5 DDL FK label + 2 schema-diff FK label)
 - Difficulty: Medium
