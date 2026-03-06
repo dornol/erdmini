@@ -11,6 +11,7 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import { page } from '$app/stores';
+  import { page as pageState } from '$app/state';
   import { onMount, onDestroy } from 'svelte';
   import * as m from '$lib/paraglide/messages';
   import { filterBySchema } from '$lib/utils/canvas-grid';
@@ -24,6 +25,7 @@
   let passwordError = $state('');
 
   const token = $derived($page.params.token);
+  const siteSettings = $derived((pageState.data as any)?.siteSettings as { site_name: string; logo_url: string } | null);
   let showDdlModal = $state(false);
   let commandPaletteOpen = $state(false);
 
@@ -140,6 +142,19 @@
   <div class="embed-app" data-dark={themeStore.darkMode || undefined}>
     <!-- Minimal header -->
     <div class="embed-header">
+      <a class="embed-logo" href="/" target="_blank" rel="noopener">
+        {#if siteSettings?.logo_url}
+          <img class="embed-logo-img" src={siteSettings.logo_url} alt="Logo" />
+        {:else}
+          <svg class="embed-logo-img" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="7" fill="#1e293b"/>
+            <path d="M16 5 L25 10.5 L25 21.5 L16 27 L7 21.5 L7 10.5 Z" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="16" cy="16" r="2.8" fill="#60a5fa"/>
+          </svg>
+        {/if}
+        <span class="embed-site-name">{siteSettings?.site_name || 'erdmini'}</span>
+      </a>
+      <span class="embed-sep"></span>
       <span class="embed-project-name">{projectName}</span>
       <span class="embed-badge">{m.embed_view_only()}</span>
       <button class="embed-export-btn" onclick={() => (showDdlModal = true)}>
@@ -304,6 +319,30 @@
     background: #1e293b;
     border-bottom: 1px solid #334155;
     min-height: 36px;
+    flex-shrink: 0;
+  }
+  .embed-logo {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .embed-logo-img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    border-radius: 3px;
+  }
+  .embed-site-name {
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .embed-sep {
+    width: 1px;
+    height: 16px;
+    background: #475569;
     flex-shrink: 0;
   }
   .embed-project-name {

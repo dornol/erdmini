@@ -95,7 +95,9 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
+	<title>{SITE_TITLE}</title>
+	<meta name="description" content={SITE_DESCRIPTION} />
+	<link rel="icon" href={data.siteSettings?.logo_url || favicon} />
 	<link rel="canonical" href={data.siteUrl} />
 
 	<!-- Open Graph -->
