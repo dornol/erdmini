@@ -146,12 +146,13 @@
           />
         </div>
         <div class="form-row">
-          <label class="form-label">{m.embed_expires()}</label>
-          <select bind:value={expiresOption} class="form-select">
-            {#each EXPIRES_OPTIONS as opt}
-              <option value={opt.value}>{opt.label()}</option>
-            {/each}
-          </select>
+          <label class="form-label">{m.embed_expires()}
+            <select bind:value={expiresOption} class="form-select">
+              {#each EXPIRES_OPTIONS as opt}
+                <option value={opt.value}>{opt.label()}</option>
+              {/each}
+            </select>
+          </label>
         </div>
         <button class="btn-create" onclick={createToken}>{m.embed_create()}</button>
       </div>

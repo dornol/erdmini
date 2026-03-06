@@ -185,39 +185,47 @@
       {#if editingProvider === provider.id}
         <div class="ldap-form">
           <div class="ldap-form-group">
-            <label class="ldap-label">{m.admin_ldap_display_name()}</label>
-            <input bind:value={editForm.displayName} />
+            <label class="ldap-label">{m.admin_ldap_display_name()}
+              <input bind:value={editForm.displayName} />
+            </label>
           </div>
           <div class="ldap-form-group">
-            <label class="ldap-label">{m.admin_ldap_server_url()}</label>
-            <input placeholder="ldap://host:389" bind:value={editForm.serverUrl} />
+            <label class="ldap-label">{m.admin_ldap_server_url()}
+              <input placeholder="ldap://host:389" bind:value={editForm.serverUrl} />
+            </label>
           </div>
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_bind_dn()}</label>
-              <input bind:value={editForm.bindDn} />
+              <label class="ldap-label">{m.admin_ldap_bind_dn()}
+                <input bind:value={editForm.bindDn} />
+              </label>
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_bind_password()}</label>
-              <input type="password" placeholder={m.admin_ldap_bind_password_keep()} bind:value={editForm.bindPassword} />
+              <label class="ldap-label">{m.admin_ldap_bind_password()}
+                <input type="password" placeholder={m.admin_ldap_bind_password_keep()} bind:value={editForm.bindPassword} />
+              </label>
             </div>
           </div>
           <div class="ldap-form-group">
-            <label class="ldap-label">{m.admin_ldap_user_search_base()}</label>
-            <input bind:value={editForm.userSearchBase} />
+            <label class="ldap-label">{m.admin_ldap_user_search_base()}
+              <input bind:value={editForm.userSearchBase} />
+            </label>
           </div>
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_user_search_filter()}</label>
-              <input bind:value={editForm.userSearchFilter} />
+              <label class="ldap-label">{m.admin_ldap_user_search_filter()}
+                <input bind:value={editForm.userSearchFilter} />
+              </label>
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_email_attr()}</label>
-              <input bind:value={editForm.emailAttribute} />
+              <label class="ldap-label">{m.admin_ldap_email_attr()}
+                <input bind:value={editForm.emailAttribute} />
+              </label>
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_display_name_attr()}</label>
-              <input bind:value={editForm.displayNameAttribute} />
+              <label class="ldap-label">{m.admin_ldap_display_name_attr()}
+                <input bind:value={editForm.displayNameAttribute} />
+              </label>
             </div>
           </div>
 
@@ -226,22 +234,26 @@
 
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_group_search_base()}</label>
-              <input placeholder="ou=groups,dc=example,dc=com" bind:value={editForm.groupSearchBase} />
+              <label class="ldap-label">{m.admin_ldap_group_search_base()}
+                <input placeholder="ou=groups,dc=example,dc=com" bind:value={editForm.groupSearchBase} />
+              </label>
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_group_search_filter()}</label>
-              <input bind:value={editForm.groupSearchFilter} />
+              <label class="ldap-label">{m.admin_ldap_group_search_filter()}
+                <input bind:value={editForm.groupSearchFilter} />
+              </label>
             </div>
           </div>
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_admin_group_dn()}</label>
-              <input placeholder="cn=admins,ou=groups,..." bind:value={editForm.adminGroupDn} />
+              <label class="ldap-label">{m.admin_ldap_admin_group_dn()}
+                <input placeholder="cn=admins,ou=groups,..." bind:value={editForm.adminGroupDn} />
+              </label>
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}</label>
-              <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={editForm.allowedGroupDns} />
+              <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}
+                <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={editForm.allowedGroupDns} />
+              </label>
             </div>
           </div>
           <span class="field-hint">{m.admin_ldap_allowed_hint()}</span>
@@ -306,39 +318,47 @@
     <h3>{m.admin_ldap_add_title()}</h3>
     <div class="ldap-form">
       <div class="ldap-form-group">
-        <label class="ldap-label">{m.admin_ldap_display_name()}</label>
-        <input placeholder={m.admin_ldap_display_name()} bind:value={newProvider.displayName} />
+        <label class="ldap-label">{m.admin_ldap_display_name()}
+          <input placeholder={m.admin_ldap_display_name()} bind:value={newProvider.displayName} />
+        </label>
       </div>
       <div class="ldap-form-group">
-        <label class="ldap-label">{m.admin_ldap_server_url()}</label>
-        <input placeholder="ldap://host:389" bind:value={newProvider.serverUrl} />
+        <label class="ldap-label">{m.admin_ldap_server_url()}
+          <input placeholder="ldap://host:389" bind:value={newProvider.serverUrl} />
+        </label>
       </div>
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_bind_dn()}</label>
-          <input placeholder="cn=admin,dc=example,dc=com" bind:value={newProvider.bindDn} />
+          <label class="ldap-label">{m.admin_ldap_bind_dn()}
+            <input placeholder="cn=admin,dc=example,dc=com" bind:value={newProvider.bindDn} />
+          </label>
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_bind_password()}</label>
-          <input type="password" bind:value={newProvider.bindPassword} />
+          <label class="ldap-label">{m.admin_ldap_bind_password()}
+            <input type="password" bind:value={newProvider.bindPassword} />
+          </label>
         </div>
       </div>
       <div class="ldap-form-group">
-        <label class="ldap-label">{m.admin_ldap_user_search_base()}</label>
-        <input placeholder="ou=users,dc=example,dc=com" bind:value={newProvider.userSearchBase} />
+        <label class="ldap-label">{m.admin_ldap_user_search_base()}
+          <input placeholder="ou=users,dc=example,dc=com" bind:value={newProvider.userSearchBase} />
+        </label>
       </div>
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_user_search_filter()}</label>
-          <input bind:value={newProvider.userSearchFilter} />
+          <label class="ldap-label">{m.admin_ldap_user_search_filter()}
+            <input bind:value={newProvider.userSearchFilter} />
+          </label>
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_email_attr()}</label>
-          <input bind:value={newProvider.emailAttribute} />
+          <label class="ldap-label">{m.admin_ldap_email_attr()}
+            <input bind:value={newProvider.emailAttribute} />
+          </label>
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_display_name_attr()}</label>
-          <input bind:value={newProvider.displayNameAttribute} />
+          <label class="ldap-label">{m.admin_ldap_display_name_attr()}
+            <input bind:value={newProvider.displayNameAttribute} />
+          </label>
         </div>
       </div>
 
@@ -347,22 +367,26 @@
 
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_group_search_base()}</label>
-          <input placeholder="ou=groups,dc=example,dc=com" bind:value={newProvider.groupSearchBase} />
+          <label class="ldap-label">{m.admin_ldap_group_search_base()}
+            <input placeholder="ou=groups,dc=example,dc=com" bind:value={newProvider.groupSearchBase} />
+          </label>
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_group_search_filter()}</label>
-          <input bind:value={newProvider.groupSearchFilter} />
+          <label class="ldap-label">{m.admin_ldap_group_search_filter()}
+            <input bind:value={newProvider.groupSearchFilter} />
+          </label>
         </div>
       </div>
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_admin_group_dn()}</label>
-          <input placeholder="cn=admins,ou=groups,..." bind:value={newProvider.adminGroupDn} />
+          <label class="ldap-label">{m.admin_ldap_admin_group_dn()}
+            <input placeholder="cn=admins,ou=groups,..." bind:value={newProvider.adminGroupDn} />
+          </label>
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}</label>
-          <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={newProvider.allowedGroupDns} />
+          <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}
+            <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={newProvider.allowedGroupDns} />
+          </label>
         </div>
       </div>
       <span class="field-hint">{m.admin_ldap_allowed_hint()}</span>
@@ -428,6 +452,9 @@
   }
 
   .ldap-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     font-size: 12px;
     font-weight: 500;
     color: #94a3b8;

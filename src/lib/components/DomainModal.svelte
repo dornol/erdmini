@@ -505,31 +505,31 @@
                           <td colspan={TABLE_COLSPAN}>
                             <div class="detail-grid">
                               <div class="detail-field">
-                                <label>{m.domain_description()}</label>
+                                <span class="detail-label">{m.domain_description()}</span>
                                 <span class="detail-value">{domain.description || '—'}</span>
                               </div>
                               <div class="detail-field">
-                                <label>{m.domain_alias()}</label>
+                                <span class="detail-label">{m.domain_alias()}</span>
                                 <span class="detail-value">{domain.alias || '—'}</span>
                               </div>
                               <div class="detail-field">
-                                <label>{m.domain_data_standard()}</label>
+                                <span class="detail-label">{m.domain_data_standard()}</span>
                                 <span class="detail-value">{domain.dataStandard || '—'}</span>
                               </div>
                               <div class="detail-field">
-                                <label>{m.domain_example()}</label>
+                                <span class="detail-label">{m.domain_example()}</span>
                                 <span class="detail-value">{domain.example || '—'}</span>
                               </div>
                               <div class="detail-field">
-                                <label>{m.domain_valid_range()}</label>
+                                <span class="detail-label">{m.domain_valid_range()}</span>
                                 <span class="detail-value">{domain.validRange || '—'}</span>
                               </div>
                               <div class="detail-field">
-                                <label>{m.domain_owner()}</label>
+                                <span class="detail-label">{m.domain_owner()}</span>
                                 <span class="detail-value">{domain.owner || '—'}</span>
                               </div>
                               <div class="detail-field">
-                                <label>{m.domain_tags()}</label>
+                                <span class="detail-label">{m.domain_tags()}</span>
                                 <span class="detail-value">{domain.tags?.join(', ') || '—'}</span>
                               </div>
                             </div>
@@ -1141,7 +1141,11 @@
     grid-column: 1 / -1;
   }
 
-  .modal :global(.detail-field label) {
+  .modal :global(.detail-field label),
+  .detail-field .detail-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     font-size: 10px;
     font-weight: 600;
     color: #94a3b8;

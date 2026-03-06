@@ -238,41 +238,49 @@
   <td colspan={tableColspan}>
     <div class="detail-grid editing">
       <div class="detail-field">
-        <label>{m.domain_parent()}</label>
-        <select class="cell-input" bind:value={formParentId}>
-          <option value={undefined}>{m.domain_parent_none()}</option>
-          {#each getAvailableParents(editingId) as opt}
-            <option value={opt.value}>{opt.label}</option>
-          {/each}
-        </select>
+        <label>{m.domain_parent()}
+          <select class="cell-input" bind:value={formParentId}>
+            <option value={undefined}>{m.domain_parent_none()}</option>
+            {#each getAvailableParents(editingId) as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </label>
       </div>
       <div class="detail-field wide">
-        <label>{m.domain_description()}</label>
-        <textarea class="cell-input cell-textarea" bind:value={formDescription} placeholder={m.domain_description_placeholder()} rows="2"></textarea>
+        <label>{m.domain_description()}
+          <textarea class="cell-input cell-textarea" bind:value={formDescription} placeholder={m.domain_description_placeholder()} rows="2"></textarea>
+        </label>
       </div>
       <div class="detail-field">
-        <label>{m.domain_alias()}</label>
-        <input class="cell-input" type="text" bind:value={formAlias} placeholder={m.domain_alias_placeholder()} />
+        <label>{m.domain_alias()}
+          <input class="cell-input" type="text" bind:value={formAlias} placeholder={m.domain_alias_placeholder()} />
+        </label>
       </div>
       <div class="detail-field">
-        <label>{m.domain_data_standard()}</label>
-        <input class="cell-input" type="text" bind:value={formDataStandard} placeholder={m.domain_data_standard_placeholder()} />
+        <label>{m.domain_data_standard()}
+          <input class="cell-input" type="text" bind:value={formDataStandard} placeholder={m.domain_data_standard_placeholder()} />
+        </label>
       </div>
       <div class="detail-field">
-        <label>{m.domain_example()}</label>
-        <input class="cell-input" type="text" bind:value={formExample} placeholder={m.domain_example_placeholder()} />
+        <label>{m.domain_example()}
+          <input class="cell-input" type="text" bind:value={formExample} placeholder={m.domain_example_placeholder()} />
+        </label>
       </div>
       <div class="detail-field">
-        <label>{m.domain_valid_range()}</label>
-        <input class="cell-input" type="text" bind:value={formValidRange} placeholder={m.domain_valid_range_placeholder()} />
+        <label>{m.domain_valid_range()}
+          <input class="cell-input" type="text" bind:value={formValidRange} placeholder={m.domain_valid_range_placeholder()} />
+        </label>
       </div>
       <div class="detail-field">
-        <label>{m.domain_owner()}</label>
-        <input class="cell-input" type="text" bind:value={formOwner} placeholder={m.domain_owner_placeholder()} />
+        <label>{m.domain_owner()}
+          <input class="cell-input" type="text" bind:value={formOwner} placeholder={m.domain_owner_placeholder()} />
+        </label>
       </div>
       <div class="detail-field">
-        <label>{m.domain_tags()}</label>
-        <input class="cell-input" type="text" bind:value={formTags} placeholder={m.domain_tags_placeholder()} />
+        <label>{m.domain_tags()}
+          <input class="cell-input" type="text" bind:value={formTags} placeholder={m.domain_tags_placeholder()} />
+        </label>
       </div>
     </div>
   </td>
