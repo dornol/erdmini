@@ -193,29 +193,30 @@
       const { x1, y1, x2, y2, fromRight, toLeft, _fk: fk, _tableId: tableId, _isUnique: isUnique, _isNullable: isNullable } = input;
       const labelText = isUnique ? '1:1' : '1:N';
 
-      // Parent side markers (y2 already spread)
+      // Parent side markers ("one" side, y2 end)
       const pDir = toLeft ? -1 : 1;
-      const pTickX = x2 + pDir * 6;
-      const parentTick = `M ${pTickX} ${y2 - 6} L ${pTickX} ${y2 + 6}`;
+      const pTickX = x2 + pDir * 7;
+      const parentTick = `M ${pTickX} ${y2 - 7} L ${pTickX} ${y2 + 7}`;
       let parentParticipation: string | null = null;
-      const parentCircleCx = x2 + pDir * 14;
+      const parentCircleCx = x2 + pDir * 15;
       if (!isNullable) {
-        parentParticipation = `M ${parentCircleCx} ${y2 - 6} L ${parentCircleCx} ${y2 + 6}`;
+        parentParticipation = `M ${parentCircleCx} ${y2 - 7} L ${parentCircleCx} ${y2 + 7}`;
       }
 
-      // Child side markers (y1 already spread)
+      // Child side markers ("many" or "one" side, y1 end)
       const cDir = fromRight ? 1 : -1;
       let childMarker: string;
       if (isUnique) {
-        const cTickX = x1 + cDir * 6;
-        childMarker = `M ${cTickX} ${y1 - 6} L ${cTickX} ${y1 + 6}`;
+        const cTickX = x1 + cDir * 7;
+        childMarker = `M ${cTickX} ${y1 - 7} L ${cTickX} ${y1 + 7}`;
       } else {
-        const tipX = x1 + cDir * 12;
-        const baseX = x1 + cDir * 4;
-        const spread = 7;
-        childMarker = `M ${tipX} ${y1} L ${baseX} ${y1} M ${tipX} ${y1} L ${baseX} ${y1 - spread} M ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
+        // Crow's foot: three lines fanning from tip to base
+        const tipX = x1 + cDir * 5;
+        const baseX = x1 + cDir * 14;
+        const spread = 8;
+        childMarker = `M ${baseX} ${y1 - spread} L ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
       }
-      const childCircleCx = x1 + cDir * 18;
+      const childCircleCx = x1 + cDir * 20;
 
       result.push({
         fk, tableId, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable,
@@ -378,8 +379,8 @@
         ondblclick={(e) => onLabelDblClick(line, e)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { fkPopover = { line, x: line.labelX, y: line.labelY }; } }}
       />
-      <path d={line.path} fill="none" stroke={color} stroke-width="2"
-        stroke-dasharray={line.isNullable ? '6 3' : lineColors.dash || 'none'} />
+      <path d={line.path} fill="none" stroke={color} stroke-width="1.6"
+        stroke-dasharray={line.isNullable ? '6 3' : lineColors.dash || 'none'} stroke-linecap="round" />
       <rect x={line.labelX - 11} y={line.labelY - 8} width="22" height="16" rx="4"
         fill={lineColors.bg} stroke={color} stroke-width="0.8" opacity="0.85" />
       <text x={line.labelX} y={line.labelY + 4} text-anchor="middle" fill={color}
@@ -390,14 +391,14 @@
           font-size="10" font-style="italic" font-family="system-ui, sans-serif"
           style="pointer-events:none">{line.fkLabel}</text>
       {/if}
-      <path d={line.parentTick} stroke={color} stroke-width="2" fill="none" />
+      <path d={line.parentTick} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" />
       {#if line.parentParticipation}
-        <path d={line.parentParticipation} stroke={color} stroke-width="2" fill="none" />
+        <path d={line.parentParticipation} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" />
       {:else}
-        <circle cx={line.parentCircleCx} cy={line.y2} r={5} stroke={color} stroke-width="2" fill={lineColors.bg} />
+        <circle cx={line.parentCircleCx} cy={line.y2} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
       {/if}
-      <path d={line.childMarker} stroke={color} stroke-width="2" fill="none" />
-      <circle cx={line.childCircleCx} cy={line.y1} r={5} stroke={color} stroke-width="2" fill={lineColors.bg} />
+      <path d={line.childMarker} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx={line.childCircleCx} cy={line.y1} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
     {/if}
   {/each}
 
@@ -432,8 +433,8 @@
         ondblclick={(e) => onLabelDblClick(line, e)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { fkPopover = { line, x: line.labelX, y: line.labelY }; } }}
       />
-      <path d={line.path} fill="none" stroke={color} stroke-width="3"
-        stroke-dasharray={line.isNullable ? '6 3' : lineColors.dash || 'none'} />
+      <path d={line.path} fill="none" stroke={color} stroke-width="2.4"
+        stroke-dasharray={line.isNullable ? '6 3' : lineColors.dash || 'none'} stroke-linecap="round" />
       <rect x={line.labelX - 11} y={line.labelY - 8} width="22" height="16" rx="4"
         fill={lineColors.bg} stroke={color} stroke-width="0.8" />
       <text x={line.labelX} y={line.labelY + 4} text-anchor="middle" fill={color}
@@ -444,14 +445,14 @@
           font-size="10" font-style="italic" font-family="system-ui, sans-serif"
           style="pointer-events:none">{line.fkLabel}</text>
       {/if}
-      <path d={line.parentTick} stroke={color} stroke-width="2" fill="none" />
+      <path d={line.parentTick} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" />
       {#if line.parentParticipation}
-        <path d={line.parentParticipation} stroke={color} stroke-width="2" fill="none" />
+        <path d={line.parentParticipation} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" />
       {:else}
-        <circle cx={line.parentCircleCx} cy={line.y2} r={5} stroke={color} stroke-width="2" fill={lineColors.bg} />
+        <circle cx={line.parentCircleCx} cy={line.y2} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
       {/if}
-      <path d={line.childMarker} stroke={color} stroke-width="2" fill="none" />
-      <circle cx={line.childCircleCx} cy={line.y1} r={5} stroke={color} stroke-width="2" fill={lineColors.bg} />
+      <path d={line.childMarker} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx={line.childCircleCx} cy={line.y1} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
     {/if}
   {/each}
 

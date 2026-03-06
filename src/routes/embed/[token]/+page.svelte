@@ -178,7 +178,7 @@
 
     <div class="embed-canvas-wrap">
       <Canvas>
-        <RelationLines {visibleTables} />
+        {#if canvasState.showRelationLines}<RelationLines {visibleTables} />{/if}
         {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
           <MemoCard {memo} />
         {/each}

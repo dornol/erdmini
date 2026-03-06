@@ -9,6 +9,7 @@ class CanvasState {
   scale = $state(1);
   snapToGrid = $state(false);
   showGrid = $state(true);
+  showRelationLines = $state(true);
   gridSize = 20;
   columnDisplayMode = $state<ColumnDisplayMode>('all');
   lineType = $state<LineType>('bezier');

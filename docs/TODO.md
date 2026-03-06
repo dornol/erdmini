@@ -240,3 +240,10 @@
 - ~~**Embed Branding**: 임베드 헤더에 로고 + 사이트명 표시~~
 - 11 new tests (site-settings CRUD + validation)
 - Difficulty: Easy
+
+### Phase 39b — FK Line Polish
+- ~~**FK Line Visual**: stroke-linecap/linejoin round, 두께 조정 (1.6/2.4), crow's foot V자형으로 개선~~
+- ~~**FK Line Toggle**: canvasState.showRelationLines 토글 (CanvasBottomBar 아이콘 버튼, localStorage 저장)~~
+- ~~마커 간격/크기 정리 (tick 7px, circle r4.5, participation 15px offset)~~
+- 13 new tests (canvas defaults + FK marker geometry)
+- Difficulty: Easy

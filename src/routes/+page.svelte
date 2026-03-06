@@ -46,6 +46,8 @@
     }
     const savedShowGrid = localStorage.getItem('erdmini_show_grid');
     if (savedShowGrid === 'false') canvasState.showGrid = false;
+    const savedShowRelLines = localStorage.getItem('erdmini_show_relation_lines');
+    if (savedShowRelLines === 'false') canvasState.showRelationLines = false;
     const savedActiveSchema = localStorage.getItem('erdmini_active_schema');
     if (savedActiveSchema) canvasState.activeSchema = savedActiveSchema;
     const savedViewports = localStorage.getItem('erdmini_schema_viewports');
@@ -111,6 +113,15 @@
       localStorage.removeItem('erdmini_show_grid');
     } else {
       localStorage.setItem('erdmini_show_grid', 'false');
+    }
+  });
+
+  // Persist show relation lines
+  $effect(() => {
+    if (canvasState.showRelationLines) {
+      localStorage.removeItem('erdmini_show_relation_lines');
+    } else {
+      localStorage.setItem('erdmini_show_relation_lines', 'false');
     }
   });
 
@@ -589,7 +600,7 @@
       <!-- Fullscreen Presentation Mode -->
       <div class="fullscreen-canvas">
         <Canvas>
-          <RelationLines {visibleTables} oneditfk={handleEditFk} />
+          {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
           {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div class="fullscreen-table-wrapper">
               <MemoCard {memo} />
@@ -635,7 +646,7 @@
       <div class="main">
         <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
         <Canvas>
-          <RelationLines {visibleTables} oneditfk={handleEditFk} />
+          {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
           {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div
               in:scale={{ duration: 200, start: 0.85, opacity: 0 }}

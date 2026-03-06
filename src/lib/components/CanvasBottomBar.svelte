@@ -237,6 +237,20 @@
 
   <span class="bar-sep"></span>
 
+  <!-- Show/hide relation lines toggle -->
+  <button
+    class="bar-btn bar-btn-icon"
+    class:bar-btn-active={canvasState.showRelationLines}
+    onclick={() => (canvasState.showRelationLines = !canvasState.showRelationLines)}
+    title={canvasState.showRelationLines ? 'Hide FK Lines' : 'Show FK Lines'}
+  >
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+      <path d="M2 12 C4 12, 12 4, 14 4"/>
+      <circle cx="2" cy="12" r="2" fill="currentColor" stroke="none"/>
+      <circle cx="14" cy="4" r="2" fill="currentColor" stroke="none"/>
+    </svg>
+  </button>
+
   <!-- Show/hide grid toggle -->
   <button
     class="bar-btn bar-btn-icon"
