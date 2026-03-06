@@ -51,13 +51,15 @@
             {m.auth_change_password()}
           </button>
         {/if}
-        <button
-          class="dropdown-item"
-          role="menuitem"
-          onclick={() => { onclose(); onaction('api-keys'); }}
-        >
-          {m.api_keys_title()}
-        </button>
+        {#if authStore.user?.canCreateApiKey}
+          <button
+            class="dropdown-item"
+            role="menuitem"
+            onclick={() => { onclose(); onaction('api-keys'); }}
+          >
+            {m.api_keys_title()}
+          </button>
+        {/if}
         <button
           class="dropdown-item dropdown-item-danger"
           role="menuitem"

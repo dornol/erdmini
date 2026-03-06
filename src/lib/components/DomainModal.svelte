@@ -9,6 +9,7 @@
   import { downloadBlob } from '$lib/utils/blob-download';
   import DomainCoverageDashboard from './DomainCoverageDashboard.svelte';
   import DomainEditForm from './DomainEditForm.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
 
   interface Props {
     onclose: () => void;
@@ -148,12 +149,14 @@
   }
 
   function startEdit(domain: ColumnDomain) {
+    if (permissionStore.isReadOnly) return;
     editingId = domain.id;
     addingNew = false;
     editFormRef?.loadDomain(domain);
   }
 
   function startAdd() {
+    if (permissionStore.isReadOnly) return;
     editFormRef?.resetForm();
     editingId = null;
     addingNew = true;
@@ -319,15 +322,17 @@
             <path d="M8 2v8m0 0L5 7m3 3l3-3M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button
-          class="header-icon-btn"
-          onclick={() => fileInput?.click()}
-          title={m.domain_upload_xlsx()}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 10V2m0 0L5 5m3-3l3 3M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        {#if !permissionStore.isReadOnly}
+          <button
+            class="header-icon-btn"
+            onclick={() => fileInput?.click()}
+            title={m.domain_upload_xlsx()}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 10V2m0 0L5 5m3-3l3 3M3 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        {/if}
         <div class="dict-dropdown-wrapper">
           <button class="header-icon-btn dict-btn" onclick={() => showDictDropdown = !showDictDropdown} title={m.domain_dict_export()}>
             {m.domain_dict_export()} ▾
@@ -477,7 +482,7 @@
                         <td class="td-mono td-optional">{domain.enumValues?.join(', ') ?? '—'}</td>
                         <td class="td-comment">{domain.comment ?? '—'}</td>
                         <td class="td-actions">
-                          <button
+                          {#if !permissionStore.isReadOnly}<button
                             class="icon-btn del"
                             onclick={async (e) => {
                               e.stopPropagation();
@@ -492,7 +497,7 @@
                               erdStore.deleteDomain(domain.id);
                             }}
                             aria-label={m.domain_delete()}
-                          >&#x2715;</button>
+                          >&#x2715;</button>{/if}
                         </td>
                       </tr>
                       {#if expandedId === domain.id}
@@ -553,7 +558,7 @@
       </div>
 
     </div>
-    {#if !addingNew}
+    {#if !addingNew && !permissionStore.isReadOnly}
       <div class="modal-footer">
         <button class="add-btn" onclick={startAdd}>{m.domain_add_btn()}</button>
       </div>

@@ -30,7 +30,7 @@
   import ShortcutsDropdown from './toolbar/ShortcutsDropdown.svelte';
   import UserMenu from './toolbar/UserMenu.svelte';
 
-  let { onfullscreen }: { onfullscreen?: () => void } = $props();
+  let { onfullscreen, minimal = false }: { onfullscreen?: () => void; minimal?: boolean } = $props();
 
   const siteSettings = $derived((page.data as any)?.siteSettings as { site_name: string; logo_url: string } | null);
 
@@ -165,120 +165,124 @@
     <span class="logo-text">{siteSettings?.site_name || 'erdmini'}</span>
   </div>
 
-  <ProjectDropdown
-    open={activeDropdown === 'project'}
-    ontoggle={() => toggleDropdown('project')}
-    onclose={closeDropdown}
-  />
-
-  <span class="separator"></span>
-
-  <div class="actions">
-    {#if collabStore.connected || collabStore.reconnecting}
-      <CollabIndicator />
-    {/if}
-    {#if permissionStore.isReadOnly}
-      <span class="readonly-badge">Read Only</span>
-    {/if}
-    <button class="btn-primary" onclick={addTable} disabled={permissionStore.isReadOnly}>
-      {m.toolbar_add_table()}
-    </button>
-    <button class="btn-memo" onclick={addMemo} disabled={permissionStore.isReadOnly}>
-      {m.toolbar_add_memo()}
-    </button>
-
-    <span class="separator"></span>
-
-    <ImportDropdown
-      open={activeDropdown === 'import'}
-      ontoggle={() => toggleDropdown('import')}
+  {#if !minimal}
+    <ProjectDropdown
+      open={activeDropdown === 'project'}
+      ontoggle={() => toggleDropdown('project')}
       onclose={closeDropdown}
-      onopenddl={() => (modalMode = 'import')}
-    />
-
-    <ExportDropdown
-      open={activeDropdown === 'export'}
-      ontoggle={() => toggleDropdown('export')}
-      onclose={closeDropdown}
-      onopenddl={() => (modalMode = 'export')}
-    />
-
-    <ToolsDropdown
-      open={activeDropdown === 'tools'}
-      ontoggle={() => toggleDropdown('tools')}
-      onclose={closeDropdown}
-      onaction={handleToolsAction}
     />
 
     <span class="separator"></span>
 
-    <button
-      class="btn-secondary btn-share"
-      class:copied={shareStatus === 'copied'}
-      onclick={shareLink}
-    >
-      {shareStatus === 'copied' ? m.share_copied() : m.share_link()}
-    </button>
-
-    {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
-      <button
-        class="btn-secondary"
-        onclick={() => (showShareModal = true)}
-      >
-        Share
+    <div class="actions">
+      {#if collabStore.connected || collabStore.reconnecting}
+        <CollabIndicator />
+      {/if}
+      {#if permissionStore.isReadOnly}
+        <span class="readonly-badge">Read Only</span>
+      {/if}
+      <button class="btn-primary" onclick={addTable} disabled={permissionStore.isReadOnly}>
+        {m.toolbar_add_table()}
       </button>
-    {/if}
-  </div>
+      <button class="btn-memo" onclick={addMemo} disabled={permissionStore.isReadOnly}>
+        {m.toolbar_add_memo()}
+      </button>
+
+      <span class="separator"></span>
+
+      <ImportDropdown
+        open={activeDropdown === 'import'}
+        ontoggle={() => toggleDropdown('import')}
+        onclose={closeDropdown}
+        onopenddl={() => (modalMode = 'import')}
+      />
+
+      <ExportDropdown
+        open={activeDropdown === 'export'}
+        ontoggle={() => toggleDropdown('export')}
+        onclose={closeDropdown}
+        onopenddl={() => (modalMode = 'export')}
+      />
+
+      <ToolsDropdown
+        open={activeDropdown === 'tools'}
+        ontoggle={() => toggleDropdown('tools')}
+        onclose={closeDropdown}
+        onaction={handleToolsAction}
+      />
+
+      <span class="separator"></span>
+
+      <button
+        class="btn-secondary btn-share"
+        class:copied={shareStatus === 'copied'}
+        onclick={shareLink}
+      >
+        {shareStatus === 'copied' ? m.share_copied() : m.share_link()}
+      </button>
+
+      {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
+        <button
+          class="btn-secondary"
+          onclick={() => (showShareModal = true)}
+        >
+          Share
+        </button>
+      {/if}
+    </div>
+  {/if}
 
   <div class="toolbar-right">
-    <button
-      class="btn-icon"
-      onclick={() => onfullscreen?.()}
-      title={m.toolbar_fullscreen()}
-    >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <polyline points="1,5 1,1 5,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="11,1 15,1 15,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="15,11 15,15 11,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="5,15 1,15 1,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
-
-    <button
-      class="btn-dark-toggle"
-      onclick={() => themeStore.toggleDark()}
-      title={themeStore.darkMode ? 'Light Mode' : 'Dark Mode'}
-    >
-      {#if themeStore.darkMode}
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/>
-          <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="3.05" y1="3.05" x2="4.46" y2="4.46" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="11.54" y1="11.54" x2="12.95" y2="12.95" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="3.05" y1="12.95" x2="4.46" y2="11.54" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="11.54" y1="4.46" x2="12.95" y2="3.05" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    {#if !minimal}
+      <button
+        class="btn-icon"
+        onclick={() => onfullscreen?.()}
+        title={m.toolbar_fullscreen()}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <polyline points="1,5 1,1 5,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="11,1 15,1 15,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="15,11 15,15 11,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="5,15 1,15 1,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-      {:else}
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M14 9.5A6.5 6.5 0 016.5 2 5.5 5.5 0 108 14a5.5 5.5 0 006-4.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      {/if}
-    </button>
+      </button>
 
-    <SettingsDropdown
-      open={activeDropdown === 'settings'}
-      ontoggle={() => toggleDropdown('settings')}
-      onclose={closeDropdown}
-    />
+      <button
+        class="btn-dark-toggle"
+        onclick={() => themeStore.toggleDark()}
+        title={themeStore.darkMode ? 'Light Mode' : 'Dark Mode'}
+      >
+        {#if themeStore.darkMode}
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="3.05" y1="3.05" x2="4.46" y2="4.46" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="11.54" y1="11.54" x2="12.95" y2="12.95" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="3.05" y1="12.95" x2="4.46" y2="11.54" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="11.54" y1="4.46" x2="12.95" y2="3.05" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        {:else}
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M14 9.5A6.5 6.5 0 016.5 2 5.5 5.5 0 108 14a5.5 5.5 0 006-4.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        {/if}
+      </button>
 
-    <ShortcutsDropdown
-      open={activeDropdown === 'shortcuts'}
-      ontoggle={() => toggleDropdown('shortcuts')}
-      onclose={closeDropdown}
-    />
+      <SettingsDropdown
+        open={activeDropdown === 'settings'}
+        ontoggle={() => toggleDropdown('settings')}
+        onclose={closeDropdown}
+      />
+
+      <ShortcutsDropdown
+        open={activeDropdown === 'shortcuts'}
+        ontoggle={() => toggleDropdown('shortcuts')}
+        onclose={closeDropdown}
+      />
+    {/if}
 
     <UserMenu
       open={activeDropdown === 'userMenu'}
@@ -561,6 +565,16 @@
   .toolbar :global(.dropdown-item:hover) {
     background: #334155;
     color: white;
+  }
+
+  .toolbar :global(.dropdown-item:disabled) {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .toolbar :global(.dropdown-item:disabled:hover) {
+    background: none;
+    color: #cbd5e1;
   }
 
   .toolbar :global(.dropdown-sep) {

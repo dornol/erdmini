@@ -1,6 +1,7 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
@@ -183,6 +184,7 @@
     onclick={ontoggle}
     aria-expanded={open}
     aria-haspopup="menu"
+    disabled={permissionStore.isReadOnly}
   >
     {m.toolbar_import()} ▾
   </button>

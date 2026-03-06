@@ -35,11 +35,21 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
       } catch { /* ignore */ }
     }
 
-    // Check permission if creating new projects
-    const hasNewProjects = body.projects.some((p: { id: string }) => !existingIds.has(p.id));
-    if (hasNewProjects) {
-      const permErr = requirePermission(locals, 'canCreateProject');
-      if (permErr) return permErr;
+    // Check permission if creating truly new projects (not shared ones)
+    const newProjectIds = body.projects
+      .filter((p: { id: string }) => !existingIds.has(p.id))
+      .map((p: { id: string }) => p.id);
+
+    if (newProjectIds.length > 0) {
+      // Shared projects already have a schema row — only block genuinely new projects
+      const hasNewOwnProject = newProjectIds.some((id: string) => {
+        const existing = db.prepare('SELECT 1 FROM schemas WHERE project_id = ?').get(id);
+        return !existing;
+      });
+      if (hasNewOwnProject) {
+        const permErr = requirePermission(locals, 'canCreateProject');
+        if (permErr) return permErr;
+      }
     }
 
     for (const proj of body.projects) {

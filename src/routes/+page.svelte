@@ -85,7 +85,34 @@
     // Load shared schema from URL hash immediately after init (most reliable timing)
     await loadShareFromHash();
 
+    // Auto-load shared projects for users with no projects
+    if (projectStore.index.projects.length === 0 && authStore.user && !authStore.user.canCreateProject) {
+      await autoLoadSharedProjects();
+    }
   });
+
+  async function autoLoadSharedProjects() {
+    try {
+      const res = await fetch('/api/storage/shared');
+      if (!res.ok) return;
+      const shared = await res.json();
+      if (!shared.length) return;
+      // Load the first shared project
+      const first = shared[0];
+      const schemaRes = await fetch(`/api/storage/schemas/${first.projectId}`);
+      if (!schemaRes.ok) return;
+      const schema = await schemaRes.json();
+      await projectStore.loadSharedProject(first.projectId, first.projectName, schema);
+      // Load remaining shared projects into index
+      for (let i = 1; i < shared.length; i++) {
+        const s = shared[i];
+        const sRes = await fetch(`/api/storage/schemas/${s.projectId}`);
+        if (!sRes.ok) continue;
+        const sSchema = await sRes.json();
+        await projectStore.loadSharedProject(s.projectId, s.projectName, sSchema);
+      }
+    } catch { /* ignore */ }
+  }
 
   // Persist column display mode
   $effect(() => {
@@ -377,7 +404,7 @@
 
     // Undo/Redo
     if ((e.ctrlKey || e.metaKey) && (key === 'z' || key === 'y')) {
-      if (isEditing) return;
+      if (isEditing || permissionStore.isReadOnly) return;
       e.preventDefault();
       if (key === 'y' || (key === 'z' && e.shiftKey)) {
         erdStore.redo();
@@ -641,31 +668,50 @@
           <button class="storage-close-btn" onclick={() => (storageBannerDismissed = true)}>✕</button>
         </div>
       {/if}
-      <Toolbar onfullscreen={enterFullscreen} />
-      <SchemaTabBar />
-      <div class="main">
-        <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
-        <Canvas>
-          {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
-          {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
-            <div
-              in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
-              out:fade={{ duration: 150 }}
-            >
-              <MemoCard {memo} />
+      {@const noProject = projectStore.index.projects.length === 0 && !!authStore.user && !authStore.user.canCreateProject}
+      <Toolbar onfullscreen={enterFullscreen} minimal={noProject} />
+      {#if noProject}
+        <!-- No-project placeholder for users without create permission -->
+        <div class="no-project-screen">
+          <div class="no-project-card">
+            <div class="no-project-icon">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
             </div>
-          {/each}
-          {#each visibleTables as table (table.id)}
-            <div
-              in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
-              out:fade={{ duration: 150 }}
-            >
-              <TableCard {table} />
+            <div class="no-project-text">
+              <h2 class="no-project-title">{m.no_project_title()}</h2>
+              <p class="no-project-desc">{m.no_project_desc()}</p>
+              <p class="no-project-hint">{m.no_project_shared_hint()}</p>
             </div>
-          {/each}
-        </Canvas>
-        <TableEditor />
-      </div>
+          </div>
+        </div>
+      {:else}
+        <SchemaTabBar />
+        <div class="main">
+          <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
+          <Canvas>
+            {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
+            {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
+              <div
+                in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
+                out:fade={{ duration: 150 }}
+              >
+                <MemoCard {memo} />
+              </div>
+            {/each}
+            {#each visibleTables as table (table.id)}
+              <div
+                in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
+                out:fade={{ duration: 150 }}
+              >
+                <TableCard {table} />
+              </div>
+            {/each}
+          </Canvas>
+          <TableEditor />
+        </div>
+      {/if}
 
       {#if erdStore.editingColumnInfo}
         <ColumnEditPopup
@@ -776,6 +822,48 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+  }
+
+  .no-project-screen {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--app-panel-bg, #f8fafc);
+  }
+
+  .no-project-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    max-width: 480px;
+    padding: 48px 32px;
+  }
+
+  .no-project-icon {
+    color: var(--app-text-faint, #94a3b8);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .no-project-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--app-text, #1e293b);
+    margin: 0 0 8px;
+  }
+
+  .no-project-desc {
+    font-size: 0.85rem;
+    color: var(--app-text-secondary, #475569);
+    line-height: 1.6;
+    margin: 0 0 12px;
+  }
+
+  .no-project-hint {
+    font-size: 0.78rem;
+    color: var(--app-text-muted, #64748b);
+    margin: 0;
   }
 
   .mobile-notice {

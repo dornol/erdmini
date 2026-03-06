@@ -1,5 +1,6 @@
 <script lang="ts">
   import { snapshotStore } from '$lib/store/snapshot.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import * as m from '$lib/paraglide/messages';
 
@@ -67,28 +68,30 @@
     <button class="snapshot-close" onclick={onclose}>✕</button>
   </div>
 
-  <div class="snapshot-create">
-    <input
-      class="snapshot-input"
-      type="text"
-      placeholder={m.snapshot_name_placeholder()}
-      bind:value={nameInput}
-      onkeydown={(e) => { if (e.key === 'Enter') handleSave(); }}
-    />
-    <input
-      class="snapshot-input snapshot-desc"
-      type="text"
-      placeholder={m.snapshot_description_placeholder()}
-      bind:value={descInput}
-    />
-    <button
-      class="snapshot-save-btn"
-      onclick={handleSave}
-      disabled={!nameInput.trim() || saving}
-    >
-      {m.snapshot_create()}
-    </button>
-  </div>
+  {#if !permissionStore.isReadOnly}
+    <div class="snapshot-create">
+      <input
+        class="snapshot-input"
+        type="text"
+        placeholder={m.snapshot_name_placeholder()}
+        bind:value={nameInput}
+        onkeydown={(e) => { if (e.key === 'Enter') handleSave(); }}
+      />
+      <input
+        class="snapshot-input snapshot-desc"
+        type="text"
+        placeholder={m.snapshot_description_placeholder()}
+        bind:value={descInput}
+      />
+      <button
+        class="snapshot-save-btn"
+        onclick={handleSave}
+        disabled={!nameInput.trim() || saving}
+      >
+        {m.snapshot_create()}
+      </button>
+    </div>
+  {/if}
 
   <div class="snapshot-filter">
     <button class="filter-btn" class:active={filter === 'all'} onclick={() => filter = 'all'}>{m.snapshot_filter_all()}</button>
@@ -115,17 +118,21 @@
             <span class="snapshot-item-time">{formatTime(snap.createdAt)}</span>
           </div>
           <div class="snapshot-item-actions">
-            <button class="snap-btn snap-restore" onclick={() => handleRestore(snap.id, snap.name)} title={m.snapshot_restore()}>
-              ↩
-            </button>
+            {#if !permissionStore.isReadOnly}
+              <button class="snap-btn snap-restore" onclick={() => handleRestore(snap.id, snap.name)} title={m.snapshot_restore()}>
+                ↩
+              </button>
+            {/if}
             {#if ondiff}
               <button class="snap-btn snap-diff" onclick={() => ondiff?.(snap.id)} title={m.snapshot_compare()}>
                 ⇔
               </button>
             {/if}
-            <button class="snap-btn snap-delete" onclick={() => handleDelete(snap.id, snap.name)} title={m.snapshot_delete()}>
-              ✕
-            </button>
+            {#if !permissionStore.isReadOnly}
+              <button class="snap-btn snap-delete" onclick={() => handleDelete(snap.id, snap.name)} title={m.snapshot_delete()}>
+                ✕
+              </button>
+            {/if}
           </div>
         </div>
       {/each}

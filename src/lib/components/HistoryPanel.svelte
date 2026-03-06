@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import * as m from '$lib/paraglide/messages';
   import HistoryEntryList from '$lib/components/HistoryEntryList.svelte';
 
@@ -9,10 +10,12 @@
   let redoEntries = $derived(erdStore.redoEntries);
 
   function jumpToUndo(index: number) {
+    if (permissionStore.isReadOnly) return;
     erdStore.jumpToHistory(index);
   }
 
   function jumpToRedo(steps: number) {
+    if (permissionStore.isReadOnly) return;
     for (let i = 0; i < steps; i++) {
       erdStore.redo();
     }

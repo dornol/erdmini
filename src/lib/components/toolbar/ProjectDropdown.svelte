@@ -149,11 +149,13 @@
                 title={m.project_rename()}
                 onclick={(e) => { e.stopPropagation(); startRename(proj.id, proj.name); }}
               >✎</button>
-              <button
-                class="project-action-btn"
-                title={m.project_duplicate()}
-                onclick={async (e) => { e.stopPropagation(); await projectStore.duplicateProject(proj.id); onclose(); }}
-              >⧉</button>
+              {#if !authStore.user || authStore.user.canCreateProject}
+                <button
+                  class="project-action-btn"
+                  title={m.project_duplicate()}
+                  onclick={async (e) => { e.stopPropagation(); await projectStore.duplicateProject(proj.id); onclose(); }}
+                >⧉</button>
+              {/if}
               {#if projectStore.index.projects.length > 1}
                 <button
                   class="project-action-btn project-action-delete"
