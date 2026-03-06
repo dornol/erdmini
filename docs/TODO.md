@@ -227,3 +227,13 @@
 - ~~**Shortcuts Panel Update**: Ctrl+F 검색, Ctrl+C/V 복사/붙여넣기 키보드 단축키 추가~~
 - 26 new tests (14 table-templates + 5 SVG FK label + 5 DDL FK label + 2 schema-diff FK label)
 - Difficulty: Medium
+
+### Phase 39 — Site Branding (Admin)
+- ~~**Site Name**: 툴바 로고 텍스트 + 로그인 페이지 h1 + `<title>` 태그 + OG meta~~
+- ~~**Logo URL**: 커스텀 로고 이미지 URL (Toolbar + Login 페이지)~~
+- ~~**Login Message**: 로그인 페이지 로고 아래 안내 메시지~~
+- ~~DB: `site_settings` key-value 테이블 (V014 migration)~~
+- ~~서버: 메모리 캐시 + 수정 시 즉시 갱신 (재시작 불필요)~~
+- ~~Admin UI: Branding 탭~~
+- 11 new tests (site-settings CRUD + validation)
+- Difficulty: Easy

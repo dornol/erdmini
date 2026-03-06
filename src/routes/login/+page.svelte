@@ -1,8 +1,11 @@
 <script lang="ts">
   import { authStore } from '$lib/store/auth.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { page } from '$app/state';
 
   let { data } = $props();
+
+  const siteSettings = $derived((page.data as any)?.siteSettings as { site_name: string; login_message: string; logo_url: string } | null);
 
   let username = $state('');
   let password = $state('');
@@ -66,22 +69,29 @@
 <div class="login-page">
   <div class="login-card">
     <div class="login-header">
-      <svg class="login-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
-        <rect width="32" height="32" rx="7" fill="#1e293b"/>
-        <path d="M16 5 L25 10.5 L25 21.5 L16 27 L7 21.5 L7 10.5 Z" fill="none" stroke="url(#lg)" stroke-width="2" stroke-linejoin="round"/>
-        <line x1="16" y1="5" x2="16" y2="27" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-        <line x1="7" y1="10.5" x2="25" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-        <line x1="25" y1="10.5" x2="7" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-        <circle cx="16" cy="5" r="2.2" fill="#60a5fa"/>
-        <circle cx="25" cy="10.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="25" cy="21.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="16" cy="27" r="2.2" fill="#60a5fa"/>
-        <circle cx="7" cy="21.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="7" cy="10.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="16" cy="16" r="2.8" fill="#60a5fa"/>
-      </svg>
-      <h1>erdmini</h1>
+      {#if siteSettings?.logo_url}
+        <img class="login-logo" src={siteSettings.logo_url} alt="Logo" />
+      {:else}
+        <svg class="login-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+          <rect width="32" height="32" rx="7" fill="#1e293b"/>
+          <path d="M16 5 L25 10.5 L25 21.5 L16 27 L7 21.5 L7 10.5 Z" fill="none" stroke="url(#lg)" stroke-width="2" stroke-linejoin="round"/>
+          <line x1="16" y1="5" x2="16" y2="27" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+          <line x1="7" y1="10.5" x2="25" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+          <line x1="25" y1="10.5" x2="7" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+          <circle cx="16" cy="5" r="2.2" fill="#60a5fa"/>
+          <circle cx="25" cy="10.5" r="2.2" fill="#60a5fa"/>
+          <circle cx="25" cy="21.5" r="2.2" fill="#60a5fa"/>
+          <circle cx="16" cy="27" r="2.2" fill="#60a5fa"/>
+          <circle cx="7" cy="21.5" r="2.2" fill="#60a5fa"/>
+          <circle cx="7" cy="10.5" r="2.2" fill="#60a5fa"/>
+          <circle cx="16" cy="16" r="2.8" fill="#60a5fa"/>
+        </svg>
+      {/if}
+      <h1>{siteSettings?.site_name || 'erdmini'}</h1>
+      {#if siteSettings?.login_message}
+        <p class="login-message">{siteSettings.login_message}</p>
+      {/if}
     </div>
 
     {#if oidcError}
@@ -183,6 +193,16 @@
     width: 56px;
     height: 56px;
     margin-bottom: 8px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .login-message {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 6px 0 0;
+    text-align: center;
+    line-height: 1.5;
   }
 
   .login-header h1 {

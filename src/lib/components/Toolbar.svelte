@@ -20,6 +20,7 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import CollabIndicator from './CollabIndicator.svelte';
   import { collabStore } from '$lib/store/collab.svelte';
+  import { page } from '$app/state';
 
   import ProjectDropdown from './toolbar/ProjectDropdown.svelte';
   import ImportDropdown from './toolbar/ImportDropdown.svelte';
@@ -30,6 +31,8 @@
   import UserMenu from './toolbar/UserMenu.svelte';
 
   let { onfullscreen }: { onfullscreen?: () => void } = $props();
+
+  const siteSettings = $derived((page.data as any)?.siteSettings as { site_name: string; logo_url: string } | null);
 
   let viewportWidth = $state(800);
   let viewportHeight = $state(600);
@@ -140,22 +143,26 @@
 
 <header class="toolbar">
   <div class="logo">
-    <svg class="logo-icon" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-      <rect width="32" height="32" rx="7" fill="#1e293b"/>
-      <path d="M16 5 L25 10.5 L25 21.5 L16 27 L7 21.5 L7 10.5 Z" fill="none" stroke="url(#logo-grad)" stroke-width="2" stroke-linejoin="round"/>
-      <line x1="16" y1="5" x2="16" y2="27" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-      <line x1="7" y1="10.5" x2="25" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-      <line x1="25" y1="10.5" x2="7" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-      <circle cx="16" cy="5" r="2.2" fill="#60a5fa"/>
-      <circle cx="25" cy="10.5" r="2.2" fill="#60a5fa"/>
-      <circle cx="25" cy="21.5" r="2.2" fill="#60a5fa"/>
-      <circle cx="16" cy="27" r="2.2" fill="#60a5fa"/>
-      <circle cx="7" cy="21.5" r="2.2" fill="#60a5fa"/>
-      <circle cx="7" cy="10.5" r="2.2" fill="#60a5fa"/>
-      <circle cx="16" cy="16" r="2.8" fill="#60a5fa"/>
-      <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
-    </svg>
-    <span class="logo-text">erdmini</span>
+    {#if siteSettings?.logo_url}
+      <img class="logo-icon" src={siteSettings.logo_url} alt="Logo" />
+    {:else}
+      <svg class="logo-icon" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="7" fill="#1e293b"/>
+        <path d="M16 5 L25 10.5 L25 21.5 L16 27 L7 21.5 L7 10.5 Z" fill="none" stroke="url(#logo-grad)" stroke-width="2" stroke-linejoin="round"/>
+        <line x1="16" y1="5" x2="16" y2="27" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+        <line x1="7" y1="10.5" x2="25" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+        <line x1="25" y1="10.5" x2="7" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+        <circle cx="16" cy="5" r="2.2" fill="#60a5fa"/>
+        <circle cx="25" cy="10.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="25" cy="21.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="16" cy="27" r="2.2" fill="#60a5fa"/>
+        <circle cx="7" cy="21.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="7" cy="10.5" r="2.2" fill="#60a5fa"/>
+        <circle cx="16" cy="16" r="2.8" fill="#60a5fa"/>
+        <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
+      </svg>
+    {/if}
+    <span class="logo-text">{siteSettings?.site_name || 'erdmini'}</span>
   </div>
 
   <ProjectDropdown
@@ -357,6 +364,8 @@
     width: 24px;
     height: 24px;
     flex-shrink: 0;
+    object-fit: contain;
+    border-radius: 4px;
   }
 
   .logo-text {

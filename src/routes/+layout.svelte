@@ -4,10 +4,13 @@
 	import { languageStore } from '$lib/store/language.svelte';
 	import { authStore } from '$lib/store/auth.svelte';
 
-	const SITE_TITLE = 'erdmini — Free Browser-Based ERD Tool';
-	const SITE_DESCRIPTION = 'Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL.';
-
 	let { data, children } = $props();
+
+	const siteName = $derived(data.siteSettings?.site_name || 'erdmini');
+	const SITE_TITLE = $derived(siteName === 'erdmini'
+		? 'erdmini — Free Browser-Based ERD Tool'
+		: siteName);
+	const SITE_DESCRIPTION = 'Free browser-based ERD tool. Design database schemas visually with drag-and-drop, export DDL for MySQL, PostgreSQL, MariaDB, and MSSQL.';
 
 	// Hydrate auth store from server data
 	$effect(() => {
@@ -32,7 +35,7 @@
 	const jsonLd = $derived(safeJsonLd({
 		'@context': 'https://schema.org',
 		'@type': 'SoftwareApplication',
-		name: 'erdmini',
+		name: siteName,
 		url: data.siteUrl,
 		description: SITE_DESCRIPTION,
 		applicationCategory: 'DeveloperApplication',
@@ -103,7 +106,7 @@
 	<meta property="og:image" content="{data.siteUrl}/og-image.png" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
-	<meta property="og:site_name" content="erdmini" />
+	<meta property="og:site_name" content={siteName} />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
