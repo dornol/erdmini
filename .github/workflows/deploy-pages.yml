@@ -35,7 +35,7 @@ jobs:
           PUBLIC_SITE_URL: https://erdmini.dornol.dev
         run: pnpm build
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: build
 
