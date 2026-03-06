@@ -20,12 +20,14 @@
   let ldapProviders = $state<LdapProviderRow[]>([]);
   let apiKeys = $state<ApiKeyInfo[]>([]);
   let groups = $state<any[]>([]);
+  let embedCount = $state(0);
+  let projectCount = $state(0);
   let activeTab = $state<'users' | 'groups' | 'oidc' | 'ldap' | 'api-keys' | 'embeds' | 'projects' | 'branding' | 'backup' | 'audit-log'>('users');
 
   let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
 
   onMount(async () => {
-    await Promise.all([loadUsers(), loadProviders(), loadLdapProviders(), loadApiKeys(), loadGroups()]);
+    await Promise.all([loadUsers(), loadProviders(), loadLdapProviders(), loadApiKeys(), loadGroups(), loadCounts()]);
   });
 
   async function loadUsers() {
@@ -51,6 +53,15 @@
   async function loadGroups() {
     const res = await fetch('/api/admin/groups');
     if (res.ok) groups = await res.json();
+  }
+
+  async function loadCounts() {
+    const [embedRes, projectRes] = await Promise.all([
+      fetch('/api/admin/embed-tokens'),
+      fetch('/api/admin/projects'),
+    ]);
+    if (embedRes.ok) { const data = await embedRes.json(); embedCount = data.length; }
+    if (projectRes.ok) { const data = await projectRes.json(); projectCount = data.length; }
   }
 </script>
 
@@ -80,10 +91,10 @@
       API Keys ({apiKeys.length})
     </button>
     <button class="tab" class:active={activeTab === 'embeds'} onclick={() => (activeTab = 'embeds')}>
-      Embeds
+      Embeds ({embedCount})
     </button>
     <button class="tab" class:active={activeTab === 'projects'} onclick={() => (activeTab = 'projects')}>
-      {m.admin_tab_projects()}
+      {m.admin_tab_projects()} ({projectCount})
     </button>
     <button class="tab" class:active={activeTab === 'branding'} onclick={() => (activeTab = 'branding')}>
       Branding
