@@ -4,10 +4,11 @@
   import type { LayoutType, LayoutOptions } from '$lib/utils/auto-layout';
   import { HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
   import { permissionStore } from '$lib/store/permission.svelte';
+  import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
   import { now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
 
-  type BarDropdown = 'layout' | 'columns' | 'lines' | 'align';
+  type BarDropdown = 'layout' | 'columns' | 'lines' | 'align' | 'theme';
   let activeDropdown = $state<BarDropdown | null>(null);
   function toggleDropdown(id: BarDropdown) { activeDropdown = activeDropdown === id ? null : id; }
   function closeDropdown() { activeDropdown = null; }
@@ -15,6 +16,14 @@
   let columnsOpen = $derived(activeDropdown === 'columns');
   let linesOpen = $derived(activeDropdown === 'lines');
   let alignOpen = $derived(activeDropdown === 'align');
+  let themeOpen = $derived(activeDropdown === 'theme');
+
+  const THEMES: { id: ThemeId; label: () => string; dot: string }[] = [
+    { id: 'modern',    label: () => m.theme_modern(),    dot: '#1e293b' },
+    { id: 'classic',   label: () => m.theme_classic(),   dot: '#6b4c2a' },
+    { id: 'blueprint', label: () => m.theme_blueprint(), dot: '#1e4a7a' },
+    { id: 'minimal',   label: () => m.theme_minimal(),   dot: '#f0f0f0' },
+  ];
 
   const VIEW_MODES: { mode: ColumnDisplayMode; label: () => string; short: () => string }[] = [
     { mode: 'all', label: () => m.view_mode_all(), short: () => m.view_mode_all() },
@@ -282,6 +291,36 @@
     </svg>
   </button>
 
+  <span class="bar-sep"></span>
+
+  <!-- Theme dropdown -->
+  <div class="bar-dropdown-wrap">
+    <button
+      class="bar-btn bar-btn-icon"
+      onclick={() => toggleDropdown('theme')}
+      aria-expanded={themeOpen}
+      aria-haspopup="menu"
+      title={m.toolbar_theme()}
+    >
+      <span class="theme-indicator" style="background:{THEMES.find(t => t.id === themeStore.current)?.dot ?? '#1e293b'}"></span>
+    </button>
+    {#if themeOpen}
+      <div class="bar-dropdown-menu" role="menu" tabindex="-1" onmouseleave={() => closeDropdown()}>
+        {#each THEMES as t}
+          <button
+            class="bar-dropdown-item"
+            class:bar-dropdown-item-active={themeStore.current === t.id}
+            role="menuitem"
+            onclick={() => { themeStore.set(t.id); closeDropdown(); }}
+          >
+            <span class="theme-dot" style="background:{t.dot}"></span>
+            {t.label()}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
   <!-- Align/Distribute (visible when 2+ selected) -->
   {#if erdStore.selectedTableIds.size >= 2}
     <span class="bar-sep"></span>
@@ -441,5 +480,24 @@
     opacity: 0.6;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+
+  .theme-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--erd-zoom-border);
+  }
+
+  .theme-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    margin-right: 6px;
+    vertical-align: middle;
+    flex-shrink: 0;
   }
 </style>
