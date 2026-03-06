@@ -34,7 +34,7 @@
 - ~~Includes bulk lock / unlock functionality~~
 
 ### ~~9. Schema Validation / Linting~~ ✅
-- ~~8 rules: missing PK, missing FK target, SET NULL + NOT NULL, duplicate columns / tables / indexes, circular FK, empty table~~
+- ~~9 rules: missing PK, missing FK target, SET NULL + NOT NULL, duplicate columns / tables / indexes, circular FK, empty table, domain circular hierarchy~~
 - ~~LintPanel: severity icons, click to navigate to the affected table~~
 
 ### ~~10. PDF Export~~ ✅
@@ -72,7 +72,7 @@
 
 ### ~~17. Accessibility (A11y) Improvements~~ — Won't Do
 - ~~ARIA labels, keyboard navigation, screen reader support~~
-- Skipped: ERD 편집기는 캔버스 기반 시각적 도구로 완전한 스크린 리더 지원이 비현실적. 모달/드롭다운/커맨드 팔레트 등 실용적 접근성은 이미 구현됨.
+- Skipped: ERD editor is a canvas-based visual tool where full screen reader support is impractical. Practical accessibility for modals/dropdowns/command palette is already implemented.
 
 ### ~~18. FK Line Type Selection~~ ✅
 - ~~Allow users to choose FK line rendering style: curved (current bezier), straight, orthogonal (right-angle)~~
@@ -123,26 +123,26 @@
 - ~~SQLite: INTEGER, TEXT, REAL simple type system~~
 - ~~Extend Dialect type, update ddl-export.ts / ddl-import.ts / MCP dialect options~~
 - ~~Add tests per dialect~~
-- ~~ddl-import.ts 방언별 모듈 분리 (ddl-import-mssql.ts, ddl-import-oracle.ts, ddl-import-types.ts)~~
+- ~~DDL import module split by dialect (ddl-import-mssql.ts, ddl-import-oracle.ts, ddl-import-types.ts)~~
 - ~~Difficulty: Large~~
 
 ---
 
 ## Long-Term Vision
 
-### ~~25. AI Schema Generation~~ ✅ (MCP로 대체)
+### ~~25. AI Schema Generation~~ ✅ (Replaced by MCP)
 - ~~Automatically generate a schema from a natural language description (e.g., "Create a blog system")~~
-- MCP 서버(61 tools)가 이미 구현되어 있으므로, AI 클라이언트(Claude 등)가 `add_table`, `add_column`, `add_foreign_key` 등을 직접 호출하여 스키마 생성 가능
-- 별도 LLM 연동 기능 불필요 — MCP 인프라가 이 역할을 수행
+- MCP server (66 tools) is already implemented, so AI clients (Claude, etc.) can directly call `add_table`, `add_column`, `add_foreign_key` to generate schemas
+- No separate LLM integration needed — MCP infrastructure fulfills this role
 
 ### ~~26. Live DB Connection & Reverse Engineering~~ — Won't Do
 - ~~Connect to a live database and automatically extract the schema~~
-- 제외 사유: erdmini의 "mini" 철학에 맞지 않음. DB 크레덴셜 관리 보안 부담, DB 드라이버 의존성으로 번들 사이즈 증가. DDL/Prisma/DBML import로 역공학 경로 이미 충분.
+- Excluded: Does not fit erdmini's "mini" philosophy. DB credential management creates security burden, DB driver dependencies increase bundle size. DDL/Prisma/DBML import provides sufficient reverse engineering paths.
 
 ### ~~27. Schema Snapshots~~ ✅
 - ~~Named snapshots: save current schema state, list/restore/delete, diff comparison~~
 - ~~Storage: IndexedDB (local mode), SQLite (server mode), REST API, MCP tools~~
-- ~~Branching (병행 편집) excluded — snapshots only~~
+- ~~Branching (parallel editing) excluded — snapshots only~~
 
 ### ~~28. Schema Namespace (Multi-Schema per Project)~~ ✅
 - ~~`schema` field on tables/memos (e.g., `public`, `auth`, `billing`)~~
@@ -163,149 +163,149 @@
 - ~~Collab mode: only lexicographically first peer creates auto-snapshots~~
 
 ### ~~30. iframe Embed (Read-Only View)~~ ✅
-- ~~읽기 전용 다이어그램 뷰를 iframe으로 외부 사이트에 삽입~~
-- ~~`/embed/[token]` 라우트: 캔버스 + 테이블 + FK 라인 + 메모 + SchemaTabBar 렌더링 (Toolbar/Sidebar/Editor 제거)~~
-- ~~줌/패닝만 가능, 편집 불가 (permissionStore → viewer)~~
-- ~~서버 모드 전용: 토큰 기반 접근 + 선택적 비밀번호 보호 (argon2) + 만료일 설정~~
-- ~~EmbedModal: 토큰 생성/삭제, URL/iframe 코드 복사~~
-- ~~embed_tokens SQLite 테이블 (V009 마이그레이션), hooks.server.ts X-Frame-Options 조건부 해제~~
-- ~~프로젝트 삭제 시 embed 토큰 cascade 삭제~~
+- ~~Read-only diagram view embeddable via iframe on external sites~~
+- ~~`/embed/[token]` route: canvas + tables + FK lines + memos + SchemaTabBar rendering (Toolbar/Sidebar/Editor removed)~~
+- ~~Zoom/panning only, no editing (permissionStore → viewer)~~
+- ~~Server mode only: token-based access + optional password protection (argon2) + expiration date~~
+- ~~EmbedModal: token create/delete, URL/iframe code copy~~
+- ~~embed_tokens SQLite table (V009 migration), hooks.server.ts conditional X-Frame-Options bypass~~
+- ~~Cascade delete embed tokens on project deletion~~
 - Difficulty: Medium
 
 ### ~~31. DBML Import / Export~~ ✅
-- ~~[DBML (Database Markup Language)](https://dbml.dbdiagram.io/) 포맷 지원~~ ✅ (Import + Export 구현 완료)
-- ~~**Import**: DBML 텍스트 → ERDSchema 변환 파서~~ ✅
-- ~~**Export**: ERDSchema → DBML 텍스트 생성~~ ✅
-- `src/lib/utils/dbml-import.ts`, `src/lib/utils/dbml-export.ts`, DdlModal 통합, MCP 도구 (export_dbml, import_dbml)
+- ~~[DBML (Database Markup Language)](https://dbml.dbdiagram.io/) format support~~ ✅ (Import + Export implemented)
+- ~~**Import**: DBML text → ERDSchema conversion parser~~ ✅
+- ~~**Export**: ERDSchema → DBML text generation~~ ✅
+- `src/lib/utils/dbml-import.ts`, `src/lib/utils/dbml-export.ts`, DdlModal integration, MCP tools (export_dbml, import_dbml)
 - 89 tests (53 import + 36 export)
 
 ### ~~32. ORM / Framework Schema Import~~ — Won't Do (Rails/Django/TypeORM)
-- ORM 및 프레임워크 스키마 파일에서 직접 ERD 생성
-- ~~**Prisma** (`schema.prisma`): model, @id, @relation, @unique, enum 파싱~~ ✅ (Import + Export 구현 완료)
-- ~~**Rails** (`schema.rb`)~~ — Won't Do: DDL 7방언 + DBML + Prisma import로 충분. 사용층 겹침 낮음
-- ~~**Django** (`models.py`)~~ — Won't Do: 동일 사유
-- ~~**TypeORM / Sequelize** (TypeScript)~~ — Won't Do: 동일 사유
+- ORM and framework schema file → ERD generation
+- ~~**Prisma** (`schema.prisma`): model, @id, @relation, @unique, enum parsing~~ ✅ (Import + Export implemented)
+- ~~**Rails** (`schema.rb`)~~ — Won't Do: DDL 7 dialects + DBML + Prisma import is sufficient. Low user overlap
+- ~~**Django** (`models.py`)~~ — Won't Do: Same reason
+- ~~**TypeORM / Sequelize** (TypeScript)~~ — Won't Do: Same reason
 
 ### ~~33. SQL Playground (Browser SQLite via WASM)~~ ✅
-- ~~브라우저에서 SQLite WASM(`sql.js`)으로 현재 스키마를 실제 DB로 생성하고 SQL 쿼리 실행~~
-- ~~**스키마 동기화**: 현재 ERD → `exportDDL(schema, 'sqlite')` → CREATE TABLE 자동 실행~~
-- ~~**SQL 에디터**: 쿼리 입력 → 실행 → 결과 테이블 표시 (SELECT, INSERT, UPDATE, DELETE)~~
-- ~~**더미 데이터 자동 생성**: 컬럼 타입 기반 값 생성, FK 위상 정렬 순 INSERT, 테이블당 N행 조절~~
-- ~~**구현**: `sql.js` WASM lazy load, `SqlPlaygroundModal.svelte`, `dummy-data.ts` (위상 정렬 + 타입별 더미값 + INSERT 생성)~~
-- ~~Toolbar > Tools > SQL Playground, 쿼리 히스토리 (localStorage, max 20), Ctrl/Cmd+Enter 실행~~
+- ~~In-browser SQLite WASM (`sql.js`) to create current schema as an actual DB and execute SQL queries~~
+- ~~**Schema sync**: Current ERD → `exportDDL(schema, 'sqlite')` → auto-execute CREATE TABLE~~
+- ~~**SQL editor**: Query input → execute → result table display (SELECT, INSERT, UPDATE, DELETE)~~
+- ~~**Dummy data auto-generation**: Type-based value generation, FK topological sort order INSERT, adjustable N rows per table~~
+- ~~**Implementation**: `sql.js` WASM lazy load, `SqlPlaygroundModal.svelte`, `dummy-data.ts` (topological sort + type-based dummy values + INSERT generation)~~
+- ~~Toolbar > Tools > SQL Playground, query history (localStorage, max 20), Ctrl/Cmd+Enter to execute~~
 - ~~70 tests (unit + integration: E-commerce, Blog, HR, edge cases)~~
 - Difficulty: Medium
 
 ### ~~34. Migration SQL Generation (Schema Diff → DDL)~~ ✅
-- ~~기존 `schema-diff.ts`의 `SchemaDiff` 결과를 dialect별 `ALTER TABLE` DDL로 변환~~
+- ~~Convert existing `schema-diff.ts` `SchemaDiff` results to per-dialect `ALTER TABLE` DDL~~
 - ~~`generateMigrationSQL(diff: SchemaDiff, dialect: Dialect, options?, currTables?): string`~~
-- ~~**지원 명령**: CREATE/DROP TABLE, RENAME TABLE, ADD/DROP/ALTER COLUMN, ADD/DROP FK/INDEX/UNIQUE KEY~~
-- ~~**dialect별 차이 처리**: MySQL MODIFY COLUMN, PG ALTER COLUMN TYPE/SET/DROP, SQLite recreate-table, Oracle MODIFY, MSSQL ALTER COLUMN~~
-- ~~**SchemaDiffModal 통합**: dialect 드롭다운 + "Export Migration SQL" 버튼 + SQL 미리보기 + 복사/다운로드~~
+- ~~**Supported commands**: CREATE/DROP TABLE, RENAME TABLE, ADD/DROP/ALTER COLUMN, ADD/DROP FK/INDEX/UNIQUE KEY~~
+- ~~**Per-dialect handling**: MySQL MODIFY COLUMN, PG ALTER COLUMN TYPE/SET/DROP, SQLite recreate-table, Oracle MODIFY, MSSQL ALTER COLUMN~~
+- ~~**SchemaDiffModal integration**: dialect dropdown + "Export Migration SQL" button + SQL preview + copy/download~~
 - ~~71 tests (unit + dialect + integration)~~
 - Difficulty: Large
 
-### ~~35. DDL Export 품질 개선 (Minor Gaps)~~ ✅
-- ~~**PostgreSQL ENUM**: `CREATE TYPE ... AS ENUM(...)` 생성 (현재 VARCHAR 폴백)~~
-- ~~**PostgreSQL SMALLSERIAL**: `SMALLINT + autoIncrement` → `SMALLSERIAL` 매핑~~
-- ~~**Schema Diff 누락 항목**: UniqueKey 변경, enumValues 변경 비교 추가~~
-- ~~**MSSQL schema-qualified comments**: `sp_addextendedproperty`에서 `dbo` 하드코딩 → 실제 스키마명 사용~~
-- ~~**Import normalizeType**: `DATETIME` → 내부 `DATETIME` 유지 (현재 `TIMESTAMP`로 통일됨)~~
-- ~~**Import SMALLSERIAL**: `SMALLSERIAL` → `SMALLINT` + autoIncrement 매핑 추가~~
+### ~~35. DDL Export Quality Improvements (Minor Gaps)~~ ✅
+- ~~**PostgreSQL ENUM**: `CREATE TYPE ... AS ENUM(...)` generation (was VARCHAR fallback)~~
+- ~~**PostgreSQL SMALLSERIAL**: `SMALLINT + autoIncrement` → `SMALLSERIAL` mapping~~
+- ~~**Schema Diff gaps**: Added UniqueKey changes, enumValues comparison~~
+- ~~**MSSQL schema-qualified comments**: `sp_addextendedproperty` uses actual schema name instead of hardcoded `dbo`~~
+- ~~**Import normalizeType**: `DATETIME` → internal `DATETIME` preserved (was being unified to `TIMESTAMP`)~~
+- ~~**Import SMALLSERIAL**: `SMALLSERIAL` → `SMALLINT` + autoIncrement mapping added~~
 - Difficulty: Medium
 
 ### ~~36. UX Improvements (Phase 38)~~ ✅
-- ~~**FK Labels**: `ForeignKey.label?: string` — FK 라인에 관계 설명 텍스트 표시 (dblclick 인라인 편집, FkModal 라벨 필드, SVG export, MCP update_foreign_key label 파라미터)~~
-- ~~**Canvas Search**: Ctrl+F / Ctrl+K → CommandPalette 바인딩 (테이블/컬럼 검색 + 캔버스 네비게이션)~~
-- ~~**Inline Column Add**: TableCard hover 시 "+" 버튼 (max-height 슬라이드 애니메이션), 클릭 시 즉시 ColumnEditPopup 열림~~
-- ~~**Table Templates**: Tools 드롭다운에 5개 프리셋 (users, audit_log, settings, files, tags), 이름 충돌 자동 회피~~
-- ~~**Cross-Project Copy/Paste**: Ctrl+C 선택 테이블 JSON 복사, Ctrl+V 붙여넣기 (ID 전체 재생성, FK 재매핑, UK/Index 재매핑, 이름 충돌 회피)~~
-- ~~**Column Delete in Popup**: ColumnEditPopup에 🗑 삭제 버튼 추가~~
-- ~~**Embed CommandPalette**: 임베드 모드에서도 Ctrl+F/K 캔버스 검색 지원~~
-- ~~**FK Popover**: FK 라인 클릭 시 정보 팝오버 + 라벨 편집/FK 편집/삭제 액션 (기존 single-click-to-delete 대체)~~
-- ~~**Bulk Schema Change**: 멀티선택 테이블의 스키마 일괄 변경 (BulkEditModal 스키마 드롭다운)~~
-- ~~**Shortcuts Panel Update**: Ctrl+F 검색, Ctrl+C/V 복사/붙여넣기 키보드 단축키 추가~~
+- ~~**FK Labels**: `ForeignKey.label?: string` — Relationship description text on FK lines (dblclick inline edit, FkModal label field, SVG export, MCP update_foreign_key label parameter)~~
+- ~~**Canvas Search**: Ctrl+F / Ctrl+K → CommandPalette binding (table/column search + canvas navigation)~~
+- ~~**Inline Column Add**: TableCard hover "+" button (max-height slide animation), click opens ColumnEditPopup immediately~~
+- ~~**Table Templates**: 5 presets in Tools dropdown (users, audit_log, settings, files, tags), auto-avoids name conflicts~~
+- ~~**Cross-Project Copy/Paste**: Ctrl+C selected tables JSON copy, Ctrl+V paste (full ID regeneration, FK remapping, UK/Index remapping, name conflict avoidance)~~
+- ~~**Column Delete in Popup**: Added delete button to ColumnEditPopup~~
+- ~~**Embed CommandPalette**: Ctrl+F/K canvas search supported in embed mode~~
+- ~~**FK Popover**: FK line click shows info popover + label edit/FK edit/delete actions (replaces single-click-to-delete)~~
+- ~~**Bulk Schema Change**: Bulk schema change for multi-selected tables (BulkEditModal schema dropdown)~~
+- ~~**Shortcuts Panel Update**: Added Ctrl+F search, Ctrl+C/V copy/paste keyboard shortcuts~~
 - 26 new tests (14 table-templates + 5 SVG FK label + 5 DDL FK label + 2 schema-diff FK label)
 - Difficulty: Medium
 
 ### Phase 39 — Site Branding (Admin)
-- ~~**Site Name**: 툴바 로고 텍스트 + 로그인 페이지 h1 + `<title>` 태그 + OG meta~~
-- ~~**Logo URL**: 커스텀 로고 이미지 URL (Toolbar + Login 페이지)~~
-- ~~**Login Message**: 로그인 페이지 로고 아래 안내 메시지~~
-- ~~DB: `site_settings` key-value 테이블 (V014 migration)~~
-- ~~서버: 메모리 캐시 + 수정 시 즉시 갱신 (재시작 불필요)~~
-- ~~Admin UI: Branding 탭~~
-- ~~**Browser Title**: `<title>` 태그 + `<meta description>` 동적 반영~~
-- ~~**Favicon Override**: logo_url 설정 시 favicon도 교체~~
-- ~~**Embed Branding**: 임베드 헤더에 로고 + 사이트명 표시~~
+- ~~**Site Name**: Toolbar logo text + login page h1 + `<title>` tag + OG meta~~
+- ~~**Logo URL**: Custom logo image URL (Toolbar + Login page)~~
+- ~~**Login Message**: Message displayed below logo on login page~~
+- ~~DB: `site_settings` key-value table (V014 migration)~~
+- ~~Server: memory cache + instant refresh on update (no restart needed)~~
+- ~~Admin UI: Branding tab~~
+- ~~**Browser Title**: Dynamic `<title>` tag + `<meta description>` update~~
+- ~~**Favicon Override**: Favicon replaced when logo_url is set~~
+- ~~**Embed Branding**: Logo + site name displayed in embed header~~
 - 11 new tests (site-settings CRUD + validation)
 - Difficulty: Easy
 
 ### Phase 39b — FK Line Polish
-- ~~**FK Line Visual**: stroke-linecap/linejoin round, 두께 조정 (1.6/2.4), crow's foot V자형으로 개선~~
-- ~~**FK Line Toggle**: canvasState.showRelationLines 토글 (CanvasBottomBar 아이콘 버튼, localStorage 저장)~~
-- ~~마커 간격/크기 정리 (tick 7px, circle r4.5, participation 15px offset)~~
+- ~~**FK Line Visual**: stroke-linecap/linejoin round, thickness adjustment (1.6/2.4), crow's foot improved to V-shape~~
+- ~~**FK Line Toggle**: canvasState.showRelationLines toggle (CanvasBottomBar icon button, localStorage save)~~
+- ~~Marker spacing/sizing cleanup (tick 7px, circle r4.5, participation 15px offset)~~
 - 13 new tests (canvas defaults + FK marker geometry)
 - Difficulty: Easy
 
 ### Phase 39c — Admin UX Improvements
-- ~~**API Key User Picker**: Create API Key에서 사용자 검색 UI (이름/유저네임/이메일 검색, 역할 배지, 드롭다운)~~
-- ~~**Embed Admin Tab**: 전체 프로젝트 임베드 토큰 관리 탭 (목록, URL 복사, 삭제)~~
-- ~~**Tab Counts**: Embeds/Projects 탭에 개수 표시 (Branding/Backup/Audit 제외)~~
+- ~~**API Key User Picker**: User search UI in Create API Key (search by name/username/email, role badges, dropdown)~~
+- ~~**Embed Admin Tab**: Full project embed token management tab (list, URL copy, delete)~~
+- ~~**Tab Counts**: Count badges on Embeds/Projects tabs (Branding/Backup/Audit excluded)~~
 - 41 new tests (embed token CRUD + validation)
 - Difficulty: Easy
 
 ### Phase 39d — Per-User Permissions & Admin i18n
-- ~~**Per-User Permission Flags**: `can_create_project`, `can_create_api_key`, `can_create_embed` 컬럼 (V015 migration)~~
-- ~~**Site-Wide Defaults**: `site_settings`에 `default_can_create_*` 키 3개, Branding 탭에서 관리~~
-- ~~**requirePermission() Guard**: admin 바이패스, 첫 프로젝트 예외 허용~~
-- ~~**Enforcement**: 프로젝트 생성, API 키 발급, 임베드 토큰 생성 엔드포인트에 권한 체크~~
-- ~~**OIDC/LDAP Integration**: 신규 사용자 생성 시 site default 권한 적용~~
-- ~~**Admin UI**: 사용자 편집 시 권한 체크박스, 사용자 목록에 권한 배지~~
-- ~~**Admin Full-Width Layout**: max-width 제거, 전체 너비 레이아웃~~
-- ~~**Admin i18n**: ~156개 새 키 (ko/en/ja/zh), 모든 관리자 탭 컴포넌트 국제화~~
+- ~~**Per-User Permission Flags**: `can_create_project`, `can_create_api_key`, `can_create_embed` columns (V015 migration)~~
+- ~~**Site-Wide Defaults**: 3 `default_can_create_*` keys in `site_settings`, managed in Branding tab~~
+- ~~**requirePermission() Guard**: admin bypass, first project exception allowed~~
+- ~~**Enforcement**: Permission checks on project create, API key create, embed token create endpoints~~
+- ~~**OIDC/LDAP Integration**: Site default permissions applied on new user creation~~
+- ~~**Admin UI**: Permission checkboxes on user edit, permission badges on user list~~
+- ~~**Admin Full-Width Layout**: max-width removed, full-width layout~~
+- ~~**Admin i18n**: ~156 new keys (ko/en/ja/zh), all admin tab components internationalized~~
 - 10 new tests (getDefaultPermissions + requirePermission logic)
 - Difficulty: Medium
 
 ### Phase 39e — Permission Hardening & Shared Project Bugfixes
-- ~~**Stale Shared Project Pruning**: 공유 취소된 프로젝트 자동 제거 (loadProjectSchema null 감지 → 인덱스 프루닝 → 다음 프로젝트 전환 또는 no-project 화면)~~
-- ~~**ensureOwnerPermission 보안 수정**: 공유 프로젝트 인덱스 저장 시 owner 권한 재생성 방지 (schemas 테이블 존재 여부 확인)~~
-- ~~**Empty Index + Permission Granted**: 빈 인덱스 + canCreateProject 권한 부여 시 기본 프로젝트 자동 생성~~
-- ~~**ReadOnly UI Enforcement**: viewer 권한에서 Import, Undo/Redo, DomainModal, SnapshotPanel, HistoryPanel 쓰기 차단~~
-- ~~**Permission-Based UI**: canCreateProject/canCreateApiKey/canCreateEmbed 없으면 해당 버튼 숨김/비활성화~~
-- ~~**No-Project Screen**: 프로젝트 없는 사용자에게 Toolbar minimal + 안내 화면 표시~~
-- ~~**Grid Zoom Scaling**: 캔버스 줌아웃 시 그리드 굵기 sqrt(scale) 곡선으로 점진적 감소~~
-- ~~**DBML Export Quote Escaping**: 기본값 내 작은따옴표 이스케이프~~
+- ~~**Stale Shared Project Pruning**: Auto-remove revoked shared projects (loadProjectSchema null detection → index pruning → switch to next project or no-project screen)~~
+- ~~**ensureOwnerPermission Security Fix**: Prevent owner permission re-creation when saving shared project index (check schemas table existence)~~
+- ~~**Empty Index + Permission Granted**: Auto-create default project when empty index + canCreateProject permission~~
+- ~~**ReadOnly UI Enforcement**: Block write actions in viewer mode for Import, Undo/Redo, DomainModal, SnapshotPanel, HistoryPanel~~
+- ~~**Permission-Based UI**: Hide/disable buttons when canCreateProject/canCreateApiKey/canCreateEmbed is false~~
+- ~~**No-Project Screen**: Show minimal Toolbar + info screen for users with no projects~~
+- ~~**Grid Zoom Scaling**: Grid line width gradually decreases with sqrt(scale) curve on zoom out~~
+- ~~**DBML Export Quote Escaping**: Escape single quotes in default values~~
 - 21 new tests (project-logic: pruning/migrate/ensureOwnerPermission guard)
 - Difficulty: Medium
 
 ### Phase 40 — Code Refactoring (Utility Extraction & Deduplication)
-- ~~**clipboard.ts**: copyToClipboard() 공유 유틸리티 — navigator.clipboard + textarea fallback (10개+ 파일 중복 제거)~~
-- ~~**ddl-options.ts**: DIALECT_OPTIONS + loadDdlOptions/saveDdlOptions 공유 (DdlModal, SchemaDiffModal 중복 제거)~~
-- ~~**column-filter.ts**: getFilteredColumns/getFilteredColumnCount 공유 (Canvas, RelationLines, Minimap 3중 중복 제거)~~
-- ~~**canvas-persistence.ts**: restoreCanvasSettings + persist* 함수 추출 (+page.svelte에서 6개 $effect 블록 정리)~~
-- ~~**keyboard-shortcuts.ts**: handleKeydown 200줄 순수 함수 추출 (+page.svelte 스크립트 236줄 축소)~~
-- ~~**sidebar-search.ts**: filterTables + tableHasAttr + getTableMeta 추출 (Sidebar.svelte 92줄 축소)~~
-- ~~**TableCard 드래그 통합**: mouse/touch 핸들러 → 통합 startDrag/continueDrag/endDrag (45줄 축소)~~
-- ~~**erd.svelte.ts 헬퍼**: _t/_m/_d 프라이빗 룩업 헬퍼 (26+6+2=34회 .find() 패턴 정리)~~
+- ~~**clipboard.ts**: copyToClipboard() shared utility — navigator.clipboard + textarea fallback (10+ file deduplication)~~
+- ~~**ddl-options.ts**: DIALECT_OPTIONS + loadDdlOptions/saveDdlOptions shared (DdlModal, SchemaDiffModal deduplication)~~
+- ~~**column-filter.ts**: getFilteredColumns/getFilteredColumnCount shared (Canvas, RelationLines, Minimap triple deduplication)~~
+- ~~**canvas-persistence.ts**: restoreCanvasSettings + persist* functions extracted (6 $effect blocks cleaned up from +page.svelte)~~
+- ~~**keyboard-shortcuts.ts**: handleKeydown 200-line pure function extracted (+page.svelte script reduced by 236 lines)~~
+- ~~**sidebar-search.ts**: filterTables + tableHasAttr + getTableMeta extracted (Sidebar.svelte reduced by 92 lines)~~
+- ~~**TableCard drag unification**: mouse/touch handlers → unified startDrag/continueDrag/endDrag (45 lines reduced)~~
+- ~~**erd.svelte.ts helpers**: _t/_m/_d private lookup helpers (26+6+2=34 .find() pattern cleanups)~~
 - 139 new tests (clipboard 7, keyboard-shortcuts 41, canvas-persistence 25, ddl-options 11, sidebar-search 45, column-filter 10)
 - 0 errors, 2070 tests pass (53 test files)
 - Difficulty: Medium
 
 ### Phase 41 — Security Hardening (4-Agent Audit)
-- ~~**High — UI readOnly 가드 누락 5건 수정**~~
-  - ~~TableCard: 삭제 버튼 + FK 드래그 핸들 viewer에게 숨김~~
-  - ~~Sidebar: 벌크 삭제 버튼 readOnly 안으로 이동, 메모 삭제 가드 추가~~
-  - ~~SidebarTableRow: Duplicate/Delete 액션 readOnly 가드 추가~~
-- ~~**Medium — 서버/클라이언트 보안 6건 수정**~~
-  - ~~Embed 비밀번호: GET 쿼리 → POST body 전환 (URL 로깅 방지)~~
-  - ~~Admin user create/update: role 값 검증 (`admin`/`user`만 허용)~~
-  - ~~Content-Security-Policy 헤더 추가 (embed은 frame-ancestors * 허용)~~
-  - ~~Admin 초기 비밀번호: env 설정 시 로깅 안 함, 자동생성 시만 표시~~
-  - ~~ColumnEditPopup: readOnly 가드 + write 버튼 숨김~~
-- ~~**Low — 방어 강화 3건**~~
-  - ~~Embed token 삭제 IDOR: project_id 스코핑 추가~~
-  - ~~logo_url: URL 포맷 검증 추가~~
-  - ~~WebSocket presence: 4KB 크기 제한 추가~~
-- 감사 결과: Critical 0, High 0 (서버 API 측), SQL injection 없음, 전체 admin 라우트 requireAdmin() 확인
+- ~~**High — 5 UI readOnly guard fixes**~~
+  - ~~TableCard: hide delete button + FK drag handle from viewers~~
+  - ~~Sidebar: move bulk delete button inside readOnly guard, add memo delete guard~~
+  - ~~SidebarTableRow: add readOnly guard for Duplicate/Delete actions~~
+- ~~**Medium — 6 server/client security fixes**~~
+  - ~~Embed password: GET query → POST body transition (prevent URL logging)~~
+  - ~~Admin user create/update: role value validation (`admin`/`user` only)~~
+  - ~~Content-Security-Policy header added (embed allows frame-ancestors *)~~
+  - ~~Admin initial password: not logged when set via env, only shown when auto-generated~~
+  - ~~ColumnEditPopup: readOnly guard + hide write buttons~~
+- ~~**Low — 3 defense hardening items**~~
+  - ~~Embed token delete IDOR: project_id scoping added~~
+  - ~~logo_url: URL format validation added~~
+  - ~~WebSocket presence: 4KB size limit added~~
+- Audit results: Critical 0, High 0 (server API side), no SQL injection, all admin routes confirmed with requireAdmin()
 - Difficulty: Medium

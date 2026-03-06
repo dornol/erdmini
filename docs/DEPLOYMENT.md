@@ -2,52 +2,52 @@
 
 ## Docker (Server Mode)
 
-### 빌드
+### Build
 
 ```bash
-# docker-compose 사용
+# Using docker-compose
 docker compose build erdmini
 
-# 직접 빌드
+# Direct build
 docker build -f Dockerfile.server -t erdmini .
 
-# PUBLIC_SITE_URL 변경 시
+# With custom PUBLIC_SITE_URL
 docker build -f Dockerfile.server --build-arg PUBLIC_SITE_URL=https://your-domain.com -t erdmini .
 ```
 
-### 빌드 테스트 (로컬 검증)
+### Build Testing (Local Verification)
 
-이미지 빌드 후 배포 전에 로컬에서 정상 동작을 확인한다.
+Verify the image works locally before deploying.
 
 ```bash
-# 1. 이미지 빌드
+# 1. Build image
 docker compose build erdmini
 
-# 2. 컨테이너 실행
+# 2. Start container
 docker compose up -d erdmini
 
-# 3. 로그 확인 — 에러 없이 "Listening on port 3000" 출력되는지 확인
+# 3. Check logs — ensure "Listening on port 3000" appears without errors
 docker logs -f erdmini
 
-# 4. 헬스체크 확인
+# 4. Health check
 docker inspect --format='{{.State.Health.Status}}' erdmini
-# 기대값: healthy
+# Expected: healthy
 
-# 5. HTTP 응답 확인
+# 5. HTTP response check
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/
-# 기대값: 200
+# Expected: 200
 
-# 6. 정리
+# 6. Cleanup
 docker compose down
 ```
 
-### 실행
+### Run
 
 ```bash
-# docker-compose (권장)
+# docker-compose (recommended)
 docker compose up -d erdmini
 
-# 직접 실행
+# Direct run
 docker run -d --name erdmini \
   -p 3000:3000 \
   -v erdmini-data:/data \
@@ -57,67 +57,67 @@ docker run -d --name erdmini \
   erdmini
 ```
 
-### 환경변수
+### Environment Variables
 
-`.env` 파일 또는 `docker-compose.yml`의 `environment`에 설정한다.
+Set in `.env` file or `docker-compose.yml` `environment` section.
 
-| 변수 | 기본값 | 설명 |
+| Variable | Default | Description |
 |---|---|---|
-| `PUBLIC_STORAGE_MODE` | `server` | Docker에서는 항상 `server` |
-| `DB_PATH` | `/data/erdmini.db` | SQLite 파일 경로 (볼륨 마운트 필수) |
-| `PORT` | `3000` | HTTP 포트 |
-| `ADMIN_USERNAME` | `admin` | 초기 관리자 계정 |
-| `ADMIN_PASSWORD` | 자동생성 | 초기 관리자 비밀번호 (로그에 출력) |
-| `LOG_FORMAT` | `text` | `json` (JSON Lines) 또는 `text` |
+| `PUBLIC_STORAGE_MODE` | `server` | Always `server` for Docker |
+| `DB_PATH` | `/data/erdmini.db` | SQLite file path (volume mount required) |
+| `PORT` | `3000` | HTTP port |
+| `ADMIN_USERNAME` | `admin` | Initial admin account |
+| `ADMIN_PASSWORD` | auto-generated | Initial admin password (printed to logs) |
+| `LOG_FORMAT` | `text` | `json` (JSON Lines) or `text` |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 
-### 데이터 영속성
+### Data Persistence
 
-SQLite DB는 `/data` 볼륨에 저장된다. `docker compose down`으로 컨테이너를 제거해도 데이터는 유지된다.
+SQLite DB is stored in the `/data` volume. Data persists even when the container is removed with `docker compose down`.
 
 ```bash
-# 볼륨 확인
+# Check volume
 docker volume inspect erdmini_erdmini-data
 
-# 주의: 볼륨까지 삭제하면 데이터 손실
-docker compose down -v  # ⚠️ 데이터 삭제됨
+# Warning: removing volumes deletes data
+docker compose down -v  # Data will be deleted!
 ```
 
-### 업데이트
+### Update
 
 ```bash
-# 새 이미지 빌드 후 재시작
+# Build new image and restart
 docker compose build erdmini
 docker compose up -d erdmini
 ```
 
 ## Docker (Local Mode — nginx)
 
-정적 SPA 빌드를 nginx로 서빙한다. 인증/협업 기능 없음.
+Serves a static SPA build via nginx. No auth/collaboration features.
 
 ```bash
 docker compose --profile local build erdmini-local
 docker compose --profile local up -d erdmini-local
-# http://localhost:8080 접속
+# Access at http://localhost:8080
 ```
 
-## 수동 배포 (Node.js)
+## Manual Deployment (Node.js)
 
 ```bash
-# 빌드
+# Build
 PUBLIC_STORAGE_MODE=server pnpm build:server
 
-# 실행
+# Run
 DB_PATH=./data/erdmini.db node server.js
 ```
 
-## 트러블슈팅
+## Troubleshooting
 
 ### `ERR_MODULE_NOT_FOUND: Cannot find module '/app/logger.js'`
 
-`Dockerfile.server`에서 `logger.js`가 production 스테이지에 복사되지 않은 경우. `COPY --from=build /app/logger.js ./` 라인이 있는지 확인.
+`logger.js` was not copied to the production stage in `Dockerfile.server`. Verify that `COPY --from=build /app/logger.js ./` exists.
 
-### 초기 관리자 비밀번호 확인
+### Check Initial Admin Password
 
 ```bash
 docker logs erdmini 2>&1 | grep -i password
