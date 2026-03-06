@@ -254,3 +254,15 @@
 - ~~**Tab Counts**: Embeds/Projects 탭에 개수 표시 (Branding/Backup/Audit 제외)~~
 - 41 new tests (embed token CRUD + validation)
 - Difficulty: Easy
+
+### Phase 39d — Per-User Permissions & Admin i18n
+- ~~**Per-User Permission Flags**: `can_create_project`, `can_create_api_key`, `can_create_embed` 컬럼 (V015 migration)~~
+- ~~**Site-Wide Defaults**: `site_settings`에 `default_can_create_*` 키 3개, Branding 탭에서 관리~~
+- ~~**requirePermission() Guard**: admin 바이패스, 첫 프로젝트 예외 허용~~
+- ~~**Enforcement**: 프로젝트 생성, API 키 발급, 임베드 토큰 생성 엔드포인트에 권한 체크~~
+- ~~**OIDC/LDAP Integration**: 신규 사용자 생성 시 site default 권한 적용~~
+- ~~**Admin UI**: 사용자 편집 시 권한 체크박스, 사용자 목록에 권한 배지~~
+- ~~**Admin Full-Width Layout**: max-width 제거, 전체 너비 레이아웃~~
+- ~~**Admin i18n**: ~156개 새 키 (ko/en/ja/zh), 모든 관리자 탭 컴포넌트 국제화~~
+- 10 new tests (getDefaultPermissions + requirePermission logic)
+- Difficulty: Medium
