@@ -53,7 +53,21 @@ export function getDefaultPermissions(dbInstance: { prepare: (sql: string) => { 
   };
 }
 
+function validateLogoUrl(url: string): boolean {
+  if (!url) return true; // empty = reset
+  try {
+    const parsed = new URL(url, 'https://placeholder.local');
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' || url.startsWith('/');
+  } catch {
+    return false;
+  }
+}
+
 export function updateSiteSettings(updates: Partial<SiteSettings>): SiteSettings {
+  if (updates.logo_url !== undefined && !validateLogoUrl(updates.logo_url)) {
+    throw new Error('Invalid logo_url: must be a valid URL or path');
+  }
+
   const upsert = db.prepare('INSERT INTO site_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
   const tx = db.transaction(() => {
     for (const [key, value] of Object.entries(updates)) {

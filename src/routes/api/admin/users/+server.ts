@@ -68,6 +68,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'Password must be at least 4 characters' }, { status: 400 });
   }
 
+  if (role && !['admin', 'user'].includes(role)) {
+    return json({ error: 'Invalid role value' }, { status: 400 });
+  }
+
   // Check uniqueness
   const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existing) {

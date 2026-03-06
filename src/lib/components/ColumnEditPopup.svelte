@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import { COLUMN_TYPES, DOMAIN_FIELDS } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
@@ -20,7 +21,7 @@
   );
 
   function onChange(field: keyof Column, value: unknown) {
-    if (!col) return;
+    if (!col || permissionStore.isReadOnly) return;
     const patch: Partial<Column> = { [field]: value };
     if (col.domainId && DOMAIN_FIELDS.includes(field)) patch.domainId = undefined;
     erdStore.updateColumn(tableId, columnId, patch);
@@ -121,16 +122,18 @@
     {#if col}
       <div class="popup-header">
         <span class="popup-title">{col.name}</span>
-        <button
-          class="duplicate-btn"
-          title={m.column_duplicate()}
-          onclick={() => { erdStore.duplicateColumn(tableId, columnId); onclose(); }}
-        >⧉</button>
-        <button
-          class="delete-col-btn"
-          title={m.action_delete()}
-          onclick={() => { erdStore.deleteColumn(tableId, columnId); onclose(); }}
-        >🗑</button>
+        {#if !permissionStore.isReadOnly}
+          <button
+            class="duplicate-btn"
+            title={m.column_duplicate()}
+            onclick={() => { erdStore.duplicateColumn(tableId, columnId); onclose(); }}
+          >⧉</button>
+          <button
+            class="delete-col-btn"
+            title={m.action_delete()}
+            onclick={() => { erdStore.deleteColumn(tableId, columnId); onclose(); }}
+          >🗑</button>
+        {/if}
         <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
       </div>
 

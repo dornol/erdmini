@@ -80,16 +80,18 @@
       <span class="item-comment">{table.comment}</span>
     {/if}
   </div>
-  <div class="item-actions">
-    <button
-      class="item-action-btn"
-      title={m.action_duplicate()}
-      onclick={duplicateTable}
-    >⧉</button>
-    <button
-      class="item-action-btn item-delete"
-      title={m.action_delete()}
-      onclick={deleteTable}
-    >✕</button>
-  </div>
+  {#if !permissionStore.isReadOnly}
+    <div class="item-actions">
+      <button
+        class="item-action-btn"
+        title={m.action_duplicate()}
+        onclick={duplicateTable}
+      >⧉</button>
+      <button
+        class="item-action-btn item-delete"
+        title={m.action_delete()}
+        onclick={deleteTable}
+      >✕</button>
+    </div>
+  {/if}
 </div>

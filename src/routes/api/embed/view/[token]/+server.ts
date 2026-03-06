@@ -16,23 +16,16 @@ function getProjectName(projectId: string): string {
   return 'Untitled';
 }
 
-export const GET: RequestHandler = async ({ params, url }) => {
+export const GET: RequestHandler = async ({ params }) => {
   const result = validateEmbedToken(db, params.token);
 
   if (!result) {
     return json({ error: 'Token expired or not found' }, { status: 403 });
   }
 
-  // Password check
+  // If password-protected, require POST
   if (result.hasPassword) {
-    const password = url.searchParams.get('password');
-    if (!password) {
-      return json({ requiresPassword: true }, { status: 401 });
-    }
-    const valid = await verifyEmbedPassword(db, result.id, password);
-    if (!valid) {
-      return json({ error: 'Wrong password', requiresPassword: true }, { status: 401 });
-    }
+    return json({ requiresPassword: true }, { status: 401 });
   }
 
   // Load schema
@@ -44,6 +37,49 @@ export const GET: RequestHandler = async ({ params, url }) => {
   // Load canvas state
   const canvasRow = db.prepare('SELECT data FROM canvas_states WHERE project_id = ?').get(result.projectId) as { data: string } | undefined;
 
+  const projectName = getProjectName(result.projectId);
+
+  return json({
+    projectName,
+    schema: JSON.parse(schemaRow.data),
+    canvasState: canvasRow ? JSON.parse(canvasRow.data) : null,
+  });
+};
+
+export const POST: RequestHandler = async ({ params, request }) => {
+  const result = validateEmbedToken(db, params.token);
+
+  if (!result) {
+    return json({ error: 'Token expired or not found' }, { status: 403 });
+  }
+
+  if (!result.hasPassword) {
+    return json({ error: 'This embed does not require a password' }, { status: 400 });
+  }
+
+  let body: { password?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  const { password } = body;
+  if (!password) {
+    return json({ error: 'Password required', requiresPassword: true }, { status: 401 });
+  }
+
+  const valid = await verifyEmbedPassword(db, result.id, password);
+  if (!valid) {
+    return json({ error: 'Wrong password', requiresPassword: true }, { status: 401 });
+  }
+
+  const schemaRow = db.prepare('SELECT data FROM schemas WHERE project_id = ?').get(result.projectId) as { data: string } | undefined;
+  if (!schemaRow) {
+    return json({ error: 'Schema not found' }, { status: 404 });
+  }
+
+  const canvasRow = db.prepare('SELECT data FROM canvas_states WHERE project_id = ?').get(result.projectId) as { data: string } | undefined;
   const projectName = getProjectName(result.projectId);
 
   return json({

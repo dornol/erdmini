@@ -17,6 +17,8 @@ describe('getFilteredColumns', () => {
         columnIds: [fkCol.id],
         referencedTableId: 'users_tbl',
         referencedColumnIds: ['uid'],
+        onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     ],
   });
@@ -65,6 +67,8 @@ describe('getFilteredColumns', () => {
           columnIds: [fkCol.id, fkCol2.id],
           referencedTableId: 'ref_tbl',
           referencedColumnIds: ['a', 'b'],
+          onDelete: 'NO ACTION',
+          onUpdate: 'NO ACTION',
         },
       ],
     });
@@ -88,6 +92,8 @@ describe('getFilteredColumnCount', () => {
         columnIds: [fkCol.id],
         referencedTableId: 'users_tbl',
         referencedColumnIds: ['uid'],
+        onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     ],
   });

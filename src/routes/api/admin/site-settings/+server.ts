@@ -16,7 +16,12 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
   if (err) return err;
 
   const body = await request.json();
-  const updated = updateSiteSettings(body);
+  let updated;
+  try {
+    updated = updateSiteSettings(body);
+  } catch (e) {
+    return json({ error: (e as Error).message }, { status: 400 });
+  }
 
   logAudit({
     action: 'update',

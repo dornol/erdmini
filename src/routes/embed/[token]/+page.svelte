@@ -34,10 +34,16 @@
 
   async function loadEmbed(password?: string) {
     try {
-      const url = password
-        ? `/api/embed/view/${token}?password=${encodeURIComponent(password)}`
-        : `/api/embed/view/${token}`;
-      const res = await fetch(url);
+      let res: Response;
+      if (password) {
+        res = await fetch(`/api/embed/view/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+      } else {
+        res = await fetch(`/api/embed/view/${token}`);
+      }
       const data = await res.json();
 
       if (res.status === 401 && data.requiresPassword) {

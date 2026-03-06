@@ -381,9 +381,11 @@
               {allSelectedLocked ? m.sidebar_bulk_unlock({ count: erdStore.selectedTableIds.size }) : m.sidebar_bulk_lock({ count: erdStore.selectedTableIds.size })}
             </button>
           {/if}
-          <button class="bulk-delete-btn" onclick={bulkDelete}>
-            {m.sidebar_bulk_delete({ count: erdStore.selectedTableIds.size })}
-          </button>
+          {#if !permissionStore.isReadOnly}
+            <button class="bulk-delete-btn" onclick={bulkDelete}>
+              {m.sidebar_bulk_delete({ count: erdStore.selectedTableIds.size })}
+            </button>
+          {/if}
         </div>
       {/if}
     </div>
@@ -558,14 +560,16 @@
             >
               <span class="item-color-dot" style="background:{MEMO_DOTS[memo.color ?? 'yellow'] ?? '#facc15'}"></span>
               <span class="memo-preview">{memo.content ? memo.content.split('\n')[0].slice(0, 30) || m.memo_placeholder() : m.memo_placeholder()}</span>
-              <button
-                class="memo-delete-btn"
-                title={m.action_delete()}
-                onclick={(e) => {
-                  e.stopPropagation();
-                  erdStore.deleteMemo(memo.id);
-                }}
-              >✕</button>
+              {#if !permissionStore.isReadOnly}
+                <button
+                  class="memo-delete-btn"
+                  title={m.action_delete()}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    erdStore.deleteMemo(memo.id);
+                  }}
+                >✕</button>
+              {/if}
             </div>
           {/each}
         </div>

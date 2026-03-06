@@ -169,6 +169,11 @@ function handleMessage(peerId, raw, db, userId, userRole) {
     case 'presence': {
       const projectId = roomManager.getProjectId(peerId);
       if (!projectId) return;
+      const presenceStr = JSON.stringify(msg.data);
+      if (presenceStr.length > 4096) {
+        roomManager.sendTo(peerId, { type: 'error', message: 'Presence data too large' });
+        return;
+      }
       roomManager.broadcast(projectId, { type: 'presence', data: msg.data, fromPeerId: peerId }, peerId);
       break;
     }

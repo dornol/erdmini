@@ -98,8 +98,12 @@ export function listEmbedTokens(
   }));
 }
 
-export function deleteEmbedToken(db: Database.Database, tokenId: string): void {
-  db.prepare('DELETE FROM embed_tokens WHERE id = ?').run(tokenId);
+export function deleteEmbedToken(db: Database.Database, tokenId: string, projectId?: string): void {
+  if (projectId) {
+    db.prepare('DELETE FROM embed_tokens WHERE id = ? AND project_id = ?').run(tokenId, projectId);
+  } else {
+    db.prepare('DELETE FROM embed_tokens WHERE id = ?').run(tokenId);
+  }
 }
 
 export function deleteProjectEmbedTokens(db: Database.Database, projectId: string): void {

@@ -31,6 +31,8 @@ function buildFixtures() {
         columnIds: [fkCol.id],
         referencedTableId: usersTable.id,
         referencedColumnIds: [idCol.id],
+        onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     ],
   });

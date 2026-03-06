@@ -18,7 +18,7 @@ import { handleKeydown, type KeyboardContext } from './keyboard-shortcuts';
 function makeCtx(overrides: Partial<KeyboardContext> = {}): KeyboardContext {
   return {
     erdStore: {
-      schema: { tables: [], memos: [], domains: [], schemas: [] },
+      schema: { version: '1.0', tables: [], memos: [], domains: [], schemas: [], createdAt: '', updatedAt: '' },
       selectedTableId: null,
       selectedTableIds: new Set<string>(),
       selectedMemoId: null,

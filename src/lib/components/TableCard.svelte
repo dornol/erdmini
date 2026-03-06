@@ -308,7 +308,9 @@
     {:else if table.schema}
       <span class="schema-badge" title={table.schema}>{table.schema}</span>
     {/if}
-    <button class="delete-btn" onclick={onDeleteClick} title={m.action_delete()}>✕</button>
+    {#if !permissionStore.isReadOnly}
+      <button class="delete-btn" onclick={onDeleteClick} title={m.action_delete()}>✕</button>
+    {/if}
   </div>
 
   <!-- Table-level tooltip: Unique Keys & Indexes (shown on card hover, hidden when column hovered) -->
@@ -430,19 +432,21 @@
         {/if}
 
         <!-- FK drag handle -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          class="fk-handle"
-          title={m.fk_drag_hint()}
-          onmousedown={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const commentH = table.comment ? 26 : 0;
-            const sx = table.position.x + canvasState.getTableW(table.id);
-            const sy = table.position.y + HEADER_H + commentH + colIdx * ROW_H + ROW_H / 2;
-            fkDragStore.begin(table.id, col.id, sx, sy);
-          }}
-        ></div>
+        {#if !permissionStore.isReadOnly}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="fk-handle"
+            title={m.fk_drag_hint()}
+            onmousedown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const commentH = table.comment ? 26 : 0;
+              const sx = table.position.x + canvasState.getTableW(table.id);
+              const sy = table.position.y + HEADER_H + commentH + colIdx * ROW_H + ROW_H / 2;
+              fkDragStore.begin(table.id, col.id, sx, sy);
+            }}
+          ></div>
+        {/if}
 
         <!-- Tooltip (shown via CSS :hover) -->
         <div class="col-tooltip">

@@ -24,9 +24,11 @@ export async function setupAdmin(db: Database.Database): Promise<void> {
      VALUES (?, ?, ?, 'admin', ?)`
   ).run(adminId, username, 'Admin', passwordHash);
 
-  if (process.env.LOG_FORMAT?.toLowerCase() === 'json') {
-    logger.info('auth', 'Initial admin credentials created', { username, password: '***' });
+  if (env.ADMIN_PASSWORD) {
+    // Password was explicitly set via env var — don't log it
+    logger.info('auth', 'Initial admin created with ADMIN_PASSWORD env var', { username });
   } else {
+    // Auto-generated password — must show once for first login
     console.log('============================================');
     console.log('  INITIAL ADMIN CREDENTIALS (shown once)');
     console.log(`  Username: ${username}`);

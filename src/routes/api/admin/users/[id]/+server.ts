@@ -55,6 +55,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     values.push(email || null);
   }
   if (role !== undefined) {
+    if (!['admin', 'user'].includes(role)) {
+      return json({ error: 'Invalid role value' }, { status: 400 });
+    }
     updates.push('role = ?');
     values.push(role);
   }

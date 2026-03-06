@@ -50,7 +50,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
   const body = await request.json();
   const { tokenId } = body as { tokenId: string };
 
-  deleteEmbedToken(db, tokenId);
+  deleteEmbedToken(db, tokenId, params.projectId);
 
   logAudit({
     userId: locals.user?.id,
