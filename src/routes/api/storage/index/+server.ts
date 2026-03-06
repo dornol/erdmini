@@ -9,7 +9,8 @@ function getUserId(locals: App.Locals): string {
 
 export const GET: RequestHandler = ({ locals }) => {
   const userId = getUserId(locals);
-  const row = db.prepare('SELECT data FROM project_index WHERE user_id = ?').get(userId) as { data: string } | undefined;
+  const id = `user_${userId}`;
+  const row = db.prepare('SELECT data FROM project_index WHERE id = ?').get(id) as { data: string } | undefined;
   if (!row) {
     return new Response(null, { status: 404 });
   }
