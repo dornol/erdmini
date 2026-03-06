@@ -4,6 +4,7 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import { HEADER_H, ROW_H, COMMENT_H, BOTTOM_PAD } from '$lib/constants/layout';
   import type { Table, Memo } from '$lib/types/erd';
+  import { getFilteredColumnCount } from '$lib/utils/column-filter';
   import * as m from '$lib/paraglide/messages';
   import CanvasHistory from './CanvasHistory.svelte';
   import CanvasBottomBar from './CanvasBottomBar.svelte';
@@ -38,16 +39,8 @@
   let touchMoved = false;
 
   // AABB helpers for marquee hit testing
-  function getFilteredColumnCount(t: Table): number {
-    const mode = canvasState.columnDisplayMode;
-    if (mode === 'all' || mode === 'names-only') return t.columns.length;
-    // pk-fk-only
-    const fkColIds = new Set(t.foreignKeys.flatMap((fk) => fk.columnIds));
-    return t.columns.filter((c) => c.primaryKey || fkColIds.has(c.id)).length;
-  }
-
   function getTableBounds(t: Table) {
-    const h = HEADER_H + (t.comment ? COMMENT_H : 0) + getFilteredColumnCount(t) * ROW_H + BOTTOM_PAD;
+    const h = HEADER_H + (t.comment ? COMMENT_H : 0) + getFilteredColumnCount(t, canvasState.columnDisplayMode) * ROW_H + BOTTOM_PAD;
     return { x: t.position.x, y: t.position.y, w: canvasState.getTableW(t.id), h };
   }
 
@@ -347,7 +340,7 @@
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const t of tables) {
-      const h = HEADER_H + getFilteredColumnCount(t) * ROW_H;
+      const h = HEADER_H + getFilteredColumnCount(t, canvasState.columnDisplayMode) * ROW_H;
       minX = Math.min(minX, t.position.x);
       minY = Math.min(minY, t.position.y);
       maxX = Math.max(maxX, t.position.x + canvasState.getTableW(t.id));

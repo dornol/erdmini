@@ -4,7 +4,9 @@
   import { diffSchemas, type SchemaDiff } from '$lib/utils/schema-diff';
   import type { Dialect, ERDSchema } from '$lib/types/erd';
   import type { DDLExportOptions } from '$lib/utils/ddl-export';
-  import { DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle } from '$lib/utils/ddl-export';
+  import { getDefaultQuoteStyle } from '$lib/utils/ddl-export';
+  import { DIALECT_OPTIONS, loadDdlOptions } from '$lib/utils/ddl-options';
+  import { copyToClipboard as clipCopy } from '$lib/utils/clipboard';
   import { generateMigrationSQL } from '$lib/utils/migration-sql';
   import * as m from '$lib/paraglide/messages';
   import { resolveHistoryLabel } from '$lib/utils/history-labels';
@@ -26,16 +28,6 @@
   let migrationDialect = $state<Dialect>('postgresql');
   let migrationSql = $state('');
   let copied = $state(false);
-
-  const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
-    { value: 'mysql', label: 'MySQL' },
-    { value: 'postgresql', label: 'PostgreSQL' },
-    { value: 'mariadb', label: 'MariaDB' },
-    { value: 'mssql', label: 'MSSQL' },
-    { value: 'sqlite', label: 'SQLite' },
-    { value: 'oracle', label: 'Oracle' },
-    { value: 'h2', label: 'H2' },
-  ];
 
   let historyEntries = $derived(erdStore.historyEntries);
 
@@ -68,14 +60,6 @@
     migrationSql = '';
   }
 
-  function loadDdlOptions(): Partial<DDLExportOptions> {
-    try {
-      const saved = localStorage.getItem('erdmini_ddl_options');
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return {};
-  }
-
   function generateMigration() {
     if (!diffResult) return;
     const savedOpts = loadDdlOptions();
@@ -97,11 +81,11 @@
   }
 
   async function copyToClipboard() {
-    try {
-      await navigator.clipboard.writeText(migrationSql);
+    const ok = await clipCopy(migrationSql);
+    if (ok) {
       copied = true;
       setTimeout(() => (copied = false), 2000);
-    } catch { /* ignore */ }
+    }
   }
 
   function downloadSql() {

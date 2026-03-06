@@ -54,7 +54,12 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 
     for (const proj of body.projects) {
       if (!existingIds.has(proj.id)) {
-        ensureOwnerPermission(db, proj.id, userId);
+        // Only grant owner permission for genuinely new projects (no schema row yet).
+        // Shared projects already have a schema row — don't promote to owner.
+        const hasSchema = db.prepare('SELECT 1 FROM schemas WHERE project_id = ?').get(proj.id);
+        if (!hasSchema) {
+          ensureOwnerPermission(db, proj.id, userId);
+        }
       }
     }
   }

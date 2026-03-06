@@ -4,7 +4,9 @@
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Dialect } from '$lib/types/erd';
-  import { exportDDL, DEFAULT_DDL_OPTIONS, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
+  import { exportDDL, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
+  import { DIALECT_OPTIONS, loadDdlOptions, saveDdlOptions } from '$lib/utils/ddl-options';
+  import { copyToClipboard as clipCopy } from '$lib/utils/clipboard';
   import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { downloadBlob } from '$lib/utils/blob-download';
   import { exportPrisma } from '$lib/utils/prisma-export';
@@ -42,34 +44,16 @@
     { value: 'dbml', label: 'DBML' },
   ];
 
-  const DIALECT_OPTIONS: { value: Dialect; label: string }[] = [
-    { value: 'mysql', label: 'MySQL' },
-    { value: 'postgresql', label: 'PostgreSQL' },
-    { value: 'mariadb', label: 'MariaDB' },
-    { value: 'mssql', label: 'MSSQL' },
-    { value: 'sqlite', label: 'SQLite' },
-    { value: 'oracle', label: 'Oracle' },
-    { value: 'h2', label: 'H2' },
-  ];
-
   // Export state
   let exportFormat = $state<ExportFormat>('ddl');
   let exportDialect = $state<Dialect>('mysql');
   let showDdlOptions = $state(false);
 
-  // Load saved DDL options from localStorage
-  function loadDdlOptions(): DDLExportOptions {
-    try {
-      const saved = localStorage.getItem('erdmini_ddl_options');
-      if (saved) return { ...DEFAULT_DDL_OPTIONS, ...JSON.parse(saved) };
-    } catch { /* ignore */ }
-    return { ...DEFAULT_DDL_OPTIONS };
-  }
   let ddlOptions = $state<DDLExportOptions>(loadDdlOptions());
 
   // Save DDL options when changed
   $effect(() => {
-    localStorage.setItem('erdmini_ddl_options', JSON.stringify(ddlOptions));
+    saveDdlOptions(ddlOptions);
   });
 
   let exportText = $derived.by(() => {
@@ -91,7 +75,7 @@
   let importing = $state(false);
 
   async function copyToClipboard() {
-    await navigator.clipboard.writeText(exportText);
+    await clipCopy(exportText);
     copyLabel = 'copied';
     setTimeout(() => (copyLabel = 'copy'), 1500);
   }

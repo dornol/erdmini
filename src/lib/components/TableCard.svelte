@@ -108,26 +108,20 @@
     schemaDropdownOpen = false;
   }
 
-  function onMouseDown(e: MouseEvent) {
-    if (e.button !== 0) return;
-    e.stopPropagation();
-
-    if (e.ctrlKey || e.metaKey) {
+  // Unified drag start for mouse and touch
+  function startDrag(clientX: number, clientY: number, ctrlKey = false) {
+    if (ctrlKey) {
       const newSet = new Set(erdStore.selectedTableIds);
-      if (newSet.has(table.id)) {
-        newSet.delete(table.id);
-      } else {
-        newSet.add(table.id);
-      }
+      if (newSet.has(table.id)) newSet.delete(table.id);
+      else newSet.add(table.id);
       erdStore.selectedTableIds = newSet;
       return;
     }
 
-    // Multi-drag: if table is already in a multi-selection group
     if (erdStore.selectedTableIds.has(table.id) && erdStore.selectedTableIds.size > 1) {
       if (!table.locked && !permissionStore.isReadOnly) {
         isDragging = true;
-        dragStart = { mouseX: e.clientX, mouseY: e.clientY, tableX: 0, tableY: 0 };
+        dragStart = { mouseX: clientX, mouseY: clientY, tableX: 0, tableY: 0 };
         groupDragStarts = new Map();
         for (const id of erdStore.selectedTableIds) {
           const t = erdStore.schema.tables.find((tbl) => tbl.id === id);
@@ -140,18 +134,14 @@
     erdStore.selectedTableId = table.id;
     erdStore.selectedTableIds = new Set([table.id]);
     if (!table.locked && !permissionStore.isReadOnly) isDragging = true;
-    dragStart = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      tableX: table.position.x,
-      tableY: table.position.y,
-    };
+    dragStart = { mouseX: clientX, mouseY: clientY, tableX: table.position.x, tableY: table.position.y };
   }
 
-  function onMouseMove(e: MouseEvent) {
+  // Unified drag move
+  function continueDrag(clientX: number, clientY: number) {
     if (!isDragging) return;
-    const dx = (e.clientX - dragStart.mouseX) / canvasState.scale;
-    const dy = (e.clientY - dragStart.mouseY) / canvasState.scale;
+    const dx = (clientX - dragStart.mouseX) / canvasState.scale;
+    const dy = (clientY - dragStart.mouseY) / canvasState.scale;
     if (groupDragStarts && groupDragStarts.size > 1) {
       const moves = [...groupDragStarts].map(([id, start]) => ({ id, x: start.x + dx, y: start.y + dy }));
       erdStore.moveTables(moves);
@@ -160,69 +150,34 @@
     }
   }
 
-  function onMouseUp() {
+  function endDrag() {
     isDragging = false;
     groupDragStarts = null;
   }
 
-  // ── Touch handlers (iPad/mobile) ──
+  function onMouseDown(e: MouseEvent) {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    startDrag(e.clientX, e.clientY, e.ctrlKey || e.metaKey);
+  }
+
+  function onMouseMove(e: MouseEvent) { continueDrag(e.clientX, e.clientY); }
+  function onMouseUp() { endDrag(); }
+
   function onTouchStartCard(e: TouchEvent) {
-    if (e.touches.length >= 2) {
-      isDragging = false;
-      groupDragStarts = null;
-      return;
-    }
+    if (e.touches.length >= 2) { endDrag(); return; }
     if (e.touches.length !== 1) return;
     e.stopPropagation();
-    const touch = e.touches[0];
-
-    if (erdStore.selectedTableIds.has(table.id) && erdStore.selectedTableIds.size > 1) {
-      if (!table.locked && !permissionStore.isReadOnly) {
-        isDragging = true;
-        dragStart = { mouseX: touch.clientX, mouseY: touch.clientY, tableX: 0, tableY: 0 };
-        groupDragStarts = new Map();
-        for (const id of erdStore.selectedTableIds) {
-          const t = erdStore.schema.tables.find((tbl) => tbl.id === id);
-          if (t && !t.locked) groupDragStarts.set(id, { x: t.position.x, y: t.position.y });
-        }
-      }
-      return;
-    }
-
-    erdStore.selectedTableId = table.id;
-    erdStore.selectedTableIds = new Set([table.id]);
-    if (!table.locked && !permissionStore.isReadOnly) isDragging = true;
-    dragStart = {
-      mouseX: touch.clientX,
-      mouseY: touch.clientY,
-      tableX: table.position.x,
-      tableY: table.position.y,
-    };
+    startDrag(e.touches[0].clientX, e.touches[0].clientY);
   }
 
   function onTouchMoveCard(e: TouchEvent) {
-    if (!isDragging) return;
-    if (e.touches.length >= 2) {
-      isDragging = false;
-      groupDragStarts = null;
-      return;
-    }
+    if (e.touches.length >= 2) { endDrag(); return; }
     e.preventDefault();
-    const touch = e.touches[0];
-    const dx = (touch.clientX - dragStart.mouseX) / canvasState.scale;
-    const dy = (touch.clientY - dragStart.mouseY) / canvasState.scale;
-    if (groupDragStarts && groupDragStarts.size > 1) {
-      const moves = [...groupDragStarts].map(([id, start]) => ({ id, x: start.x + dx, y: start.y + dy }));
-      erdStore.moveTables(moves);
-    } else {
-      erdStore.moveTable(table.id, dragStart.tableX + dx, dragStart.tableY + dy);
-    }
+    continueDrag(e.touches[0].clientX, e.touches[0].clientY);
   }
 
-  function onTouchEndCard() {
-    isDragging = false;
-    groupDragStarts = null;
-  }
+  function onTouchEndCard() { endDrag(); }
 
   function onColumnDblClick(e: MouseEvent, colId: string) {
     if (permissionStore.isReadOnly) return;

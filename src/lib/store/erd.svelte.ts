@@ -122,6 +122,19 @@ class ERDStore {
     }
   }
 
+  // Private lookup helpers (reduce repeated .find() calls)
+  private _t(id: string): Table | undefined {
+    return this.schema.tables.find((t) => t.id === id);
+  }
+
+  private _m(id: string): Memo | undefined {
+    return this.schema.memos.find((m) => m.id === id);
+  }
+
+  private _d(id: string): ColumnDomain | undefined {
+    return this.schema.domains?.find((d) => d.id === id);
+  }
+
   get selectedTable(): Table | undefined {
     return this.schema.tables.find((t) => t.id === this.selectedTableId);
   }
@@ -240,7 +253,7 @@ class ERDStore {
     // Re-map FKs between pasted tables
     for (const srcTable of tables) {
       const newTableId = idMap.get(srcTable.id)!;
-      const newTable = this.schema.tables.find((t) => t.id === newTableId);
+      const newTable = this._t(newTableId);
       if (!newTable) continue;
       for (const fk of srcTable.foreignKeys) {
         const refId = idMap.get(fk.referencedTableId);
@@ -304,7 +317,7 @@ class ERDStore {
   }
 
   updateTableName(id: string, name: string) {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this._t(id);
     if (!table) return;
     table.name = name;
     this.schema.updatedAt = now();
@@ -312,7 +325,7 @@ class ERDStore {
   }
 
   updateTableComment(id: string, comment: string) {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this._t(id);
     if (!table) return;
     table.comment = comment || undefined;
     this.schema.updatedAt = now();
@@ -320,7 +333,7 @@ class ERDStore {
   }
 
   updateTableColor(id: string, color: string | undefined) {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this._t(id);
     if (!table) return;
     table.color = color;
     this.schema.updatedAt = now();
@@ -328,7 +341,7 @@ class ERDStore {
   }
 
   updateTableGroup(id: string, group: string | undefined) {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this._t(id);
     if (!table) return;
     table.group = group || undefined;
     this.schema.updatedAt = now();
@@ -377,7 +390,7 @@ class ERDStore {
   }
 
   moveTable(id: string, x: number, y: number) {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this._t(id);
     if (!table) return;
     const oldX = table.position.x;
     const oldY = table.position.y;
@@ -398,7 +411,7 @@ class ERDStore {
   moveTables(moves: { id: string; x: number; y: number }[]) {
     const opMoves: { tableId: string; x: number; y: number }[] = [];
     for (const move of moves) {
-      const table = this.schema.tables.find((t) => t.id === move.id);
+      const table = this._t(move.id);
       if (!table) continue;
       const oldX = table.position.x;
       const oldY = table.position.y;
@@ -434,7 +447,7 @@ class ERDStore {
   }
 
   addColumn(tableId: string): string | undefined {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const n = table.columns.length + 1;
     const newColumn: Column = {
@@ -454,7 +467,7 @@ class ERDStore {
   }
 
   updateColumn(tableId: string, columnId: string, patch: Partial<Column>) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     // PK implies NOT NULL
     if (patch.primaryKey) patch.nullable = false;
@@ -466,7 +479,7 @@ class ERDStore {
   }
 
   deleteColumn(tableId: string, columnId: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     table.columns = table.columns.filter((c) => c.id !== columnId);
     // Remove FKs that reference this column (in same table)
@@ -491,7 +504,7 @@ class ERDStore {
   }
 
   moveColumnUp(tableId: string, columnId: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const idx = table.columns.findIndex((c) => c.id === columnId);
     if (idx <= 0) return;
@@ -503,7 +516,7 @@ class ERDStore {
   }
 
   moveColumnDown(tableId: string, columnId: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const idx = table.columns.findIndex((c) => c.id === columnId);
     if (idx < 0 || idx >= table.columns.length - 1) return;
@@ -515,7 +528,7 @@ class ERDStore {
   }
 
   moveColumnToIndex(tableId: string, columnId: string, toIndex: number) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const fromIdx = table.columns.findIndex((c) => c.id === columnId);
     if (fromIdx < 0 || fromIdx === toIndex) return;
@@ -535,7 +548,7 @@ class ERDStore {
     onDelete: ForeignKey['onDelete'] = 'RESTRICT',
     onUpdate: ForeignKey['onUpdate'] = 'RESTRICT',
   ) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const fk: ForeignKey = {
       id: generateId(),
@@ -559,7 +572,7 @@ class ERDStore {
     onDelete: ForeignKey['onDelete'] = 'RESTRICT',
     onUpdate: ForeignKey['onUpdate'] = 'RESTRICT',
   ) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const fk = table.foreignKeys.find((f) => f.id === fkId);
     if (!fk) return;
@@ -573,7 +586,7 @@ class ERDStore {
   }
 
   updateFkLabel(tableId: string, fkId: string, label: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const fk = table.foreignKeys.find((f) => f.id === fkId);
     if (!fk) return;
@@ -583,7 +596,7 @@ class ERDStore {
   }
 
   deleteForeignKey(tableId: string, fkId: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     table.foreignKeys = table.foreignKeys.filter((fk) => fk.id !== fkId);
     this.schema.updatedAt = now();
@@ -591,7 +604,7 @@ class ERDStore {
   }
 
   addUniqueKey(tableId: string, columnIds: string[], name?: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const uk: UniqueKey = {
       id: generateId(),
@@ -604,7 +617,7 @@ class ERDStore {
   }
 
   deleteUniqueKey(tableId: string, ukId: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     table.uniqueKeys = table.uniqueKeys.filter((uk) => uk.id !== ukId);
     this.schema.updatedAt = now();
@@ -612,7 +625,7 @@ class ERDStore {
   }
 
   addIndex(tableId: string, columnIds: string[], unique: boolean, name?: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const idx: TableIndex = {
       id: generateId(),
@@ -626,7 +639,7 @@ class ERDStore {
   }
 
   deleteIndex(tableId: string, indexId: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     table.indexes = (table.indexes ?? []).filter((idx) => idx.id !== indexId);
     this.schema.updatedAt = now();
@@ -651,7 +664,7 @@ class ERDStore {
   }
 
   deleteDomain(id: string) {
-    const deleted = this.schema.domains.find((d) => d.id === id);
+    const deleted = this._d(id);
     const parentIdOfDeleted = deleted?.parentId;
 
     // Re-parent children: assign deleted domain's parentId to its children
@@ -698,7 +711,7 @@ class ERDStore {
   }
 
   duplicateColumn(tableId: string, columnId: string) {
-    const table = this.schema.tables.find((t) => t.id === tableId);
+    const table = this._t(tableId);
     if (!table) return;
     const src = table.columns.find((c) => c.id === columnId);
     if (!src) return;
@@ -719,7 +732,7 @@ class ERDStore {
   }
 
   duplicateTable(id: string) {
-    const src = this.schema.tables.find((t) => t.id === id);
+    const src = this._t(id);
     if (!src) return;
     const newId = generateId();
     const newName = `${src.name}_copy`;
@@ -782,7 +795,7 @@ class ERDStore {
   }
 
   moveMemo(id: string, x: number, y: number) {
-    const memo = this.schema.memos.find((m) => m.id === id);
+    const memo = this._m(id);
     if (!memo) return;
     const sx = canvasState.snap(x);
     const sy = canvasState.snap(y);
@@ -793,7 +806,7 @@ class ERDStore {
   moveMemos(moves: { id: string; x: number; y: number }[]) {
     const opMoves: { memoId: string; x: number; y: number }[] = [];
     for (const move of moves) {
-      const memo = this.schema.memos.find((m) => m.id === move.id);
+      const memo = this._m(move.id);
       if (!memo) continue;
       const sx = canvasState.snap(move.x);
       const sy = canvasState.snap(move.y);
@@ -806,7 +819,7 @@ class ERDStore {
   }
 
   updateMemo(id: string, patch: Partial<Omit<Memo, 'id'>>) {
-    const memo = this.schema.memos.find((m) => m.id === id);
+    const memo = this._m(id);
     if (!memo) return;
     Object.assign(memo, patch);
     this.schema.updatedAt = now();
@@ -814,7 +827,7 @@ class ERDStore {
   }
 
   attachMemo(memoId: string, tableId: string) {
-    const memo = this.schema.memos.find((m) => m.id === memoId);
+    const memo = this._m(memoId);
     if (!memo) return;
     memo.attachedTableId = tableId;
     this.schema.updatedAt = now();
@@ -822,13 +835,13 @@ class ERDStore {
   }
 
   detachMemo(memoId: string) {
-    const memo = this.schema.memos.find((m) => m.id === memoId);
+    const memo = this._m(memoId);
     if (!memo) return;
     const tableId = memo.attachedTableId;
     delete memo.attachedTableId;
     // Reposition near the table if possible
     if (tableId) {
-      const table = this.schema.tables.find((t) => t.id === tableId);
+      const table = this._t(tableId);
       if (table) {
         memo.position = { x: table.position.x, y: table.position.y - memo.height - 12 };
       }
@@ -880,9 +893,9 @@ class ERDStore {
   }
 
   updateTableSchema(tableId: string, schema: string | undefined) {
-    const t = this.schema.tables.find((t) => t.id === tableId);
-    if (!t) return;
-    if (schema) t.schema = schema; else delete t.schema;
+    const tbl = this._t(tableId);
+    if (!tbl) return;
+    if (schema) tbl.schema = schema; else delete tbl.schema;
     this.schema.updatedAt = now();
     this._emitOp({ kind: 'update-table-schema', tableId, schema: schema ?? '' });
   }

@@ -13,7 +13,7 @@
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import SchemaTabBar from '$lib/components/SchemaTabBar.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
-  import { erdStore, canvasState, type ColumnDisplayMode, type LineType } from '$lib/store/erd.svelte';
+  import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import { downloadBlob } from '$lib/utils/blob-download';
@@ -33,27 +33,18 @@
   import { replaceState } from '$app/navigation';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
+  import { restoreCanvasSettings, persistColumnDisplayMode, persistLineType, persistShowGrid, persistShowRelationLines, persistSchemaView } from '$lib/utils/canvas-persistence';
+  import { handleKeydown as handleKBShortcut, type KeyboardContext } from '$lib/utils/keyboard-shortcuts';
 
   // Restore persisted canvas settings synchronously (before $effects run)
   if (browser) {
-    const savedMode = localStorage.getItem('erdmini_column_display_mode');
-    if (savedMode === 'pk-fk-only' || savedMode === 'names-only') {
-      canvasState.columnDisplayMode = savedMode as ColumnDisplayMode;
-    }
-    const savedLineType = localStorage.getItem('erdmini_line_type');
-    if (savedLineType === 'straight' || savedLineType === 'orthogonal') {
-      canvasState.lineType = savedLineType as LineType;
-    }
-    const savedShowGrid = localStorage.getItem('erdmini_show_grid');
-    if (savedShowGrid === 'false') canvasState.showGrid = false;
-    const savedShowRelLines = localStorage.getItem('erdmini_show_relation_lines');
-    if (savedShowRelLines === 'false') canvasState.showRelationLines = false;
-    const savedActiveSchema = localStorage.getItem('erdmini_active_schema');
-    if (savedActiveSchema) canvasState.activeSchema = savedActiveSchema;
-    const savedViewports = localStorage.getItem('erdmini_schema_viewports');
-    if (savedViewports) {
-      try { canvasState.schemaViewports = JSON.parse(savedViewports); } catch { /* ignore */ }
-    }
+    const saved = restoreCanvasSettings();
+    if (saved.columnDisplayMode) canvasState.columnDisplayMode = saved.columnDisplayMode;
+    if (saved.lineType) canvasState.lineType = saved.lineType;
+    if (saved.showGrid === false) canvasState.showGrid = false;
+    if (saved.showRelationLines === false) canvasState.showRelationLines = false;
+    if (saved.activeSchema) canvasState.activeSchema = saved.activeSchema;
+    if (saved.schemaViewports) canvasState.schemaViewports = saved.schemaViewports;
   }
 
   let sidebarCollapsed = $state(false);
@@ -114,51 +105,12 @@
     } catch { /* ignore */ }
   }
 
-  // Persist column display mode
-  $effect(() => {
-    const mode = canvasState.columnDisplayMode;
-    if (mode === 'all') {
-      localStorage.removeItem('erdmini_column_display_mode');
-    } else {
-      localStorage.setItem('erdmini_column_display_mode', mode);
-    }
-  });
-
-  // Persist line type
-  $effect(() => {
-    const lt = canvasState.lineType;
-    if (lt === 'bezier') {
-      localStorage.removeItem('erdmini_line_type');
-    } else {
-      localStorage.setItem('erdmini_line_type', lt);
-    }
-  });
-
-  // Persist show grid
-  $effect(() => {
-    if (canvasState.showGrid) {
-      localStorage.removeItem('erdmini_show_grid');
-    } else {
-      localStorage.setItem('erdmini_show_grid', 'false');
-    }
-  });
-
-  // Persist show relation lines
-  $effect(() => {
-    if (canvasState.showRelationLines) {
-      localStorage.removeItem('erdmini_show_relation_lines');
-    } else {
-      localStorage.setItem('erdmini_show_relation_lines', 'false');
-    }
-  });
-
-  // Persist active schema and schema viewports
-  $effect(() => {
-    const as = canvasState.activeSchema;
-    if (as === '(all)') localStorage.removeItem('erdmini_active_schema');
-    else localStorage.setItem('erdmini_active_schema', as);
-    localStorage.setItem('erdmini_schema_viewports', JSON.stringify(canvasState.schemaViewports));
-  });
+  // Persist canvas settings
+  $effect(() => { persistColumnDisplayMode(canvasState.columnDisplayMode); });
+  $effect(() => { persistLineType(canvasState.lineType); });
+  $effect(() => { persistShowGrid(canvasState.showGrid); });
+  $effect(() => { persistShowRelationLines(canvasState.showRelationLines); });
+  $effect(() => { persistSchemaView(canvasState.activeSchema, canvasState.schemaViewports); });
 
   /** Measure viewport, apply state change, then compensate canvas position to keep center stable */
   async function preserveCenter(applyChange: () => void) {
@@ -334,206 +286,18 @@
   });
 
   // Keyboard shortcuts
-  async function handleKeydown(e: KeyboardEvent) {
-    const key = e.key.toLowerCase();
-    const tag = (e.target as HTMLElement)?.tagName;
-    const isEditing = tag === 'INPUT' || tag === 'TEXTAREA';
-
-    // F key: toggle fullscreen (when not editing) — use e.code for IME compatibility
-    if (e.code === 'KeyF' && !isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      e.preventDefault();
-      if (fullscreenMode) exitFullscreen(); else enterFullscreen();
-      return;
-    }
-
-    // ESC: exit fullscreen first, then deselect
-    if (e.key === 'Escape' && !isEditing) {
-      if (fullscreenMode) {
-        exitFullscreen();
-        return;
-      }
-      erdStore.selectedTableId = null;
-      erdStore.selectedTableIds = new Set();
-      erdStore.selectedMemoId = null;
-      erdStore.selectedMemoIds = new Set();
-      return;
-    }
-
-    // In fullscreen mode, block all editing shortcuts
-    if (fullscreenMode) {
-      // Allow zoom (+/-), arrow pan, and Cmd+K/Ctrl+F palette
-      if ((e.ctrlKey || e.metaKey) && (key === 'k' || key === 'f')) {
-        e.preventDefault();
-        commandPaletteOpen = !commandPaletteOpen;
-        return;
-      }
-      // Allow zoom keys and arrow keys to pass through
-      if (!isEditing && (key === '+' || key === '=' || key === '-')) {
-        e.preventDefault();
-        const factor = (key === '-') ? 0.9 : 1.1;
-        const newScale = Math.min(3, Math.max(0.2, canvasState.scale * factor));
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const cx = vw / 2;
-        const cy = vh / 2;
-        canvasState.x = cx - (cx - canvasState.x) * (newScale / canvasState.scale);
-        canvasState.y = cy - (cy - canvasState.y) * (newScale / canvasState.scale);
-        canvasState.scale = newScale;
-        return;
-      }
-      if (!isEditing && e.key.startsWith('Arrow')) {
-        e.preventDefault();
-        const step = 60;
-        switch (e.key) {
-          case 'ArrowLeft':  canvasState.x += step; break;
-          case 'ArrowRight': canvasState.x -= step; break;
-          case 'ArrowUp':    canvasState.y += step; break;
-          case 'ArrowDown':  canvasState.y -= step; break;
-        }
-        return;
-      }
-      return; // Block everything else in fullscreen
-    }
-
-    // Cmd+K or Ctrl+F: toggle command palette (works even when editing)
-    if ((e.ctrlKey || e.metaKey) && (key === 'k' || key === 'f')) {
-      e.preventDefault();
-      commandPaletteOpen = !commandPaletteOpen;
-      return;
-    }
-
-    // Undo/Redo
-    if ((e.ctrlKey || e.metaKey) && (key === 'z' || key === 'y')) {
-      if (isEditing || permissionStore.isReadOnly) return;
-      e.preventDefault();
-      if (key === 'y' || (key === 'z' && e.shiftKey)) {
-        erdStore.redo();
-      } else {
-        erdStore.undo();
-      }
-      return;
-    }
-
-    // Ctrl+A: Select all tables and memos
-    if ((e.ctrlKey || e.metaKey) && key === 'a' && !isEditing) {
-      e.preventDefault();
-      const allIds = new Set(erdStore.schema.tables.map((t) => t.id));
-      erdStore.selectedTableIds = allIds;
-      if (allIds.size > 0) erdStore.selectedTableId = erdStore.schema.tables[0].id;
-      const allMemoIds = new Set(erdStore.schema.memos.map((mm) => mm.id));
-      erdStore.selectedMemoIds = allMemoIds;
-      if (allMemoIds.size > 0 && !erdStore.selectedMemoId) erdStore.selectedMemoId = erdStore.schema.memos[0].id;
-      return;
-    }
-
-    // Ctrl+D: Duplicate selected table(s)
-    if ((e.ctrlKey || e.metaKey) && key === 'd' && !isEditing && !permissionStore.isReadOnly) {
-      e.preventDefault();
-      const ids = [...erdStore.selectedTableIds];
-      for (const id of ids) {
-        erdStore.duplicateTable(id);
-      }
-      return;
-    }
-
-    // Delete selected table(s) and/or memo(s)
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditing && !permissionStore.isReadOnly) {
-      const tableIds = [...erdStore.selectedTableIds];
-      const memoIds = [...erdStore.selectedMemoIds];
-      if (tableIds.length === 0 && memoIds.length === 0) return;
-      e.preventDefault();
-
-      // Delete tables
-      if (tableIds.length === 1 && memoIds.length === 0) {
-        const table = erdStore.schema.tables.find((t) => t.id === tableIds[0]);
-        if (!table) return;
-        const ok = await dialogStore.confirm(m.dialog_delete_table_confirm({ name: table.name }), {
-          title: m.dialog_delete_table_title(),
-          confirmText: m.action_delete(),
-          variant: 'danger',
-        });
-        if (ok) erdStore.deleteTable(tableIds[0]);
-      } else if (tableIds.length > 0) {
-        const ok = await dialogStore.confirm(m.dialog_bulk_delete_confirm({ count: tableIds.length }), {
-          title: m.dialog_delete_table_title(),
-          confirmText: m.action_delete(),
-          variant: 'danger',
-        });
-        if (ok) erdStore.deleteTables(tableIds);
-      }
-
-      // Delete memos
-      if (memoIds.length === 1 && tableIds.length === 0) {
-        const ok = await dialogStore.confirm(m.dialog_delete_memo_confirm(), {
-          title: m.action_delete(),
-          confirmText: m.action_delete(),
-          variant: 'danger',
-        });
-        if (ok) erdStore.deleteMemo(memoIds[0]);
-      } else if (memoIds.length > 0) {
-        const ok = await dialogStore.confirm(m.dialog_delete_memos_confirm({ count: memoIds.length }), {
-          title: m.action_delete(),
-          confirmText: m.action_delete(),
-          variant: 'danger',
-        });
-        if (ok) erdStore.deleteMemos(memoIds);
-      }
-    }
-
-    // Keyboard zoom: +/= to zoom in, - to zoom out
-    if (!isEditing && (e.key === '+' || e.key === '=' || e.key === '-')) {
-      e.preventDefault();
-      const factor = (e.key === '-') ? 0.9 : 1.1;
-      const newScale = Math.min(3, Math.max(0.2, canvasState.scale * factor));
-      // Zoom toward viewport center
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const cx = vw / 2;
-      const cy = vh / 2;
-      canvasState.x = cx - (cx - canvasState.x) * (newScale / canvasState.scale);
-      canvasState.y = cy - (cy - canvasState.y) * (newScale / canvasState.scale);
-      canvasState.scale = newScale;
-      return;
-    }
-
-    // Ctrl+C: Copy selected tables to clipboard
-    if ((e.ctrlKey || e.metaKey) && key === 'c' && !isEditing) {
-      const ids = [...erdStore.selectedTableIds];
-      if (ids.length > 0) {
-        e.preventDefault();
-        const tables = erdStore.schema.tables.filter((t) => ids.includes(t.id));
-        const data = { _type: 'erdmini_tables', tables };
-        navigator.clipboard.writeText(JSON.stringify(data));
-      }
-      return;
-    }
-
-    // Ctrl+V: Paste tables from clipboard
-    if ((e.ctrlKey || e.metaKey) && key === 'v' && !isEditing && !permissionStore.isReadOnly) {
-      e.preventDefault();
-      navigator.clipboard.readText().then((text) => {
-        try {
-          const data = JSON.parse(text);
-          if (data._type === 'erdmini_tables' && Array.isArray(data.tables)) {
-            erdStore.pasteTablesFromClipboard(data.tables);
-          }
-        } catch { /* not valid erdmini data, ignore */ }
-      }).catch(() => { /* clipboard access denied, ignore */ });
-      return;
-    }
-
-    // Keyboard pan: Arrow keys
-    if (!isEditing && e.key.startsWith('Arrow')) {
-      e.preventDefault();
-      const step = 60;
-      switch (e.key) {
-        case 'ArrowLeft':  canvasState.x += step; break;
-        case 'ArrowRight': canvasState.x -= step; break;
-        case 'ArrowUp':    canvasState.y += step; break;
-        case 'ArrowDown':  canvasState.y -= step; break;
-      }
-      return;
-    }
+  function handleKeydown(e: KeyboardEvent) {
+    const ctx: KeyboardContext = {
+      erdStore,
+      canvasState,
+      dialogStore,
+      isReadOnly: permissionStore.isReadOnly,
+      fullscreenMode,
+      commandPaletteOpen,
+      setFullscreen: (v) => { if (v) enterFullscreen(); else exitFullscreen(); },
+      setCommandPalette: (v) => { commandPaletteOpen = v; },
+    };
+    handleKBShortcut(e, ctx);
   }
 
   $effect(() => {

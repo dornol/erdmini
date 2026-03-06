@@ -3,6 +3,7 @@
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
+  import { copyToClipboard as clipCopy } from '$lib/utils/clipboard';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
@@ -79,37 +80,11 @@
   // Share link
   let shareStatus = $state<'idle' | 'copied'>('idle');
 
-  function copyToClipboardFallback(text: string): boolean {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      const ok = document.execCommand('copy');
-      document.body.removeChild(textarea);
-      return ok;
-    } catch {
-      document.body.removeChild(textarea);
-      return false;
-    }
-  }
-
   async function shareLink() {
     try {
       const encoded = await schemaToShareString(erdStore.schema, projectStore.activeProject?.name ?? 'Untitled');
       const url = buildShareUrl(encoded);
-      let copied = false;
-      if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(url);
-          copied = true;
-        } catch { /* non-secure context */ }
-      }
-      if (!copied) {
-        copied = copyToClipboardFallback(url);
-      }
+      const copied = await clipCopy(url);
       if (copied) {
         shareStatus = 'copied';
         setTimeout(() => (shareStatus = 'idle'), 2000);

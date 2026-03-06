@@ -266,3 +266,28 @@
 - ~~**Admin i18n**: ~156개 새 키 (ko/en/ja/zh), 모든 관리자 탭 컴포넌트 국제화~~
 - 10 new tests (getDefaultPermissions + requirePermission logic)
 - Difficulty: Medium
+
+### Phase 39e — Permission Hardening & Shared Project Bugfixes
+- ~~**Stale Shared Project Pruning**: 공유 취소된 프로젝트 자동 제거 (loadProjectSchema null 감지 → 인덱스 프루닝 → 다음 프로젝트 전환 또는 no-project 화면)~~
+- ~~**ensureOwnerPermission 보안 수정**: 공유 프로젝트 인덱스 저장 시 owner 권한 재생성 방지 (schemas 테이블 존재 여부 확인)~~
+- ~~**Empty Index + Permission Granted**: 빈 인덱스 + canCreateProject 권한 부여 시 기본 프로젝트 자동 생성~~
+- ~~**ReadOnly UI Enforcement**: viewer 권한에서 Import, Undo/Redo, DomainModal, SnapshotPanel, HistoryPanel 쓰기 차단~~
+- ~~**Permission-Based UI**: canCreateProject/canCreateApiKey/canCreateEmbed 없으면 해당 버튼 숨김/비활성화~~
+- ~~**No-Project Screen**: 프로젝트 없는 사용자에게 Toolbar minimal + 안내 화면 표시~~
+- ~~**Grid Zoom Scaling**: 캔버스 줌아웃 시 그리드 굵기 sqrt(scale) 곡선으로 점진적 감소~~
+- ~~**DBML Export Quote Escaping**: 기본값 내 작은따옴표 이스케이프~~
+- 21 new tests (project-logic: pruning/migrate/ensureOwnerPermission guard)
+- Difficulty: Medium
+
+### Phase 40 — Code Refactoring (Utility Extraction & Deduplication)
+- ~~**clipboard.ts**: copyToClipboard() 공유 유틸리티 — navigator.clipboard + textarea fallback (10개+ 파일 중복 제거)~~
+- ~~**ddl-options.ts**: DIALECT_OPTIONS + loadDdlOptions/saveDdlOptions 공유 (DdlModal, SchemaDiffModal 중복 제거)~~
+- ~~**column-filter.ts**: getFilteredColumns/getFilteredColumnCount 공유 (Canvas, RelationLines, Minimap 3중 중복 제거)~~
+- ~~**canvas-persistence.ts**: restoreCanvasSettings + persist* 함수 추출 (+page.svelte에서 6개 $effect 블록 정리)~~
+- ~~**keyboard-shortcuts.ts**: handleKeydown 200줄 순수 함수 추출 (+page.svelte 스크립트 236줄 축소)~~
+- ~~**sidebar-search.ts**: filterTables + tableHasAttr + getTableMeta 추출 (Sidebar.svelte 92줄 축소)~~
+- ~~**TableCard 드래그 통합**: mouse/touch 핸들러 → 통합 startDrag/continueDrag/endDrag (45줄 축소)~~
+- ~~**erd.svelte.ts 헬퍼**: _t/_m/_d 프라이빗 룩업 헬퍼 (26+6+2=34회 .find() 패턴 정리)~~
+- 139 new tests (clipboard 7, keyboard-shortcuts 41, canvas-persistence 25, ddl-options 11, sidebar-search 45, column-filter 10)
+- 0 errors, 2070 tests pass (53 test files)
+- Difficulty: Medium

@@ -98,7 +98,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 
 - **`PUBLIC_STORAGE_MODE` env var** gates everything: adapter selection, storage provider, auth middleware, collab features
 - **`hooks.server.ts`** dynamically imports server modules to avoid loading them in static builds
-- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (43 test files, 1857 tests)
+- All utility functions in `src/lib/utils/` are pure; most have corresponding `.test.ts` files (53 test files, 2070 tests)
 - 41 collab operation types in `src/lib/types/collab.ts` covering all schema mutations (tables, columns, FKs, domains, memos, schemas)
 - `_isRemoteOp` and `_isUndoRedoing` flags on `erdStore` prevent unwanted undo history entries
 - The main page (`src/routes/+page.svelte`) orchestrates all top-level effects: collab lifecycle, undo snapshots, debounced auto-save, keyboard shortcuts
@@ -147,3 +147,9 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 - Schema data stored in IndexedDB (browser same-origin policy)
 - localStorage stores UI preferences only (theme, grid, line type) — no schema data
 - Server mode: schema stored in SQLite only, no browser persistence of schema data
+
+## Code Quality
+
+- When fixing bugs or adding features, systematically check ALL related edge cases before reporting completion. For UI changes, check: shared/readonly modes, disabled states, toolbar visibility, copy/export buttons, and permission variations (owner/editor/viewer/anonymous, canCreateProject/canCreateApiKey/canCreateEmbed).
+- When making UI changes, never remove existing functionality without explicit approval. Before completing a UI task, verify all pre-existing buttons/controls are still present.
+- When debugging UI issues, check CSS/layout problems early before diving into deep backend investigation.

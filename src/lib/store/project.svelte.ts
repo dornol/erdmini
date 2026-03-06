@@ -43,7 +43,14 @@ class ProjectStore {
     const existingIndex = await this.provider.loadIndex();
     if (existingIndex) {
       this.index = existingIndex;
-      await this.loadProjectSchema(this.index.activeProjectId);
+      // Empty index + user now has create permission → make a default project
+      if (this.index.projects.length === 0 && (!authStore.user || authStore.user.canCreateProject)) {
+        await this.createDefaultProject();
+        return;
+      }
+      if (this.index.activeProjectId) {
+        await this.loadProjectSchema(this.index.activeProjectId);
+      }
       return;
     }
 
@@ -96,13 +103,34 @@ class ProjectStore {
     erdStore.loadSchema(schema);
   }
 
-  private async loadProjectSchema(projectId: string) {
+  /**
+   * Load schema for a project. Returns false if the project is inaccessible
+   * (e.g. shared access revoked → 403), in which case the project is pruned
+   * from the index and a fallback is attempted.
+   */
+  private async loadProjectSchema(projectId: string): Promise<boolean> {
     const schema = await this.provider.loadSchema(projectId);
-    if (schema) {
-      erdStore.loadSchema(migrateSchema(schema));
-    } else {
+    if (!schema) {
+      // Project inaccessible — prune from index
+      const had = this.index.projects.some((p) => p.id === projectId);
+      if (had) {
+        this.index.projects = this.index.projects.filter((p) => p.id !== projectId);
+        if (this.index.projects.length > 0) {
+          this.index.activeProjectId = this.index.projects[0].id;
+          await this.saveIndex();
+          return this.loadProjectSchema(this.index.activeProjectId);
+        }
+        // No projects left — save empty index (bypass the guard)
+        this.index.activeProjectId = '';
+        await this.provider.saveIndex($state.snapshot(this.index) as ProjectIndex);
+      }
       erdStore.loadSchema(defaultSchema());
+      canvasState.x = 0;
+      canvasState.y = 0;
+      canvasState.scale = 1;
+      return false;
     }
+    erdStore.loadSchema(migrateSchema(schema));
     const canvas = await this.provider.loadCanvasState(projectId);
     if (canvas) {
       canvasState.x = canvas.x ?? 0;
@@ -113,6 +141,7 @@ class ProjectStore {
       canvasState.y = 0;
       canvasState.scale = 1;
     }
+    return true;
   }
 
   private async saveIndex() {
@@ -160,8 +189,10 @@ class ProjectStore {
       const meta = this.index.projects.find((p) => p.id === id);
       if (meta) meta.lastOpenedAt = now();
       await this.saveIndex();
-      await this.loadProjectSchema(id);
-      await snapshotStore.init(this.provider, id);
+      const ok = await this.loadProjectSchema(id);
+      if (ok) {
+        await snapshotStore.init(this.provider, id);
+      }
     } finally {
       this._loading = false;
     }

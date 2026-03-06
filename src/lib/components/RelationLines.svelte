@@ -7,6 +7,7 @@
   import { HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
+  import { getFilteredColumns as getFilteredCols } from '$lib/utils/column-filter';
   import * as m from '$lib/paraglide/messages';
 
   let { visibleTables, oneditfk }: { visibleTables?: Table[]; oneditfk?: (tableId: string, fkId: string) => void } = $props();
@@ -50,11 +51,7 @@
   }
 
   function getFilteredColumns(table: Table) {
-    const mode = canvasState.columnDisplayMode;
-    if (mode === 'all' || mode === 'names-only') return table.columns;
-    // pk-fk-only
-    const fkColIds = new Set(table.foreignKeys.flatMap((fk) => fk.columnIds));
-    return table.columns.filter((c) => c.primaryKey || fkColIds.has(c.id));
+    return getFilteredCols(table, canvasState.columnDisplayMode);
   }
 
   function getColIndex(table: Table, columnId: string): number {
