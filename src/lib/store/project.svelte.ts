@@ -2,6 +2,7 @@ import type { ERDSchema, ProjectIndex, ProjectMeta } from '$lib/types/erd';
 import type { StorageProvider } from '$lib/storage/types';
 import { erdStore, defaultSchema, canvasState } from '$lib/store/erd.svelte';
 import { snapshotStore } from '$lib/store/snapshot.svelte';
+import { authStore } from '$lib/store/auth.svelte';
 import { generateId, now } from '$lib/utils/common';
 import { normalizeSchema } from '$lib/utils/schema-normalize';
 
@@ -64,6 +65,14 @@ class ProjectStore {
       await this.saveIndex();
       await this.provider.deleteLegacyKey();
       erdStore.loadSchema(schema);
+      return;
+    }
+
+    // In server mode, skip auto-creating default project if user lacks permission
+    const user = authStore.user;
+    if (user && !user.canCreateProject) {
+      this.index = { version: '1', activeProjectId: '', projects: [] };
+      erdStore.loadSchema(defaultSchema());
       return;
     }
 

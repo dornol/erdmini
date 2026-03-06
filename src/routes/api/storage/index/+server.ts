@@ -35,9 +35,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
       } catch { /* ignore */ }
     }
 
-    // Check permission if creating new projects (allow first project for new users)
+    // Check permission if creating new projects
     const hasNewProjects = body.projects.some((p: { id: string }) => !existingIds.has(p.id));
-    if (hasNewProjects && existingIds.size > 0) {
+    if (hasNewProjects) {
       const permErr = requirePermission(locals, 'canCreateProject');
       if (permErr) return permErr;
     }
