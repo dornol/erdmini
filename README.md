@@ -60,7 +60,7 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - Table duplication / position locking
 - **Single select**: card / sidebar click
 - **Multi-select**: Ctrl/Cmd + click, rubber band drag
-- **Bulk operations**: delete, bulk edit color/group/comment, lock/unlock
+- **Bulk operations**: delete, bulk edit color/group/comment/schema, lock/unlock
 - **Column display mode**: all / PK & FK only / name only
 
 ### Column Management

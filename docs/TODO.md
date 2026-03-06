@@ -226,5 +226,7 @@
 - ~~**Column Delete in Popup**: ColumnEditPopup에 🗑 삭제 버튼 추가~~
 - ~~**Embed CommandPalette**: 임베드 모드에서도 Ctrl+F/K 캔버스 검색 지원~~
 - ~~**FK Popover**: FK 라인 클릭 시 정보 팝오버 + 라벨 편집/FK 편집/삭제 액션 (기존 single-click-to-delete 대체)~~
+- ~~**Bulk Schema Change**: 멀티선택 테이블의 스키마 일괄 변경 (BulkEditModal 스키마 드롭다운)~~
+- ~~**Shortcuts Panel Update**: Ctrl+F 검색, Ctrl+C/V 복사/붙여넣기 키보드 단축키 추가~~
 - 26 new tests (14 table-templates + 5 SVG FK label + 5 DDL FK label + 2 schema-diff FK label)
 - Difficulty: Medium
