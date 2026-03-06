@@ -258,6 +258,8 @@
   "bulk_edit_color": "색상 변경",
   "bulk_edit_group": "그룹 변경",
   "bulk_edit_comment": "코멘트 변경",
+  "bulk_edit_schema": "스키마 변경",
+  "bulk_edit_schema_none": "(없음)",
   "sidebar_bulk_lock": "잠금({count})",
   "sidebar_bulk_unlock": "잠금해제({count})",
   "lint_title": "스키마 검증",

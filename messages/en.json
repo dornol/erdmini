@@ -258,6 +258,8 @@
   "bulk_edit_color": "Change color",
   "bulk_edit_group": "Change group",
   "bulk_edit_comment": "Change comment",
+  "bulk_edit_schema": "Change schema",
+  "bulk_edit_schema_none": "(none)",
   "sidebar_bulk_lock": "Lock ({count})",
   "sidebar_bulk_unlock": "Unlock ({count})",
   "lint_title": "Schema Validation",

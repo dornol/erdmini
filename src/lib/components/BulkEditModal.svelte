@@ -16,19 +16,23 @@
   let colorEnabled = $state(false);
   let groupEnabled = $state(false);
   let commentEnabled = $state(false);
+  let schemaEnabled = $state(false);
 
   // Field values
   let selectedColor = $state<TableColorId | undefined>(undefined);
   let groupValue = $state('');
   let commentValue = $state('');
+  let schemaValue = $state('');
 
   // All distinct group names for datalist autocomplete
   let existingGroups = $derived(
     [...new Set(erdStore.schema.tables.map((t) => t.group).filter(Boolean))] as string[]
   );
 
+  let hasSchemas = $derived((erdStore.schema.schemas ?? []).length > 0);
+
   let canSubmit = $derived(
-    (colorEnabled || groupEnabled || commentEnabled) && !permissionStore.isReadOnly
+    (colorEnabled || groupEnabled || commentEnabled || schemaEnabled) && !permissionStore.isReadOnly
   );
 
   function submit() {
@@ -48,6 +52,9 @@
       }
       if (commentEnabled) {
         erdStore.updateTableComment(id, commentValue);
+      }
+      if (schemaEnabled) {
+        erdStore.updateTableSchema(id, schemaValue || undefined);
       }
     }
     onclose();
@@ -128,6 +135,24 @@
           />
         {/if}
       </div>
+
+      <!-- Schema -->
+      {#if hasSchemas}
+        <div class="field-row">
+          <label class="field-toggle">
+            <input type="checkbox" bind:checked={schemaEnabled} />
+            <span class="field-label">{m.bulk_edit_schema()}</span>
+          </label>
+          {#if schemaEnabled}
+            <select class="text-input" bind:value={schemaValue}>
+              <option value="">{m.bulk_edit_schema_none()}</option>
+              {#each erdStore.schema.schemas ?? [] as s}
+                <option value={s}>{s}</option>
+              {/each}
+            </select>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <div class="modal-footer">
