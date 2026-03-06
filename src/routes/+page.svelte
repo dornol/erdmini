@@ -6,6 +6,7 @@
   import TableCard from '$lib/components/TableCard.svelte';
   import MemoCard from '$lib/components/MemoCard.svelte';
   import TableEditor from '$lib/components/TableEditor.svelte';
+  import FkModal from '$lib/components/FkModal.svelte';
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import BulkEditModal from '$lib/components/BulkEditModal.svelte';
@@ -55,6 +56,13 @@
 
   let sidebarCollapsed = $state(false);
   let commandPaletteOpen = $state(false);
+  let fkModalTableId = $state<string | null>(null);
+  let fkModalEditId = $state<string | undefined>(undefined);
+
+  function handleEditFk(tableId: string, fkId: string) {
+    fkModalTableId = tableId;
+    fkModalEditId = fkId;
+  }
 
   const visibleTables = $derived(filterBySchema(erdStore.schema.tables, canvasState.activeSchema));
   const visibleMemos = $derived(filterBySchema(erdStore.schema.memos, canvasState.activeSchema));
@@ -581,7 +589,7 @@
       <!-- Fullscreen Presentation Mode -->
       <div class="fullscreen-canvas">
         <Canvas>
-          <RelationLines {visibleTables} />
+          <RelationLines {visibleTables} oneditfk={handleEditFk} />
           {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div class="fullscreen-table-wrapper">
               <MemoCard {memo} />
@@ -627,7 +635,7 @@
       <div class="main">
         <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
         <Canvas>
-          <RelationLines {visibleTables} />
+          <RelationLines {visibleTables} oneditfk={handleEditFk} />
           {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div
               in:scale={{ duration: 200, start: 0.85, opacity: 0 }}
@@ -668,6 +676,10 @@
 
     {#if commandPaletteOpen}
       <CommandPalette onclose={() => (commandPaletteOpen = false)} />
+    {/if}
+
+    {#if fkModalTableId}
+      <FkModal tableId={fkModalTableId} editFkId={fkModalEditId} onclose={() => { fkModalTableId = null; fkModalEditId = undefined; }} />
     {/if}
 
     <DialogModal />

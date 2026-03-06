@@ -7,8 +7,9 @@
   import { HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
+  import * as m from '$lib/paraglide/messages';
 
-  let { visibleTables }: { visibleTables?: Table[] } = $props();
+  let { visibleTables, oneditfk }: { visibleTables?: Table[]; oneditfk?: (tableId: string, fkId: string) => void } = $props();
 
   function autoFocus(node: HTMLInputElement) {
     node.focus();
@@ -230,13 +231,14 @@
 
   let hoveredId = $state<string | null>(null);
   let editingLabel = $state<{ tableId: string; fkId: string; x: number; y: number; value: string } | null>(null);
+  let fkPopover = $state<{ line: FKLine; x: number; y: number } | null>(null);
 
   let isReadOnly = $derived(permissionStore.isReadOnly);
 
   function onLabelDblClick(line: FKLine, e: MouseEvent) {
     e.stopPropagation();
-    clearTimeout(clickTimer);
     if (isReadOnly) return;
+    fkPopover = null;
     editingLabel = {
       tableId: line.tableId,
       fkId: line.fk.id,
@@ -271,24 +273,56 @@
     erdStore.hoveredFkInfo = [];
   }
 
-  let clickTimer: ReturnType<typeof setTimeout> | undefined;
-
-  function handleLineClick(line: FKLine) {
-    clearTimeout(clickTimer);
-    clickTimer = setTimeout(() => {
-      doDeleteFk(line);
-    }, 250);
+  function handleLineClick(line: FKLine, e: MouseEvent) {
+    // Open popover at click position (world coords)
+    const svg = (e.target as SVGElement).closest('svg');
+    if (!svg) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const worldPt = pt.matrixTransform(ctm.inverse());
+    fkPopover = { line, x: worldPt.x, y: worldPt.y };
   }
 
-  async function doDeleteFk(line: FKLine) {
+  function closeFkPopover() {
+    fkPopover = null;
+  }
+
+  function popoverEditLabel() {
+    if (!fkPopover) return;
+    const line = fkPopover.line;
+    editingLabel = {
+      tableId: line.tableId,
+      fkId: line.fk.id,
+      x: line.labelX,
+      y: line.labelY,
+      value: line.fkLabel,
+    };
+    fkPopover = null;
+  }
+
+  function popoverEditFk() {
+    if (!fkPopover) return;
+    const { tableId } = fkPopover.line;
+    const fkId = fkPopover.line.fk.id;
+    fkPopover = null;
+    oneditfk?.(tableId, fkId);
+  }
+
+  async function popoverDeleteFk() {
+    if (!fkPopover) return;
+    const line = fkPopover.line;
+    fkPopover = null;
     const srcTable = erdStore.schema.tables.find((t) => t.id === line.tableId);
     const refTable = erdStore.schema.tables.find((t) => t.id === line.fk.referencedTableId);
     const srcColNames = line.fk.columnIds.map((id) => srcTable?.columns.find((c) => c.id === id)?.name ?? '?');
     const refColNames = line.fk.referencedColumnIds.map((id) => refTable?.columns.find((c) => c.id === id)?.name ?? '?');
-    const msg = `FK (${srcColNames.join(', ')}) → ${refTable?.name ?? '?'}.(${refColNames.join(', ')}) 을(를) 삭제하시겠습니까?`;
+    const msg = `FK (${srcColNames.join(', ')}) → ${refTable?.name ?? '?'}.(${refColNames.join(', ')}) ${m.fk_delete()}?`;
     const ok = await dialogStore.confirm(msg, {
-      title: 'FK 삭제',
-      confirmText: '삭제',
+      title: m.fk_delete(),
+      confirmText: m.action_delete(),
       variant: 'danger',
     });
     if (ok) erdStore.deleteForeignKey(line.tableId, line.fk.id);
@@ -324,13 +358,13 @@
         stroke-width="14"
         role="button"
         tabindex="0"
-        aria-label="FK 관계선 삭제"
+        aria-label="FK line"
         style="pointer-events:stroke; cursor:pointer"
         onmouseenter={() => onLineEnter(line)}
         onmouseleave={onLineLeave}
-        onclick={() => handleLineClick(line)}
+        onclick={(e) => handleLineClick(line, e)}
         ondblclick={(e) => onLabelDblClick(line, e)}
-        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { fkPopover = { line, x: line.labelX, y: line.labelY }; } }}
       />
       <path d={line.path} fill="none" stroke={color} stroke-width="2"
         stroke-dasharray={line.isNullable ? '6 3' : lineColors.dash || 'none'} />
@@ -378,13 +412,13 @@
         stroke-width="14"
         role="button"
         tabindex="0"
-        aria-label="FK 관계선 삭제"
+        aria-label="FK line"
         style="pointer-events:stroke; cursor:pointer"
         onmouseenter={() => onLineEnter(line)}
         onmouseleave={onLineLeave}
-        onclick={() => handleLineClick(line)}
+        onclick={(e) => handleLineClick(line, e)}
         ondblclick={(e) => onLabelDblClick(line, e)}
-        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { fkPopover = { line, x: line.labelX, y: line.labelY }; } }}
       />
       <path d={line.path} fill="none" stroke={color} stroke-width="3"
         stroke-dasharray={line.isNullable ? '6 3' : lineColors.dash || 'none'} />
@@ -449,6 +483,39 @@
   {/if}
 </svg>
 
+{#if fkPopover}
+  {@const pop = fkPopover}
+  {@const srcTable = erdStore.schema.tables.find((t) => t.id === pop.line.tableId)}
+  {@const refTable = erdStore.schema.tables.find((t) => t.id === pop.line.fk.referencedTableId)}
+  {@const srcColNames = pop.line.fk.columnIds.map((id) => srcTable?.columns.find((c) => c.id === id)?.name ?? '?')}
+  {@const refColNames = pop.line.fk.referencedColumnIds.map((id) => refTable?.columns.find((c) => c.id === id)?.name ?? '?')}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="fk-popover-backdrop" onclick={closeFkPopover} onkeydown={(e) => { if (e.key === 'Escape') closeFkPopover(); }}>
+  </div>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="fk-popover"
+    style="left:{pop.x}px; top:{pop.y}px"
+    onkeydown={(e) => { if (e.key === 'Escape') closeFkPopover(); }}
+  >
+    <div class="fk-popover-info">
+      <span class="fk-popover-col">{srcTable?.name}.{srcColNames.join(', ')}</span>
+      <span class="fk-popover-arrow">→</span>
+      <span class="fk-popover-col">{refTable?.name}.{refColNames.join(', ')}</span>
+    </div>
+    {#if pop.line.fkLabel}
+      <div class="fk-popover-label">"{pop.line.fkLabel}"</div>
+    {/if}
+    {#if !isReadOnly}
+      <div class="fk-popover-actions">
+        <button onclick={popoverEditLabel}>✏️ {m.fk_label()}</button>
+        <button onclick={popoverEditFk}>⚙️ {m.action_edit()}</button>
+        <button class="danger" onclick={popoverDeleteFk}>🗑 {m.action_delete()}</button>
+      </div>
+    {/if}
+  </div>
+{/if}
+
 {#if editingLabel}
   <div
     class="fk-label-editor"
@@ -466,6 +533,76 @@
 {/if}
 
 <style>
+  .fk-popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+  }
+  .fk-popover {
+    position: absolute;
+    transform: translate(-50%, 8px);
+    z-index: 10;
+    background: var(--app-popup-bg, #1e293b);
+    border: 1px solid var(--app-border, #334155);
+    border-radius: 8px;
+    padding: 8px;
+    min-width: 180px;
+    box-shadow: var(--app-popup-shadow, 0 8px 30px rgba(0,0,0,0.3));
+  }
+  .fk-popover-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--app-text-secondary, #cbd5e1);
+    padding: 2px 4px;
+    flex-wrap: wrap;
+  }
+  .fk-popover-col {
+    font-weight: 600;
+    color: var(--app-text, #f1f5f9);
+    font-family: monospace;
+    font-size: 11px;
+  }
+  .fk-popover-arrow {
+    color: var(--app-text-muted, #94a3b8);
+  }
+  .fk-popover-label {
+    font-size: 11px;
+    font-style: italic;
+    color: var(--app-text-muted, #94a3b8);
+    padding: 0 4px 2px;
+  }
+  .fk-popover-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 4px;
+    border-top: 1px solid var(--app-border, #334155);
+    padding-top: 4px;
+  }
+  .fk-popover-actions button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--app-text-secondary, #cbd5e1);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .fk-popover-actions button:hover {
+    background: var(--app-hover-bg, #334155);
+    color: var(--app-text, #f1f5f9);
+  }
+  .fk-popover-actions button.danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+  }
   .fk-label-editor {
     position: absolute;
     transform: translateX(-50%);
