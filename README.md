@@ -65,7 +65,8 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 
 ### Column Management
 - CRUD from the right-side TableEditor panel
-- **Double-click a column in the card** to edit immediately in a floating popup
+- **Double-click a column in the card** to edit immediately in a floating popup (with delete button)
+- **Quick add**: "+" button appears at table bottom on hover
 - Drag to reorder columns
 - PK (gold) / FK (blue) / UQ / AI badge display
 - Detailed tooltip on column hover
@@ -79,7 +80,8 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
   - Dashed lines for nullable FK, mandatory tick distinction
   - Automatic 1:1 (unique FK) / 1:N detection
 - Both columns highlighted on FK line hover
-- Delete FK by clicking the line
+- **FK popover** on click: view FK info, edit label, edit FK, or delete
+- **FK label**: Optional relationship description displayed on the FK line (double-click to inline edit)
 
 ### Domain Management
 - Define reusable column property templates
@@ -134,8 +136,10 @@ When groups are defined, independent layout per group followed by meta-grid plac
 - Multiple projects (create/rename/duplicate/delete/switch)
 - Per-project canvas position saved
 - Full project backup/restore (JSON)
-- Command palette (Ctrl+K)
+- Command palette (Ctrl+K / Ctrl+F — search tables and columns)
 - Keyboard shortcut reference (? button)
+- **Table templates**: Quick-create common tables (users, audit_log, settings, files, tags)
+- **Cross-project copy/paste**: Ctrl+C/V to copy selected tables between projects (IDs auto-remapped)
 
 ---
 
@@ -177,7 +181,8 @@ ERDSchema
 │   │   └── domainId?
 │   ├── foreignKeys: ForeignKey[]
 │   │   ├── columnIds[] → referencedTableId.referencedColumnIds[]
-│   │   └── onDelete, onUpdate
+│   │   ├── onDelete, onUpdate
+│   │   └── label?
 │   ├── uniqueKeys: UniqueKey[]
 │   └── indexes: TableIndex[]
 ├── domains: ColumnDomain[]
@@ -200,7 +205,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (42 files, 1831 tests)
+pnpm test         # vitest (43 files, 1857 tests)
 pnpm check        # svelte-check type checking
 ```
 
@@ -209,18 +214,29 @@ pnpm check        # svelte-check type checking
 ## Docker Deployment
 
 ### Server Mode (SQLite + Auth + Real-time Collaboration)
+
 ```bash
-docker compose up -d
-# On first run, an admin account is created automatically and a random password is printed to the logs
-docker compose logs erdmini | grep Password
+docker run -d \
+  --name erdmini \
+  -p 3000:3000 \
+  -v erdmini-data:/app/data \
+  ghcr.io/dornol/erdmini:latest-server
+```
+
+On first run, an admin account is created automatically:
+```bash
+docker logs erdmini | grep Password
 ```
 
 ### Static SPA (Local Mode)
+
 ```bash
-docker compose --profile local up -d erdmini-local
+docker run -d --name erdmini-local -p 8080:80 ghcr.io/dornol/erdmini:latest
 ```
 
-For details on volume management, reverse proxy, and MCP configuration, see [DOCKER.md](DOCKER.md)
+### Docker Compose
+
+A `docker-compose.yml` is also included for convenience. See [DOCKER.md](DOCKER.md) for details on volume management, reverse proxy, environment variables, and MCP configuration.
 
 ---
 
