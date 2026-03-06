@@ -66,9 +66,12 @@ Access at default port `8080`: http://localhost:8080
 | `SESSION_MAX_AGE_DAYS` | `30` | Session expiry period (days) |
 | `PUBLIC_APP_URL` | `http://localhost:5173` | App URL (for OIDC callback, etc.) |
 
-### OIDC Configuration
+### OIDC / LDAP Configuration
 
-OIDC providers are added and managed through the server admin UI. Rather than configuring via environment variables, register providers in the Admin panel after logging in.
+OIDC and LDAP providers are added and managed through the server admin UI. Rather than configuring via environment variables, register providers in the Admin panel after logging in.
+
+- **OIDC**: Group sync from ID token claims, admin group auto-mapping
+- **LDAP**: Bind authentication, group search, group sync on login
 
 ---
 

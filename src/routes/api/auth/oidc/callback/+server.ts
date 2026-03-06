@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { handleCallback, findOrCreateOIDCUser, cleanupExpiredStates } from '$lib/server/auth/oidc';
 import { createSession } from '$lib/server/auth/session';
-import { syncUserGroups } from '$lib/server/auth/group-sync';
+import { syncUserGroups, syncAdminRole } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
 import { logger } from '$lib/server/logger';
 import type { OIDCProviderRow, OIDCStateRow } from '$lib/types/auth';
@@ -62,11 +62,18 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       throw redirect(303, '/login?error=pending_approval');
     }
 
+    // Extract groups from OIDC claims
+    const groupClaim = provider.group_claim || 'groups';
+    const rawGroups = claims[groupClaim];
+    const groups = Array.isArray(rawGroups) ? rawGroups.map(String) : rawGroups ? [String(rawGroups)] : [];
+
+    // Admin group mapping: promote/demote user based on OIDC group membership
+    if (provider.admin_groups) {
+      syncAdminRole(db, result.userId, groups, provider.admin_groups, provider.display_name);
+    }
+
     // Sync groups from OIDC claims
     if (provider.sync_groups) {
-      const groupClaim = provider.group_claim || 'groups';
-      const rawGroups = claims[groupClaim];
-      const groups = Array.isArray(rawGroups) ? rawGroups.map(String) : rawGroups ? [String(rawGroups)] : [];
       const allowed = provider.allowed_groups ? provider.allowed_groups.split(',').map(s => s.trim()).filter(Boolean) : [];
       syncUserGroups(db, result.userId, groups, 'oidc', provider.id, allowed);
     }

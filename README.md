@@ -144,17 +144,18 @@ When groups are defined, independent layout per group followed by meta-grid plac
 | Mode | Storage | Auth | Collaboration |
 |---|---|---|---|
 | **Local** (default) | IndexedDB | None | None |
-| **Server** | SQLite (WAL) | Local + OIDC | WebSocket real-time |
+| **Server** | SQLite (WAL) | Local + OIDC + LDAP | WebSocket real-time |
 
 Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 
 ### Server Mode Features
-- **Authentication**: Local auth (username/password) + multiple OIDC providers
-- **Permissions**: Per-project roles (owner / editor / viewer)
-- **Sharing**: User search → grant permissions, read-only mode
+- **Authentication**: Local auth (username/password) + multiple OIDC providers + LDAP
+- **Groups**: User groups with per-project group permissions, OIDC/LDAP group auto-sync on login, admin group mapping (auto promote/demote)
+- **Permissions**: Per-project roles (owner / editor / viewer) for users and groups
+- **Sharing**: User/group search → grant permissions, read-only mode
 - **Real-time collaboration**: WebSocket sync, connected user cursor display, LWW conflict resolution
-- **Admin**: User CRUD, OIDC provider management, API key management
-- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 48 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces, snapshots), collab integration
+- **Admin**: User CRUD, Group management, OIDC/LDAP provider management, API key management
+- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 61 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces, snapshots, bulk ops, search), collab integration
 - **Audit trail**: Action logging (auth, schema changes, admin ops), configurable retention, admin UI
 - **Embed**: Read-only iframe embed with token-based access and optional password protection
 - **Structured logging**: JSON Lines (`LOG_FORMAT=json`) or text output, `LOG_LEVEL` filtering — 12-factor app compatible
@@ -199,7 +200,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (31 files, 1123 tests)
+pnpm test         # vitest (42 files, 1831 tests)
 pnpm check        # svelte-check type checking
 ```
 

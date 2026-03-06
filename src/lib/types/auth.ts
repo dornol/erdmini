@@ -38,6 +38,7 @@ export interface OIDCProviderRow {
   sync_groups: number;
   group_claim: string;
   allowed_groups: string;
+  admin_groups: string;
   created_at: string;
 }
 

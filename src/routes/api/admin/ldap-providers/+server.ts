@@ -34,6 +34,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'displayName, serverUrl, bindDn, bindPassword, userSearchBase required' }, { status: 400 });
   }
 
+  const existing = db.prepare('SELECT id FROM ldap_providers WHERE server_url = ?').get(serverUrl) as { id: string } | undefined;
+  if (existing) {
+    return json({ error: 'A provider with this server URL already exists' }, { status: 409 });
+  }
+
   const id = randomUUID();
   db.prepare(
     `INSERT INTO ldap_providers (id, display_name, server_url, bind_dn, bind_password,

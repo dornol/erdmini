@@ -97,12 +97,18 @@
     if (editForm.bindPassword) {
       body.bindPassword = editForm.bindPassword;
     }
-    await fetch(`/api/admin/ldap-providers/${editingProvider}`, {
+    const res = await fetch(`/api/admin/ldap-providers/${editingProvider}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+    if (!res.ok) {
+      const data = await res.json();
+      providerError = data.error || 'Failed to update';
+      return;
+    }
     editingProvider = null;
+    providerError = '';
     await onreload();
   }
 
@@ -175,34 +181,85 @@
   <h2>LDAP Providers</h2>
 
   {#each providers as provider}
-    <div class="provider-card">
+    <div class="provider-card" class:provider-card-editing={editingProvider === provider.id}>
       {#if editingProvider === provider.id}
-        <div class="form-grid ldap-form">
-          <input placeholder="Display Name" bind:value={editForm.displayName} />
-          <input placeholder="Server URL (ldap://host:389)" bind:value={editForm.serverUrl} />
-          <input placeholder="Bind DN" bind:value={editForm.bindDn} />
-          <input placeholder="Bind Password (leave empty to keep)" type="password" bind:value={editForm.bindPassword} />
-          <input placeholder="User Search Base" bind:value={editForm.userSearchBase} />
-          <input placeholder="User Search Filter" bind:value={editForm.userSearchFilter} />
-          <input placeholder="Email Attribute" bind:value={editForm.emailAttribute} />
-          <input placeholder="Display Name Attribute" bind:value={editForm.displayNameAttribute} />
-          <input placeholder="Group Search Base (optional)" bind:value={editForm.groupSearchBase} />
-          <input placeholder="Group Search Filter (optional)" bind:value={editForm.groupSearchFilter} />
-          <input placeholder="Admin Group DN (optional)" bind:value={editForm.adminGroupDn} />
-          <input placeholder="Allowed Group DNs (comma-separated, optional)" bind:value={editForm.allowedGroupDns} />
+        <div class="ldap-form">
+          <div class="ldap-form-group">
+            <label class="ldap-label">Display Name</label>
+            <input bind:value={editForm.displayName} />
+          </div>
+          <div class="ldap-form-group">
+            <label class="ldap-label">Server URL</label>
+            <input placeholder="ldap://host:389" bind:value={editForm.serverUrl} />
+          </div>
+          <div class="ldap-form-row">
+            <div class="ldap-form-group">
+              <label class="ldap-label">Bind DN</label>
+              <input bind:value={editForm.bindDn} />
+            </div>
+            <div class="ldap-form-group">
+              <label class="ldap-label">Bind Password</label>
+              <input type="password" placeholder="(leave empty to keep)" bind:value={editForm.bindPassword} />
+            </div>
+          </div>
+          <div class="ldap-form-group">
+            <label class="ldap-label">User Search Base</label>
+            <input bind:value={editForm.userSearchBase} />
+          </div>
+          <div class="ldap-form-row">
+            <div class="ldap-form-group">
+              <label class="ldap-label">User Search Filter</label>
+              <input bind:value={editForm.userSearchFilter} />
+            </div>
+            <div class="ldap-form-group">
+              <label class="ldap-label">Email Attribute</label>
+              <input bind:value={editForm.emailAttribute} />
+            </div>
+            <div class="ldap-form-group">
+              <label class="ldap-label">Display Name Attribute</label>
+              <input bind:value={editForm.displayNameAttribute} />
+            </div>
+          </div>
+
+          <div class="ldap-divider"></div>
+          <span class="ldap-section-label">Group Settings (optional)</span>
+
+          <div class="ldap-form-row">
+            <div class="ldap-form-group">
+              <label class="ldap-label">Group Search Base</label>
+              <input placeholder="ou=groups,dc=example,dc=com" bind:value={editForm.groupSearchBase} />
+            </div>
+            <div class="ldap-form-group">
+              <label class="ldap-label">Group Search Filter</label>
+              <input bind:value={editForm.groupSearchFilter} />
+            </div>
+          </div>
+          <div class="ldap-form-row">
+            <div class="ldap-form-group">
+              <label class="ldap-label">Admin Group DN</label>
+              <input placeholder="cn=admins,ou=groups,..." bind:value={editForm.adminGroupDn} />
+            </div>
+            <div class="ldap-form-group">
+              <label class="ldap-label">Allowed Group DNs</label>
+              <input placeholder="comma-separated" bind:value={editForm.allowedGroupDns} />
+            </div>
+          </div>
           <span class="field-hint">Only users in these groups can log in. Leave empty to allow all.</span>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={editForm.startTls} /> StartTLS
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={editForm.enabled} /> Enabled
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={editForm.autoCreateUsers} /> Auto-create users
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={editForm.syncGroups} /> {m.admin_ldap_sync_groups()}
-          </label>
+
+          <div class="ldap-checks">
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={editForm.startTls} /> StartTLS
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={editForm.enabled} /> Enabled
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={editForm.autoCreateUsers} /> Auto-create users
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={editForm.syncGroups} /> {m.admin_ldap_sync_groups()}
+            </label>
+          </div>
           {#if editForm.syncGroups && !editForm.groupSearchBase}
             <span class="field-hint">{m.admin_ldap_sync_groups_hint()}</span>
           {/if}
@@ -247,32 +304,83 @@
 
   <div class="form-section">
     <h3>Add LDAP Provider</h3>
-    <div class="form-grid ldap-form">
-      <input placeholder="Display Name (e.g. Corporate AD)" bind:value={newProvider.displayName} />
-      <input placeholder="Server URL (ldap://host:389)" bind:value={newProvider.serverUrl} />
-      <input placeholder="Bind DN (e.g. cn=admin,dc=example,dc=com)" bind:value={newProvider.bindDn} />
-      <input placeholder="Bind Password" type="password" bind:value={newProvider.bindPassword} />
-      <input placeholder="User Search Base (e.g. ou=users,dc=example,dc=com)" bind:value={newProvider.userSearchBase} />
-      <input placeholder="User Search Filter" bind:value={newProvider.userSearchFilter} />
-      <input placeholder="Email Attribute" bind:value={newProvider.emailAttribute} />
-      <input placeholder="Display Name Attribute" bind:value={newProvider.displayNameAttribute} />
-      <input placeholder="Group Search Base (optional)" bind:value={newProvider.groupSearchBase} />
-      <input placeholder="Group Search Filter (optional)" bind:value={newProvider.groupSearchFilter} />
-      <input placeholder="Admin Group DN (optional)" bind:value={newProvider.adminGroupDn} />
-      <input placeholder="Allowed Group DNs (comma-separated, optional)" bind:value={newProvider.allowedGroupDns} />
+    <div class="ldap-form">
+      <div class="ldap-form-group">
+        <label class="ldap-label">Display Name</label>
+        <input placeholder="e.g. Corporate AD" bind:value={newProvider.displayName} />
+      </div>
+      <div class="ldap-form-group">
+        <label class="ldap-label">Server URL</label>
+        <input placeholder="ldap://host:389" bind:value={newProvider.serverUrl} />
+      </div>
+      <div class="ldap-form-row">
+        <div class="ldap-form-group">
+          <label class="ldap-label">Bind DN</label>
+          <input placeholder="cn=admin,dc=example,dc=com" bind:value={newProvider.bindDn} />
+        </div>
+        <div class="ldap-form-group">
+          <label class="ldap-label">Bind Password</label>
+          <input type="password" bind:value={newProvider.bindPassword} />
+        </div>
+      </div>
+      <div class="ldap-form-group">
+        <label class="ldap-label">User Search Base</label>
+        <input placeholder="ou=users,dc=example,dc=com" bind:value={newProvider.userSearchBase} />
+      </div>
+      <div class="ldap-form-row">
+        <div class="ldap-form-group">
+          <label class="ldap-label">User Search Filter</label>
+          <input bind:value={newProvider.userSearchFilter} />
+        </div>
+        <div class="ldap-form-group">
+          <label class="ldap-label">Email Attribute</label>
+          <input bind:value={newProvider.emailAttribute} />
+        </div>
+        <div class="ldap-form-group">
+          <label class="ldap-label">Display Name Attribute</label>
+          <input bind:value={newProvider.displayNameAttribute} />
+        </div>
+      </div>
+
+      <div class="ldap-divider"></div>
+      <span class="ldap-section-label">Group Settings (optional)</span>
+
+      <div class="ldap-form-row">
+        <div class="ldap-form-group">
+          <label class="ldap-label">Group Search Base</label>
+          <input placeholder="ou=groups,dc=example,dc=com" bind:value={newProvider.groupSearchBase} />
+        </div>
+        <div class="ldap-form-group">
+          <label class="ldap-label">Group Search Filter</label>
+          <input bind:value={newProvider.groupSearchFilter} />
+        </div>
+      </div>
+      <div class="ldap-form-row">
+        <div class="ldap-form-group">
+          <label class="ldap-label">Admin Group DN</label>
+          <input placeholder="cn=admins,ou=groups,..." bind:value={newProvider.adminGroupDn} />
+        </div>
+        <div class="ldap-form-group">
+          <label class="ldap-label">Allowed Group DNs</label>
+          <input placeholder="comma-separated" bind:value={newProvider.allowedGroupDns} />
+        </div>
+      </div>
       <span class="field-hint">Only users in these groups can log in. Leave empty to allow all.</span>
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={newProvider.startTls} /> StartTLS
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={newProvider.enabled} /> Enabled
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={newProvider.autoCreateUsers} /> Auto-create users
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={newProvider.syncGroups} /> {m.admin_ldap_sync_groups()}
-      </label>
+
+      <div class="ldap-checks">
+        <label class="checkbox-label">
+          <input type="checkbox" bind:checked={newProvider.startTls} /> StartTLS
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" bind:checked={newProvider.enabled} /> Enabled
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" bind:checked={newProvider.autoCreateUsers} /> Auto-create users
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" bind:checked={newProvider.syncGroups} /> {m.admin_ldap_sync_groups()}
+        </label>
+      </div>
       {#if newProvider.syncGroups && !newProvider.groupSearchBase}
         <span class="field-hint">{m.admin_ldap_sync_groups_hint()}</span>
       {/if}
@@ -294,14 +402,72 @@
 </section>
 
 <style>
-  .ldap-form {
+  .provider-card-editing {
     flex-direction: column;
-    align-items: stretch;
+    align-items: stretch !important;
+  }
+
+  .ldap-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .ldap-form-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .ldap-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ldap-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #94a3b8;
+  }
+
+  .ldap-form input:not([type="checkbox"]) {
+    padding: 8px 12px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #f1f5f9;
+    font-size: 13px;
+    width: 100%;
+  }
+
+  .ldap-form input:not([type="checkbox"]):focus {
+    outline: none;
+    border-color: #60a5fa;
+  }
+
+  .ldap-divider {
+    border-top: 1px solid #334155;
+    margin: 4px 0;
+  }
+
+  .ldap-section-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+
+  .ldap-checks {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
   }
 
   .field-hint {
     font-size: 12px;
     color: #64748b;
-    margin-top: -6px;
+    margin-top: -4px;
   }
 </style>

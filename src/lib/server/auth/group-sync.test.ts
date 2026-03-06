@@ -43,7 +43,7 @@ vi.mock('$lib/utils/common', () => {
   };
 });
 
-import { syncUserGroups, extractCN } from './group-sync';
+import { syncUserGroups, syncAdminRole, extractCN } from './group-sync';
 
 const mockDb = { prepare: mockPrepare } as any;
 
@@ -94,6 +94,128 @@ describe('extractCN', () => {
 
   it('handles mixed case cn=', () => {
     expect(extractCN('Cn=MixedCase,ou=groups')).toBe('MixedCase');
+  });
+});
+
+describe('syncAdminRole', () => {
+  beforeEach(() => {
+    calls.length = 0;
+    mockGetReturn = undefined;
+    mockGetReturns = [];
+    mockGetCallIndex = 0;
+    mockPrepare.mockClear();
+    mockLogAudit.mockClear();
+  });
+
+  it('promotes user to admin when in admin group', () => {
+    mockGetReturn = { role: 'user' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['developers', 'admins'], 'admins', 'My OIDC');
+
+    expect(result).toBe('promoted');
+    const updateCalls = getCallsByPattern('UPDATE users SET role', 'run');
+    expect(updateCalls.length).toBe(1);
+    expect(updateCalls[0].args[0]).toBe('admin');
+    expect(updateCalls[0].args[1]).toBe('user1');
+
+    expect(mockLogAudit).toHaveBeenCalledOnce();
+    const audit = mockLogAudit.mock.calls[0][0];
+    expect(audit.action).toBe('role_change');
+    expect(audit.detail.from).toBe('user');
+    expect(audit.detail.to).toBe('admin');
+    expect(audit.detail.reason).toBe('oidc_admin_group');
+    expect(audit.detail.provider).toBe('My OIDC');
+  });
+
+  it('demotes admin to user when no longer in admin group', () => {
+    mockGetReturn = { role: 'admin' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['developers'], 'admins', 'My OIDC');
+
+    expect(result).toBe('demoted');
+    const updateCalls = getCallsByPattern('UPDATE users SET role', 'run');
+    expect(updateCalls.length).toBe(1);
+    expect(updateCalls[0].args[0]).toBe('user');
+
+    const audit = mockLogAudit.mock.calls[0][0];
+    expect(audit.detail.from).toBe('admin');
+    expect(audit.detail.to).toBe('user');
+    expect(audit.detail.reason).toBe('oidc_admin_group_removed');
+  });
+
+  it('returns null when user is already admin and in admin group', () => {
+    mockGetReturn = { role: 'admin' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['admins'], 'admins', 'Provider');
+
+    expect(result).toBeNull();
+    const updateCalls = getCallsByPattern('UPDATE users SET role', 'run');
+    expect(updateCalls.length).toBe(0);
+    expect(mockLogAudit).not.toHaveBeenCalled();
+  });
+
+  it('returns null when user is not admin and not in admin group', () => {
+    mockGetReturn = { role: 'user' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['developers'], 'admins', 'Provider');
+
+    expect(result).toBeNull();
+    const updateCalls = getCallsByPattern('UPDATE users SET role', 'run');
+    expect(updateCalls.length).toBe(0);
+    expect(mockLogAudit).not.toHaveBeenCalled();
+  });
+
+  it('matches admin groups case-insensitively', () => {
+    mockGetReturn = { role: 'user' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['ADMINS'], 'admins', 'Provider');
+
+    expect(result).toBe('promoted');
+  });
+
+  it('handles comma-separated admin groups', () => {
+    mockGetReturn = { role: 'user' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['superadmins'], 'admins, superadmins, owners', 'Provider');
+
+    expect(result).toBe('promoted');
+  });
+
+  it('returns null for empty admin groups string', () => {
+    const result = syncAdminRole(mockDb, 'user1', ['admins'], '', 'Provider');
+
+    expect(result).toBeNull();
+    expect(mockLogAudit).not.toHaveBeenCalled();
+  });
+
+  it('returns null for whitespace-only admin groups string', () => {
+    const result = syncAdminRole(mockDb, 'user1', ['admins'], '  ,  , ', 'Provider');
+
+    expect(result).toBeNull();
+  });
+
+  it('handles user with no groups (empty array)', () => {
+    mockGetReturn = { role: 'admin' };
+
+    const result = syncAdminRole(mockDb, 'user1', [], 'admins', 'Provider');
+
+    expect(result).toBe('demoted');
+  });
+
+  it('handles multiple admin groups with partial match', () => {
+    mockGetReturn = { role: 'user' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['owners'], 'admins, managers, owners', 'Provider');
+
+    expect(result).toBe('promoted');
+  });
+
+  it('trims whitespace in admin group names', () => {
+    mockGetReturn = { role: 'user' };
+
+    const result = syncAdminRole(mockDb, 'user1', ['admins'], '  admins  ', 'Provider');
+
+    expect(result).toBe('promoted');
   });
 });
 
@@ -408,7 +530,7 @@ describe('syncUserGroups', () => {
 
   // ─── logAudit verification ──────────────────────────────────────
 
-  it('calls logAudit with correct parameters', () => {
+  it('calls logAudit with correct parameters including group names', () => {
     mockGetReturn = undefined;
     mockAllReturn = [];
 
@@ -421,40 +543,44 @@ describe('syncUserGroups', () => {
     expect(auditCall.userId).toBe('user1');
     expect(auditCall.detail.source).toBe('oidc');
     expect(auditCall.detail.providerId).toBe('prov1');
-    expect(auditCall.detail.groups).toEqual(['devs', 'ops']);
+    expect(auditCall.detail.current).toEqual(['devs', 'ops']);
+    expect(auditCall.detail.added).toEqual(['devs', 'ops']);
   });
 
-  it('reports correct added count in audit', () => {
+  it('reports added group names in audit', () => {
     mockGetReturns = [{ id: 'g1' }, { id: 'g2' }];
     mockAllReturn = [{ group_id: 'g1' }]; // already in g1
 
     syncUserGroups(mockDb, 'user1', ['A', 'B'], 'oidc', 'prov1');
 
     const auditCall = mockLogAudit.mock.calls[0][0];
-    expect(auditCall.detail.added).toBe(1); // g2 is new
-    expect(auditCall.detail.removed).toBe(0);
+    expect(auditCall.detail.added).toEqual(['B']); // g2 is new
+    expect(auditCall.detail.removed).toBeUndefined();
   });
 
-  it('reports correct removed count in audit', () => {
+  it('reports removed group names in audit', () => {
     mockGetReturns = [{ id: 'g1' }];
+    // Mock: when removing, lookup group name via SELECT name FROM groups
+    // The mock returns { name: 'OldGroup' } for group name lookups
     mockAllReturn = [{ group_id: 'g1' }, { group_id: 'g2' }, { group_id: 'g3' }];
 
     syncUserGroups(mockDb, 'user1', ['A'], 'oidc', 'prov1');
 
     const auditCall = mockLogAudit.mock.calls[0][0];
-    expect(auditCall.detail.added).toBe(0);
-    expect(auditCall.detail.removed).toBe(2); // g2, g3 removed
+    expect(auditCall.detail.added).toBeUndefined();
+    // removed names come from db lookup (returns undefined in mock → falls back to groupId)
+    expect(auditCall.detail.removed).toHaveLength(2);
   });
 
-  it('reports both added and removed in audit for mixed changes', () => {
+  it('reports both added and removed names in audit for mixed changes', () => {
     mockGetReturns = [{ id: 'g1' }, { id: 'g3' }];
     mockAllReturn = [{ group_id: 'g1' }, { group_id: 'g2' }]; // keep g1, remove g2, add g3
 
     syncUserGroups(mockDb, 'user1', ['A', 'C'], 'oidc', 'prov1');
 
     const auditCall = mockLogAudit.mock.calls[0][0];
-    expect(auditCall.detail.added).toBe(1);   // g3
-    expect(auditCall.detail.removed).toBe(1); // g2
+    expect(auditCall.detail.added).toEqual(['C']); // g3 added
+    expect(auditCall.detail.removed).toHaveLength(1); // g2 removed
   });
 
   it('audit shows filtered groups when allowedGroups is applied', () => {
@@ -464,19 +590,24 @@ describe('syncUserGroups', () => {
     syncUserGroups(mockDb, 'user1', ['dev', 'hr', 'ops'], 'oidc', 'prov1', ['dev', 'ops']);
 
     const auditCall = mockLogAudit.mock.calls[0][0];
-    // groups in audit should be the filtered list
-    expect(auditCall.detail.groups).toEqual(['dev', 'ops']);
+    expect(auditCall.detail.current).toEqual(['dev', 'ops']);
   });
 
-  it('calls logAudit even when no changes are needed', () => {
+  it('does not call logAudit when no changes are needed', () => {
+    mockGetReturns = [{ id: 'g1' }, { id: 'g2' }];
+    mockAllReturn = [{ group_id: 'g1' }, { group_id: 'g2' }];
+
+    syncUserGroups(mockDb, 'user1', ['A', 'B'], 'oidc', 'prov1');
+
+    expect(mockLogAudit).not.toHaveBeenCalled();
+  });
+
+  it('does not call logAudit when empty groups with no existing memberships', () => {
     mockAllReturn = [];
 
     syncUserGroups(mockDb, 'user1', [], 'oidc', 'prov1');
 
-    expect(mockLogAudit).toHaveBeenCalledOnce();
-    const auditCall = mockLogAudit.mock.calls[0][0];
-    expect(auditCall.detail.added).toBe(0);
-    expect(auditCall.detail.removed).toBe(0);
+    expect(mockLogAudit).not.toHaveBeenCalled();
   });
 
   // ─── Group lookup queries ───────────────────────────────────────

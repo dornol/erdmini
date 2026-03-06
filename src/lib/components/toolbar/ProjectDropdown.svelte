@@ -107,7 +107,7 @@
 <div class="dropdown-wrap project-wrap">
   <button
     class="btn-project"
-    onclick={() => { ontoggle(); if (!open) loadSharedProjects(); }}
+    onclick={() => { const wasOpen = open; ontoggle(); if (!wasOpen) loadSharedProjects(); }}
     aria-expanded={open}
     aria-haspopup="menu"
   >

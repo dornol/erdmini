@@ -22,6 +22,7 @@
     syncGroups: false,
     groupClaim: 'groups',
     allowedGroups: '',
+    adminGroups: '',
   });
 
   let editingProvider = $state<string | null>(null);
@@ -36,6 +37,7 @@
     syncGroups: false,
     groupClaim: 'groups',
     allowedGroups: '',
+    adminGroups: '',
   });
 
   function startEditProvider(p: OIDCProviderRow) {
@@ -51,6 +53,7 @@
       syncGroups: p.sync_groups === 1,
       groupClaim: p.group_claim || 'groups',
       allowedGroups: p.allowed_groups || '',
+      adminGroups: p.admin_groups || '',
     };
   }
 
@@ -70,6 +73,7 @@
         syncGroups: editForm.syncGroups ? 1 : 0,
         groupClaim: editForm.groupClaim,
         allowedGroups: editForm.allowedGroups,
+        adminGroups: editForm.adminGroups,
       }),
     });
     editingProvider = null;
@@ -107,6 +111,7 @@
       syncGroups: false,
       groupClaim: 'groups',
       allowedGroups: '',
+      adminGroups: '',
     };
     await onreload();
   }
@@ -137,6 +142,8 @@
             <input placeholder={m.admin_oidc_group_claim()} bind:value={editForm.groupClaim} />
             <input placeholder={m.admin_oidc_allowed_groups()} bind:value={editForm.allowedGroups} />
             <span class="field-hint">{m.admin_oidc_allowed_groups_hint()}</span>
+            <input placeholder={m.admin_oidc_admin_groups()} bind:value={editForm.adminGroups} />
+            <span class="field-hint">{m.admin_oidc_admin_groups_hint()}</span>
           {/if}
           <div class="btn-row">
             <button class="btn-primary" onclick={saveProvider}>Save</button>
@@ -156,6 +163,9 @@
             </span>
             {#if provider.sync_groups}
               <span class="badge badge-on">{m.admin_oidc_sync_groups()}</span>
+            {/if}
+            {#if provider.admin_groups}
+              <span class="badge badge-warn">{m.admin_oidc_admin_groups_badge()}</span>
             {/if}
           </div>
         </div>
@@ -188,6 +198,8 @@
         <input placeholder={m.admin_oidc_group_claim()} bind:value={newProvider.groupClaim} />
         <input placeholder={m.admin_oidc_allowed_groups()} bind:value={newProvider.allowedGroups} />
         <span class="field-hint">{m.admin_oidc_allowed_groups_hint()}</span>
+        <input placeholder={m.admin_oidc_admin_groups()} bind:value={newProvider.adminGroups} />
+        <span class="field-hint">{m.admin_oidc_admin_groups_hint()}</span>
       {/if}
       <button class="btn-primary" onclick={createProvider}>Add Provider</button>
     </div>

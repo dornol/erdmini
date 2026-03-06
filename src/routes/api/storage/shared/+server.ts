@@ -40,15 +40,24 @@ export const GET: RequestHandler = ({ locals }) => {
     ...groupRows.filter(r => !directIds.has(r.project_id)),
   ];
 
-  // For each shared project, look up the project name from schemas
+  // For each shared project, look up the project name from the owner's project_index
   const result = allRows.map(r => {
-    const schemaRow = db.prepare('SELECT data FROM schemas WHERE project_id = ?').get(r.project_id) as { data: string } | undefined;
     let projectName = r.project_id;
-    if (schemaRow) {
-      try {
-        const schema = JSON.parse(schemaRow.data);
-        if (schema.name) projectName = schema.name;
-      } catch { /* use project_id */ }
+
+    // Find the owner's project_index to get the project name
+    const ownerPerm = db.prepare(
+      "SELECT user_id FROM project_permissions WHERE project_id = ? AND permission = 'owner' ORDER BY created_at LIMIT 1"
+    ).get(r.project_id) as { user_id: string } | undefined;
+
+    if (ownerPerm) {
+      const indexRow = db.prepare('SELECT data FROM project_index WHERE user_id = ?').get(ownerPerm.user_id) as { data: string } | undefined;
+      if (indexRow) {
+        try {
+          const index = JSON.parse(indexRow.data);
+          const proj = index.projects?.find((p: { id: string; name: string }) => p.id === r.project_id);
+          if (proj?.name) projectName = proj.name;
+        } catch { /* use project_id */ }
+      }
     }
 
     return {

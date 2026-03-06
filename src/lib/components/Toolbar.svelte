@@ -821,7 +821,27 @@
     min-width: 240px;
     max-height: 320px;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+  }
+
+  .toolbar :global(.project-dropdown::-webkit-scrollbar) {
+    width: 6px;
+  }
+
+  .toolbar :global(.project-dropdown::-webkit-scrollbar-track) {
+    background: transparent;
+  }
+
+  .toolbar :global(.project-dropdown::-webkit-scrollbar-thumb) {
+    background: #475569;
+    border-radius: 3px;
+  }
+
+  .toolbar :global(.project-dropdown::-webkit-scrollbar-thumb:hover) {
+    background: #64748b;
   }
 
   .toolbar :global(.project-item) {
