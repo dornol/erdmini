@@ -159,7 +159,7 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 - **Sharing**: User/group search → grant permissions, read-only mode
 - **Real-time collaboration**: WebSocket sync, connected user cursor display, LWW conflict resolution
 - **Admin**: User CRUD, Group management, OIDC/LDAP provider management, API key management
-- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 61 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces, snapshots, bulk ops, search), collab integration
+- **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 66 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces, snapshots, bulk ops, search, table templates), collab integration
 - **Audit trail**: Action logging (auth, schema changes, admin ops), configurable retention, admin UI
 - **Embed**: Read-only iframe embed with token-based access and optional password protection
 - **Structured logging**: JSON Lines (`LOG_FORMAT=json`) or text output, `LOG_LEVEL` filtering — 12-factor app compatible
