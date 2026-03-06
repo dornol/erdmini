@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { erdStore } from '$lib/store/erd.svelte';
+  import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import type { Dialect } from '$lib/types/erd';
@@ -182,6 +182,14 @@
             // User cancelled
             importing = false;
             return;
+          }
+        }
+
+        // Assign current active schema to imported tables (if a specific schema is selected)
+        const activeSchema = canvasState.activeSchema;
+        if (activeSchema && activeSchema !== '(all)') {
+          for (const t of result.tables) {
+            if (!t.schema) t.schema = activeSchema;
           }
         }
 

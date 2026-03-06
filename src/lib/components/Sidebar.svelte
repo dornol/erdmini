@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
@@ -411,10 +412,10 @@
     })
   );
 
-  // Scroll reset on search/view/sort change
+  // Scroll reset on search/view/sort change (wait for DOM update)
   $effect(() => {
     void searchQuery; void viewMode; void sortBy;
-    virtualListRef?.scrollToTop();
+    tick().then(() => virtualListRef?.scrollToTop());
   });
 
   // Canvas selection → sidebar scroll
