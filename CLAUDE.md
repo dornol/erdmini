@@ -134,7 +134,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 - Svelte default text rendering — all user input (table/column names, memos, comments) auto-escaped
 - `{@html}` used only in `+layout.svelte` for JSON-LD structured data, with `</` escape (`safeJsonLd()`)
 - No `innerHTML`, `eval()`, `document.write()` usage in codebase
-- Response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (except `/embed`), `Referrer-Policy: strict-origin-when-cross-origin`
+- Response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (except `/embed`), `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy` (script/style `'self' 'unsafe-inline'`, embed routes get `frame-ancestors *`)
 
 ### CSRF Protection
 - All state-changing APIs use JSON bodies — SvelteKit origin validation covers these automatically

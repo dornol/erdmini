@@ -291,3 +291,21 @@
 - 139 new tests (clipboard 7, keyboard-shortcuts 41, canvas-persistence 25, ddl-options 11, sidebar-search 45, column-filter 10)
 - 0 errors, 2070 tests pass (53 test files)
 - Difficulty: Medium
+
+### Phase 41 — Security Hardening (4-Agent Audit)
+- ~~**High — UI readOnly 가드 누락 5건 수정**~~
+  - ~~TableCard: 삭제 버튼 + FK 드래그 핸들 viewer에게 숨김~~
+  - ~~Sidebar: 벌크 삭제 버튼 readOnly 안으로 이동, 메모 삭제 가드 추가~~
+  - ~~SidebarTableRow: Duplicate/Delete 액션 readOnly 가드 추가~~
+- ~~**Medium — 서버/클라이언트 보안 6건 수정**~~
+  - ~~Embed 비밀번호: GET 쿼리 → POST body 전환 (URL 로깅 방지)~~
+  - ~~Admin user create/update: role 값 검증 (`admin`/`user`만 허용)~~
+  - ~~Content-Security-Policy 헤더 추가 (embed은 frame-ancestors * 허용)~~
+  - ~~Admin 초기 비밀번호: env 설정 시 로깅 안 함, 자동생성 시만 표시~~
+  - ~~ColumnEditPopup: readOnly 가드 + write 버튼 숨김~~
+- ~~**Low — 방어 강화 3건**~~
+  - ~~Embed token 삭제 IDOR: project_id 스코핑 추가~~
+  - ~~logo_url: URL 포맷 검증 추가~~
+  - ~~WebSocket presence: 4KB 크기 제한 추가~~
+- 감사 결과: Critical 0, High 0 (서버 API 측), SQL injection 없음, 전체 admin 라우트 requireAdmin() 확인
+- Difficulty: Medium
