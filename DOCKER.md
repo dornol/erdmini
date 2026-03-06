@@ -120,6 +120,18 @@ docker build \
 PORT=8080 docker compose up -d
 ```
 
+### Building for ARM64
+
+The published Docker images are `linux/amd64` only. To run on ARM64 hosts (Apple Silicon Mac, Raspberry Pi, AWS Graviton, etc.), build locally:
+
+```bash
+# On an ARM64 host — automatically builds for the host architecture
+docker compose build erdmini
+
+# Or specify the platform explicitly
+docker build --platform linux/arm64 -f Dockerfile.server -t erdmini-server .
+```
+
 ---
 
 ## docker compose Profiles

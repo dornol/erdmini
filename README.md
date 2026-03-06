@@ -205,7 +205,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (43 files, 1857 tests)
+pnpm test         # vitest (53 files, 2070 tests)
 pnpm check        # svelte-check type checking
 ```
 
@@ -219,13 +219,20 @@ pnpm check        # svelte-check type checking
 docker run -d \
   --name erdmini \
   -p 3000:3000 \
-  -v erdmini-data:/app/data \
+  -v erdmini-data:/data \
   ghcr.io/dornol/erdmini:latest-server
 ```
 
-On first run, an admin account is created automatically:
+On first run, an admin account is created automatically. Check the container logs for the generated password:
 ```bash
 docker logs erdmini | grep Password
+```
+
+Or set an explicit password:
+```bash
+docker run -d --name erdmini -p 3000:3000 -v erdmini-data:/data \
+  -e ADMIN_PASSWORD=your-secure-password \
+  ghcr.io/dornol/erdmini:latest-server
 ```
 
 ### Static SPA (Local Mode)
@@ -237,6 +244,16 @@ docker run -d --name erdmini-local -p 8080:80 ghcr.io/dornol/erdmini:latest
 ### Docker Compose
 
 A `docker-compose.yml` is also included for convenience. See [DOCKER.md](DOCKER.md) for details on volume management, reverse proxy, environment variables, and MCP configuration.
+
+### Building for ARM64
+
+The CI publishes `linux/amd64` images. To build for ARM64 (e.g., Apple Silicon, Raspberry Pi), build locally:
+
+```bash
+docker compose build erdmini        # uses host architecture
+# or explicitly:
+docker build --platform linux/arm64 -f Dockerfile.server -t erdmini-server .
+```
 
 ---
 
