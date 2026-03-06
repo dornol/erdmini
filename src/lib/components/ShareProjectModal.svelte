@@ -164,9 +164,9 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="overlay" onclick={handleOverlayClick}>
-  <div class="modal">
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<div class="overlay" role="presentation" onclick={handleOverlayClick}>
+  <div class="modal" role="dialog">
     <div class="modal-header">
       <h2>Share Project</h2>
       <button class="close-btn" onclick={onclose}>✕</button>

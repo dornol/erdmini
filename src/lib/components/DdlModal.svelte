@@ -308,7 +308,7 @@
           {/if}
           <div class="spacer"></div>
           {#if exportFormat === 'ddl'}
-            <button class="btn-secondary btn-options" class:options-active={showDdlOptions} onclick={() => (showDdlOptions = !showDdlOptions)}>
+            <button class="btn-secondary btn-options" class:options-active={showDdlOptions} onclick={() => (showDdlOptions = !showDdlOptions)} aria-label="DDL options">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                 <path d="M6.5 1h3l.4 2.3a5.5 5.5 0 011.3.7l2.2-.9 1.5 2.6-1.8 1.4a5.6 5.6 0 010 1.8l1.8 1.4-1.5 2.6-2.2-.9a5.5 5.5 0 01-1.3.7L9.5 15h-3l-.4-2.3a5.5 5.5 0 01-1.3-.7l-2.2.9-1.5-2.6 1.8-1.4a5.6 5.6 0 010-1.8L1.1 5.7l1.5-2.6 2.2.9a5.5 5.5 0 011.3-.7z" stroke="currentColor" stroke-width="1.3"/>
                 <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/>
@@ -502,12 +502,6 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-  }
-
-  .label {
-    font-size: 12px;
-    color: var(--app-text-muted, #64748b);
-    font-weight: 600;
   }
 
   .format-tabs {

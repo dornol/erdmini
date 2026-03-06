@@ -197,6 +197,7 @@
   "share_load_failed": "共有スキーマの読み込みに失敗しました。リンクが無効または破損している可能性があります。",
   "share_load_confirm": "共有スキーマを読み込みますか？現在の作業は置き換えられます。",
   "share_load_title": "共有スキーマ",
+  "share_readonly_notice": "共有スキーマを読み取り専用で読み込みました。変更は保存されません。",
   "ddl_import_partial": "{total}個中{success}個のテーブルをインポートしました。{failed}個失敗。",
   "ddl_type_normalized": "型変換：{original} → {normalized}（{table}.{column}）",
   "column_check": "CHECK",

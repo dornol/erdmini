@@ -69,7 +69,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   const frameAncestors = event.url.pathname.startsWith('/embed') ? 'frame-ancestors *' : "frame-ancestors 'none'";
-  response.headers.set('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:; ${frameAncestors}`);
+  response.headers.set('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:; ${frameAncestors}`);
 
   return response;
 };

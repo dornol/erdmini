@@ -58,6 +58,7 @@
     ></span>
   {/if}
   {#if editing && group.name}
+    <!-- svelte-ignore a11y_autofocus -->
     <input
       class="group-edit-input"
       type="text"

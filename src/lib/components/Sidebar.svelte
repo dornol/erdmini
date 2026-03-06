@@ -500,6 +500,7 @@
         {:else if row.type === 'new-group'}
           <div class="new-group-row">
             {#if newGroupInput}
+              <!-- svelte-ignore a11y_autofocus -->
               <input
                 class="new-group-input"
                 type="text"

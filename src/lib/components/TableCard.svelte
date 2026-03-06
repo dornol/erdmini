@@ -496,7 +496,7 @@
       <div class="no-columns">{m.card_no_columns()}</div>
     {/if}
     {#if !permissionStore.isReadOnly && !table.locked}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
       <div
         class="add-column-row"
         onmousedown={(e) => e.stopPropagation()}

@@ -201,6 +201,7 @@
   "share_load_failed": "공유 링크를 불러오지 못했습니다. 링크가 올바르지 않거나 손상되었을 수 있습니다.",
   "share_load_confirm": "공유된 스키마를 불러오시겠습니까? 현재 작업은 교체됩니다.",
   "share_load_title": "공유 스키마",
+  "share_readonly_notice": "공유 스키마를 읽기 전용으로 불러왔습니다. 저장되지 않습니다.",
   "ddl_import_partial": "{total}개 중 {success}개 테이블을 가져왔습니다. {failed}개 실패.",
   "ddl_type_normalized": "타입 변환: {original} → {normalized} ({table}.{column})",
   "column_check": "CHECK",

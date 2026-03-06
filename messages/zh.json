@@ -197,6 +197,7 @@
   "share_load_failed": "加载共享架构失败。链接可能无效或已损坏。",
   "share_load_confirm": "是否加载共享架构？当前工作将被替换。",
   "share_load_title": "共享架构",
+  "share_readonly_notice": "共享架构已以只读模式加载，更改不会被保存。",
   "ddl_import_partial": "共 {total} 个表中成功导入 {success} 个，{failed} 个失败。",
   "ddl_type_normalized": "类型转换：{original} → {normalized}（{table}.{column}）",
   "column_check": "CHECK",

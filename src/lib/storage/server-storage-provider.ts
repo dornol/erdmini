@@ -24,11 +24,14 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   async saveSchema(projectId: string, schema: ERDSchema): Promise<void> {
-    await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}`, {
+    const res = await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(schema),
     });
+    if (!res.ok) {
+      throw new Error(`Failed to save schema (${res.status})`);
+    }
   }
 
   async deleteSchema(projectId: string): Promise<void> {

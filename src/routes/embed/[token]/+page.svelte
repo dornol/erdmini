@@ -120,6 +120,7 @@
     <div class="password-card">
       <h2>{m.embed_password_required()}</h2>
       <form onsubmit={handlePasswordSubmit}>
+        <!-- svelte-ignore a11y_autofocus -->
         <input
           type="password"
           bind:value={passwordInput}

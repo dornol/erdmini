@@ -270,6 +270,7 @@
           class:active={c === (memo.color ?? 'yellow')}
           style="background:{MEMO_COLORS[c].header}"
           onclick={(e) => onColorClick(e, c)}
+          aria-label={c}
         ></button>
       {/each}
     </div>

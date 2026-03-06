@@ -147,6 +147,7 @@
   </button>
 
   {#each (erdStore.schema.schemas ?? []) as schemaName (schemaName)}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="schema-tab-wrapper"
       class:drop-before={dropTarget === schemaName}

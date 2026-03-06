@@ -34,6 +34,7 @@
   let { onfullscreen, minimal = false }: { onfullscreen?: () => void; minimal?: boolean } = $props();
 
   const siteSettings = $derived((page.data as any)?.siteSettings as { site_name: string; logo_url: string } | null);
+  const isServerMode = $derived(!!(page.data as any)?.isServerMode);
 
   let viewportWidth = $state(800);
   let viewportHeight = $state(600);
@@ -188,13 +189,15 @@
 
       <span class="separator"></span>
 
-      <button
-        class="btn-secondary btn-share"
-        class:copied={shareStatus === 'copied'}
-        onclick={shareLink}
-      >
-        {shareStatus === 'copied' ? m.share_copied() : m.share_link()}
-      </button>
+      {#if !isServerMode}
+        <button
+          class="btn-secondary btn-share"
+          class:copied={shareStatus === 'copied'}
+          onclick={shareLink}
+        >
+          {shareStatus === 'copied' ? m.share_copied() : m.share_link()}
+        </button>
+      {/if}
 
       {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
         <button
@@ -512,7 +515,7 @@
     background: #1e293b;
     border: 1px solid #475569;
     border-radius: 6px;
-    overflow: hidden;
+    overflow: visible;
     z-index: 200;
     min-width: 110px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -535,6 +538,14 @@
     cursor: pointer;
     transition: background 0.1s;
     white-space: nowrap;
+  }
+
+  .toolbar :global(.dropdown-item:first-child:hover) {
+    border-radius: 6px 6px 0 0;
+  }
+
+  .toolbar :global(.dropdown-item:last-child:hover) {
+    border-radius: 0 0 6px 6px;
   }
 
   .toolbar :global(.dropdown-item:hover) {

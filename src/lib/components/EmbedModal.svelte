@@ -126,7 +126,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="modal-backdrop" onclick={onclose} onkeydown={(e) => e.key === 'Escape' && onclose()}>
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="modal-panel" onclick={(e) => e.stopPropagation()}>
     <div class="modal-header">
       <h2>{m.embed_title()}</h2>

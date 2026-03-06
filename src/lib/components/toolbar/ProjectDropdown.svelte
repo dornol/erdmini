@@ -127,6 +127,7 @@
           class:active={proj.id === projectStore.index.activeProjectId}
         >
           {#if renamingId === proj.id}
+            <!-- svelte-ignore a11y_autofocus -->
             <input
               class="project-rename-input"
               type="text"
@@ -192,6 +193,7 @@
       <div class="project-divider"></div>
       {#if showNewProjectInput}
         <div class="project-new-row">
+          <!-- svelte-ignore a11y_autofocus -->
           <input
             class="project-rename-input"
             type="text"

@@ -122,7 +122,8 @@
             <td>{project.memberCount}</td>
             <td>{project.updatedAt ? new Date(project.updatedAt).toLocaleDateString() : '-'}</td>
             <td>
-              <div class="btn-row" onclick={(e) => e.stopPropagation()}>
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <div class="btn-row" role="toolbar" tabindex="-1" onclick={(e) => e.stopPropagation()}>
                 <button class="btn-sm btn-danger" onclick={() => deleteProject(project.id, project.name)}>{m.admin_projects_delete()}</button>
               </div>
             </td>

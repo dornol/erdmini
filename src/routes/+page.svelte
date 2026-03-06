@@ -35,6 +35,7 @@
   import * as m from '$lib/paraglide/messages';
   import { restoreCanvasSettings, persistColumnDisplayMode, persistLineType, persistShowGrid, persistShowRelationLines, persistSchemaView } from '$lib/utils/canvas-persistence';
   import { handleKeydown as handleKBShortcut, type KeyboardContext } from '$lib/utils/keyboard-shortcuts';
+  import { env } from '$env/dynamic/public';
 
   // Restore persisted canvas settings synchronously (before $effects run)
   if (browser) {
@@ -322,6 +323,15 @@
     replaceState(window.location.pathname, {});
     try {
       const { schema, projectName } = await shareStringToSchema(shareData);
+
+      // Server mode: load as read-only temporary view (no project creation)
+      if (env.PUBLIC_STORAGE_MODE === 'server') {
+        erdStore.loadSchema(schema);
+        permissionStore.current = 'viewer';
+        dialogStore.alert(m.share_readonly_notice());
+        return;
+      }
+
       let name: string;
       if (projectName) {
         name = `shared: ${projectName}`;

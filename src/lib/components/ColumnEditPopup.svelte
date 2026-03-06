@@ -81,7 +81,7 @@
   }
 
   // Auto-select name for new columns (column_N pattern)
-  let nameInputEl: HTMLInputElement;
+  let nameInputEl = $state<HTMLInputElement | undefined>(undefined);
   $effect(() => {
     if (nameInputEl && col && /^column_\d+$/.test(col.name)) {
       nameInputEl.select();

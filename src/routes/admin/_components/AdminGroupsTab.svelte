@@ -206,7 +206,7 @@
               <td>{group.created_at ? new Date(group.created_at).toLocaleDateString() : '-'}</td>
               <td>
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <div class="btn-row" onclick={(e) => e.stopPropagation()}>
+                <div class="btn-row" role="toolbar" tabindex="-1" onclick={(e) => e.stopPropagation()}>
                   <button class="btn-sm" onclick={() => startEdit(group)}>{m.action_edit()}</button>
                   <button class="btn-sm btn-danger" onclick={() => deleteGroup(group)}>{m.action_delete()}</button>
                 </div>

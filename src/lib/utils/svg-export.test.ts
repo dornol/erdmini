@@ -230,6 +230,42 @@ describe('exportSvg', () => {
       expect(result).toContain('Line 2');
       expect(result).toContain('Line 3');
     });
+
+    it('applies clipPath to memo to prevent content overflow', () => {
+      const schema = makeSchema([]);
+      schema.memos = [makeMemo({ content: 'Clipped content', position: { x: 0, y: 0 } })];
+      const result = exportSvg(schema, 'modern');
+      expect(result).toMatch(/clipPath id="memo-clip-/);
+      expect(result).toMatch(/clip-path="url\(#memo-clip-/);
+    });
+
+    it('renders attached memos as chips on table, not as full memo cards', () => {
+      const schema = singleTableSchema();
+      const tableId = schema.tables[0].id;
+      schema.memos = [
+        makeMemo({ content: 'Attached note', position: { x: 0, y: 0 }, attachedTableId: tableId }),
+        makeMemo({ content: 'Free note', position: { x: 300, y: 300 } }),
+      ];
+      const result = exportSvg(schema, 'modern');
+      // Free memo should render as full card
+      expect(result).toContain('Free note');
+      // Attached memo should render as chip (truncated label), not full card
+      expect(result).toContain('Attached note');
+      // Should not have a clipPath for attached memo (it's a chip, not a card)
+      expect((result.match(/clipPath id="memo-clip-/g) ?? []).length).toBe(1);
+    });
+
+    it('excludes attached memos from full-size rendering', () => {
+      const schema = singleTableSchema();
+      const tableId = schema.tables[0].id;
+      schema.memos = [
+        makeMemo({ content: 'Only attached', position: { x: 500, y: 500 }, width: 300, height: 300, attachedTableId: tableId }),
+      ];
+      const result = exportSvg(schema, 'modern');
+      // SVG viewBox should NOT extend to 500+300 since attached memo is chip-only
+      const widthMatch = result.match(/width="(\d+)"/);
+      expect(Number(widthMatch?.[1])).toBeLessThan(500);
+    });
   });
 
   describe('FK label rendering', () => {

@@ -352,11 +352,26 @@ class ProjectStore {
       if (!index?.projects?.length) {
         return { ok: false, error: 'No projects in backup' };
       }
+      const failedIds = new Set<string>();
       for (const proj of index.projects) {
         const schema = schemas[proj.id];
         if (schema) {
-          await this.provider.saveSchema(proj.id, schema as ERDSchema);
+          try {
+            await this.provider.saveSchema(proj.id, schema as ERDSchema);
+          } catch {
+            failedIds.add(proj.id);
+          }
         }
+      }
+      // Exclude projects that failed to save (e.g. no permission)
+      if (failedIds.size > 0) {
+        index.projects = index.projects.filter((p) => !failedIds.has(p.id));
+      }
+      if (index.projects.length === 0) {
+        return { ok: false, error: 'No projects could be restored (permission denied)' };
+      }
+      if (!index.projects.some((p) => p.id === index.activeProjectId)) {
+        index.activeProjectId = index.projects[0].id;
       }
       this.index = index;
       await this.saveIndex();

@@ -201,6 +201,7 @@
   "share_load_failed": "Failed to load shared schema. The link may be invalid or corrupted.",
   "share_load_confirm": "Load shared schema? Your current work will be replaced.",
   "share_load_title": "Shared Schema",
+  "share_readonly_notice": "Shared schema loaded as read-only view. Changes will not be saved.",
   "ddl_import_partial": "Imported {success} of {total} table(s). {failed} failed.",
   "ddl_type_normalized": "Type normalized: {original} → {normalized} ({table}.{column})",
   "column_check": "CHECK",

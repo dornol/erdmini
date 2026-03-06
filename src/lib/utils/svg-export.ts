@@ -116,6 +116,23 @@ function renderBadge(
     `<text x="${x + w / 2}" y="${y + 3.5}" text-anchor="middle" fill="${color}" font-size="9" font-weight="700" font-family="system-ui,sans-serif">${text}</text>`;
 }
 
+function renderMemoChips(memos: Memo[], tableX: number, tableY: number): string {
+  if (memos.length === 0) return '';
+  const parts: string[] = [];
+  const chipH = 20;
+  const chipGap = 3;
+  let cy = tableY - chipH - 4;
+  for (const mm of memos) {
+    const colors = MEMO_SVG_COLORS[mm.color ?? 'yellow'] ?? MEMO_SVG_COLORS.yellow;
+    const maxChars = Math.floor((TABLE_CARD_W - 32) / 6.5);
+    const label = (mm.content || '(empty)').replace(/\n/g, ' ').slice(0, maxChars);
+    parts.push(`<rect x="${tableX}" y="${cy}" width="${TABLE_CARD_W}" height="${chipH}" rx="4" fill="${colors.header}" opacity="0.9"/>`);
+    parts.push(`<text x="${tableX + 8}" y="${cy + chipH / 2 + 4}" fill="${colors.text}" font-size="10" font-family="system-ui,sans-serif">\u{1F4CC} ${esc(label)}</text>`);
+    cy -= chipH + chipGap;
+  }
+  return parts.join('\n');
+}
+
 function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: number, themeId: ThemeId): string {
   const x = t.position.x - offsetX;
   const y = t.position.y - offsetY;
@@ -377,8 +394,14 @@ function renderMemo(memo: Memo, offsetX: number, offsetY: number): string {
   const colors = MEMO_SVG_COLORS[memo.color ?? 'yellow'] ?? MEMO_SVG_COLORS.yellow;
   const parts: string[] = [];
 
-  // Card background
+  // Card background (outside clip so border renders fully)
   parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${colors.bg}" stroke="${colors.header}" stroke-width="1"/>`);
+
+  // ClipPath to contain header and content within memo bounds
+  const clipId = `memo-clip-${esc(memo.id)}`;
+  parts.push(`<clipPath id="${clipId}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/></clipPath>`);
+  parts.push(`<g clip-path="url(#${clipId})">`);
+
   // Header bar
   parts.push(`<rect x="${x}" y="${y}" width="${w}" height="24" rx="6" fill="${colors.header}"/>`);
   parts.push(`<rect x="${x}" y="${y + 18}" width="${w}" height="6" fill="${colors.header}"/>`);
@@ -404,25 +427,39 @@ function renderMemo(memo: Memo, offsetX: number, offsetY: number): string {
     }
   }
 
+  parts.push(`</g>`);
+
   return parts.join('\n');
 }
 
 export function exportSvg(schema: ERDSchema, themeId: string, lineType: LineType = 'bezier'): string {
   const theme = THEMES[themeId] ?? THEMES.modern;
-  const memos = schema.memos ?? [];
+  const allMemos = schema.memos ?? [];
+  // Separate free-floating memos from attached memos (attached render as chips on tables)
+  const freeMemos = allMemos.filter((mm) => !mm.attachedTableId);
+  const attachedByTable = new Map<string, Memo[]>();
+  for (const mm of allMemos) {
+    if (mm.attachedTableId) {
+      const arr = attachedByTable.get(mm.attachedTableId) ?? [];
+      arr.push(mm);
+      attachedByTable.set(mm.attachedTableId, arr);
+    }
+  }
 
-  if (schema.tables.length === 0 && memos.length === 0) return '';
+  if (schema.tables.length === 0 && freeMemos.length === 0) return '';
 
   // Compute bounding box
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const t of schema.tables) {
     const h = cardHeight(t);
+    const chipCount = attachedByTable.get(t.id)?.length ?? 0;
+    const chipOffset = chipCount > 0 ? chipCount * 23 + 4 : 0;
     minX = Math.min(minX, t.position.x);
-    minY = Math.min(minY, t.position.y);
+    minY = Math.min(minY, t.position.y - chipOffset);
     maxX = Math.max(maxX, t.position.x + TABLE_CARD_W);
     maxY = Math.max(maxY, t.position.y + h);
   }
-  for (const mm of memos) {
+  for (const mm of freeMemos) {
     minX = Math.min(minX, mm.position.x);
     minY = Math.min(minY, mm.position.y);
     maxX = Math.max(maxX, mm.position.x + mm.width);
@@ -434,9 +471,17 @@ export function exportSvg(schema: ERDSchema, themeId: string, lineType: LineType
   const width = Math.ceil(maxX - minX + PAD * 2);
   const height = Math.ceil(maxY - minY + PAD * 2);
 
-  const memosSvg = memos.map((mm) => renderMemo(mm, offsetX, offsetY)).join('\n');
+  const memosSvg = freeMemos.map((mm) => renderMemo(mm, offsetX, offsetY)).join('\n');
   const lines = renderLines(schema, theme, offsetX, offsetY, lineType);
-  const tables = schema.tables.map((t) => renderTable(t, theme, offsetX, offsetY, themeId as ThemeId)).join('\n');
+  const tablesSvg: string[] = [];
+  for (const t of schema.tables) {
+    tablesSvg.push(renderTable(t, theme, offsetX, offsetY, themeId as ThemeId));
+    const chips = attachedByTable.get(t.id);
+    if (chips) {
+      tablesSvg.push(renderMemoChips(chips, t.position.x - offsetX, t.position.y - offsetY));
+    }
+  }
+  const tables = tablesSvg.join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">

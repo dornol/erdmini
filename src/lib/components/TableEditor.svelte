@@ -127,13 +127,13 @@
   }
 
   // Add column and immediately open popup for editing
-  let addBtnEl: HTMLButtonElement;
+  let addBtnEl = $state<HTMLButtonElement | undefined>(undefined);
 
   async function addColumnAndEdit() {
     const newColId = erdStore.addColumn(selectedTable!.id);
     if (!newColId) return;
     await tick();
-    const rect = addBtnEl.getBoundingClientRect();
+    const rect = addBtnEl!.getBoundingClientRect();
     erdStore.editingColumnInfo = {
       tableId: selectedTable!.id,
       columnId: newColId,
@@ -215,8 +215,7 @@
 
     <!-- Color & Group (collapsible) -->
     <div class="section color-group-section">
-      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-      <div class="cg-header" onclick={() => (colorGroupExpanded = !colorGroupExpanded)}>
+      <button class="cg-header" onclick={() => (colorGroupExpanded = !colorGroupExpanded)} type="button">
         <span class="cg-toggle">{colorGroupExpanded ? '▼' : '▶'}</span>
         <span class="cg-label">{m.table_color()} & {m.table_group()}</span>
         {#if !colorGroupExpanded}
@@ -228,7 +227,7 @@
             <span class="cg-group-text">{selectedTable.group}</span>
           {/if}
         {/if}
-      </div>
+      </button>
 
       {#if colorGroupExpanded}
         {@const inheritedColor = selectedTable.group ? erdStore.schema.groupColors?.[selectedTable.group] as TableColorId | undefined : undefined}
@@ -290,15 +289,17 @@
         </button>
       </div>
 
-      <div class="columns-list">
+      <div class="columns-list" role="listbox" aria-label="Columns">
         {#each selectedTable.columns as col, idx (col.id)}
-          <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
           <div
+            role="option"
+            tabindex="0"
+            aria-selected="false"
             class="col-row"
             class:drag-over={dragOverIdx === idx}
             class:dragging={dragColId === col.id}
             draggable="true"
-            role="listitem"
             ondragstart={(e) => onDragStart(e, col.id)}
             ondragover={(e) => onDragOver(e, idx)}
             ondrop={(e) => onDrop(e, idx)}
@@ -837,6 +838,12 @@
     cursor: pointer;
     user-select: none;
     padding: 2px 0;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    width: 100%;
+    text-align: left;
   }
 
   .cg-toggle {
