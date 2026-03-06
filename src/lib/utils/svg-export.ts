@@ -235,7 +235,7 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
   }));
 
   // Collect all FK line inputs
-  interface FKMeta { fromRight: boolean; toLeft: boolean; isUnique: boolean; isNullable: boolean; x1: number; y1: number; x2: number; y2: number }
+  interface FKMeta { fromRight: boolean; toLeft: boolean; isUnique: boolean; isNullable: boolean; x1: number; y1: number; x2: number; y2: number; fkLabel: string }
   const inputs: FKLineInput[] = [];
   const metas: FKMeta[] = [];
 
@@ -275,7 +275,7 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
           x1, y1, x2, y2,
           fromRight, toLeft,
         });
-        metas.push({ fromRight, toLeft, isUnique, isNullable, x1, y1, x2, y2 });
+        metas.push({ fromRight, toLeft, isUnique, isNullable, x1, y1, x2, y2, fkLabel: fk.label ?? '' });
       }
     }
   }
@@ -327,6 +327,10 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
     const labelText = isUnique ? '1:1' : '1:N';
     parts.push(`<rect x="${route.labelX - 11}" y="${route.labelY - 8}" width="22" height="16" rx="4" fill="${bg}" stroke="${color}" stroke-width="0.8" opacity="0.85"/>`);
     parts.push(`<text x="${route.labelX}" y="${route.labelY + 4}" text-anchor="middle" fill="${color}" font-size="9" font-weight="700" font-family="system-ui,sans-serif">${labelText}</text>`);
+    if (meta.fkLabel) {
+      const escaped = meta.fkLabel.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      parts.push(`<text x="${route.labelX}" y="${route.labelY + 18}" text-anchor="middle" fill="${color}" font-size="10" font-style="italic" font-family="system-ui,sans-serif">${escaped}</text>`);
+    }
 
     // Parent side markers
     const pDir = toLeft ? -1 : 1;

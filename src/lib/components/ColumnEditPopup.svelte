@@ -126,6 +126,11 @@
           title={m.column_duplicate()}
           onclick={() => { erdStore.duplicateColumn(tableId, columnId); onclose(); }}
         >⧉</button>
+        <button
+          class="delete-col-btn"
+          title={m.action_delete()}
+          onclick={() => { erdStore.deleteColumn(tableId, columnId); onclose(); }}
+        >🗑</button>
         <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
       </div>
 
@@ -384,6 +389,23 @@
   .duplicate-btn:hover {
     color: #93c5fd;
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  .delete-col-btn {
+    background: none;
+    border: none;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 3px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .delete-col-btn:hover {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.15);
   }
 
   .close-btn {

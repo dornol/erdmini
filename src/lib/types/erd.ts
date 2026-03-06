@@ -83,6 +83,7 @@ export interface ForeignKey {
   referencedColumnIds: string[];
   onDelete: ReferentialAction;
   onUpdate: ReferentialAction;
+  label?: string;
 }
 
 export interface Table {

@@ -1007,6 +1007,7 @@ export function createMcpServer(
       referencedColumnIds: z.array(z.string().max(256)).max(100).optional().describe('New referenced column IDs'),
       onDelete: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional().describe('ON DELETE action'),
       onUpdate: z.enum(['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION']).optional().describe('ON UPDATE action'),
+      label: z.string().max(256).optional().describe('Relationship label displayed on the FK line (e.g. "places", "belongs to")'),
     },
     async ({ projectId, tableId, fkId, ...patch }) => {
       requireAccess(projectId, 'editor');

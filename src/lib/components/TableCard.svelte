@@ -536,6 +536,25 @@
     {#if displayColumns.length === 0}
       <div class="no-columns">{m.card_no_columns()}</div>
     {/if}
+    {#if !permissionStore.isReadOnly && !table.locked}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="add-column-row"
+        onmousedown={(e) => e.stopPropagation()}
+        onclick={(e) => {
+          e.stopPropagation();
+          const colId = erdStore.addColumn(table.id);
+          if (colId) {
+            erdStore.editingColumnInfo = {
+              tableId: table.id,
+              columnId: colId,
+              anchorX: e.clientX,
+              anchorY: e.clientY,
+            };
+          }
+        }}
+      >+</div>
+    {/if}
   </div>
 </div>
 
@@ -936,6 +955,26 @@
     font-size: 12px;
     color: var(--erd-no-col-text);
     font-style: italic;
+  }
+
+  .add-column-row {
+    text-align: center;
+    font-size: 13px;
+    color: var(--erd-col-type, #94a3b8);
+    cursor: pointer;
+    padding: 2px 0;
+    border-top: 1px dashed var(--erd-card-border, #e2e8f0);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .table-card:hover .add-column-row {
+    opacity: 1;
+  }
+
+  .add-column-row:hover {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
   }
 
   /* ── FK drag handle ── */

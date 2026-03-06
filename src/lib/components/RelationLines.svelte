@@ -5,9 +5,15 @@
   import { themeStore } from '$lib/store/theme.svelte';
   import type { ForeignKey, Table } from '$lib/types/erd';
   import { HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
 
   let { visibleTables }: { visibleTables?: Table[] } = $props();
+
+  function autoFocus(node: HTMLInputElement) {
+    node.focus();
+    node.select();
+  }
 
   const THEME_COLORS: Record<string, { normal: string; hover: string; bg: string; dash: string }> = {
     modern:    { normal: '#94a3b8', hover: '#3b82f6', bg: '#f8fafc', dash: '' },
@@ -34,6 +40,7 @@
     labelX: number;
     labelY: number;
     labelText: string;
+    fkLabel: string;
     parentTick: string;
     parentParticipation: string | null;  // null = circle
     parentCircleCx: number;
@@ -212,6 +219,7 @@
       result.push({
         fk, tableId, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable,
         path: route.path, labelX: route.labelX, labelY: route.labelY, labelText,
+        fkLabel: fk.label ?? '',
         parentTick, parentParticipation, parentCircleCx,
         childMarker, childCircleCx,
       });
@@ -221,6 +229,32 @@
   });
 
   let hoveredId = $state<string | null>(null);
+  let editingLabel = $state<{ tableId: string; fkId: string; x: number; y: number; value: string } | null>(null);
+
+  let isReadOnly = $derived(permissionStore.isReadOnly);
+
+  function onLabelDblClick(line: FKLine, e: MouseEvent) {
+    e.stopPropagation();
+    clearTimeout(clickTimer);
+    if (isReadOnly) return;
+    editingLabel = {
+      tableId: line.tableId,
+      fkId: line.fk.id,
+      x: line.labelX,
+      y: line.labelY,
+      value: line.fkLabel,
+    };
+  }
+
+  function commitLabel() {
+    if (!editingLabel) return;
+    erdStore.updateFkLabel(editingLabel.tableId, editingLabel.fkId, editingLabel.value.trim());
+    editingLabel = null;
+  }
+
+  function cancelLabel() {
+    editingLabel = null;
+  }
 
   function onLineEnter(line: FKLine) {
     hoveredId = line.fk.id;
@@ -237,7 +271,16 @@
     erdStore.hoveredFkInfo = [];
   }
 
-  async function handleLineClick(line: FKLine) {
+  let clickTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function handleLineClick(line: FKLine) {
+    clearTimeout(clickTimer);
+    clickTimer = setTimeout(() => {
+      doDeleteFk(line);
+    }, 250);
+  }
+
+  async function doDeleteFk(line: FKLine) {
     const srcTable = erdStore.schema.tables.find((t) => t.id === line.tableId);
     const refTable = erdStore.schema.tables.find((t) => t.id === line.fk.referencedTableId);
     const srcColNames = line.fk.columnIds.map((id) => srcTable?.columns.find((c) => c.id === id)?.name ?? '?');
@@ -286,6 +329,7 @@
         onmouseenter={() => onLineEnter(line)}
         onmouseleave={onLineLeave}
         onclick={() => handleLineClick(line)}
+        ondblclick={(e) => onLabelDblClick(line, e)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
       />
       <path d={line.path} fill="none" stroke={color} stroke-width="2"
@@ -295,6 +339,11 @@
       <text x={line.labelX} y={line.labelY + 4} text-anchor="middle" fill={color}
         font-size="9" font-weight="700" font-family="system-ui, sans-serif"
         style="pointer-events:none">{line.labelText}</text>
+      {#if line.fkLabel}
+        <text x={line.labelX} y={line.labelY + 18} text-anchor="middle" fill={color}
+          font-size="10" font-style="italic" font-family="system-ui, sans-serif"
+          style="pointer-events:none">{line.fkLabel}</text>
+      {/if}
       <path d={line.parentTick} stroke={color} stroke-width="2" fill="none" />
       {#if line.parentParticipation}
         <path d={line.parentParticipation} stroke={color} stroke-width="2" fill="none" />
@@ -334,6 +383,7 @@
         onmouseenter={() => onLineEnter(line)}
         onmouseleave={onLineLeave}
         onclick={() => handleLineClick(line)}
+        ondblclick={(e) => onLabelDblClick(line, e)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLineClick(line); }}
       />
       <path d={line.path} fill="none" stroke={color} stroke-width="3"
@@ -343,6 +393,11 @@
       <text x={line.labelX} y={line.labelY + 4} text-anchor="middle" fill={color}
         font-size="9" font-weight="700" font-family="system-ui, sans-serif"
         style="pointer-events:none">{line.labelText}</text>
+      {#if line.fkLabel}
+        <text x={line.labelX} y={line.labelY + 18} text-anchor="middle" fill={color}
+          font-size="10" font-style="italic" font-family="system-ui, sans-serif"
+          style="pointer-events:none">{line.fkLabel}</text>
+      {/if}
       <path d={line.parentTick} stroke={color} stroke-width="2" fill="none" />
       {#if line.parentParticipation}
         <path d={line.parentParticipation} stroke={color} stroke-width="2" fill="none" />
@@ -393,3 +448,39 @@
     {/if}
   {/if}
 </svg>
+
+{#if editingLabel}
+  <div
+    class="fk-label-editor"
+    style="left:{editingLabel.x}px; top:{editingLabel.y + 22}px"
+  >
+    <input
+      type="text"
+      bind:value={editingLabel.value}
+      placeholder="Label..."
+      onkeydown={(e) => { if (e.key === 'Enter') commitLabel(); if (e.key === 'Escape') cancelLabel(); }}
+      onblur={commitLabel}
+      use:autoFocus
+    />
+  </div>
+{/if}
+
+<style>
+  .fk-label-editor {
+    position: absolute;
+    transform: translateX(-50%);
+    z-index: 10;
+  }
+  .fk-label-editor input {
+    width: 120px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-style: italic;
+    border: 1px solid #3b82f6;
+    border-radius: 4px;
+    outline: none;
+    background: white;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+</style>

@@ -3,6 +3,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { lintSchema } from '$lib/utils/schema-lint';
+  import { TABLE_TEMPLATES } from '$lib/utils/table-templates';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -61,6 +62,26 @@
       <button class="dropdown-item" role="menuitem" onclick={() => { onaction('sql-playground'); onclose(); }}>
         {m.sql_playground_title()}
       </button>
+      {#if !permissionStore.isReadOnly}
+        <div class="dropdown-sep"></div>
+        <div class="dropdown-submenu">
+          <button class="dropdown-item submenu-trigger" role="menuitem">
+            {m.template_title()} ▸
+          </button>
+          <div class="submenu-content">
+            {#each TABLE_TEMPLATES as tmpl}
+              <button
+                class="dropdown-item"
+                role="menuitem"
+                onclick={() => {
+                  erdStore.addTableFromTemplate(tmpl.columns, tmpl.tableName);
+                  onclose();
+                }}
+              >{tmpl.tableName}</button>
+            {/each}
+          </div>
+        </div>
+      {/if}
       {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
         <div class="dropdown-sep"></div>
         <button class="dropdown-item" role="menuitem" onclick={() => { onaction('embed'); onclose(); }}>
@@ -70,3 +91,30 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .dropdown-submenu {
+    position: relative;
+  }
+  .submenu-trigger {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .submenu-content {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    min-width: 140px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    padding: 4px;
+    z-index: 1001;
+  }
+  .dropdown-submenu:hover .submenu-content {
+    display: block;
+  }
+</style>

@@ -315,8 +315,8 @@
 
     // In fullscreen mode, block all editing shortcuts
     if (fullscreenMode) {
-      // Allow zoom (+/-), arrow pan, and Cmd+K palette
-      if ((e.ctrlKey || e.metaKey) && key === 'k') {
+      // Allow zoom (+/-), arrow pan, and Cmd+K/Ctrl+F palette
+      if ((e.ctrlKey || e.metaKey) && (key === 'k' || key === 'f')) {
         e.preventDefault();
         commandPaletteOpen = !commandPaletteOpen;
         return;
@@ -349,8 +349,8 @@
       return; // Block everything else in fullscreen
     }
 
-    // Cmd+K: toggle command palette (works even when editing)
-    if ((e.ctrlKey || e.metaKey) && key === 'k') {
+    // Cmd+K or Ctrl+F: toggle command palette (works even when editing)
+    if ((e.ctrlKey || e.metaKey) && (key === 'k' || key === 'f')) {
       e.preventDefault();
       commandPaletteOpen = !commandPaletteOpen;
       return;
@@ -447,6 +447,32 @@
       canvasState.x = cx - (cx - canvasState.x) * (newScale / canvasState.scale);
       canvasState.y = cy - (cy - canvasState.y) * (newScale / canvasState.scale);
       canvasState.scale = newScale;
+      return;
+    }
+
+    // Ctrl+C: Copy selected tables to clipboard
+    if ((e.ctrlKey || e.metaKey) && key === 'c' && !isEditing) {
+      const ids = [...erdStore.selectedTableIds];
+      if (ids.length > 0) {
+        e.preventDefault();
+        const tables = erdStore.schema.tables.filter((t) => ids.includes(t.id));
+        const data = { _type: 'erdmini_tables', tables };
+        navigator.clipboard.writeText(JSON.stringify(data));
+      }
+      return;
+    }
+
+    // Ctrl+V: Paste tables from clipboard
+    if ((e.ctrlKey || e.metaKey) && key === 'v' && !isEditing && !permissionStore.isReadOnly) {
+      e.preventDefault();
+      navigator.clipboard.readText().then((text) => {
+        try {
+          const data = JSON.parse(text);
+          if (data._type === 'erdmini_tables' && Array.isArray(data.tables)) {
+            erdStore.pasteTablesFromClipboard(data.tables);
+          }
+        } catch { /* not valid erdmini data, ignore */ }
+      }).catch(() => { /* clipboard access denied, ignore */ });
       return;
     }
 

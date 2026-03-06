@@ -19,6 +19,7 @@
   let fkRefTableId = $state('');
   let fkOnDelete = $state<ReferentialAction>('RESTRICT');
   let fkOnUpdate = $state<ReferentialAction>('RESTRICT');
+  let fkLabel = $state('');
 
   // Composite FK: list of column pairs
   let columnPairs = $state<{ srcColId: string; refColId: string }[]>([{ srcColId: '', refColId: '' }]);
@@ -33,6 +34,7 @@
         fkRefTableId = fk.referencedTableId;
         fkOnDelete = fk.onDelete ?? 'RESTRICT';
         fkOnUpdate = fk.onUpdate ?? 'RESTRICT';
+        fkLabel = fk.label ?? '';
         columnPairs = fk.columnIds.map((srcId, i) => ({
           srcColId: srcId,
           refColId: fk.referencedColumnIds[i] ?? '',
@@ -74,8 +76,15 @@
     const referencedColumnIds = columnPairs.map((p) => p.refColId);
     if (isEditMode && editFkId) {
       erdStore.updateForeignKey(tableId, editFkId, columnIds, fkRefTableId, referencedColumnIds, fkOnDelete, fkOnUpdate);
+      erdStore.updateFkLabel(tableId, editFkId, fkLabel.trim());
     } else {
       erdStore.addForeignKey(tableId, columnIds, fkRefTableId, referencedColumnIds, fkOnDelete, fkOnUpdate);
+      // Set label on newly created FK (last one added)
+      const table = erdStore.schema.tables.find((t) => t.id === tableId);
+      if (table && fkLabel.trim()) {
+        const newFk = table.foreignKeys[table.foreignKeys.length - 1];
+        if (newFk) erdStore.updateFkLabel(tableId, newFk.id, fkLabel.trim());
+      }
     }
     onclose();
   }
@@ -176,6 +185,17 @@
             size="md"
           />
         </div>
+      </div>
+
+      <div class="form-row">
+        <label for="fkm-label">{m.fk_label()}</label>
+        <input
+          id="fkm-label"
+          type="text"
+          class="label-input"
+          bind:value={fkLabel}
+          placeholder={m.fk_label_placeholder()}
+        />
       </div>
     </div>
 
@@ -399,5 +419,20 @@
 
   .btn-submit:not(:disabled):hover {
     background: #2563eb;
+  }
+
+  .label-input {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .label-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
   }
 </style>

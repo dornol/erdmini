@@ -442,6 +442,7 @@ export function updateForeignKey(
     referencedColumnIds?: string[];
     onDelete?: ReferentialAction;
     onUpdate?: ReferentialAction;
+    label?: string;
   },
 ): ERDSchema | null {
   const table = schema.tables.find(t => t.id === tableId);

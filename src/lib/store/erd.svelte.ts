@@ -167,6 +167,101 @@ class ERDStore {
     this._emitOp({ kind: 'add-table', table: newTable });
   }
 
+  addTableFromTemplate(templateColumns: Omit<Column, 'id'>[], tableName: string, viewportWidth = 800, viewportHeight = 600) {
+    const { x: worldX, y: worldY } = canvasState.viewportCenterToWorld(viewportWidth, viewportHeight);
+    const id = generateId();
+    // Avoid name collision
+    let name = tableName;
+    let suffix = 1;
+    while (this.schema.tables.some((t) => t.name === name)) {
+      name = `${tableName}_${suffix++}`;
+    }
+    const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
+    const columns: Column[] = templateColumns.map((c) => ({ ...c, id: generateId() }));
+    const newTable: Table = {
+      id,
+      name,
+      columns,
+      foreignKeys: [],
+      uniqueKeys: [],
+      indexes: [],
+      position: { x: worldX - 100, y: worldY - 60 },
+      ...(activeSchema ? { schema: activeSchema } : {}),
+    };
+    this.schema.tables = [...this.schema.tables, newTable];
+    this.schema.updatedAt = now();
+    this.selectedTableId = id;
+    this.selectedTableIds = new Set([id]);
+    this._emitOp({ kind: 'add-table', table: newTable });
+  }
+
+  pasteTablesFromClipboard(tables: Table[]) {
+    const idMap = new Map<string, string>();
+    const newIds: string[] = [];
+    const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
+
+    for (const srcTable of tables) {
+      const newId = generateId();
+      idMap.set(srcTable.id, newId);
+      // Avoid name collision
+      let name = srcTable.name;
+      let suffix = 1;
+      while (this.schema.tables.some((t) => t.name === name)) {
+        name = `${srcTable.name}_${suffix++}`;
+      }
+      const columns: Column[] = srcTable.columns.map((c) => {
+        const newColId = generateId();
+        idMap.set(c.id, newColId);
+        return { ...c, id: newColId };
+      });
+      const newTable: Table = {
+        id: newId,
+        name,
+        columns,
+        foreignKeys: [],
+        uniqueKeys: (srcTable.uniqueKeys ?? []).map((uk) => ({
+          ...uk, id: generateId(),
+          columnIds: uk.columnIds.map((cid) => idMap.get(cid) ?? cid),
+        })),
+        indexes: (srcTable.indexes ?? []).map((idx) => ({
+          ...idx, id: generateId(),
+          columnIds: idx.columnIds.map((cid) => idMap.get(cid) ?? cid),
+        })),
+        position: { x: srcTable.position.x + 30, y: srcTable.position.y + 30 },
+        comment: srcTable.comment,
+        color: srcTable.color,
+        group: srcTable.group,
+        ...(activeSchema ? { schema: activeSchema } : srcTable.schema ? { schema: srcTable.schema } : {}),
+      };
+      this.schema.tables = [...this.schema.tables, newTable];
+      newIds.push(newId);
+      this._emitOp({ kind: 'add-table', table: newTable });
+    }
+    // Re-map FKs between pasted tables
+    for (const srcTable of tables) {
+      const newTableId = idMap.get(srcTable.id)!;
+      const newTable = this.schema.tables.find((t) => t.id === newTableId);
+      if (!newTable) continue;
+      for (const fk of srcTable.foreignKeys) {
+        const refId = idMap.get(fk.referencedTableId);
+        if (!refId) continue; // FK target not in pasted set
+        const newFk: ForeignKey = {
+          id: generateId(),
+          columnIds: fk.columnIds.map((cid) => idMap.get(cid) ?? cid),
+          referencedTableId: refId,
+          referencedColumnIds: fk.referencedColumnIds.map((cid) => idMap.get(cid) ?? cid),
+          onDelete: fk.onDelete,
+          onUpdate: fk.onUpdate,
+          label: fk.label,
+        };
+        newTable.foreignKeys = [...newTable.foreignKeys, newFk];
+      }
+    }
+    this.schema.updatedAt = now();
+    this.selectedTableIds = new Set(newIds);
+    if (newIds.length > 0) this.selectedTableId = newIds[0];
+  }
+
   deleteTable(id: string) {
     // Detach memos attached to this table
     for (const memo of this.schema.memos) {
@@ -473,6 +568,16 @@ class ERDStore {
     fk.referencedColumnIds = referencedColumnIds;
     fk.onDelete = onDelete;
     fk.onUpdate = onUpdate;
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'update-fk', tableId, fk: { ...fk } });
+  }
+
+  updateFkLabel(tableId: string, fkId: string, label: string) {
+    const table = this.schema.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    const fk = table.foreignKeys.find((f) => f.id === fkId);
+    if (!fk) return;
+    fk.label = label || undefined;
     this.schema.updatedAt = now();
     this._emitOp({ kind: 'update-fk', tableId, fk: { ...fk } });
   }

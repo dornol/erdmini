@@ -5,12 +5,13 @@
   import MemoCard from '$lib/components/MemoCard.svelte';
   import SchemaTabBar from '$lib/components/SchemaTabBar.svelte';
   import DdlModal from '$lib/components/DdlModal.svelte';
+  import CommandPalette from '$lib/components/CommandPalette.svelte';
   import { exportCanvasImage } from '$lib/utils/image-export';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
   import { page } from '$app/stores';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import * as m from '$lib/paraglide/messages';
   import { filterBySchema } from '$lib/utils/canvas-grid';
 
@@ -24,6 +25,7 @@
 
   const token = $derived($page.params.token);
   let showDdlModal = $state(false);
+  let commandPaletteOpen = $state(false);
 
   const visibleTables = $derived(filterBySchema(erdStore.schema.tables, canvasState.activeSchema));
   const visibleMemos = $derived(filterBySchema(erdStore.schema.memos, canvasState.activeSchema));
@@ -82,8 +84,22 @@
     loadEmbed(passwordInput);
   }
 
+  function handleKeydown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
+      e.preventDefault();
+      commandPaletteOpen = !commandPaletteOpen;
+    }
+  }
+
   onMount(() => {
     loadEmbed();
+    window.addEventListener('keydown', handleKeydown);
+  });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('keydown', handleKeydown);
+    }
   });
 </script>
 
@@ -159,6 +175,10 @@
 
     {#if showDdlModal}
       <DdlModal mode="export" exportOnly={true} projectName={projectName} onclose={() => (showDdlModal = false)} />
+    {/if}
+
+    {#if commandPaletteOpen}
+      <CommandPalette onclose={() => (commandPaletteOpen = false)} />
     {/if}
   </div>
 {/if}
