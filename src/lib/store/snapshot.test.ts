@@ -951,7 +951,7 @@ describe('Snapshot API response mapping', () => {
   });
 
   it('POST body without description maps null', () => {
-    const body = {
+    const body: { id: string; name: string; snap: string; createdAt: number; description?: string } = {
       id: 'snap1',
       name: 'No Desc',
       snap: '{}',

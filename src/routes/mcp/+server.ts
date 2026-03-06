@@ -1,17 +1,17 @@
 import type { RequestHandler } from './$types';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { resolveApiKey } from '$lib/server/auth/api-key';
+import { resolveApiKey, type ResolvedApiKey } from '$lib/server/auth/api-key';
 import { createMcpServer } from '$lib/server/mcp/server';
 import db from '$lib/server/db';
 
-function authenticate(request: Request) {
+function authenticate(request: Request): { error: Response } | { keyInfo: ResolvedApiKey } {
   const auth = request.headers.get('authorization');
   const apiKey = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!apiKey) {
     return { error: new Response(JSON.stringify({ error: 'Missing or invalid Authorization header. Expected: Bearer <api-key>' }), { status: 401, headers: { 'Content-Type': 'application/json' } }) };
   }
 
-  const keyInfo = resolveApiKey(db, apiKey);
+  const keyInfo = resolveApiKey(db as any, apiKey);
   if (!keyInfo) {
     return { error: new Response(JSON.stringify({ error: 'Invalid or expired API key' }), { status: 403, headers: { 'Content-Type': 'application/json' } }) };
   }
@@ -19,7 +19,7 @@ function authenticate(request: Request) {
   return { keyInfo };
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request }): Promise<Response> => {
   const auth = authenticate(request);
   if ('error' in auth) return auth.error;
 
@@ -53,7 +53,8 @@ export const POST: RequestHandler = async ({ request }) => {
     });
     const mcpServer = createMcpServer(db, auth.keyInfo);
     await mcpServer.connect(transport);
-    return transport.handleRequest(correctedRequest, { parsedBody });
+    const response = await transport.handleRequest(correctedRequest, { parsedBody });
+    return response ?? new Response(null, { status: 204 });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({

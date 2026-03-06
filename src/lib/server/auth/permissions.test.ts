@@ -4,7 +4,7 @@ const { mockGet, mockRun, mockAll, mockPrepare } = vi.hoisted(() => {
   const mockGet = vi.fn();
   const mockRun = vi.fn();
   const mockAll = vi.fn().mockReturnValue([]);
-  const mockPrepare = vi.fn(() => ({ get: mockGet, run: mockRun, all: mockAll }));
+  const mockPrepare = vi.fn((_sql: string) => ({ get: mockGet, run: mockRun, all: mockAll }));
   return { mockGet, mockRun, mockAll, mockPrepare };
 });
 

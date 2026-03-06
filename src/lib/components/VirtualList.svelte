@@ -6,11 +6,13 @@
     overscan = 5,
     children,
     class: className = '',
+    ondragover,
   }: {
     items: T[];
     overscan?: number;
     children: Snippet<[T, number]>;
     class?: string;
+    ondragover?: (e: DragEvent) => void;
   } = $props();
 
   let scrollTop = $state(0);
@@ -86,6 +88,7 @@
   bind:this={containerEl}
   bind:clientHeight={viewportHeight}
   onscroll={onScroll}
+  {ondragover}
   style="overflow-y:auto;position:relative;"
 >
   <div style="height:{totalHeight}px;position:relative;">

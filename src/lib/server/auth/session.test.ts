@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const { mockGet, mockRun, mockPrepare, mockEnv } = vi.hoisted(() => {
   const mockGet = vi.fn();
   const mockRun = vi.fn();
-  const mockPrepare = vi.fn(() => ({ get: mockGet, run: mockRun }));
+  const mockPrepare = vi.fn((_sql: string) => ({ get: mockGet, run: mockRun }));
   const mockEnv: Record<string, string> = {};
   return { mockGet, mockRun, mockPrepare, mockEnv };
 });

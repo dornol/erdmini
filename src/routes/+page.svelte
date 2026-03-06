@@ -124,7 +124,7 @@
     applyChange();
     await tick();
     // Force layout recalculation after DOM update
-    await new Promise<void>((r) => requestAnimationFrame(r));
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
     const newVp = document.querySelector('.canvas-viewport');
     const newRect = newVp?.getBoundingClientRect();

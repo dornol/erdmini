@@ -3,9 +3,17 @@ declare module 'sql.js' {
 		Database: new (data?: ArrayLike<number> | Buffer | null) => Database;
 	}
 
+	export interface Statement {
+		getColumnNames(): string[];
+		step(): boolean;
+		get(params?: any): any[];
+		free(): void;
+	}
+
 	export interface Database {
 		exec(sql: string): QueryExecResult[];
 		run(sql: string, params?: any): Database;
+		prepare(sql: string): Statement;
 		getRowsModified(): number;
 		close(): void;
 	}

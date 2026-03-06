@@ -4,7 +4,7 @@ const { mockGet, mockRun, mockAll, mockPrepare } = vi.hoisted(() => {
   const mockGet = vi.fn();
   const mockRun = vi.fn();
   const mockAll = vi.fn();
-  const mockPrepare = vi.fn(() => ({ get: mockGet, run: mockRun, all: mockAll }));
+  const mockPrepare = vi.fn((_sql: string) => ({ get: mockGet, run: mockRun, all: mockAll }));
   return { mockGet, mockRun, mockAll, mockPrepare };
 });
 
@@ -153,7 +153,7 @@ describe('checkAccess', () => {
   });
 
   it('scoped API key denies if project not in scopes', () => {
-    const scopes = [{ projectId: 'other', permission: 'owner' as const }];
+    const scopes = [{ projectId: 'other', permission: 'editor' as const }];
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'viewer', scopes)).toBe(false);
   });
 

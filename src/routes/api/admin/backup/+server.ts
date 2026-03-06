@@ -139,7 +139,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     } catch {
       // Rollback: restore old DB
       try { if (existsSync(bakPath)) renameSync(bakPath, dbPath); } catch (rollbackErr) {
-        logger.error('[backup] Failed to rollback DB rename after copy failure', rollbackErr);
+        logger.error('[backup] Failed to rollback DB rename after copy failure', String(rollbackErr));
       }
       reinitDb();
       return json({ error: 'Failed to copy backup file' }, { status: 500 });
@@ -154,7 +154,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       // Rollback: restore old DB
       closeDb();
       try { if (existsSync(bakPath)) renameSync(bakPath, dbPath); } catch (rollbackErr) {
-        logger.error('[backup] Failed to rollback DB after verification failure', rollbackErr);
+        logger.error('[backup] Failed to rollback DB after verification failure', String(rollbackErr));
       }
       reinitDb();
       return json({
