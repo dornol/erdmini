@@ -8,6 +8,8 @@
     id: string;
     username: string | null;
     display_name: string;
+    email?: string | null;
+    role?: string;
   }
 
   interface Props {
@@ -31,7 +33,8 @@
       ? users.filter(u => {
           const q = userSearch.toLowerCase();
           return (u.display_name?.toLowerCase().includes(q)) ||
-                 (u.username?.toLowerCase().includes(q));
+                 (u.username?.toLowerCase().includes(q)) ||
+                 (u.email?.toLowerCase().includes(q));
         })
       : users
   );
@@ -286,11 +289,15 @@
           />
         {/if}
         {#if userDropdownOpen && !selectedUserLabel}
-          <div class="user-dropdown">
+          <div class="user-dropdown thin-scrollbar" style="--sb-thumb:#475569;--sb-thumb-hover:#64748b">
             {#each filteredUsers as u}
               <button class="user-dropdown-item" type="button" onmousedown={() => selectUser(u)}>
-                <span class="user-dropdown-name">{u.display_name}</span>
-                {#if u.username}<span class="user-dropdown-username">{u.username}</span>{/if}
+                <div class="user-dropdown-main">
+                  <span class="user-dropdown-name">{u.display_name}</span>
+                  {#if u.username}<span class="user-dropdown-username">{u.username}</span>{/if}
+                  {#if u.role === 'admin'}<span class="badge badge-admin">admin</span>{/if}
+                </div>
+                {#if u.email}<div class="user-dropdown-email">{u.email}</div>{/if}
               </button>
             {/each}
             {#if filteredUsers.length === 0}
@@ -392,10 +399,10 @@
 
   .user-dropdown-item {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 1px;
     width: 100%;
-    padding: 8px 12px;
+    padding: 7px 12px;
     background: none;
     border: none;
     color: #cbd5e1;
@@ -409,6 +416,12 @@
     color: #f1f5f9;
   }
 
+  .user-dropdown-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .user-dropdown-name {
     font-weight: 500;
   }
@@ -416,6 +429,14 @@
   .user-dropdown-username {
     font-size: 11px;
     color: #64748b;
+  }
+
+  .user-dropdown-email {
+    font-size: 11px;
+    color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .user-dropdown-empty {
