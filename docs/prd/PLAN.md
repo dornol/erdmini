@@ -66,8 +66,8 @@ A web application for visually authoring ERDs (Entity-Relationship Diagrams) in 
 ### ✅ Phase 4 — Advanced Features
 
 - [x] Sidebar (search / sort / group view / collapse)
-- [x] DDL in 4 dialects (MySQL, PostgreSQL, MariaDB, MSSQL)
-- [x] Undo / Redo (Ctrl+Z / Ctrl+Shift+Z, up to 50 steps)
+- [x] DDL in 7 dialects (MySQL, PostgreSQL, MariaDB, MSSQL, SQLite, Oracle, H2)
+- [x] Undo / Redo (Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, up to 200 steps)
 - [x] Minimap (click-to-navigate)
 - [x] Image export (PNG, SVG)
 - [x] Table duplication
@@ -145,7 +145,7 @@ A web application for visually authoring ERDs (Entity-Relationship Diagrams) in 
 
 ### ✅ Phase 13 — Additional Tools
 
-- [x] Schema validation/linting (8 rules, LintPanel)
+- [x] Schema validation/linting (9 rules, LintPanel)
 - [x] PDF export (jsPDF + svg2pdf.js)
 - [x] Bulk table edit / bulk lock-unlock
 - [x] DDL export format options (indentation, quoting, keywords, included items)
@@ -157,7 +157,7 @@ A web application for visually authoring ERDs (Entity-Relationship Diagrams) in 
 
 - [x] MCP (Model Context Protocol) Streamable HTTP endpoint (`/mcp`)
 - [x] API key authentication (`erd_` prefix + SHA-256 hash, CRUD in Admin UI)
-- [x] 22 tools: list_projects, get_schema, get_schema_summary, list_tables, get_table, list_groups, export_ddl, lint_schema, export_diagram, add/update/delete table/column, add/delete foreign_key, import_ddl, list/add/update/delete memo
+- [x] 66 tools: schema CRUD, columns, FKs, UKs, indexes, domains, memos, snapshots, schema namespaces, bulk ops, search, table templates, import/export (DDL/Prisma/DBML/diagram), lint, layout, domain analysis/dictionary, migration SQL
 - [x] `createMcpServer(db, keyInfo)` factory pattern
 - [x] SvelteKit API route (`src/routes/mcp/+server.ts`), no separate bundle required
 - [x] Collab server integration (WebSocket notification on schema change)
@@ -204,6 +204,7 @@ interface ForeignKey {
   referencedColumnIds: string[];
   onDelete: ReferentialAction;      // CASCADE | SET NULL | RESTRICT | NO ACTION
   onUpdate: ReferentialAction;
+  label?: string;                   // Optional relationship description
 }
 
 interface Table {
@@ -218,6 +219,7 @@ interface Table {
   color?: string;
   group?: string;
   locked?: boolean;
+  schema?: string;                  // Schema namespace
 }
 
 interface Memo {
@@ -228,6 +230,8 @@ interface Memo {
   height: number;
   color?: string;
   locked?: boolean;
+  schema?: string;                  // Schema namespace
+  attachedTableId?: string;         // Attached to table
 }
 
 interface ERDSchema {
@@ -235,6 +239,7 @@ interface ERDSchema {
   tables: Table[];
   domains: ColumnDomain[];
   memos: Memo[];
+  schemas?: string[];               // Schema namespaces
   groupColors?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
@@ -253,7 +258,7 @@ The schema is persisted via `StorageProvider`. Local mode: IndexedDB. Server mod
 | Relationship line rendering | SVG `position: absolute; overflow: visible` | Placed inside the canvas world div; coordinate calculation is simple |
 | State management | Svelte 5 Runes (`$state`, `.svelte.ts`) | Built into the framework; no additional library needed |
 | Auto-layout | Grid/hierarchical: custom implementation / Radial: d3-force | Grid/hierarchical are simple enough to implement directly; radial benefits from force simulation for natural clustering |
-| DDL parser | node-sql-parser | Supports MySQL/PG/MariaDB/MSSQL dialects |
+| DDL parser | node-sql-parser | Supports MySQL/PG/MariaDB/MSSQL/SQLite/Oracle/H2 dialects |
 | Styling | Tailwind CSS v4 | Utility classes, JIT |
 | Deployment | Docker — static SPA (nginx) or server mode (Node.js + SQLite) | Switched via `PUBLIC_STORAGE_MODE` |
 | Authentication | Local + OIDC | Standard protocol, supports multiple IdPs |
@@ -315,9 +320,9 @@ src/
 │   │   └── erd.ts                   Column, Table, ERDSchema, ForeignKey types
 │   └── utils/
 │       ├── auto-layout.ts           Grid / hierarchical / radial algorithms
-│       ├── ddl-export.ts            4-dialect DDL generation + format options
+│       ├── ddl-export.ts            7-dialect DDL generation + format options
 │       ├── ddl-import.ts            DDL parsing → ERDSchema
-│       ├── schema-lint.ts           Schema validation (8 rules)
+│       ├── schema-lint.ts           Schema validation (9 rules)
 │       ├── schema-diff.ts           Schema version comparison
 │       ├── svg-export.ts            SVG export
 │       ├── pdf-export.ts            PDF export
@@ -361,10 +366,10 @@ Monolithic SvelteKit structure — authentication, API, and MCP are all handled 
 - Admin UI: user CRUD, OIDC providers, API key management
 - Per-project permissions: owner / editor / viewer
 - Real-time collaboration: WebSocket, participant cursors, LWW conflict resolution
-- MCP: Streamable HTTP (`/mcp`), 14 tools, collab integration
+- MCP: Streamable HTTP (`/mcp`), 66 tools, collab integration
 
 ```
-[Browser] → [SvelteKit hooks.server.ts] → [OIDC Provider / Local Auth]
+[Browser] → [SvelteKit hooks.server.ts] → [OIDC / LDAP / Local Auth]
                      ↓ session cookie
              [SvelteKit API routes]
                      ↓
@@ -374,7 +379,7 @@ Monolithic SvelteKit structure — authentication, API, and MCP are all handled 
 
 [AI tool] → [/mcp (Streamable HTTP)] → [API key auth]
                      ↓
-             [MCP Server (14 tools)]
+             [MCP Server (66 tools)]
                      ↓
                 [SQLite DB] → [Collab notification]
 ```
@@ -383,15 +388,6 @@ Monolithic SvelteKit structure — authentication, API, and MCP are all handled 
 
 ## 8. Tests
 
-11 test files, 258 tests — all passing.
+53 test files, 2073 tests — all passing.
 
-| File | Test count | Coverage |
-|------|-----------|------|
-| `auto-layout.test.ts` | 20 | 3 layout types, per-group placement |
-| `ddl-export.test.ts` | 53 | 4 dialects + format options |
-| `ddl-import.test.ts` | 48 | 4 dialect parsing, FK/UQ/INDEX |
-| `diagram-export.test.ts` | 19 | Mermaid + PlantUML |
-| `svg-export.test.ts` | 12 | SVG export |
-| `schema-lint.test.ts` | 18 | 8 lint rules |
-| `schema-diff.test.ts` | 21 | Table/column/FK/index comparison |
-| Other | 56 | common, table-color, url-share |
+Covers: DDL import/export (7 dialects), Prisma import/export, DBML import/export, auto-layout, schema lint (9 rules), schema diff, migration SQL, domain analysis/hierarchy, SVG/diagram export, sidebar search, keyboard shortcuts, URL share, table templates, dummy data, and more.

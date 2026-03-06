@@ -29,18 +29,21 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 ## Features
 
 ### Canvas
-- Mouse wheel zoom (0.2x ~ 3x)
-- Background left-click drag / **right-click drag** / **Space+drag** panning
+- Mouse wheel zoom (5% ~ 300%, cursor-centered)
+- **Right-click drag** / **Space + left-click drag** panning
+- Left-click on background: rubber band (marquee) selection
 - Table card drag-to-move (with grid snap option)
 - Minimap (click to move viewport)
-- Undo / Redo (Ctrl+Z / Ctrl+Shift+Z, up to 200 steps)
+- Undo / Redo (Ctrl+Z / Ctrl+Y, macOS: Cmd+Z / Cmd+Y, up to 200 steps)
 - History panel (visual timeline, click to jump to a specific point)
 - Align and distribute tools (left/center/right/top/middle/bottom align, horizontal/vertical equal distribution)
 - Image export (PNG, SVG, PDF)
 - Fit to Window (fit all tables to screen)
+- FK line show/hide toggle
+- Arrow key panning
 
 ### Themes
-4 canvas themes supported (toggle from toolbar):
+4 canvas themes supported (toggle from bottom bar):
 
 | Theme | Description |
 |---|---|
@@ -57,25 +60,29 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - Add new tables (placed at viewport center)
 - Inline table name editing via header double-click
 - Table comment, color, and group settings
-- Table duplication / position locking
+- Table duplication (Ctrl+D) / position locking
 - **Single select**: card / sidebar click
 - **Multi-select**: Ctrl/Cmd + click, rubber band drag
 - **Bulk operations**: delete, bulk edit color/group/comment/schema, lock/unlock
-- **Column display mode**: all / PK & FK only / name only
+- **Table templates**: Quick-create common tables (users, audit_log, settings, files, tags)
+- **Cross-project copy/paste**: Ctrl+C/V to copy selected tables between projects (IDs auto-remapped)
+- Unique key and index info tooltips on table card hover
+- Attached memo badge on table header
 
 ### Column Management
 - CRUD from the right-side TableEditor panel
-- **Double-click a column in the card** to edit immediately in a floating popup (with delete button)
+- **Double-click a column in the card** to edit in a floating popup (with delete button)
 - **Quick add**: "+" button appears at table bottom on hover
 - Drag to reorder columns
-- PK (gold) / FK (blue) / UQ / AI badge display
-- Detailed tooltip on column hover
+- Badges: PK (gold), FK (blue), UQ (purple), AI (green), CK (yellow)
+- 16 column types: INT, BIGINT, SMALLINT, VARCHAR, CHAR, TEXT, BOOLEAN, DATE, DATETIME, TIMESTAMP, DECIMAL, FLOAT, DOUBLE, JSON, UUID, ENUM
 - ENUM type (manage value lists)
 - DECIMAL precision / scale separation
 - CHECK constraints
+- Column display mode: all / PK & FK only / name only
 
 ### Foreign Keys
-- Add/edit FK modal: source column → referenced table/column, ON DELETE / ON UPDATE actions
+- Add/edit FK modal: source column -> referenced table/column, ON DELETE / ON UPDATE actions
 - **Crow's Foot Notation** relation lines (bezier / straight / orthogonal)
   - Dashed lines for nullable FK, mandatory tick distinction
   - Automatic 1:1 (unique FK) / 1:N detection
@@ -84,9 +91,16 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - **FK label**: Optional relationship description displayed on the FK line (double-click to inline edit)
 
 ### Domain Management
-- Define reusable column property templates
+- Define reusable column property templates (type, length, nullable, default, etc.)
 - Changes to a domain are immediately reflected on all linked columns
 - Domain link is automatically removed when a column is manually edited
+- **Hierarchy**: Parent/child domain relationships with circular reference detection
+- **Grouping**: Organize domains by group with collapsible sections
+- **Documentation fields**: description, alias, data standard, example, valid range, owner, tags
+- **Coverage analysis**: Dashboard showing domain usage statistics across tables
+- **Dictionary export**: HTML, Markdown, XLSX formats
+- **Domain import/export**: XLSX bulk import/export
+- **Unused domain filter**: Toggle to show only unused domains
 
 ### Schema Namespace
 - Assign tables and memos to schemas (e.g., `public`, `auth`, `billing`)
@@ -95,23 +109,41 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - DDL export: `CREATE SCHEMA` + schema-qualified table names
 - DDL import: auto-extract schema from parsed statements
 
-### DDL Import / Export
-- **7 dialects supported**: MySQL / PostgreSQL / MariaDB / MSSQL / SQLite / Oracle / H2
-- **Export options**: indentation, quoting style, keyword case, include/exclude comments/indexes/FKs
-- **Import**: DDL parsing → automatic table/column generation, auto-layout after import
-- **Diagram export**: Mermaid, PlantUML
+### Import / Export
+
+**Import formats:**
+- DDL (SQL) — 7 dialects: MySQL, PostgreSQL, MariaDB, MSSQL, SQLite, Oracle, H2
+- Prisma schema
+- DBML
+
+**Export formats:**
+- DDL (SQL) — 7 dialects with options: indentation, quoting, keyword case, include/exclude comments/indexes/FKs
+- Prisma schema
+- DBML
+- Mermaid (diagram)
+- PlantUML (diagram)
+- JSON (full schema backup)
+- PNG / SVG / PDF (image)
+
+### SQL Playground
+- In-browser SQL execution via sql.js (WASM)
+- Schema auto-synchronized from current ERD
+- Dummy data generation (topological sort for FK order)
+- Query history
 
 ### Schema Tools
 - **Schema validation / linting**: 9 rules (missing PK, missing FK target, duplicates, circular FKs, domain circular hierarchy, etc.)
-- **Schema version diff**: compare against history or uploaded file, color-coded
+- **Schema version diff**: Compare against history or uploaded file, color-coded
 - **Schema snapshots**: Named save / restore / diff / auto-snapshot (5 min interval, max 50)
-- **URL sharing**: compress schema → share via URL hash
+- **Migration SQL generation**: ALTER TABLE DDL from snapshot diffs (per dialect)
+- **URL sharing**: Compress schema and share via URL hash
+- **Command palette** (Ctrl+K / Ctrl+F, macOS: Cmd+K / Cmd+F): Search tables and columns
 
 ### Sticky Memos
 - Canvas sticky notes (add / edit / delete / drag / resize)
 - 6 color options (yellow, blue, green, pink, purple, orange)
-- Inline editing (double-click → textarea)
-- **Table attachment**: drag memo onto a table to attach; memo moves with table, pin badge indicates attachment
+- Inline editing (double-click -> textarea)
+- **Table attachment**: Drag memo onto a table to attach; memo moves with table, pin badge indicates attachment
 - Multi-select, group drag, lock support
 - Visible in sidebar (double-click to navigate & edit), minimap, and image exports
 
@@ -121,6 +153,7 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 - Sort (by name / by creation order)
 - Collapse / expand by group
 - Table summary info (column count, FK count)
+- Virtual scrolling for large schemas
 
 ### Auto Layout
 
@@ -132,14 +165,14 @@ Supports both local mode (IndexedDB) and server mode (SQLite + authentication + 
 
 When groups are defined, independent layout per group followed by meta-grid placement is supported.
 
-### Project Management
-- Multiple projects (create/rename/duplicate/delete/switch)
-- Per-project canvas position saved
-- Full project backup/restore (JSON)
-- Command palette (Ctrl+K / Ctrl+F — search tables and columns)
-- Keyboard shortcut reference (? button)
-- **Table templates**: Quick-create common tables (users, audit_log, settings, files, tags)
-- **Cross-project copy/paste**: Ctrl+C/V to copy selected tables between projects (IDs auto-remapped)
+### Canvas Bottom Bar
+- Auto-layout selector (Grid / Hierarchical / Radial)
+- Column display mode (All / PK & FK only / Names only)
+- Line style (Bezier / Straight / Orthogonal)
+- Theme selector
+- FK line visibility toggle
+- Grid toggle / Snap toggle
+- Align and distribute tools
 
 ---
 
@@ -155,10 +188,10 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 ### Server Mode Features
 - **Authentication**: Local auth (username/password) + multiple OIDC providers + LDAP
 - **Groups**: User groups with per-project group permissions, OIDC/LDAP group auto-sync on login, admin group mapping (auto promote/demote)
-- **Permissions**: Per-project roles (owner / editor / viewer) for users and groups
-- **Sharing**: User/group search → grant permissions, read-only mode
+- **Permissions**: Per-project roles (owner / editor / viewer) for users and groups; per-user permission flags (can create project/API key/embed)
+- **Sharing**: User/group search -> grant permissions, read-only mode
 - **Real-time collaboration**: WebSocket sync, connected user cursor display, LWW conflict resolution
-- **Admin**: User CRUD, Group management, OIDC/LDAP provider management, API key management
+- **Admin**: User CRUD, Group management, OIDC/LDAP provider management, API key management, site branding (site name, logo, login message)
 - **MCP**: Streamable HTTP endpoint (`/mcp`), API key auth, 66 tools (tables, columns, FKs, memos, domains, DDL, diagrams, linting, domain analysis/dictionary, schema namespaces, snapshots, bulk ops, search, table templates), collab integration
 - **Audit trail**: Action logging (auth, schema changes, admin ops), configurable retention, admin UI
 - **Embed**: Read-only iframe embed with token-based access and optional password protection
@@ -170,29 +203,32 @@ Switch via the `PUBLIC_STORAGE_MODE` environment variable (`local` / `server`).
 
 ```
 ERDSchema
-├── tables: Table[]
-│   ├── id, name, comment, color, group, locked, schema?
-│   ├── position: { x, y }
-│   ├── columns: Column[]
-│   │   ├── id, name, type, length, scale
-│   │   ├── nullable, primaryKey, unique, autoIncrement
-│   │   ├── defaultValue, comment, check
-│   │   ├── enumValues[]
-│   │   └── domainId?
-│   ├── foreignKeys: ForeignKey[]
-│   │   ├── columnIds[] → referencedTableId.referencedColumnIds[]
-│   │   ├── onDelete, onUpdate
-│   │   └── label?
-│   ├── uniqueKeys: UniqueKey[]
-│   └── indexes: TableIndex[]
-├── domains: ColumnDomain[]
-├── memos: Memo[]
-│   ├── id, content, color?, locked?, schema?
-│   ├── position: { x, y }
-│   ├── width, height
-│   └── attachedTableId?
-├── schemas?: string[]
-└── groupColors?: Record<string, string>
++-- tables: Table[]
+|   +-- id, name, comment, color, group, locked, schema?
+|   +-- position: { x, y }
+|   +-- columns: Column[]
+|   |   +-- id, name, type, length, scale
+|   |   +-- nullable, primaryKey, unique, autoIncrement
+|   |   +-- defaultValue, comment, check
+|   |   +-- enumValues[]
+|   |   +-- domainId?
+|   +-- foreignKeys: ForeignKey[]
+|   |   +-- columnIds[] -> referencedTableId.referencedColumnIds[]
+|   |   +-- onDelete, onUpdate
+|   |   +-- label?
+|   +-- uniqueKeys: UniqueKey[]
+|   +-- indexes: TableIndex[]
++-- domains: ColumnDomain[]
+|   +-- id, name, type, length, scale, nullable, ...
+|   +-- group?, parentId?
+|   +-- description?, alias?, dataStandard?, example?, validRange?, owner?, tags?
++-- memos: Memo[]
+|   +-- id, content, color?, locked?, schema?
+|   +-- position: { x, y }
+|   +-- width, height
+|   +-- attachedTableId?
++-- schemas?: string[]
++-- groupColors?: Record<string, string>
 ```
 
 ---
@@ -205,7 +241,7 @@ pnpm dev          # http://localhost:3000 (local mode)
 pnpm dev:server   # server mode (SQLite + Auth)
 pnpm build        # output static files to build/
 pnpm build:server # server build (adapter-node, includes MCP)
-pnpm test         # vitest (53 files, 2070 tests)
+pnpm test         # vitest (53 files, 2073 tests)
 pnpm check        # svelte-check type checking
 ```
 
@@ -266,8 +302,8 @@ docker build --platform linux/arm64 -f Dockerfile.server -t erdmini-server .
 | `PORT` | `3000` | HTTP port (server mode) |
 | `ADMIN_USERNAME` | `admin` | Initial admin username |
 | `ADMIN_PASSWORD` | auto-generated | Initial admin password (printed to logs on first run) |
-| `BASE_PATH` | — | Subdirectory deployment path (e.g., `/erdmini`) |
-| `PUBLIC_SITE_URL` | — | Canonical URL for SEO |
+| `BASE_PATH` | -- | Subdirectory deployment path (e.g., `/erdmini`) |
+| `PUBLIC_SITE_URL` | -- | Canonical URL for SEO |
 | `PUBLIC_APP_URL` | `http://localhost:5173` | App URL for OIDC redirect URIs |
 | `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry in days |
 | `AUDIT_RETENTION_DAYS` | `720` | Audit log retention period in days |
@@ -283,7 +319,7 @@ docker build --platform linux/arm64 -f Dockerfile.server -t erdmini-server .
 - **CSRF**: JSON-only APIs (SvelteKit origin validation), session cookie `httpOnly` + `sameSite: lax` + `secure`
 - **WebSocket**: Origin header validation + session authentication
 - **MCP**: Bearer token auth (not cookie-based, immune to CSRF)
-- **Headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (except `/embed`), `Referrer-Policy: strict-origin-when-cross-origin`
+- **Headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (except `/embed`), `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy`
 
 ---
 

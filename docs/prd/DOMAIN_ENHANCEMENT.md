@@ -204,19 +204,19 @@ identifier (BIGINT, NOT NULL, AI)
 | 1 | **A: Data Model Completion** | Small | Fixes inconsistency (scale, check, enum missing) | ✅ Done |
 | 2 | **E: MCP Tools** | Small | Enables AI-assisted domain management | ✅ Done |
 | 3 | **F: DDL Integration** | Small | Makes domains visible in SQL output | ✅ Done (Option 1: SQL comments) |
-| 4 | **B: Documentation Fields** | Medium | Core value for data dictionary use case | ⬜ Not started |
-| 5 | **C: Dictionary Export** | Medium | Enterprise deliverable generation | ⬜ Not started |
-| 6 | **D: Coverage & Impact** | Medium | Data governance tooling | ⬜ Not started |
-| 7 | **G: Hierarchy** | Large | Enterprise-scale organization | ⬜ Not started |
+| 4 | **B: Documentation Fields** | Medium | Core value for data dictionary use case | ✅ Done |
+| 5 | **C: Dictionary Export** | Medium | Enterprise deliverable generation | ✅ Done |
+| 6 | **D: Coverage & Impact** | Medium | Data governance tooling | ✅ Done |
+| 7 | **G: Hierarchy** | Large | Enterprise-scale organization | ✅ Done (parentId only, no tree UI) |
 
 ### Completed
 - **Phase A**: Added `scale`, `check`, `enumValues` to `ColumnDomain` type. Propagation via `DOMAIN_FIELDS`. DomainModal UI fields, domain-xlsx import/export, erdStore propagation all updated.
-- **Phase E**: 6 MCP tools added (`list_domains`, `get_domain`, `add_domain`, `update_domain`, `delete_domain`, `suggest_domains`). Documentation in `docs/mcp/TOOLS.md` (22 → 28 tools).
+- **Phase B**: Added 7 documentation fields (`description`, `alias`, `dataStandard`, `example`, `validRange`, `owner`, `tags`) to `ColumnDomain`. DomainEditForm inline editing UI.
+- **Phase C**: Domain dictionary export in 3 formats — HTML, Markdown, XLSX (`DomainModal` export buttons). Coverage overview included.
+- **Phase D**: DomainCoverageDashboard component showing usage statistics. Unused domain filter toggle (`showUnusedOnly`).
+- **Phase E**: 8 MCP tools added (`list_domains`, `get_domain`, `add_domain`, `update_domain`, `delete_domain`, `suggest_domains`, `domain_coverage`, `export_domain_dictionary`).
 - **Phase F**: `includeDomains` DDL export option with inline `-- domain: name` comments per column. DdlModal checkbox, i18n (4 languages), 6 tests added. Option 2 (PostgreSQL CREATE DOMAIN) not yet implemented.
-
-### Remaining
-Phases B + C together deliver the full "data dictionary" capability.
-Phase G is optional and only needed for very large schemas.
+- **Phase G**: `parentId` field on `ColumnDomain` for parent-child hierarchy. Circular reference detection via lint rule (`domain-circular-hierarchy`). Full tree UI not yet implemented.
 
 ---
 
