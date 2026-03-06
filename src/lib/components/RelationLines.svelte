@@ -274,6 +274,7 @@
   }
 
   function handleLineClick(line: FKLine, e: MouseEvent) {
+    e.stopPropagation();
     // Open popover at click position (world coords)
     const svg = (e.target as SVGElement).closest('svg');
     if (!svg) return;
@@ -284,10 +285,21 @@
     if (!ctm) return;
     const worldPt = pt.matrixTransform(ctm.inverse());
     fkPopover = { line, x: worldPt.x, y: worldPt.y };
+    // Close on next click anywhere
+    requestAnimationFrame(() => {
+      window.addEventListener('pointerdown', handlePopoverOutsideClick);
+    });
+  }
+
+  function handlePopoverOutsideClick(e: PointerEvent) {
+    const target = e.target as HTMLElement;
+    if (target.closest?.('.fk-popover')) return;
+    closeFkPopover();
   }
 
   function closeFkPopover() {
     fkPopover = null;
+    window.removeEventListener('pointerdown', handlePopoverOutsideClick);
   }
 
   function popoverEditLabel() {
@@ -490,9 +502,6 @@
   {@const srcColNames = pop.line.fk.columnIds.map((id) => srcTable?.columns.find((c) => c.id === id)?.name ?? '?')}
   {@const refColNames = pop.line.fk.referencedColumnIds.map((id) => refTable?.columns.find((c) => c.id === id)?.name ?? '?')}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="fk-popover-backdrop" onclick={closeFkPopover} onkeydown={(e) => { if (e.key === 'Escape') closeFkPopover(); }}>
-  </div>
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="fk-popover"
     style="left:{pop.x}px; top:{pop.y}px"
@@ -533,11 +542,6 @@
 {/if}
 
 <style>
-  .fk-popover-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 9;
-  }
   .fk-popover {
     position: absolute;
     transform: translate(-50%, 8px);
