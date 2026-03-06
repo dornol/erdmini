@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { generateApiKey } from '$lib/server/auth/api-key';
 import { hasProjectAccess } from '$lib/server/auth/permissions';
+import { requirePermission } from '$lib/server/auth/guards';
 import { randomUUID } from 'crypto';
 import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
 
@@ -40,6 +41,9 @@ export const GET: RequestHandler = ({ locals }) => {
 export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireUser(locals);
   if (err) return err;
+
+  const permErr = requirePermission(locals, 'canCreateApiKey');
+  if (permErr) return permErr;
 
   const { name, expiresAt, scopes } = await request.json();
 

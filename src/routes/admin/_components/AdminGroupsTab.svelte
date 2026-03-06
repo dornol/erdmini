@@ -45,7 +45,7 @@
   async function createGroup() {
     error = '';
     success = '';
-    if (!newGroup.name.trim()) { error = 'Name required'; return; }
+    if (!newGroup.name.trim()) { error = m.admin_groups_name_required(); return; }
     const res = await fetch('/api/admin/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -176,7 +176,7 @@
           <th>{m.admin_groups_members()}</th>
           <th>{m.admin_groups_created_by()}</th>
           <th>{m.admin_groups_created_at()}</th>
-          <th>Actions</th>
+          <th>{m.admin_groups_actions()}</th>
         </tr>
       </thead>
       <tbody>
@@ -191,8 +191,8 @@
               <td>{group.created_at ? new Date(group.created_at).toLocaleDateString() : '-'}</td>
               <td>
                 <div class="btn-row">
-                  <button class="btn-sm btn-save" onclick={saveEdit}>Save</button>
-                  <button class="btn-sm" onclick={() => (editingGroupId = null)}>Cancel</button>
+                  <button class="btn-sm btn-save" onclick={saveEdit}>{m.action_save()}</button>
+                  <button class="btn-sm" onclick={() => (editingGroupId = null)}>{m.action_cancel()}</button>
                 </div>
               </td>
             </tr>
@@ -248,7 +248,7 @@
                       </div>
                     {/each}
                     {#if members.length === 0}
-                      <div class="empty-msg" style="padding: 12px 0">No members</div>
+                      <div class="empty-msg" style="padding: 12px 0">{m.admin_groups_no_members()}</div>
                     {/if}
                   </div>
                 </div>

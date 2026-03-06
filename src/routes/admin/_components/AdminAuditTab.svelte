@@ -120,7 +120,7 @@
       onkeydown={(e) => { if (e.key === 'Enter') loadAuditLogs(); }}
     />
     <button class="btn-secondary" onclick={() => loadAuditLogs()}>
-      Search
+      {m.admin_audit_search()}
     </button>
     {#if auditTotal > 0}
       <span class="audit-total">{m.admin_audit_total({ count: String(auditTotal) })}</span>

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
-import { checkProjectAccess } from '$lib/server/auth/guards';
+import { checkProjectAccess, requirePermission } from '$lib/server/auth/guards';
 import { createEmbedToken, listEmbedTokens, deleteEmbedToken } from '$lib/server/embed';
 import { logAudit } from '$lib/server/audit';
 
@@ -16,6 +16,9 @@ export const GET: RequestHandler = ({ params, locals }) => {
 export const POST: RequestHandler = async ({ params, request, locals }) => {
   const err = checkProjectAccess(db, locals, params.projectId, 'editor');
   if (err) return err;
+
+  const permErr = requirePermission(locals, 'canCreateEmbed');
+  if (permErr) return permErr;
 
   const body = await request.json();
   const { password, expiresInDays } = body as { password?: string; expiresInDays?: number };

@@ -83,8 +83,8 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
 
   // Fetch user info for response
   const user = db.prepare(
-    'SELECT id, username, display_name, email, role FROM users WHERE id = ?'
-  ).get(result.userId) as { id: string; username: string | null; display_name: string; email: string | null; role: string };
+    'SELECT id, username, display_name, email, role, can_create_project, can_create_api_key, can_create_embed FROM users WHERE id = ?'
+  ).get(result.userId) as { id: string; username: string | null; display_name: string; email: string | null; role: string; can_create_project: number; can_create_api_key: number; can_create_embed: number };
 
   return json({
     user: {
@@ -93,6 +93,10 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
       displayName: user.display_name,
       email: user.email,
       role: user.role,
+      status: 'active',
+      canCreateProject: user.role === 'admin' || user.can_create_project === 1,
+      canCreateApiKey: user.role === 'admin' || user.can_create_api_key === 1,
+      canCreateEmbed: user.role === 'admin' || user.can_create_embed === 1,
     },
   });
 };

@@ -31,7 +31,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
   }
 
   const body = await request.json();
-  const { displayName, email, role, password, status } = body;
+  const { displayName, email, role, password, status, canCreateProject, canCreateApiKey, canCreateEmbed } = body;
 
   // Prevent demoting the last admin
   if (role && role !== 'admin' && user.role === 'admin') {
@@ -69,6 +69,18 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     const hash = await hashPassword(password);
     updates.push('password_hash = ?');
     values.push(hash);
+  }
+  if (canCreateProject !== undefined) {
+    updates.push('can_create_project = ?');
+    values.push(canCreateProject ? '1' : '0');
+  }
+  if (canCreateApiKey !== undefined) {
+    updates.push('can_create_api_key = ?');
+    values.push(canCreateApiKey ? '1' : '0');
+  }
+  if (canCreateEmbed !== undefined) {
+    updates.push('can_create_embed = ?');
+    values.push(canCreateEmbed ? '1' : '0');
   }
 
   if (updates.length > 0) {

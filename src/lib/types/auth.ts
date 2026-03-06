@@ -5,6 +5,9 @@ export interface AuthUser {
   email: string | null;
   role: 'admin' | 'user';
   status: 'active' | 'pending';
+  canCreateProject: boolean;
+  canCreateApiKey: boolean;
+  canCreateEmbed: boolean;
 }
 
 export interface SessionRow {
@@ -24,6 +27,9 @@ export interface UserRow {
   status: string;
   created_at: string;
   updated_at: string;
+  can_create_project: number;
+  can_create_api_key: number;
+  can_create_embed: number;
 }
 
 export interface OIDCProviderRow {

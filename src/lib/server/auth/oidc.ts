@@ -2,6 +2,7 @@ import * as client from 'openid-client';
 import { randomBytes, randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 import type { OIDCProviderRow, OIDCStateRow } from '$lib/types/auth';
+import { getDefaultPermissions } from '$lib/server/site-settings';
 
 // Cache discovered configs
 const configCache = new Map<string, client.Configuration>();
@@ -121,13 +122,16 @@ export function findOrCreateOIDCUser(
   // Determine status: active if auto-create is on, pending otherwise
   const status = autoCreate ? 'active' : 'pending';
 
-  // Create new user
+  // Create new user with default permissions from site_settings
   const userId = randomUUID();
   const displayName = name || email || `oidc_${sub.substring(0, 8)}`;
 
+  // Load default permission flags
+  const defaults = getDefaultPermissions(db);
+
   db.prepare(
-    `INSERT INTO users (id, display_name, email, role, status) VALUES (?, ?, ?, 'user', ?)`
-  ).run(userId, displayName, email || null, status);
+    `INSERT INTO users (id, display_name, email, role, status, can_create_project, can_create_api_key, can_create_embed) VALUES (?, ?, ?, 'user', ?, ?, ?, ?)`
+  ).run(userId, displayName, email || null, status, defaults.canCreateProject, defaults.canCreateApiKey, defaults.canCreateEmbed);
 
   // Link identity
   const identityId = randomUUID();

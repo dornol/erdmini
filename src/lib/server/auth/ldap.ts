@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 import type { LdapProviderRow } from '$lib/types/auth';
 import { logger } from '$lib/server/logger';
+import { getDefaultPermissions } from '$lib/server/site-settings';
 
 export interface LdapAuthResult {
   dn: string;
@@ -164,13 +165,14 @@ export function findOrCreateLdapUser(
   // Determine status: active if auto-create is on
   const status = 'active';
 
-  // Create new user
+  // Create new user with default permissions
   const userId = randomUUID();
   const name = displayName || email || `ldap_${ldapDn.substring(0, 16)}`;
+  const defaults = getDefaultPermissions(db);
 
   db.prepare(
-    `INSERT INTO users (id, display_name, email, role, status) VALUES (?, ?, ?, ?, ?)`
-  ).run(userId, name, email || null, role, status);
+    `INSERT INTO users (id, display_name, email, role, status, can_create_project, can_create_api_key, can_create_embed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(userId, name, email || null, role, status, defaults.canCreateProject, defaults.canCreateApiKey, defaults.canCreateEmbed);
 
   // Link identity
   const identityId = randomUUID();

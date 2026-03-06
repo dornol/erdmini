@@ -19,7 +19,8 @@ export function createSession(db: Database.Database, userId: string): SessionRow
 export function validateSession(db: Database.Database, sessionId: string): { user: AuthUser; session: SessionRow } | null {
   const row = db.prepare(`
     SELECT s.id as session_id, s.user_id, s.expires_at, s.created_at as session_created_at,
-           u.id as uid, u.username, u.display_name, u.email, u.role, u.status
+           u.id as uid, u.username, u.display_name, u.email, u.role, u.status,
+           u.can_create_project, u.can_create_api_key, u.can_create_embed
     FROM sessions s
     JOIN users u ON s.user_id = u.id
     WHERE s.id = ?
@@ -34,6 +35,9 @@ export function validateSession(db: Database.Database, sessionId: string): { use
     email: string | null;
     role: string;
     status: string;
+    can_create_project: number;
+    can_create_api_key: number;
+    can_create_embed: number;
   } | undefined;
 
   if (!row) return null;
@@ -58,6 +62,9 @@ export function validateSession(db: Database.Database, sessionId: string): { use
       email: row.email,
       role: row.role as 'admin' | 'user',
       status: row.status as 'active' | 'pending',
+      canCreateProject: row.role === 'admin' || row.can_create_project === 1,
+      canCreateApiKey: row.role === 'admin' || row.can_create_api_key === 1,
+      canCreateEmbed: row.role === 'admin' || row.can_create_embed === 1,
     },
     session: {
       id: row.session_id,

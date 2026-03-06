@@ -81,7 +81,7 @@
   }
 
   async function deleteProvider(id: string) {
-    if (!confirm('Delete this OIDC provider?')) return;
+    if (!confirm(m.admin_oidc_delete_confirm())) return;
     await fetch(`/api/admin/oidc-providers/${id}`, { method: 'DELETE' });
     await onreload();
   }
@@ -99,7 +99,7 @@
       providerError = body.error || 'Failed';
       return;
     }
-    providerSuccess = `Provider "${newProvider.displayName}" created`;
+    providerSuccess = m.admin_oidc_created({ name: newProvider.displayName });
     newProvider = {
       displayName: '',
       issuerUrl: '',
@@ -118,22 +118,22 @@
 </script>
 
 <section class="section">
-  <h2>OIDC Providers</h2>
+  <h2>{m.admin_oidc_title()}</h2>
 
   {#each providers as provider}
     <div class="provider-card">
       {#if editingProvider === provider.id}
         <div class="form-grid">
-          <input placeholder="Display Name" bind:value={editForm.displayName} />
-          <input placeholder="Issuer URL" bind:value={editForm.issuerUrl} />
-          <input placeholder="Client ID" bind:value={editForm.clientId} />
-          <input placeholder="Client Secret" type="password" bind:value={editForm.clientSecret} />
-          <input placeholder="Scopes" bind:value={editForm.scopes} />
+          <input placeholder={m.admin_oidc_display_name()} bind:value={editForm.displayName} />
+          <input placeholder={m.admin_oidc_issuer_url()} bind:value={editForm.issuerUrl} />
+          <input placeholder={m.admin_oidc_client_id()} bind:value={editForm.clientId} />
+          <input placeholder={m.admin_oidc_client_secret()} type="password" bind:value={editForm.clientSecret} />
+          <input placeholder={m.admin_oidc_scopes()} bind:value={editForm.scopes} />
           <label class="checkbox-label">
-            <input type="checkbox" bind:checked={editForm.enabled} /> Enabled
+            <input type="checkbox" bind:checked={editForm.enabled} /> {m.admin_oidc_enabled()}
           </label>
           <label class="checkbox-label">
-            <input type="checkbox" bind:checked={editForm.autoCreateUsers} /> Auto-create users
+            <input type="checkbox" bind:checked={editForm.autoCreateUsers} /> {m.admin_oidc_auto_create()}
           </label>
           <label class="checkbox-label">
             <input type="checkbox" bind:checked={editForm.syncGroups} /> {m.admin_oidc_sync_groups()}
@@ -146,8 +146,8 @@
             <span class="field-hint">{m.admin_oidc_admin_groups_hint()}</span>
           {/if}
           <div class="btn-row">
-            <button class="btn-primary" onclick={saveProvider}>Save</button>
-            <button class="btn-cancel" onclick={() => (editingProvider = null)}>Cancel</button>
+            <button class="btn-primary" onclick={saveProvider}>{m.action_save()}</button>
+            <button class="btn-cancel" onclick={() => (editingProvider = null)}>{m.action_cancel()}</button>
           </div>
         </div>
       {:else}
@@ -156,10 +156,10 @@
           <span class="provider-detail">{provider.issuer_url}</span>
           <div class="provider-badges">
             <span class="badge" class:badge-on={provider.enabled === 1}>
-              {provider.enabled ? 'Enabled' : 'Disabled'}
+              {provider.enabled ? m.admin_oidc_enabled() : m.admin_oidc_disabled()}
             </span>
             <span class="badge">
-              {provider.auto_create_users ? 'Auto-register' : 'Manual'}
+              {provider.auto_create_users ? m.admin_oidc_auto_register() : m.admin_oidc_manual()}
             </span>
             {#if provider.sync_groups}
               <span class="badge badge-on">{m.admin_oidc_sync_groups()}</span>
@@ -170,26 +170,26 @@
           </div>
         </div>
         <div class="provider-actions">
-          <button class="btn-sm" onclick={() => startEditProvider(provider)}>Edit</button>
-          <button class="btn-sm btn-danger" onclick={() => deleteProvider(provider.id)}>Delete</button>
+          <button class="btn-sm" onclick={() => startEditProvider(provider)}>{m.action_edit()}</button>
+          <button class="btn-sm btn-danger" onclick={() => deleteProvider(provider.id)}>{m.action_delete()}</button>
         </div>
       {/if}
     </div>
   {/each}
 
   <div class="form-section">
-    <h3>Add OIDC Provider</h3>
+    <h3>{m.admin_oidc_add_title()}</h3>
     <div class="form-grid">
-      <input placeholder="Display Name (e.g. Google)" bind:value={newProvider.displayName} />
-      <input placeholder="Issuer URL" bind:value={newProvider.issuerUrl} />
-      <input placeholder="Client ID" bind:value={newProvider.clientId} />
-      <input placeholder="Client Secret" type="password" bind:value={newProvider.clientSecret} />
-      <input placeholder="Scopes" bind:value={newProvider.scopes} />
+      <input placeholder={m.admin_oidc_display_name_hint()} bind:value={newProvider.displayName} />
+      <input placeholder={m.admin_oidc_issuer_url()} bind:value={newProvider.issuerUrl} />
+      <input placeholder={m.admin_oidc_client_id()} bind:value={newProvider.clientId} />
+      <input placeholder={m.admin_oidc_client_secret()} type="password" bind:value={newProvider.clientSecret} />
+      <input placeholder={m.admin_oidc_scopes()} bind:value={newProvider.scopes} />
       <label class="checkbox-label">
-        <input type="checkbox" bind:checked={newProvider.enabled} /> Enabled
+        <input type="checkbox" bind:checked={newProvider.enabled} /> {m.admin_oidc_enabled()}
       </label>
       <label class="checkbox-label">
-        <input type="checkbox" bind:checked={newProvider.autoCreateUsers} /> Auto-create users
+        <input type="checkbox" bind:checked={newProvider.autoCreateUsers} /> {m.admin_oidc_auto_create()}
       </label>
       <label class="checkbox-label">
         <input type="checkbox" bind:checked={newProvider.syncGroups} /> {m.admin_oidc_sync_groups()}
@@ -201,7 +201,7 @@
         <input placeholder={m.admin_oidc_admin_groups()} bind:value={newProvider.adminGroups} />
         <span class="field-hint">{m.admin_oidc_admin_groups_hint()}</span>
       {/if}
-      <button class="btn-primary" onclick={createProvider}>Add Provider</button>
+      <button class="btn-primary" onclick={createProvider}>{m.admin_oidc_add_provider()}</button>
     </div>
     {#if providerError}<div class="msg-error">{providerError}</div>{/if}
     {#if providerSuccess}<div class="msg-success">{providerSuccess}</div>{/if}

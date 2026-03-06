@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { ensureOwnerPermission } from '$lib/server/auth/permissions';
+import { requirePermission } from '$lib/server/auth/guards';
 
 function getUserId(locals: App.Locals): string {
   return locals.user?.id ?? 'singleton';
@@ -33,6 +34,14 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
         }
       } catch { /* ignore */ }
     }
+
+    // Check permission if creating new projects (allow first project for new users)
+    const hasNewProjects = body.projects.some((p: { id: string }) => !existingIds.has(p.id));
+    if (hasNewProjects && existingIds.size > 0) {
+      const permErr = requirePermission(locals, 'canCreateProject');
+      if (permErr) return permErr;
+    }
+
     for (const proj of body.projects) {
       if (!existingIds.has(proj.id)) {
         ensureOwnerPermission(db, proj.id, userId);

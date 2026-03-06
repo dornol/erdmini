@@ -4,12 +4,18 @@ export interface SiteSettings {
   site_name: string;
   login_message: string;
   logo_url: string;
+  default_can_create_project: string;
+  default_can_create_api_key: string;
+  default_can_create_embed: string;
 }
 
 const DEFAULTS: SiteSettings = {
   site_name: 'erdmini',
   login_message: '',
   logo_url: '',
+  default_can_create_project: '1',
+  default_can_create_api_key: '1',
+  default_can_create_embed: '1',
 };
 
 const VALID_KEYS = new Set<keyof SiteSettings>(Object.keys(DEFAULTS) as (keyof SiteSettings)[]);
@@ -28,6 +34,23 @@ export function getSiteSettings(): SiteSettings {
   }
   _cache = settings;
   return settings;
+}
+
+/**
+ * Read default permission flags for new user creation.
+ * Works with any db instance (for use in oidc/ldap modules that receive db as parameter).
+ */
+export function getDefaultPermissions(dbInstance: { prepare: (sql: string) => { all: (...args: any[]) => any[] } }): { canCreateProject: number; canCreateApiKey: number; canCreateEmbed: number } {
+  const rows = dbInstance.prepare(
+    "SELECT key, value FROM site_settings WHERE key IN ('default_can_create_project', 'default_can_create_api_key', 'default_can_create_embed')"
+  ).all() as { key: string; value: string }[];
+
+  const map = new Map(rows.map(r => [r.key, r.value]));
+  return {
+    canCreateProject: map.get('default_can_create_project') === '0' ? 0 : 1,
+    canCreateApiKey: map.get('default_can_create_api_key') === '0' ? 0 : 1,
+    canCreateEmbed: map.get('default_can_create_embed') === '0' ? 0 : 1,
+  };
 }
 
 export function updateSiteSettings(updates: Partial<SiteSettings>): SiteSettings {

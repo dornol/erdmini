@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Database from 'better-sqlite3';
+import type { AuthUser } from '$lib/types/auth';
 
 // Inline implementation to test without DB singleton dependency
 interface SiteSettings {
@@ -52,6 +53,18 @@ function updateSiteSettings(db: InstanceType<typeof Database>, updates: Partial<
   });
   tx();
   return getSiteSettings(db);
+}
+
+function getDefaultPermissions(db: InstanceType<typeof Database>): { canCreateProject: number; canCreateApiKey: number; canCreateEmbed: number } {
+  const rows = db.prepare(
+    "SELECT key, value FROM site_settings WHERE key IN ('default_can_create_project', 'default_can_create_api_key', 'default_can_create_embed')"
+  ).all() as { key: string; value: string }[];
+  const map = new Map(rows.map(r => [r.key, r.value]));
+  return {
+    canCreateProject: map.get('default_can_create_project') === '0' ? 0 : 1,
+    canCreateApiKey: map.get('default_can_create_api_key') === '0' ? 0 : 1,
+    canCreateEmbed: map.get('default_can_create_embed') === '0' ? 0 : 1,
+  };
 }
 
 describe('site-settings', () => {
@@ -147,5 +160,95 @@ describe('site-settings', () => {
       const result = updateSiteSettings(db, {});
       expect(result).toEqual(DEFAULTS);
     });
+  });
+
+  describe('getDefaultPermissions', () => {
+    it('returns all enabled when no settings exist', () => {
+      const perms = getDefaultPermissions(db);
+      expect(perms).toEqual({ canCreateProject: 1, canCreateApiKey: 1, canCreateEmbed: 1 });
+    });
+
+    it('returns all enabled when settings are "1"', () => {
+      db.exec(`
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_project', '1');
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_api_key', '1');
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_embed', '1');
+      `);
+      const perms = getDefaultPermissions(db);
+      expect(perms).toEqual({ canCreateProject: 1, canCreateApiKey: 1, canCreateEmbed: 1 });
+    });
+
+    it('returns disabled when settings are "0"', () => {
+      db.exec(`
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_project', '0');
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_api_key', '0');
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_embed', '0');
+      `);
+      const perms = getDefaultPermissions(db);
+      expect(perms).toEqual({ canCreateProject: 0, canCreateApiKey: 0, canCreateEmbed: 0 });
+    });
+
+    it('handles mixed settings', () => {
+      db.exec(`
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_project', '1');
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_api_key', '0');
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_embed', '1');
+      `);
+      const perms = getDefaultPermissions(db);
+      expect(perms).toEqual({ canCreateProject: 1, canCreateApiKey: 0, canCreateEmbed: 1 });
+    });
+
+    it('treats unknown values as enabled (not "0")', () => {
+      db.exec(`
+        INSERT INTO site_settings (key, value) VALUES ('default_can_create_project', 'yes');
+      `);
+      const perms = getDefaultPermissions(db);
+      expect(perms.canCreateProject).toBe(1);
+    });
+  });
+});
+
+// Test requirePermission logic (without importing SvelteKit json)
+describe('requirePermission logic', () => {
+  function makeUser(overrides: Partial<AuthUser> = {}): AuthUser {
+    return {
+      id: 'u1', username: 'test', displayName: 'Test', email: null,
+      role: 'user', status: 'active',
+      canCreateProject: true, canCreateApiKey: true, canCreateEmbed: true,
+      ...overrides,
+    };
+  }
+
+  function checkPermission(user: AuthUser | null, perm: 'canCreateProject' | 'canCreateApiKey' | 'canCreateEmbed'): 'ok' | 'denied' | 'unauth' {
+    if (!user) return 'unauth';
+    if (user.role === 'admin') return 'ok';
+    if (!user[perm]) return 'denied';
+    return 'ok';
+  }
+
+  it('allows admin regardless of flags', () => {
+    const user = makeUser({ role: 'admin', canCreateProject: false });
+    expect(checkPermission(user, 'canCreateProject')).toBe('ok');
+  });
+
+  it('allows user with permission', () => {
+    const user = makeUser({ canCreateProject: true });
+    expect(checkPermission(user, 'canCreateProject')).toBe('ok');
+  });
+
+  it('denies user without permission', () => {
+    const user = makeUser({ canCreateProject: false });
+    expect(checkPermission(user, 'canCreateProject')).toBe('denied');
+  });
+
+  it('returns unauth for null user', () => {
+    expect(checkPermission(null, 'canCreateProject')).toBe('unauth');
+  });
+
+  it('checks each permission independently', () => {
+    const user = makeUser({ canCreateProject: true, canCreateApiKey: false, canCreateEmbed: true });
+    expect(checkPermission(user, 'canCreateProject')).toBe('ok');
+    expect(checkPermission(user, 'canCreateApiKey')).toBe('denied');
+    expect(checkPermission(user, 'canCreateEmbed')).toBe('ok');
   });
 });

@@ -39,3 +39,16 @@ export function checkProjectAccess(
 	}
 	return null;
 }
+
+/**
+ * Check a user-level permission flag. Admin always bypasses.
+ * Returns 403 response if forbidden, null if OK.
+ */
+export function requirePermission(locals: App.Locals, permission: 'canCreateProject' | 'canCreateApiKey' | 'canCreateEmbed') {
+	if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
+	if (locals.user.role === 'admin') return null;
+	if (!locals.user[permission]) {
+		return json({ error: 'You do not have permission for this action' }, { status: 403 });
+	}
+	return null;
+}

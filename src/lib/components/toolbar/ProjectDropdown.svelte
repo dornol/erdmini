@@ -209,6 +209,8 @@
           class="dropdown-item project-new-btn"
           role="menuitem"
           onclick={() => (showNewProjectInput = true)}
+          disabled={authStore.user != null && !authStore.user.canCreateProject}
+          title={authStore.user != null && !authStore.user.canCreateProject ? 'No permission to create projects' : ''}
         >
           {m.project_new()}
         </button>

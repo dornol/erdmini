@@ -73,7 +73,7 @@
 
   <div class="tabs">
     <button class="tab" class:active={activeTab === 'users'} onclick={() => (activeTab = 'users')}>
-      Users ({users.length})
+      {m.admin_tab_users()} ({users.length})
       {#if pendingCount > 0}
         <span class="tab-badge">{pendingCount}</span>
       {/if}
@@ -82,22 +82,22 @@
       {m.admin_tab_groups()} ({groups.length})
     </button>
     <button class="tab" class:active={activeTab === 'oidc'} onclick={() => (activeTab = 'oidc')}>
-      OIDC ({providers.length})
+      {m.admin_tab_oidc()} ({providers.length})
     </button>
     <button class="tab" class:active={activeTab === 'ldap'} onclick={() => (activeTab = 'ldap')}>
-      LDAP ({ldapProviders.length})
+      {m.admin_tab_ldap()} ({ldapProviders.length})
     </button>
     <button class="tab" class:active={activeTab === 'api-keys'} onclick={() => (activeTab = 'api-keys')}>
-      API Keys ({apiKeys.length})
+      {m.admin_tab_api_keys()} ({apiKeys.length})
     </button>
     <button class="tab" class:active={activeTab === 'embeds'} onclick={() => (activeTab = 'embeds')}>
-      Embeds ({embedCount})
+      {m.admin_tab_embeds()} ({embedCount})
     </button>
     <button class="tab" class:active={activeTab === 'projects'} onclick={() => (activeTab = 'projects')}>
       {m.admin_tab_projects()} ({projectCount})
     </button>
     <button class="tab" class:active={activeTab === 'branding'} onclick={() => (activeTab = 'branding')}>
-      Branding
+      {m.admin_tab_branding()}
     </button>
     <button class="tab" class:active={activeTab === 'backup'} onclick={() => (activeTab = 'backup')}>
       {m.admin_tab_backup()}
@@ -135,9 +135,7 @@
     min-height: 100vh;
     background: #0f172a;
     color: #f1f5f9;
-    padding: 24px;
-    max-width: 1200px;
-    margin: 0 auto;
+    padding: 24px 40px;
   }
 
   .admin-header {
@@ -165,6 +163,7 @@
 
   .tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     margin-bottom: 24px;
     border-bottom: 1px solid #334155;
@@ -269,6 +268,34 @@
   .admin-page :global(.badge-pending) {
     background: #713f12;
     color: #fbbf24;
+  }
+
+  .admin-page :global(.badge-perm) {
+    background: #1e3a5f;
+    color: #7dd3fc;
+    font-size: 10px;
+  }
+
+  .admin-page :global(.perm-badges) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+
+  .admin-page :global(.perm-checks) {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .admin-page :global(.perm-check) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #cbd5e1;
+    cursor: pointer;
+    white-space: nowrap;
   }
 
   .admin-page :global(.btn-approve) {

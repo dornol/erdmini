@@ -64,6 +64,10 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
       displayName: user.display_name,
       email: user.email,
       role: user.role,
+      status: user.status,
+      canCreateProject: user.role === 'admin' || user.can_create_project === 1,
+      canCreateApiKey: user.role === 'admin' || user.can_create_api_key === 1,
+      canCreateEmbed: user.role === 'admin' || user.can_create_embed === 1,
     },
   });
 };

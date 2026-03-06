@@ -70,7 +70,7 @@
       projectError = data.error || 'Failed to transfer';
       return;
     }
-    projectSuccess = `Ownership transferred`;
+    projectSuccess = m.admin_projects_transferred();
     transferUserId = '';
     expandedProject = null;
     await loadProjects();
@@ -86,7 +86,7 @@
       projectError = data.error || 'Failed to delete project';
       return;
     }
-    projectSuccess = `Project "${projectName}" deleted`;
+    projectSuccess = m.admin_projects_deleted_msg({ name: projectName });
     expandedProject = null;
     await loadProjects();
   }
@@ -143,7 +143,7 @@
                       {/each}
                     </div>
                   {:else}
-                    <p class="section-desc">No members</p>
+                    <p class="section-desc">{m.admin_projects_no_members()}</p>
                   {/if}
 
                   <div class="transfer-section">

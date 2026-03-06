@@ -99,7 +99,7 @@
       apiKeyError = data.error || 'Failed to update API key';
       return;
     }
-    apiKeySuccess = `API key "${editKeyForm.name}" updated`;
+    apiKeySuccess = m.admin_api_keys_updated({ name: editKeyForm.name });
     editingKeyId = null;
     await onreload();
   }
@@ -128,7 +128,7 @@
     }
     const data = await res.json();
     createdKey = data.key;
-    apiKeySuccess = `API key "${newApiKey.name}" created`;
+    apiKeySuccess = m.admin_api_keys_created_msg({ name: newApiKey.name });
     newApiKey = { name: '', expiresAt: '', userId: '' };
     selectedUserLabel = '';
     userSearch = '';
@@ -138,7 +138,7 @@
   }
 
   async function deleteApiKey(id: string, name: string) {
-    if (!confirm(`Delete API key "${name}"?`)) return;
+    if (!confirm(m.admin_api_keys_delete_confirm({ name }))) return;
     apiKeyError = '';
     const res = await fetch(`/api/admin/api-keys/${id}`, { method: 'DELETE' });
     if (!res.ok) {
@@ -146,7 +146,7 @@
       apiKeyError = data.error || 'Failed to delete API key';
       return;
     }
-    apiKeySuccess = `API key "${name}" deleted`;
+    apiKeySuccess = m.admin_api_keys_deleted_msg({ name });
     await onreload();
   }
 
@@ -159,32 +159,32 @@
 </script>
 
 <section class="section">
-  <h2>API Keys</h2>
-  <p class="section-desc">API keys allow external tools (MCP servers, CI/CD) to access erdmini on behalf of a user.</p>
+  <h2>{m.admin_api_keys_title()}</h2>
+  <p class="section-desc">{m.admin_api_keys_desc()}</p>
 
   {#if createdKey}
     <div class="key-reveal">
-      <p class="key-reveal-warning">Copy this key now — it will not be shown again.</p>
+      <p class="key-reveal-warning">{m.admin_api_keys_copy_warning()}</p>
       <div class="key-reveal-row">
         <code class="key-value">{createdKey}</code>
         <button class="btn-sm btn-copy" onclick={copyKey}>
-          {keyCopied ? 'Copied!' : 'Copy'}
+          {keyCopied ? m.admin_api_keys_copied() : m.admin_api_keys_copy()}
         </button>
       </div>
-      <button class="btn-sm" onclick={() => (createdKey = null)}>Dismiss</button>
+      <button class="btn-sm" onclick={() => (createdKey = null)}>{m.action_dismiss()}</button>
     </div>
   {/if}
 
   <table class="data-table">
     <thead>
       <tr>
-        <th>Name</th>
-        <th>User</th>
-        <th>Scopes</th>
-        <th>Created</th>
-        <th>Last Used</th>
-        <th>Expires</th>
-        <th>Actions</th>
+        <th>{m.admin_api_keys_name()}</th>
+        <th>{m.admin_api_keys_user()}</th>
+        <th>{m.admin_api_keys_scopes()}</th>
+        <th>{m.admin_api_keys_created_at()}</th>
+        <th>{m.admin_api_keys_last_used()}</th>
+        <th>{m.admin_api_keys_expires()}</th>
+        <th>{m.admin_api_keys_actions()}</th>
       </tr>
     </thead>
     <tbody>
@@ -194,38 +194,38 @@
             <td colspan="7">
               <div class="key-edit-form">
                 <div class="form-grid">
-                  <input class="inline-input" placeholder="Key name" bind:value={editKeyForm.name} />
+                  <input class="inline-input" placeholder={m.admin_api_keys_key_name()} bind:value={editKeyForm.name} />
                   <label class="input-label">
-                    <span>Expires</span>
+                    <span>{m.admin_api_keys_expires()}</span>
                     <input class="inline-input" type="date" bind:value={editKeyForm.expiresAt} />
                   </label>
                 </div>
                 <div class="scope-controls" style="margin-top:8px">
                   <label class="checkbox-label">
-                    <input type="radio" bind:group={editKeyScopeMode} value="all" /> All Projects
+                    <input type="radio" bind:group={editKeyScopeMode} value="all" /> {m.admin_api_keys_all_projects()}
                   </label>
                   <label class="checkbox-label">
-                    <input type="radio" bind:group={editKeyScopeMode} value="scoped" /> Specific Projects
+                    <input type="radio" bind:group={editKeyScopeMode} value="scoped" /> {m.admin_api_keys_specific()}
                   </label>
                 </div>
                 {#if editKeyScopeMode === 'scoped'}
                   <div style="margin-top:6px">
                     {#each editKeyScopes as scope, idx}
                       <div class="form-grid" style="margin-bottom:4px">
-                        <input class="inline-input" placeholder="Project ID" bind:value={scope.projectId} />
+                        <input class="inline-input" placeholder={m.admin_api_keys_project_id()} bind:value={scope.projectId} />
                         <select class="inline-select" bind:value={scope.permission}>
-                          <option value="viewer">Viewer</option>
-                          <option value="editor">Editor</option>
+                          <option value="viewer">{m.admin_api_keys_viewer()}</option>
+                          <option value="editor">{m.admin_api_keys_editor()}</option>
                         </select>
                         <button class="btn-sm btn-danger" onclick={() => { editKeyScopes = editKeyScopes.filter((_, i) => i !== idx); }}>✕</button>
                       </div>
                     {/each}
-                    <button class="btn-sm" style="margin-top:4px" onclick={() => { editKeyScopes = [...editKeyScopes, { projectId: '', permission: 'viewer' }]; }}>+ Add Scope</button>
+                    <button class="btn-sm" style="margin-top:4px" onclick={() => { editKeyScopes = [...editKeyScopes, { projectId: '', permission: 'viewer' }]; }}>{m.admin_api_keys_add_scope()}</button>
                   </div>
                 {/if}
                 <div class="btn-row" style="margin-top:10px">
-                  <button class="btn-sm btn-save" onclick={saveApiKey}>Save</button>
-                  <button class="btn-sm" onclick={() => (editingKeyId = null)}>Cancel</button>
+                  <button class="btn-sm btn-save" onclick={saveApiKey}>{m.action_save()}</button>
+                  <button class="btn-sm" onclick={() => (editingKeyId = null)}>{m.action_cancel()}</button>
                 </div>
               </div>
             </td>
@@ -240,39 +240,39 @@
                   <span class="badge" style="margin-right:4px">{scope.project_id.slice(0,8)}… ({scope.permission})</span>
                 {/each}
               {:else}
-                <span class="badge badge-on">All</span>
+                <span class="badge badge-on">{m.admin_api_keys_all()}</span>
               {/if}
             </td>
             <td>{key.created_at ? new Date(key.created_at).toLocaleDateString() : '-'}</td>
-            <td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never'}</td>
+            <td>{key.last_used_at ? new Date(key.last_used_at).toLocaleString() : m.admin_api_keys_never()}</td>
             <td>
               {#if key.expires_at}
                 <span class:expired={new Date(key.expires_at) < new Date()}>
                   {new Date(key.expires_at).toLocaleDateString()}
                 </span>
               {:else}
-                Never
+                {m.admin_api_keys_never()}
               {/if}
             </td>
             <td>
               <div class="btn-row">
-                <button class="btn-sm" onclick={() => startEditApiKey(key)}>Edit</button>
-                <button class="btn-sm btn-danger" onclick={() => deleteApiKey(key.id, key.name)}>Delete</button>
+                <button class="btn-sm" onclick={() => startEditApiKey(key)}>{m.action_edit()}</button>
+                <button class="btn-sm btn-danger" onclick={() => deleteApiKey(key.id, key.name)}>{m.action_delete()}</button>
               </div>
             </td>
           </tr>
         {/if}
       {/each}
       {#if apiKeys.length === 0}
-        <tr><td colspan="7" style="text-align:center;color:#64748b">No API keys</td></tr>
+        <tr><td colspan="7" style="text-align:center;color:#64748b">{m.admin_api_keys_no_keys()}</td></tr>
       {/if}
     </tbody>
   </table>
 
   <div class="form-section">
-    <h3>Create API Key</h3>
+    <h3>{m.admin_api_keys_create_title()}</h3>
     <div class="form-grid">
-      <input placeholder="Key name (e.g. MCP Server)" bind:value={newApiKey.name} />
+      <input placeholder={m.admin_api_keys_key_name_hint()} bind:value={newApiKey.name} />
       <div class="user-picker">
         {#if selectedUserLabel}
           <div class="user-picked">
@@ -282,7 +282,7 @@
         {:else}
           <input
             class="inline-input"
-            placeholder="Owner (default: me)"
+            placeholder={m.admin_api_keys_owner_hint()}
             bind:value={userSearch}
             onfocus={handleUserSearchFocus}
             onblur={handleUserSearchBlur}
@@ -301,41 +301,41 @@
               </button>
             {/each}
             {#if filteredUsers.length === 0}
-              <div class="user-dropdown-empty">No users found</div>
+              <div class="user-dropdown-empty">{m.admin_api_keys_no_users()}</div>
             {/if}
           </div>
         {/if}
       </div>
       <label class="input-label">
-        <span>Expires</span>
+        <span>{m.admin_api_keys_expires()}</span>
         <input type="date" bind:value={newApiKey.expiresAt} />
       </label>
     </div>
     <div class="scope-controls" style="margin-top:10px">
       <label class="checkbox-label">
-        <input type="radio" bind:group={apiKeyScopeMode} value="all" /> All Projects (Unrestricted)
+        <input type="radio" bind:group={apiKeyScopeMode} value="all" /> {m.admin_api_keys_all_projects()}
       </label>
       <label class="checkbox-label">
-        <input type="radio" bind:group={apiKeyScopeMode} value="scoped" /> Specific Projects
+        <input type="radio" bind:group={apiKeyScopeMode} value="scoped" /> {m.admin_api_keys_specific()}
       </label>
     </div>
     {#if apiKeyScopeMode === 'scoped'}
       <div style="margin-top:8px">
         {#each newApiKeyScopes as scope, idx}
           <div class="form-grid" style="margin-bottom:6px">
-            <input placeholder="Project ID" bind:value={scope.projectId} />
+            <input placeholder={m.admin_api_keys_project_id()} bind:value={scope.projectId} />
             <select bind:value={scope.permission}>
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
+              <option value="viewer">{m.admin_api_keys_viewer()}</option>
+              <option value="editor">{m.admin_api_keys_editor()}</option>
             </select>
             <button class="btn-sm btn-danger" onclick={() => { newApiKeyScopes = newApiKeyScopes.filter((_, i) => i !== idx); }}>✕</button>
           </div>
         {/each}
-        <button class="btn-sm" style="margin-top:4px" onclick={() => { newApiKeyScopes = [...newApiKeyScopes, { projectId: '', permission: 'viewer' }]; }}>+ Add Project Scope</button>
+        <button class="btn-sm" style="margin-top:4px" onclick={() => { newApiKeyScopes = [...newApiKeyScopes, { projectId: '', permission: 'viewer' }]; }}>{m.admin_api_keys_add_project_scope()}</button>
       </div>
     {/if}
     <div style="margin-top:10px">
-      <button class="btn-primary" onclick={createApiKey}>Create Key</button>
+      <button class="btn-primary" onclick={createApiKey}>{m.admin_api_keys_create_key()}</button>
     </div>
     {#if apiKeyError}<div class="msg-error">{apiKeyError}</div>{/if}
     {#if apiKeySuccess && !createdKey}<div class="msg-success">{apiKeySuccess}</div>{/if}

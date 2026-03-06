@@ -113,7 +113,7 @@
   }
 
   async function deleteProvider(id: string) {
-    if (!confirm('Delete this LDAP provider?')) return;
+    if (!confirm(m.admin_ldap_delete_confirm())) return;
     await fetch(`/api/admin/ldap-providers/${id}`, { method: 'DELETE' });
     await onreload();
   }
@@ -131,7 +131,7 @@
       providerError = body.error || 'Failed';
       return;
     }
-    providerSuccess = `Provider "${newProvider.displayName}" created`;
+    providerSuccess = m.admin_ldap_created({ name: newProvider.displayName });
     newProvider = {
       displayName: '',
       serverUrl: '',
@@ -170,7 +170,7 @@
       });
       testResult = await res.json();
     } catch {
-      testResult = { success: false, error: 'Network error' };
+      testResult = { success: false, error: m.admin_ldap_network_error() };
     } finally {
       testing = false;
     }
@@ -178,83 +178,83 @@
 </script>
 
 <section class="section">
-  <h2>LDAP Providers</h2>
+  <h2>{m.admin_ldap_title()}</h2>
 
   {#each providers as provider}
     <div class="provider-card" class:provider-card-editing={editingProvider === provider.id}>
       {#if editingProvider === provider.id}
         <div class="ldap-form">
           <div class="ldap-form-group">
-            <label class="ldap-label">Display Name</label>
+            <label class="ldap-label">{m.admin_ldap_display_name()}</label>
             <input bind:value={editForm.displayName} />
           </div>
           <div class="ldap-form-group">
-            <label class="ldap-label">Server URL</label>
+            <label class="ldap-label">{m.admin_ldap_server_url()}</label>
             <input placeholder="ldap://host:389" bind:value={editForm.serverUrl} />
           </div>
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">Bind DN</label>
+              <label class="ldap-label">{m.admin_ldap_bind_dn()}</label>
               <input bind:value={editForm.bindDn} />
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">Bind Password</label>
-              <input type="password" placeholder="(leave empty to keep)" bind:value={editForm.bindPassword} />
+              <label class="ldap-label">{m.admin_ldap_bind_password()}</label>
+              <input type="password" placeholder={m.admin_ldap_bind_password_keep()} bind:value={editForm.bindPassword} />
             </div>
           </div>
           <div class="ldap-form-group">
-            <label class="ldap-label">User Search Base</label>
+            <label class="ldap-label">{m.admin_ldap_user_search_base()}</label>
             <input bind:value={editForm.userSearchBase} />
           </div>
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">User Search Filter</label>
+              <label class="ldap-label">{m.admin_ldap_user_search_filter()}</label>
               <input bind:value={editForm.userSearchFilter} />
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">Email Attribute</label>
+              <label class="ldap-label">{m.admin_ldap_email_attr()}</label>
               <input bind:value={editForm.emailAttribute} />
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">Display Name Attribute</label>
+              <label class="ldap-label">{m.admin_ldap_display_name_attr()}</label>
               <input bind:value={editForm.displayNameAttribute} />
             </div>
           </div>
 
           <div class="ldap-divider"></div>
-          <span class="ldap-section-label">Group Settings (optional)</span>
+          <span class="ldap-section-label">{m.admin_ldap_group_settings()}</span>
 
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">Group Search Base</label>
+              <label class="ldap-label">{m.admin_ldap_group_search_base()}</label>
               <input placeholder="ou=groups,dc=example,dc=com" bind:value={editForm.groupSearchBase} />
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">Group Search Filter</label>
+              <label class="ldap-label">{m.admin_ldap_group_search_filter()}</label>
               <input bind:value={editForm.groupSearchFilter} />
             </div>
           </div>
           <div class="ldap-form-row">
             <div class="ldap-form-group">
-              <label class="ldap-label">Admin Group DN</label>
+              <label class="ldap-label">{m.admin_ldap_admin_group_dn()}</label>
               <input placeholder="cn=admins,ou=groups,..." bind:value={editForm.adminGroupDn} />
             </div>
             <div class="ldap-form-group">
-              <label class="ldap-label">Allowed Group DNs</label>
-              <input placeholder="comma-separated" bind:value={editForm.allowedGroupDns} />
+              <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}</label>
+              <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={editForm.allowedGroupDns} />
             </div>
           </div>
-          <span class="field-hint">Only users in these groups can log in. Leave empty to allow all.</span>
+          <span class="field-hint">{m.admin_ldap_allowed_hint()}</span>
 
           <div class="ldap-checks">
             <label class="checkbox-label">
-              <input type="checkbox" bind:checked={editForm.startTls} /> StartTLS
+              <input type="checkbox" bind:checked={editForm.startTls} /> {m.admin_ldap_start_tls()}
             </label>
             <label class="checkbox-label">
-              <input type="checkbox" bind:checked={editForm.enabled} /> Enabled
+              <input type="checkbox" bind:checked={editForm.enabled} /> {m.admin_ldap_enabled()}
             </label>
             <label class="checkbox-label">
-              <input type="checkbox" bind:checked={editForm.autoCreateUsers} /> Auto-create users
+              <input type="checkbox" bind:checked={editForm.autoCreateUsers} /> {m.admin_ldap_auto_create()}
             </label>
             <label class="checkbox-label">
               <input type="checkbox" bind:checked={editForm.syncGroups} /> {m.admin_ldap_sync_groups()}
@@ -264,8 +264,8 @@
             <span class="field-hint">{m.admin_ldap_sync_groups_hint()}</span>
           {/if}
           <div class="btn-row">
-            <button class="btn-primary" onclick={saveProvider}>Save</button>
-            <button class="btn-cancel" onclick={() => (editingProvider = null)}>Cancel</button>
+            <button class="btn-primary" onclick={saveProvider}>{m.action_save()}</button>
+            <button class="btn-cancel" onclick={() => (editingProvider = null)}>{m.action_cancel()}</button>
           </div>
         </div>
       {:else}
@@ -275,19 +275,19 @@
           <span class="provider-detail">{provider.user_search_base}</span>
           <div class="provider-badges">
             <span class="badge" class:badge-on={provider.enabled === 1}>
-              {provider.enabled ? 'Enabled' : 'Disabled'}
+              {provider.enabled ? m.admin_ldap_enabled() : m.admin_ldap_disabled()}
             </span>
             <span class="badge">
-              {provider.auto_create_users ? 'Auto-register' : 'Manual'}
+              {provider.auto_create_users ? m.admin_ldap_auto_register() : m.admin_ldap_manual()}
             </span>
             {#if provider.start_tls}
               <span class="badge badge-on">StartTLS</span>
             {/if}
             {#if provider.admin_group_dn}
-              <span class="badge">Admin group</span>
+              <span class="badge">{m.admin_ldap_admin_group()}</span>
             {/if}
             {#if provider.allowed_group_dns}
-              <span class="badge badge-warn">Restricted groups</span>
+              <span class="badge badge-warn">{m.admin_ldap_restricted()}</span>
             {/if}
             {#if provider.sync_groups}
               <span class="badge badge-on">{m.admin_ldap_sync_groups()}</span>
@@ -295,87 +295,87 @@
           </div>
         </div>
         <div class="provider-actions">
-          <button class="btn-sm" onclick={() => startEditProvider(provider)}>Edit</button>
-          <button class="btn-sm btn-danger" onclick={() => deleteProvider(provider.id)}>Delete</button>
+          <button class="btn-sm" onclick={() => startEditProvider(provider)}>{m.action_edit()}</button>
+          <button class="btn-sm btn-danger" onclick={() => deleteProvider(provider.id)}>{m.action_delete()}</button>
         </div>
       {/if}
     </div>
   {/each}
 
   <div class="form-section">
-    <h3>Add LDAP Provider</h3>
+    <h3>{m.admin_ldap_add_title()}</h3>
     <div class="ldap-form">
       <div class="ldap-form-group">
-        <label class="ldap-label">Display Name</label>
-        <input placeholder="e.g. Corporate AD" bind:value={newProvider.displayName} />
+        <label class="ldap-label">{m.admin_ldap_display_name()}</label>
+        <input placeholder={m.admin_ldap_display_name()} bind:value={newProvider.displayName} />
       </div>
       <div class="ldap-form-group">
-        <label class="ldap-label">Server URL</label>
+        <label class="ldap-label">{m.admin_ldap_server_url()}</label>
         <input placeholder="ldap://host:389" bind:value={newProvider.serverUrl} />
       </div>
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">Bind DN</label>
+          <label class="ldap-label">{m.admin_ldap_bind_dn()}</label>
           <input placeholder="cn=admin,dc=example,dc=com" bind:value={newProvider.bindDn} />
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">Bind Password</label>
+          <label class="ldap-label">{m.admin_ldap_bind_password()}</label>
           <input type="password" bind:value={newProvider.bindPassword} />
         </div>
       </div>
       <div class="ldap-form-group">
-        <label class="ldap-label">User Search Base</label>
+        <label class="ldap-label">{m.admin_ldap_user_search_base()}</label>
         <input placeholder="ou=users,dc=example,dc=com" bind:value={newProvider.userSearchBase} />
       </div>
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">User Search Filter</label>
+          <label class="ldap-label">{m.admin_ldap_user_search_filter()}</label>
           <input bind:value={newProvider.userSearchFilter} />
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">Email Attribute</label>
+          <label class="ldap-label">{m.admin_ldap_email_attr()}</label>
           <input bind:value={newProvider.emailAttribute} />
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">Display Name Attribute</label>
+          <label class="ldap-label">{m.admin_ldap_display_name_attr()}</label>
           <input bind:value={newProvider.displayNameAttribute} />
         </div>
       </div>
 
       <div class="ldap-divider"></div>
-      <span class="ldap-section-label">Group Settings (optional)</span>
+      <span class="ldap-section-label">{m.admin_ldap_group_settings()}</span>
 
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">Group Search Base</label>
+          <label class="ldap-label">{m.admin_ldap_group_search_base()}</label>
           <input placeholder="ou=groups,dc=example,dc=com" bind:value={newProvider.groupSearchBase} />
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">Group Search Filter</label>
+          <label class="ldap-label">{m.admin_ldap_group_search_filter()}</label>
           <input bind:value={newProvider.groupSearchFilter} />
         </div>
       </div>
       <div class="ldap-form-row">
         <div class="ldap-form-group">
-          <label class="ldap-label">Admin Group DN</label>
+          <label class="ldap-label">{m.admin_ldap_admin_group_dn()}</label>
           <input placeholder="cn=admins,ou=groups,..." bind:value={newProvider.adminGroupDn} />
         </div>
         <div class="ldap-form-group">
-          <label class="ldap-label">Allowed Group DNs</label>
-          <input placeholder="comma-separated" bind:value={newProvider.allowedGroupDns} />
+          <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}</label>
+          <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={newProvider.allowedGroupDns} />
         </div>
       </div>
-      <span class="field-hint">Only users in these groups can log in. Leave empty to allow all.</span>
+      <span class="field-hint">{m.admin_ldap_allowed_hint()}</span>
 
       <div class="ldap-checks">
         <label class="checkbox-label">
-          <input type="checkbox" bind:checked={newProvider.startTls} /> StartTLS
+          <input type="checkbox" bind:checked={newProvider.startTls} /> {m.admin_ldap_start_tls()}
         </label>
         <label class="checkbox-label">
-          <input type="checkbox" bind:checked={newProvider.enabled} /> Enabled
+          <input type="checkbox" bind:checked={newProvider.enabled} /> {m.admin_ldap_enabled()}
         </label>
         <label class="checkbox-label">
-          <input type="checkbox" bind:checked={newProvider.autoCreateUsers} /> Auto-create users
+          <input type="checkbox" bind:checked={newProvider.autoCreateUsers} /> {m.admin_ldap_auto_create()}
         </label>
         <label class="checkbox-label">
           <input type="checkbox" bind:checked={newProvider.syncGroups} /> {m.admin_ldap_sync_groups()}
@@ -385,9 +385,9 @@
         <span class="field-hint">{m.admin_ldap_sync_groups_hint()}</span>
       {/if}
       <div class="btn-row">
-        <button class="btn-primary" onclick={createProvider}>Add Provider</button>
+        <button class="btn-primary" onclick={createProvider}>{m.admin_ldap_add_provider()}</button>
         <button class="btn-secondary" onclick={testConnection} disabled={testing}>
-          {testing ? 'Testing...' : 'Test Connection'}
+          {testing ? m.admin_ldap_testing() : m.admin_ldap_test()}
         </button>
       </div>
     </div>
@@ -395,7 +395,7 @@
     {#if providerSuccess}<div class="msg-success">{providerSuccess}</div>{/if}
     {#if testResult}
       <div class={testResult.success ? 'msg-success' : 'msg-error'}>
-        {testResult.success ? 'Connection successful!' : `Connection failed: ${testResult.error}`}
+        {testResult.success ? m.admin_ldap_test_success() : m.admin_ldap_test_failed({ error: testResult.error ?? '' })}
       </div>
     {/if}
   </div>

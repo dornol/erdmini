@@ -14,6 +14,9 @@
     oidc_providers: string[];
     ldap_providers: string[];
     groups?: string[];
+    can_create_project: boolean;
+    can_create_api_key: boolean;
+    can_create_embed: boolean;
   };
 
   interface Props {
@@ -29,7 +32,7 @@
   let showPendingOnly = $state(false);
 
   let editingUser = $state<string | null>(null);
-  let editUserForm = $state({ displayName: '', email: '', role: 'user', status: 'active', password: '' });
+  let editUserForm = $state({ displayName: '', email: '', role: 'user', status: 'active', password: '', canCreateProject: true, canCreateApiKey: true, canCreateEmbed: true });
 
   let adminCount = $derived(users.filter(u => u.role === 'admin').length);
   let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
@@ -51,17 +54,23 @@
       role: user.role,
       status: user.status,
       password: '',
+      canCreateProject: user.can_create_project,
+      canCreateApiKey: user.can_create_api_key,
+      canCreateEmbed: user.can_create_embed,
     };
   }
 
   async function saveUser() {
     if (!editingUser) return;
     userError = '';
-    const body: Record<string, string> = {
+    const body: Record<string, unknown> = {
       displayName: editUserForm.displayName,
       email: editUserForm.email,
       role: editUserForm.role,
       status: editUserForm.status,
+      canCreateProject: editUserForm.canCreateProject,
+      canCreateApiKey: editUserForm.canCreateApiKey,
+      canCreateEmbed: editUserForm.canCreateEmbed,
     };
     if (editUserForm.password) body.password = editUserForm.password;
     const res = await fetch(`/api/admin/users/${editingUser}`, {
@@ -79,7 +88,7 @@
   }
 
   async function deleteUser(id: string, username: string | null) {
-    if (!confirm(`Delete user "${username ?? id}"? Owned projects will be transferred to you.`)) return;
+    if (!confirm(m.admin_users_delete_confirm({ name: username ?? id }))) return;
     userError = '';
     const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
     if (!res.ok) {
@@ -87,7 +96,7 @@
       userError = data.error || 'Failed to delete user';
       return;
     }
-    userSuccess = `User "${username ?? id}" deleted`;
+    userSuccess = m.admin_users_deleted({ name: username ?? id });
     await onreload();
   }
 
@@ -107,7 +116,7 @@
   }
 
   async function rejectUser(id: string, username: string | null) {
-    if (!confirm(`Reject and delete user "${username ?? id}"?`)) return;
+    if (!confirm(m.admin_users_reject_confirm({ name: username ?? id }))) return;
     userError = '';
     const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
     if (!res.ok) {
@@ -131,43 +140,44 @@
       userError = body.error || 'Failed';
       return;
     }
-    userSuccess = `User "${newUser.username}" created`;
+    userSuccess = m.admin_users_created_msg({ name: newUser.username });
     newUser = { username: '', displayName: '', email: '', password: '', role: 'user' };
     await onreload();
   }
 </script>
 
 <section class="section">
-  <h2>Users</h2>
+  <h2>{m.admin_users_title()}</h2>
   {#if pendingCount > 0}
     <label class="checkbox-label" style="margin-bottom:12px">
-      <input type="checkbox" bind:checked={showPendingOnly} /> {m.admin_user_status_pending()} only ({pendingCount})
+      <input type="checkbox" bind:checked={showPendingOnly} /> {m.admin_users_pending_only({ status: m.admin_user_status_pending(), count: String(pendingCount) })}
     </label>
   {/if}
   <table class="data-table">
     <thead>
       <tr>
-        <th>Username</th>
-        <th>Display Name</th>
-        <th>Email</th>
-        <th>Role</th>
+        <th>{m.admin_users_username()}</th>
+        <th>{m.admin_users_display_name()}</th>
+        <th>{m.admin_users_email()}</th>
+        <th>{m.admin_users_role()}</th>
         <th>{m.admin_auth_provider()}</th>
         <th>{m.admin_tab_groups()}</th>
+        <th>{m.admin_users_permissions()}</th>
         <th>{m.admin_user_status()}</th>
-        <th>Created</th>
-        <th>Actions</th>
+        <th>{m.admin_api_keys_created_at()}</th>
+        <th>{m.admin_groups_actions()}</th>
       </tr>
     </thead>
     <tbody>
       {#each filteredUsers as user}
         {#if editingUser === user.id}
           <tr>
-            <td>{user.username ?? '(OIDC)'}</td>
+            <td>{user.username ?? m.admin_users_no_username()}</td>
             <td><input class="inline-input" bind:value={editUserForm.displayName} /></td>
             <td><input class="inline-input" type="email" bind:value={editUserForm.email} /></td>
             <td>
               {#if isLastAdmin(user)}
-                <span class="badge badge-admin" title="Cannot demote the last admin">admin</span>
+                <span class="badge badge-admin" title={m.admin_users_last_admin_hint()}>admin</span>
               {:else}
                 <select class="inline-select" bind:value={editUserForm.role}>
                   <option value="user">user</option>
@@ -189,28 +199,39 @@
               </div>
             </td>
             <td>
+              {#if editUserForm.role !== 'admin'}
+                <div class="perm-checks">
+                  <label class="perm-check"><input type="checkbox" bind:checked={editUserForm.canCreateProject} /> {m.admin_users_perm_project()}</label>
+                  <label class="perm-check"><input type="checkbox" bind:checked={editUserForm.canCreateApiKey} /> {m.admin_users_perm_api_key()}</label>
+                  <label class="perm-check"><input type="checkbox" bind:checked={editUserForm.canCreateEmbed} /> {m.admin_users_perm_embed()}</label>
+                </div>
+              {:else}
+                <span class="badge badge-on">{m.admin_users_perm_all()}</span>
+              {/if}
+            </td>
+            <td>
               <select class="inline-select" bind:value={editUserForm.status}>
                 <option value="active">{m.admin_user_status_active()}</option>
                 <option value="pending">{m.admin_user_status_pending()}</option>
               </select>
             </td>
-            <td><input class="inline-input" type="password" placeholder="New password" bind:value={editUserForm.password} /></td>
+            <td><input class="inline-input" type="password" placeholder={m.admin_users_new_password()} bind:value={editUserForm.password} /></td>
             <td>
               <div class="btn-row">
-                <button class="btn-sm btn-save" onclick={saveUser}>Save</button>
-                <button class="btn-sm" onclick={() => (editingUser = null)}>Cancel</button>
+                <button class="btn-sm btn-save" onclick={saveUser}>{m.action_save()}</button>
+                <button class="btn-sm" onclick={() => (editingUser = null)}>{m.action_cancel()}</button>
               </div>
             </td>
           </tr>
         {:else}
           <tr>
-            <td>{user.username ?? '(OIDC)'}</td>
+            <td>{user.username ?? m.admin_users_no_username()}</td>
             <td>{user.display_name}</td>
             <td>{user.email ?? '-'}</td>
             <td>
               <span class="badge" class:badge-admin={user.role === 'admin'}>{user.role}</span>
               {#if isLastAdmin(user)}
-                <span class="badge badge-warn" title="Last admin — cannot demote or delete">sole</span>
+                <span class="badge badge-warn" title={m.admin_users_sole_hint()}>{m.admin_users_sole_badge()}</span>
               {/if}
             </td>
             <td>
@@ -227,6 +248,18 @@
               </div>
             </td>
             <td>
+              {#if user.role === 'admin'}
+                <span class="badge badge-on">{m.admin_users_perm_all()}</span>
+              {:else}
+                <div class="perm-badges">
+                  {#if user.can_create_project}<span class="badge badge-perm">{m.admin_users_perm_project()}</span>{/if}
+                  {#if user.can_create_api_key}<span class="badge badge-perm">{m.admin_users_perm_api_key()}</span>{/if}
+                  {#if user.can_create_embed}<span class="badge badge-perm">{m.admin_users_perm_embed()}</span>{/if}
+                  {#if !user.can_create_project && !user.can_create_api_key && !user.can_create_embed}<span class="badge">{m.admin_users_perm_none()}</span>{/if}
+                </div>
+              {/if}
+            </td>
+            <td>
               {#if user.status === 'pending'}
                 <span class="badge badge-pending">{m.admin_user_status_pending()}</span>
               {:else}
@@ -240,13 +273,13 @@
                   <button class="btn-sm btn-approve" onclick={() => approveUser(user.id)}>{m.admin_user_approve()}</button>
                   <button class="btn-sm btn-danger" onclick={() => rejectUser(user.id, user.username)}>{m.admin_user_reject()}</button>
                 {:else}
-                  <button class="btn-sm" onclick={() => startEditUser(user)}>Edit</button>
+                  <button class="btn-sm" onclick={() => startEditUser(user)}>{m.action_edit()}</button>
                   <button
                     class="btn-sm btn-danger"
                     disabled={isLastAdmin(user) || isSelf(user)}
-                    title={isSelf(user) ? 'Cannot delete yourself' : isLastAdmin(user) ? 'Cannot delete the last admin' : 'Delete user'}
+                    title={isSelf(user) ? m.admin_users_delete_self_hint() : isLastAdmin(user) ? m.admin_users_sole_hint() : m.admin_users_delete_hint()}
                     onclick={() => deleteUser(user.id, user.username)}
-                  >Delete</button>
+                  >{m.action_delete()}</button>
                 {/if}
               </div>
             </td>
@@ -257,17 +290,17 @@
   </table>
 
   <div class="form-section">
-    <h3>Create User</h3>
+    <h3>{m.admin_users_create_title()}</h3>
     <div class="form-grid">
-      <input placeholder="Username" bind:value={newUser.username} />
-      <input placeholder="Display Name" bind:value={newUser.displayName} />
-      <input placeholder="Email" type="email" bind:value={newUser.email} />
-      <input placeholder="Password" type="password" bind:value={newUser.password} />
+      <input placeholder={m.admin_users_username()} bind:value={newUser.username} />
+      <input placeholder={m.admin_users_display_name()} bind:value={newUser.displayName} />
+      <input placeholder={m.admin_users_email()} type="email" bind:value={newUser.email} />
+      <input placeholder={m.auth_new_password()} type="password" bind:value={newUser.password} />
       <select bind:value={newUser.role}>
         <option value="user">user</option>
         <option value="admin">admin</option>
       </select>
-      <button class="btn-primary" onclick={createUser}>Create</button>
+      <button class="btn-primary" onclick={createUser}>{m.action_create()}</button>
     </div>
     {#if userError}<div class="msg-error">{userError}</div>{/if}
     {#if userSuccess}<div class="msg-success">{userSuccess}</div>{/if}
