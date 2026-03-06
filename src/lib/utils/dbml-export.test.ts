@@ -203,6 +203,20 @@ describe('exportDBML', () => {
       expect(exportDBML(schema)).toContain("default: 'active'");
     });
 
+    it('should escape single quotes in default value', () => {
+      const schema = makeSchema([
+        makeTable({
+          id: 't1',
+          name: 'test_table',
+          columns: [
+            makeColumn({ id: 'c1', name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+            makeColumn({ id: 'c2', name: 'dormancy_yn', type: 'VARCHAR', defaultValue: "''" }),
+          ],
+        }),
+      ]);
+      expect(exportDBML(schema)).toContain("default: '\\'\\'");
+    });
+
     it('should output note', () => {
       const schema = makeSchema([
         makeTable({

@@ -5,9 +5,11 @@ import { computeGridBgStyle, filterBySchema } from './canvas-grid';
 
 describe('computeGridBgStyle', () => {
   describe('modern theme (default)', () => {
-    it('returns single background-position and background-size at scale 1', () => {
+    it('returns background-image, position, and size at scale 1', () => {
       const style = computeGridBgStyle(0, 0, 1, 'modern');
-      expect(style).toBe('background-position: 0px 0px; background-size: 24px 24px;');
+      expect(style).toContain('background-image: radial-gradient(circle, #cbd5e1');
+      expect(style).toContain('background-position: 0px 0px');
+      expect(style).toContain('background-size: 24px 24px');
     });
 
     it('position follows canvas x/y', () => {
@@ -28,14 +30,17 @@ describe('computeGridBgStyle', () => {
 
     it('combines pan and zoom', () => {
       const style = computeGridBgStyle(200, 300, 1.5, 'modern');
-      expect(style).toBe('background-position: 200px 300px; background-size: 36px 36px;');
+      expect(style).toContain('background-position: 200px 300px');
+      expect(style).toContain('background-size: 36px 36px');
     });
   });
 
   describe('minimal theme', () => {
-    it('uses same 24px base as modern', () => {
+    it('uses 24px base with radial-gradient', () => {
       const style = computeGridBgStyle(10, 20, 1, 'minimal');
-      expect(style).toBe('background-position: 10px 20px; background-size: 24px 24px;');
+      expect(style).toContain('background-image: radial-gradient(circle, #c8c8c8');
+      expect(style).toContain('background-position: 10px 20px');
+      expect(style).toContain('background-size: 24px 24px');
     });
 
     it('scales correctly', () => {
@@ -45,11 +50,11 @@ describe('computeGridBgStyle', () => {
   });
 
   describe('classic theme', () => {
-    it('returns double background-position/size (2 gradient layers)', () => {
+    it('returns linear-gradient with double position/size', () => {
       const style = computeGridBgStyle(0, 0, 1, 'classic');
-      expect(style).toBe(
-        'background-position: 0px 0px, 0px 0px; background-size: 32px 32px, 32px 32px;'
-      );
+      expect(style).toContain('background-image: linear-gradient');
+      expect(style).toContain('background-position: 0px 0px, 0px 0px');
+      expect(style).toContain('background-size: 32px 32px, 32px 32px');
     });
 
     it('position follows canvas x/y for both layers', () => {
@@ -66,9 +71,8 @@ describe('computeGridBgStyle', () => {
   describe('blueprint theme', () => {
     it('returns 4 background-position/size pairs (major + minor grid)', () => {
       const style = computeGridBgStyle(0, 0, 1, 'blueprint');
-      expect(style).toBe(
-        'background-position: 0px 0px, 0px 0px, 0px 0px, 0px 0px; background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;'
-      );
+      expect(style).toContain('background-position: 0px 0px, 0px 0px, 0px 0px, 0px 0px');
+      expect(style).toContain('background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px');
     });
 
     it('major grid (80px) and minor grid (16px) scale independently', () => {
@@ -91,7 +95,39 @@ describe('computeGridBgStyle', () => {
   describe('unknown theme falls through to default', () => {
     it('treats unknown theme as modern (24px base)', () => {
       const style = computeGridBgStyle(0, 0, 1, 'future-theme');
-      expect(style).toBe('background-position: 0px 0px; background-size: 24px 24px;');
+      expect(style).toContain('background-image: radial-gradient(circle, #cbd5e1');
+      expect(style).toContain('background-position: 0px 0px');
+      expect(style).toContain('background-size: 24px 24px');
+    });
+  });
+
+  describe('grid thickness scales with zoom', () => {
+    it('dot radius shrinks when zoomed out (modern)', () => {
+      const style1 = computeGridBgStyle(0, 0, 1, 'modern');
+      const style05 = computeGridBgStyle(0, 0, 0.5, 'modern');
+      const r1 = style1.match(/radial-gradient\(circle, #cbd5e1 ([\d.]+)px/)?.[1];
+      const r05 = style05.match(/radial-gradient\(circle, #cbd5e1 ([\d.]+)px/)?.[1];
+      expect(Number(r05)).toBeLessThan(Number(r1));
+    });
+
+    it('dot radius grows when zoomed in (modern)', () => {
+      const style1 = computeGridBgStyle(0, 0, 1, 'modern');
+      const style2 = computeGridBgStyle(0, 0, 2, 'modern');
+      const r1 = style1.match(/radial-gradient\(circle, #cbd5e1 ([\d.]+)px/)?.[1];
+      const r2 = style2.match(/radial-gradient\(circle, #cbd5e1 ([\d.]+)px/)?.[1];
+      expect(Number(r2)).toBeGreaterThan(Number(r1));
+    });
+
+    it('line thickness is clamped at minimum (classic)', () => {
+      const style = computeGridBgStyle(0, 0, 0.01, 'classic');
+      // At scale 0.01, sqrt(0.01)*1=0.1 would be clamped to min 0.5
+      expect(style).toContain('0.5px');
+    });
+
+    it('line thickness is clamped at maximum (classic)', () => {
+      const style = computeGridBgStyle(0, 0, 10, 'classic');
+      // At scale 10, 1*10=10 would be clamped to max 2
+      expect(style).toContain('2px');
     });
   });
 

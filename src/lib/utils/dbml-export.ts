@@ -105,7 +105,7 @@ export function exportDBML(
         if (/^\d+(\.\d+)?$/.test(dv) || /^(true|false|null)$/i.test(dv)) {
           settings.push(`default: ${dv}`);
         } else {
-          settings.push(`default: '${dv}'`);
+          settings.push(`default: '${dv.replace(/'/g, "\\'")}'`);
         }
       }
       if (opts.includeComments && col.comment) {
