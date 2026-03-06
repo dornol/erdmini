@@ -246,8 +246,11 @@
     // Always capture current state for next mutation
     prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
     // Debounced save — avoid writing to storage on every drag frame
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => { await projectStore.saveCurrentSchema(); }, 300);
+    // Guard: skip save until init done AND no async project switch in progress
+    if (projectStore.safeToSave) {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => { await projectStore.saveCurrentSchema(); }, 300);
+    }
   });
 
   // Auto-snapshot: create periodic snapshots for persistent history
