@@ -359,7 +359,7 @@
         role="button"
         tabindex="0"
         aria-label="FK line"
-        style="pointer-events:stroke; cursor:pointer"
+        style="pointer-events:stroke; cursor:pointer; outline:none"
         onmouseenter={() => onLineEnter(line)}
         onmouseleave={onLineLeave}
         onclick={(e) => handleLineClick(line, e)}
@@ -413,7 +413,7 @@
         role="button"
         tabindex="0"
         aria-label="FK line"
-        style="pointer-events:stroke; cursor:pointer"
+        style="pointer-events:stroke; cursor:pointer; outline:none"
         onmouseenter={() => onLineEnter(line)}
         onmouseleave={onLineLeave}
         onclick={(e) => handleLineClick(line, e)}
