@@ -18,10 +18,10 @@
 		"test:watch": "vitest"
 	},
 	"devDependencies": {
-		"@inlang/paraglide-js": "^2.13.0",
+		"@inlang/paraglide-js": "^2.13.2",
 		"@sveltejs/adapter-auto": "^7.0.0",
 		"@sveltejs/adapter-static": "^3.0.10",
-		"@sveltejs/kit": "^2.50.2",
+		"@sveltejs/kit": "^2.53.4",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/better-sqlite3": "^7.6.13",
@@ -29,7 +29,7 @@
 		"@types/ws": "^8.18.1",
 		"cross-env": "^10.1.0",
 		"playwright": "^1.58.2",
-		"svelte": "^5.51.0",
+		"svelte": "^5.53.7",
 		"svelte-check": "^4.3.6",
 		"tailwindcss": "^4.1.18",
 		"typescript": "^5.9.3",
