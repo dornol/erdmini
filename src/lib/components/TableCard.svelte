@@ -962,13 +962,17 @@
     font-size: 13px;
     color: var(--erd-col-type, #94a3b8);
     cursor: pointer;
-    padding: 2px 0;
+    padding: 0;
     border-top: 1px dashed var(--erd-card-border, #e2e8f0);
+    max-height: 0;
+    overflow: hidden;
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: max-height 0.2s ease, opacity 0.15s ease, padding 0.2s ease;
   }
 
   .table-card:hover .add-column-row {
+    max-height: 26px;
+    padding: 2px 0;
     opacity: 1;
   }
 

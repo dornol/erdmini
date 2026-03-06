@@ -231,4 +231,73 @@ describe('exportSvg', () => {
       expect(result).toContain('Line 3');
     });
   });
+
+  describe('FK label rendering', () => {
+    function schemaWithFKLabel(label?: string) {
+      const userId = 'u_id';
+      const orderUserId = 'o_user_id';
+      return makeSchema([
+        makeTable({
+          id: 'tbl_users',
+          name: 'users',
+          columns: [
+            makeColumn({ id: userId, name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          ],
+          position: { x: 100, y: 100 },
+        }),
+        makeTable({
+          id: 'tbl_orders',
+          name: 'orders',
+          columns: [
+            makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+            makeColumn({ id: orderUserId, name: 'user_id', type: 'INT', nullable: false }),
+          ],
+          foreignKeys: [
+            {
+              id: 'fk_1',
+              columnIds: [orderUserId],
+              referencedTableId: 'tbl_users',
+              referencedColumnIds: [userId],
+              onDelete: 'CASCADE',
+              onUpdate: 'RESTRICT',
+              ...(label != null ? { label } : {}),
+            },
+          ],
+          position: { x: 400, y: 100 },
+        }),
+      ]);
+    }
+
+    it('renders FK label text in SVG when label is set', () => {
+      const result = exportSvg(schemaWithFKLabel('places order'), 'modern');
+      expect(result).toContain('places order');
+      expect(result).toContain('font-style="italic"');
+    });
+
+    it('does not render FK label text when label is undefined', () => {
+      const result = exportSvg(schemaWithFKLabel(), 'modern');
+      // Should have cardinality badge but no italic label
+      expect(result).toContain('1:N');
+      // No italic text besides the cardinality badge
+      const italicMatches = result.match(/font-style="italic"/g);
+      expect(italicMatches).toBeNull();
+    });
+
+    it('does not render FK label text when label is empty string', () => {
+      const result = exportSvg(schemaWithFKLabel(''), 'modern');
+      const italicMatches = result.match(/font-style="italic"/g);
+      expect(italicMatches).toBeNull();
+    });
+
+    it('escapes special characters in FK label', () => {
+      const result = exportSvg(schemaWithFKLabel('<script>alert("xss")</script>'), 'modern');
+      expect(result).not.toContain('<script>');
+      expect(result).toContain('&lt;script&gt;');
+    });
+
+    it('renders FK label with ampersand correctly', () => {
+      const result = exportSvg(schemaWithFKLabel('owns & manages'), 'modern');
+      expect(result).toContain('owns &amp; manages');
+    });
+  });
 });

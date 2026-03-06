@@ -216,3 +216,14 @@
 - ~~**Import normalizeType**: `DATETIME` → 내부 `DATETIME` 유지 (현재 `TIMESTAMP`로 통일됨)~~
 - ~~**Import SMALLSERIAL**: `SMALLSERIAL` → `SMALLINT` + autoIncrement 매핑 추가~~
 - Difficulty: Medium
+
+### ~~36. UX Improvements (Phase 38)~~ ✅
+- ~~**FK Labels**: `ForeignKey.label?: string` — FK 라인에 관계 설명 텍스트 표시 (dblclick 인라인 편집, FkModal 라벨 필드, SVG export, MCP update_foreign_key label 파라미터)~~
+- ~~**Canvas Search**: Ctrl+F / Ctrl+K → CommandPalette 바인딩 (테이블/컬럼 검색 + 캔버스 네비게이션)~~
+- ~~**Inline Column Add**: TableCard hover 시 "+" 버튼 (max-height 슬라이드 애니메이션), 클릭 시 즉시 ColumnEditPopup 열림~~
+- ~~**Table Templates**: Tools 드롭다운에 5개 프리셋 (users, audit_log, settings, files, tags), 이름 충돌 자동 회피~~
+- ~~**Cross-Project Copy/Paste**: Ctrl+C 선택 테이블 JSON 복사, Ctrl+V 붙여넣기 (ID 전체 재생성, FK 재매핑, UK/Index 재매핑, 이름 충돌 회피)~~
+- ~~**Column Delete in Popup**: ColumnEditPopup에 🗑 삭제 버튼 추가~~
+- ~~**Embed CommandPalette**: 임베드 모드에서도 Ctrl+F/K 캔버스 검색 지원~~
+- 19 new tests (14 table-templates + 5 SVG FK label)
+- Difficulty: Medium
