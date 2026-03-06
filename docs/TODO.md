@@ -235,5 +235,8 @@
 - ~~DB: `site_settings` key-value 테이블 (V014 migration)~~
 - ~~서버: 메모리 캐시 + 수정 시 즉시 갱신 (재시작 불필요)~~
 - ~~Admin UI: Branding 탭~~
+- ~~**Browser Title**: `<title>` 태그 + `<meta description>` 동적 반영~~
+- ~~**Favicon Override**: logo_url 설정 시 favicon도 교체~~
+- ~~**Embed Branding**: 임베드 헤더에 로고 + 사이트명 표시~~
 - 11 new tests (site-settings CRUD + validation)
 - Difficulty: Easy
