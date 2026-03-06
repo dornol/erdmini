@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockGet, mockRun, mockPrepare } = vi.hoisted(() => {
+const { mockGet, mockRun, mockAll, mockPrepare } = vi.hoisted(() => {
   const mockGet = vi.fn();
   const mockRun = vi.fn();
-  const mockPrepare = vi.fn(() => ({ get: mockGet, run: mockRun }));
-  return { mockGet, mockRun, mockPrepare };
+  const mockAll = vi.fn().mockReturnValue([]);
+  const mockPrepare = vi.fn(() => ({ get: mockGet, run: mockRun, all: mockAll }));
+  return { mockGet, mockRun, mockAll, mockPrepare };
 });
 
 vi.mock('$lib/server/db', () => ({
@@ -19,6 +20,7 @@ describe('getProjectPermission', () => {
   beforeEach(() => {
     mockGet.mockReset();
     mockRun.mockReset();
+    mockAll.mockReset().mockReturnValue([]);
     mockPrepare.mockClear();
   });
 
@@ -57,6 +59,7 @@ describe('getProjectPermission', () => {
 describe('hasProjectAccess', () => {
   beforeEach(() => {
     mockGet.mockReset();
+    mockAll.mockReset().mockReturnValue([]);
     mockPrepare.mockClear();
   });
 
@@ -104,6 +107,115 @@ describe('hasProjectAccess', () => {
     expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'viewer')).toBe(false);
     expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'editor')).toBe(false);
     expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'owner')).toBe(false);
+  });
+});
+
+describe('getProjectPermission — group permissions', () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockRun.mockReset();
+    mockAll.mockReset().mockReturnValue([]);
+    mockPrepare.mockClear();
+  });
+
+  it('returns group permission when no direct permission exists', () => {
+    mockGet.mockReturnValue(undefined); // no direct permission
+    mockAll.mockReturnValue([{ permission: 'editor' }]); // group grants editor
+    const result = getProjectPermission(mockDb, 'proj1', 'user1', 'user');
+    expect(result).toBe('editor');
+  });
+
+  it('returns higher of direct vs group permission (group wins)', () => {
+    mockGet.mockReturnValue({ permission: 'viewer' }); // direct: viewer
+    mockAll.mockReturnValue([{ permission: 'editor' }]); // group: editor
+    const result = getProjectPermission(mockDb, 'proj1', 'user1', 'user');
+    expect(result).toBe('editor');
+  });
+
+  it('returns higher of direct vs group permission (direct wins)', () => {
+    mockGet.mockReturnValue({ permission: 'owner' }); // direct: owner
+    mockAll.mockReturnValue([{ permission: 'viewer' }]); // group: viewer
+    const result = getProjectPermission(mockDb, 'proj1', 'user1', 'user');
+    expect(result).toBe('owner');
+  });
+
+  it('picks highest among multiple group permissions', () => {
+    mockGet.mockReturnValue(undefined); // no direct
+    mockAll.mockReturnValue([
+      { permission: 'viewer' },
+      { permission: 'editor' },
+      { permission: 'viewer' },
+    ]);
+    const result = getProjectPermission(mockDb, 'proj1', 'user1', 'user');
+    expect(result).toBe('editor');
+  });
+
+  it('returns null when no direct and no group permissions', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValue([]);
+    const result = getProjectPermission(mockDb, 'proj1', 'user1', 'user');
+    expect(result).toBeNull();
+  });
+
+  it('group owner permission grants owner access', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValue([{ permission: 'owner' }]);
+    const result = getProjectPermission(mockDb, 'proj1', 'user1', 'user');
+    expect(result).toBe('owner');
+  });
+
+  it('group viewer + direct viewer stays viewer', () => {
+    mockGet.mockReturnValue({ permission: 'viewer' });
+    mockAll.mockReturnValue([{ permission: 'viewer' }]);
+    const result = getProjectPermission(mockDb, 'proj1', 'user1', 'user');
+    expect(result).toBe('viewer');
+  });
+});
+
+describe('hasProjectAccess — group permissions', () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockAll.mockReset().mockReturnValue([]);
+    mockPrepare.mockClear();
+  });
+
+  it('group editor can access editor-level', () => {
+    mockGet.mockReturnValue(undefined); // no direct
+    mockAll.mockReturnValue([{ permission: 'editor' }]);
+    expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'editor')).toBe(true);
+  });
+
+  it('group viewer cannot access editor-level', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValue([{ permission: 'viewer' }]);
+    expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'editor')).toBe(false);
+  });
+
+  it('direct viewer + group editor grants editor-level access', () => {
+    mockGet.mockReturnValue({ permission: 'viewer' });
+    mockAll.mockReturnValue([{ permission: 'editor' }]);
+    expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'editor')).toBe(true);
+  });
+
+  it('group permission enables viewer access for collab join', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValue([{ permission: 'viewer' }]);
+    expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'viewer')).toBe(true);
+  });
+
+  it('no direct and no group permissions denies access', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValue([]);
+    expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'viewer')).toBe(false);
+  });
+
+  it('multiple groups — highest wins for access check', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValue([
+      { permission: 'viewer' },
+      { permission: 'owner' },
+    ]);
+    expect(hasProjectAccess(mockDb, 'proj1', 'u1', 'user', 'owner')).toBe(true);
   });
 });
 

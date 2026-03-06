@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { handleCallback, findOrCreateOIDCUser, cleanupExpiredStates } from '$lib/server/auth/oidc';
 import { createSession } from '$lib/server/auth/session';
+import { syncUserGroups } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
 import { logger } from '$lib/server/logger';
 import type { OIDCProviderRow, OIDCStateRow } from '$lib/types/auth';
@@ -37,7 +38,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   }
 
   try {
-    const { sub, email, name } = await handleCallback(db, provider, url);
+    const { sub, email, name, claims } = await handleCallback(db, provider, url);
 
     const result = findOrCreateOIDCUser(
       db,
@@ -59,6 +60,15 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
     if (result.status === 'pending') {
       throw redirect(303, '/login?error=pending_approval');
+    }
+
+    // Sync groups from OIDC claims
+    if (provider.sync_groups) {
+      const groupClaim = provider.group_claim || 'groups';
+      const rawGroups = claims[groupClaim];
+      const groups = Array.isArray(rawGroups) ? rawGroups.map(String) : rawGroups ? [String(rawGroups)] : [];
+      const allowed = provider.allowed_groups ? provider.allowed_groups.split(',').map(s => s.trim()).filter(Boolean) : [];
+      syncUserGroups(db, result.userId, groups, 'oidc', provider.id, allowed);
     }
 
     const session = createSession(db, result.userId);

@@ -20,11 +20,28 @@ export function getProjectPermission(
   // Admin bypasses — full owner access on everything
   if (userRole === 'admin') return 'owner';
 
+  // Direct permission
   const row = db.prepare(
     'SELECT permission FROM project_permissions WHERE project_id = ? AND user_id = ?'
   ).get(projectId, userId) as Pick<ProjectPermissionRow, 'permission'> | undefined;
 
-  return row ? row.permission as ProjectPermissionLevel : null;
+  let best: ProjectPermissionLevel | null = row ? row.permission as ProjectPermissionLevel : null;
+
+  // Group permission — pick highest level across all groups the user belongs to
+  const groupRows = (db.prepare(`
+    SELECT gpp.permission FROM group_project_permissions gpp
+    JOIN group_members gm ON gm.group_id = gpp.group_id
+    WHERE gpp.project_id = ? AND gm.user_id = ?
+  `).all(projectId, userId) ?? []) as { permission: string }[];
+
+  for (const gr of groupRows) {
+    const perm = gr.permission as ProjectPermissionLevel;
+    if (!best || PERMISSION_HIERARCHY[perm] > PERMISSION_HIERARCHY[best]) {
+      best = perm;
+    }
+  }
+
+  return best;
 }
 
 /**

@@ -15,19 +15,35 @@ export const GET: RequestHandler = ({ locals }) => {
     `SELECT u.id, u.username, u.display_name, u.email, u.role, u.status,
             u.created_at, u.updated_at,
             CASE WHEN u.password_hash IS NOT NULL THEN 1 ELSE 0 END as has_local_auth,
-            GROUP_CONCAT(DISTINCT op.display_name) as oidc_provider_names
+            GROUP_CONCAT(DISTINCT op.display_name) as oidc_provider_names,
+            GROUP_CONCAT(DISTINCT lp.display_name) as ldap_provider_names
      FROM users u
      LEFT JOIN oidc_identities oi ON oi.user_id = u.id
      LEFT JOIN oidc_providers op ON op.id = oi.provider_id
+     LEFT JOIN ldap_identities li ON li.user_id = u.id
+     LEFT JOIN ldap_providers lp ON lp.id = li.provider_id
      GROUP BY u.id
      ORDER BY u.created_at`
-  ).all() as (Omit<UserRow, 'password_hash'> & { has_local_auth: number; oidc_provider_names: string | null })[];
+  ).all() as (Omit<UserRow, 'password_hash'> & { has_local_auth: number; oidc_provider_names: string | null; ldap_provider_names: string | null })[];
+
+  // Fetch group memberships for all users
+  const groupMemberships = db.prepare(`
+    SELECT gm.user_id, g.name FROM group_members gm JOIN groups g ON g.id = gm.group_id
+  `).all() as { user_id: string; name: string }[];
+  const userGroups = new Map<string, string[]>();
+  for (const gm of groupMemberships) {
+    if (!userGroups.has(gm.user_id)) userGroups.set(gm.user_id, []);
+    userGroups.get(gm.user_id)!.push(gm.name);
+  }
 
   const result = users.map(u => ({
     ...u,
     has_local_auth: u.has_local_auth === 1,
     oidc_providers: u.oidc_provider_names ? u.oidc_provider_names.split(',') : [],
+    ldap_providers: u.ldap_provider_names ? u.ldap_provider_names.split(',') : [],
+    groups: userGroups.get(u.id) ?? [],
     oidc_provider_names: undefined,
+    ldap_provider_names: undefined,
   }));
 
   return json(result);

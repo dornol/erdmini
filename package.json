@@ -50,6 +50,7 @@
 		"d3-force": "^3.0.0",
 		"html-to-image": "^1.11.13",
 		"jspdf": "^4.2.0",
+		"ldapts": "^8.1.7",
 		"node-sql-parser": "^5.4.0",
 		"openid-client": "^6.8.2",
 		"sql.js": "^1.14.1",

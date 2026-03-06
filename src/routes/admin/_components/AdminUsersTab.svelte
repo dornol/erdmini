@@ -12,6 +12,8 @@
     created_at: string | null;
     has_local_auth: boolean;
     oidc_providers: string[];
+    ldap_providers: string[];
+    groups?: string[];
   };
 
   interface Props {
@@ -150,6 +152,7 @@
         <th>Email</th>
         <th>Role</th>
         <th>{m.admin_auth_provider()}</th>
+        <th>{m.admin_tab_groups()}</th>
         <th>{m.admin_user_status()}</th>
         <th>Created</th>
         <th>Actions</th>
@@ -176,6 +179,13 @@
               <div class="auth-badges">
                 {#if user.has_local_auth}<span class="badge badge-auth-local">{m.admin_auth_local()}</span>{/if}
                 {#each user.oidc_providers as provider}<span class="badge badge-auth-oidc">{provider}</span>{/each}
+                {#each user.ldap_providers as provider}<span class="badge badge-auth-ldap">{provider}</span>{/each}
+              </div>
+            </td>
+            <td>
+              <div class="auth-badges">
+                {#each user.groups ?? [] as group}<span class="badge badge-group">{group}</span>{/each}
+                {#if !user.groups?.length}-{/if}
               </div>
             </td>
             <td>
@@ -207,6 +217,13 @@
               <div class="auth-badges">
                 {#if user.has_local_auth}<span class="badge badge-auth-local">{m.admin_auth_local()}</span>{/if}
                 {#each user.oidc_providers as provider}<span class="badge badge-auth-oidc">{provider}</span>{/each}
+                {#each user.ldap_providers as provider}<span class="badge badge-auth-ldap">{provider}</span>{/each}
+              </div>
+            </td>
+            <td>
+              <div class="auth-badges">
+                {#each user.groups ?? [] as group}<span class="badge badge-group">{group}</span>{/each}
+                {#if !user.groups?.length}-{/if}
               </div>
             </td>
             <td>

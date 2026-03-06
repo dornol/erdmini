@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
-  const { displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers } =
+  const { displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers, syncGroups, groupClaim, allowedGroups } =
     await request.json();
 
   if (!displayName || !issuerUrl || !clientId || !clientSecret) {
@@ -31,8 +31,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const id = randomUUID();
   db.prepare(
-    `INSERT INTO oidc_providers (id, display_name, issuer_url, client_id, client_secret, scopes, enabled, auto_create_users)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO oidc_providers (id, display_name, issuer_url, client_id, client_secret, scopes, enabled, auto_create_users, sync_groups, group_claim, allowed_groups)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     displayName,
@@ -42,6 +42,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     scopes || 'openid email profile',
     enabled ? 1 : 0,
     autoCreateUsers ? 1 : 0,
+    syncGroups ? 1 : 0,
+    groupClaim || 'groups',
+    allowedGroups || '',
   );
 
   logAudit({ action: 'create', category: 'oidc-provider', userId: locals.user!.id, username: locals.user!.username, resourceType: 'provider', resourceId: id, detail: { displayName, issuerUrl } });

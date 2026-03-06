@@ -19,6 +19,9 @@
     scopes: 'openid email profile',
     enabled: true,
     autoCreateUsers: true,
+    syncGroups: false,
+    groupClaim: 'groups',
+    allowedGroups: '',
   });
 
   let editingProvider = $state<string | null>(null);
@@ -30,6 +33,9 @@
     scopes: '',
     enabled: true,
     autoCreateUsers: true,
+    syncGroups: false,
+    groupClaim: 'groups',
+    allowedGroups: '',
   });
 
   function startEditProvider(p: OIDCProviderRow) {
@@ -42,6 +48,9 @@
       scopes: p.scopes,
       enabled: p.enabled === 1,
       autoCreateUsers: p.auto_create_users === 1,
+      syncGroups: p.sync_groups === 1,
+      groupClaim: p.group_claim || 'groups',
+      allowedGroups: p.allowed_groups || '',
     };
   }
 
@@ -58,6 +67,9 @@
         scopes: editForm.scopes,
         enabled: editForm.enabled ? 1 : 0,
         autoCreateUsers: editForm.autoCreateUsers ? 1 : 0,
+        syncGroups: editForm.syncGroups ? 1 : 0,
+        groupClaim: editForm.groupClaim,
+        allowedGroups: editForm.allowedGroups,
       }),
     });
     editingProvider = null;
@@ -92,6 +104,9 @@
       scopes: 'openid email profile',
       enabled: true,
       autoCreateUsers: true,
+      syncGroups: false,
+      groupClaim: 'groups',
+      allowedGroups: '',
     };
     await onreload();
   }
@@ -115,6 +130,14 @@
           <label class="checkbox-label">
             <input type="checkbox" bind:checked={editForm.autoCreateUsers} /> Auto-create users
           </label>
+          <label class="checkbox-label">
+            <input type="checkbox" bind:checked={editForm.syncGroups} /> {m.admin_oidc_sync_groups()}
+          </label>
+          {#if editForm.syncGroups}
+            <input placeholder={m.admin_oidc_group_claim()} bind:value={editForm.groupClaim} />
+            <input placeholder={m.admin_oidc_allowed_groups()} bind:value={editForm.allowedGroups} />
+            <span class="field-hint">{m.admin_oidc_allowed_groups_hint()}</span>
+          {/if}
           <div class="btn-row">
             <button class="btn-primary" onclick={saveProvider}>Save</button>
             <button class="btn-cancel" onclick={() => (editingProvider = null)}>Cancel</button>
@@ -131,6 +154,9 @@
             <span class="badge">
               {provider.auto_create_users ? 'Auto-register' : 'Manual'}
             </span>
+            {#if provider.sync_groups}
+              <span class="badge badge-on">{m.admin_oidc_sync_groups()}</span>
+            {/if}
           </div>
         </div>
         <div class="provider-actions">
@@ -155,9 +181,25 @@
       <label class="checkbox-label">
         <input type="checkbox" bind:checked={newProvider.autoCreateUsers} /> Auto-create users
       </label>
+      <label class="checkbox-label">
+        <input type="checkbox" bind:checked={newProvider.syncGroups} /> {m.admin_oidc_sync_groups()}
+      </label>
+      {#if newProvider.syncGroups}
+        <input placeholder={m.admin_oidc_group_claim()} bind:value={newProvider.groupClaim} />
+        <input placeholder={m.admin_oidc_allowed_groups()} bind:value={newProvider.allowedGroups} />
+        <span class="field-hint">{m.admin_oidc_allowed_groups_hint()}</span>
+      {/if}
       <button class="btn-primary" onclick={createProvider}>Add Provider</button>
     </div>
     {#if providerError}<div class="msg-error">{providerError}</div>{/if}
     {#if providerSuccess}<div class="msg-success">{providerSuccess}</div>{/if}
   </div>
 </section>
+
+<style>
+  .field-hint {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: -6px;
+  }
+</style>

@@ -8,8 +8,10 @@
   let password = $state('');
   let error = $state('');
   let loading = $state(false);
+  let selectedLdap = $state<string | null>(null);
 
-  const providers = $derived(data.oidcProviders ?? []);
+  const oidcProviders = $derived(data.oidcProviders ?? []);
+  const ldapProviders = $derived(data.ldapProviders ?? []);
 
   const oidcError = $derived.by(() => {
     const code = data.errorCode;
@@ -25,18 +27,27 @@
     loading = true;
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const url = selectedLdap
+        ? '/api/auth/ldap/login'
+        : '/api/auth/login';
+      const body = selectedLdap
+        ? { providerId: selectedLdap, username, password }
+        : { username, password };
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
-        const body = await res.json();
-        if (body.error === 'pending_approval') {
+        const resBody = await res.json();
+        if (resBody.error === 'pending_approval') {
           error = m.auth_error_pending_approval();
+        } else if (resBody.error === 'auto_registration_disabled') {
+          error = m.auth_error_auto_registration();
         } else {
-          error = body.error || 'Login failed';
+          error = resBody.error || 'Login failed';
         }
         return;
       }
@@ -77,6 +88,13 @@
       <div class="error-banner">{oidcError}</div>
     {/if}
 
+    {#if selectedLdap}
+      <div class="ldap-mode-header">
+        <button class="btn-back" onclick={() => (selectedLdap = null)}>&larr;</button>
+        <span class="ldap-mode-label">{ldapProviders.find(p => p.id === selectedLdap)?.display_name}</span>
+      </div>
+    {/if}
+
     <form onsubmit={handleLogin}>
       <div class="field">
         <label for="username">Username</label>
@@ -111,16 +129,24 @@
       </button>
     </form>
 
-    {#if providers.length > 0}
+    {#if (oidcProviders.length > 0 || ldapProviders.length > 0) && !selectedLdap}
       <div class="divider">
         <span>or</span>
       </div>
 
       <div class="oidc-buttons">
-        {#each providers as provider}
+        {#each oidcProviders as provider}
           <a href="/api/auth/oidc/login/{provider.id}" class="btn-oidc">
             {provider.display_name}
           </a>
+        {/each}
+        {#each ldapProviders as provider}
+          <button
+            class="btn-oidc"
+            onclick={() => { selectedLdap = provider.id; error = ''; }}
+          >
+            {provider.display_name}
+          </button>
         {/each}
       </div>
     {/if}
@@ -291,5 +317,31 @@
   .btn-oidc:hover {
     background: #475569;
     border-color: #64748b;
+  }
+
+  .ldap-mode-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .btn-back {
+    background: none;
+    border: none;
+    color: #60a5fa;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .btn-back:hover {
+    color: #93c5fd;
+  }
+
+  .ldap-mode-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #cbd5e1;
   }
 </style>

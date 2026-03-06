@@ -35,6 +35,9 @@ export interface OIDCProviderRow {
   scopes: string;
   enabled: number;
   auto_create_users: number;
+  sync_groups: number;
+  group_claim: string;
+  allowed_groups: string;
   created_at: string;
 }
 
@@ -52,6 +55,34 @@ export interface OIDCStateRow {
   code_verifier: string;
   redirect_uri: string;
   expires_at: string;
+}
+
+export interface LdapProviderRow {
+  id: string;
+  display_name: string;
+  server_url: string;
+  bind_dn: string;
+  bind_password: string;
+  user_search_base: string;
+  user_search_filter: string;
+  email_attribute: string;
+  display_name_attribute: string;
+  group_search_base: string | null;
+  group_search_filter: string | null;
+  admin_group_dn: string | null;
+  allowed_group_dns: string | null;
+  start_tls: number;
+  enabled: number;
+  auto_create_users: number;
+  sync_groups: number;
+  created_at: string;
+}
+
+export interface LdapIdentityRow {
+  id: string;
+  user_id: string;
+  provider_id: string;
+  ldap_dn: string;
 }
 
 export type ProjectPermissionLevel = 'owner' | 'editor' | 'viewer';
@@ -94,4 +125,28 @@ export interface ProjectPermission {
   displayName?: string;
   username?: string | null;
   email?: string | null;
+}
+
+export interface GroupRow {
+  id: string;
+  name: string;
+  description: string | null;
+  created_by: string;
+  source: string;
+  source_provider_id: string | null;
+  created_at: string;
+}
+
+export interface GroupMemberRow {
+  id: string;
+  group_id: string;
+  user_id: string;
+}
+
+export interface GroupProjectPermissionRow {
+  id: string;
+  group_id: string;
+  project_id: string;
+  permission: string;
+  created_at: string;
 }

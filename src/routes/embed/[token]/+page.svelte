@@ -4,6 +4,8 @@
   import TableCard from '$lib/components/TableCard.svelte';
   import MemoCard from '$lib/components/MemoCard.svelte';
   import SchemaTabBar from '$lib/components/SchemaTabBar.svelte';
+  import DdlModal from '$lib/components/DdlModal.svelte';
+  import { exportCanvasImage } from '$lib/utils/image-export';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
@@ -21,6 +23,7 @@
   let passwordError = $state('');
 
   const token = $derived($page.params.token);
+  let showDdlModal = $state(false);
 
   const visibleTables = $derived(filterBySchema(erdStore.schema.tables, canvasState.activeSchema));
   const visibleMemos = $derived(filterBySchema(erdStore.schema.memos, canvasState.activeSchema));
@@ -123,6 +126,12 @@
     <div class="embed-header">
       <span class="embed-project-name">{projectName}</span>
       <span class="embed-badge">{m.embed_view_only()}</span>
+      <button class="embed-export-btn" onclick={() => (showDdlModal = true)}>
+        {m.toolbar_export()}
+      </button>
+      <button class="embed-export-btn" onclick={() => exportCanvasImage(projectName)}>
+        {m.toolbar_image_export()}
+      </button>
       <a class="embed-open-link" href="/" target="_blank" rel="noopener">
         {m.embed_open_in_app()} ↗
       </a>
@@ -147,6 +156,10 @@
         {/each}
       </Canvas>
     </div>
+
+    {#if showDdlModal}
+      <DdlModal mode="export" exportOnly={true} projectName={projectName} onclose={() => (showDdlModal = false)} />
+    {/if}
   </div>
 {/if}
 
@@ -286,6 +299,20 @@
     border-radius: 4px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+  }
+  .embed-export-btn {
+    background: none;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .embed-export-btn:hover {
+    color: #e2e8f0;
+    border-color: #60a5fa;
   }
   .embed-open-link {
     margin-left: auto;

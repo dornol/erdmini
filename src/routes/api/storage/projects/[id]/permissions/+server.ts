@@ -29,15 +29,36 @@ export const GET: RequestHandler = ({ params, locals }) => {
       pp.created_at
   `).all(params.id) as (ProjectPermissionRow & Pick<UserRow, 'display_name' | 'username' | 'email'>)[];
 
-  return json(rows.map(r => ({
-    id: r.id,
-    projectId: r.project_id,
-    userId: r.user_id,
-    permission: r.permission,
-    displayName: r.display_name,
-    username: r.username,
-    email: r.email,
-  })));
+  // Group permissions
+  const groupRows = db.prepare(`
+    SELECT gpp.id, gpp.group_id, gpp.project_id, gpp.permission, gpp.created_at,
+           g.name as group_name,
+           (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count
+    FROM group_project_permissions gpp
+    JOIN groups g ON g.id = gpp.group_id
+    WHERE gpp.project_id = ?
+    ORDER BY gpp.created_at
+  `).all(params.id) as { id: string; group_id: string; project_id: string; permission: string; created_at: string; group_name: string; member_count: number }[];
+
+  return json({
+    permissions: rows.map(r => ({
+      id: r.id,
+      projectId: r.project_id,
+      userId: r.user_id,
+      permission: r.permission,
+      displayName: r.display_name,
+      username: r.username,
+      email: r.email,
+    })),
+    groupPermissions: groupRows.map(r => ({
+      id: r.id,
+      groupId: r.group_id,
+      projectId: r.project_id,
+      permission: r.permission,
+      groupName: r.group_name,
+      memberCount: r.member_count,
+    })),
+  });
 };
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {

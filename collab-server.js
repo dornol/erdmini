@@ -191,9 +191,23 @@ const PERM_HIERARCHY = { viewer: 0, editor: 1, owner: 2 };
 
 function hasProjectAccess(db, projectId, userId, userRole, minLevel) {
   if (userRole === 'admin') return true;
+
+  // Direct permission
   const row = db.prepare('SELECT permission FROM project_permissions WHERE project_id = ? AND user_id = ?').get(projectId, userId);
-  if (!row) return false;
-  return (PERM_HIERARCHY[row.permission] ?? -1) >= PERM_HIERARCHY[minLevel];
+  let best = row ? (PERM_HIERARCHY[row.permission] ?? -1) : -1;
+
+  // Group permission — pick highest level
+  const groupRows = db.prepare(
+    `SELECT gpp.permission FROM group_project_permissions gpp
+     JOIN group_members gm ON gm.group_id = gpp.group_id
+     WHERE gpp.project_id = ? AND gm.user_id = ?`
+  ).all(projectId, userId);
+  for (const gr of groupRows) {
+    const level = PERM_HIERARCHY[gr.permission] ?? -1;
+    if (level > best) best = level;
+  }
+
+  return best >= PERM_HIERARCHY[minLevel];
 }
 
 // ── Session validation (minimal, matches src/lib/server/auth/session.ts) ──

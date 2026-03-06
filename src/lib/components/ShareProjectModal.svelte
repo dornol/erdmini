@@ -1,5 +1,15 @@
 <script lang="ts">
   import type { ProjectPermission, ProjectPermissionLevel } from '$lib/types/auth';
+  import * as m from '$lib/paraglide/messages';
+
+  interface GroupPermission {
+    id: string;
+    groupId: string;
+    projectId: string;
+    permission: string;
+    groupName: string;
+    memberCount: number;
+  }
 
   interface Props {
     projectId: string;
@@ -10,13 +20,20 @@
   let { projectId, isOwner, onclose }: Props = $props();
 
   let permissions = $state<ProjectPermission[]>([]);
+  let groupPermissions = $state<GroupPermission[]>([]);
   let loading = $state(true);
 
-  // Search
+  // User search
   let searchQuery = $state('');
   let searchResults = $state<{ id: string; username: string | null; displayName: string; email: string | null }[]>([]);
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
   let newPermission = $state<ProjectPermissionLevel>('viewer');
+
+  // Group search
+  let groupSearchQuery = $state('');
+  let groupSearchResults = $state<{ id: string; name: string; description: string | null; member_count: number }[]>([]);
+  let groupSearchTimer: ReturnType<typeof setTimeout> | undefined;
+  let newGroupPermission = $state<ProjectPermissionLevel>('viewer');
 
   let ownerCount = $derived(permissions.filter(p => p.permission === 'owner').length);
   let error = $state('');
@@ -30,7 +47,11 @@
     loading = true;
     try {
       const res = await fetch(`/api/storage/projects/${projectId}/permissions`);
-      if (res.ok) permissions = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        permissions = data.permissions ?? data;
+        groupPermissions = data.groupPermissions ?? [];
+      }
     } finally {
       loading = false;
     }
@@ -39,19 +60,25 @@
   function handleSearch() {
     clearTimeout(searchTimer);
     const q = searchQuery.trim();
-    if (q.length < 1) {
-      searchResults = [];
-      return;
-    }
+    if (q.length < 1) { searchResults = []; return; }
     searchTimer = setTimeout(async () => {
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
       if (res.ok) searchResults = await res.json();
     }, 300);
   }
 
+  function handleGroupSearch() {
+    clearTimeout(groupSearchTimer);
+    const q = groupSearchQuery.trim();
+    if (q.length < 1) { groupSearchResults = []; return; }
+    groupSearchTimer = setTimeout(async () => {
+      const res = await fetch(`/api/groups/search?q=${encodeURIComponent(q)}`);
+      if (res.ok) groupSearchResults = await res.json();
+    }, 300);
+  }
+
   async function addShare(userId: string) {
-    error = '';
-    success = '';
+    error = ''; success = '';
     const res = await fetch(`/api/storage/projects/${projectId}/permissions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,8 +90,25 @@
       return;
     }
     success = 'Shared successfully';
-    searchQuery = '';
-    searchResults = [];
+    searchQuery = ''; searchResults = [];
+    await loadPermissions();
+    setTimeout(() => (success = ''), 2000);
+  }
+
+  async function addGroupShare(groupId: string) {
+    error = ''; success = '';
+    const res = await fetch(`/api/storage/projects/${projectId}/permissions/groups`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId, permission: newGroupPermission }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      error = data.error || 'Failed to share with group';
+      return;
+    }
+    success = 'Group shared successfully';
+    groupSearchQuery = ''; groupSearchResults = [];
     await loadPermissions();
     setTimeout(() => (success = ''), 2000);
   }
@@ -79,12 +123,32 @@
     await loadPermissions();
   }
 
+  async function updateGroupPermission(groupId: string, permission: ProjectPermissionLevel) {
+    error = '';
+    await fetch(`/api/storage/projects/${projectId}/permissions/groups`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId, permission }),
+    });
+    await loadPermissions();
+  }
+
   async function removeShare(userId: string) {
     error = '';
     await fetch(`/api/storage/projects/${projectId}/permissions`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
+    });
+    await loadPermissions();
+  }
+
+  async function removeGroupShare(groupId: string) {
+    error = '';
+    await fetch(`/api/storage/projects/${projectId}/permissions/groups`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId }),
     });
     await loadPermissions();
   }
@@ -169,7 +233,62 @@
             {/if}
           </div>
         {/each}
-        {#if permissions.length === 0}
+
+        <!-- Group permissions -->
+        {#if groupPermissions.length > 0 || isOwner}
+          <div class="group-section-divider">{m.share_group_section()}</div>
+        {/if}
+
+        {#if isOwner}
+          <div class="group-search-row">
+            <input
+              class="search-input"
+              type="text"
+              placeholder={m.share_group_search()}
+              bind:value={groupSearchQuery}
+              oninput={handleGroupSearch}
+            />
+            <select class="perm-select" bind:value={newGroupPermission}>
+              <option value="editor">Editor</option>
+              <option value="viewer">Viewer</option>
+            </select>
+          </div>
+          {#if groupSearchResults.length > 0}
+            <div class="search-results">
+              {#each groupSearchResults as group}
+                <button class="search-result-item" onclick={() => addGroupShare(group.id)}>
+                  <span class="result-name">{group.name}</span>
+                  <span class="result-detail">{m.admin_groups_member_count({ count: group.member_count })}</span>
+                  <span class="result-add">+ Add</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        {/if}
+
+        {#each groupPermissions as gp}
+          <div class="perm-row">
+            <div class="perm-user">
+              <span class="perm-name">{gp.groupName}</span>
+              <span class="perm-detail">{m.admin_groups_member_count({ count: gp.memberCount })}</span>
+            </div>
+            {#if isOwner}
+              <select
+                class="perm-select-sm"
+                value={gp.permission}
+                onchange={(e) => updateGroupPermission(gp.groupId, (e.target as HTMLSelectElement).value as ProjectPermissionLevel)}
+              >
+                <option value="editor">Editor</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <button class="remove-btn" onclick={() => removeGroupShare(gp.groupId)} title="Remove">✕</button>
+            {:else}
+              <span class="perm-badge">{gp.permission}</span>
+            {/if}
+          </div>
+        {/each}
+
+        {#if permissions.length === 0 && groupPermissions.length === 0}
           <div class="empty">No permissions found</div>
         {/if}
       {/if}
@@ -403,5 +522,22 @@
     padding: 8px 20px;
     font-size: 13px;
     color: #4ade80;
+  }
+
+  .group-section-divider {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    padding: 12px 0 6px;
+    border-top: 1px solid #334155;
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .group-search-row {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0 8px;
   }
 </style>

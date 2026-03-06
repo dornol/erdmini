@@ -107,6 +107,8 @@
       <option value="project">project</option>
       <option value="api-key">api-key</option>
       <option value="oidc-provider">oidc-provider</option>
+      <option value="ldap-provider">ldap-provider</option>
+      <option value="group">group</option>
       <option value="backup">backup</option>
       <option value="mcp">mcp</option>
       <option value="schema">schema</option>

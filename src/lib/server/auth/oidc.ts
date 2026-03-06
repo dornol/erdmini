@@ -60,7 +60,7 @@ export async function handleCallback(
   db: Database.Database,
   provider: OIDCProviderRow,
   callbackUrl: URL,
-): Promise<{ sub: string; email?: string; name?: string }> {
+): Promise<{ sub: string; email?: string; name?: string; claims: Record<string, unknown> }> {
   const stateParam = callbackUrl.searchParams.get('state');
   if (!stateParam) throw new Error('Missing state parameter');
 
@@ -96,6 +96,7 @@ export async function handleCallback(
     sub: claims.sub,
     email: claims.email as string | undefined,
     name: (claims.name ?? claims.preferred_username ?? claims.email) as string | undefined,
+    claims: claims as unknown as Record<string, unknown>,
   };
 }
 

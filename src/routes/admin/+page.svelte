@@ -1,25 +1,29 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { OIDCProviderRow } from '$lib/types/auth';
+  import type { OIDCProviderRow, LdapProviderRow } from '$lib/types/auth';
   import * as m from '$lib/paraglide/messages';
   import AdminUsersTab from './_components/AdminUsersTab.svelte';
   import AdminOidcTab from './_components/AdminOidcTab.svelte';
+  import AdminLdapTab from './_components/AdminLdapTab.svelte';
   import AdminApiKeysTab from './_components/AdminApiKeysTab.svelte';
   import AdminProjectsTab from './_components/AdminProjectsTab.svelte';
   import AdminBackupTab from './_components/AdminBackupTab.svelte';
   import AdminAuditTab from './_components/AdminAuditTab.svelte';
+  import AdminGroupsTab from './_components/AdminGroupsTab.svelte';
   import type { UserInfo } from './_components/AdminUsersTab.svelte';
   import type { ApiKeyInfo } from './_components/AdminApiKeysTab.svelte';
 
   let users = $state<UserInfo[]>([]);
   let providers = $state<OIDCProviderRow[]>([]);
+  let ldapProviders = $state<LdapProviderRow[]>([]);
   let apiKeys = $state<ApiKeyInfo[]>([]);
-  let activeTab = $state<'users' | 'oidc' | 'api-keys' | 'projects' | 'backup' | 'audit-log'>('users');
+  let groups = $state<any[]>([]);
+  let activeTab = $state<'users' | 'groups' | 'oidc' | 'ldap' | 'api-keys' | 'projects' | 'backup' | 'audit-log'>('users');
 
   let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
 
   onMount(async () => {
-    await Promise.all([loadUsers(), loadProviders(), loadApiKeys()]);
+    await Promise.all([loadUsers(), loadProviders(), loadLdapProviders(), loadApiKeys(), loadGroups()]);
   });
 
   async function loadUsers() {
@@ -32,9 +36,19 @@
     if (res.ok) providers = await res.json();
   }
 
+  async function loadLdapProviders() {
+    const res = await fetch('/api/admin/ldap-providers');
+    if (res.ok) ldapProviders = await res.json();
+  }
+
   async function loadApiKeys() {
     const res = await fetch('/api/admin/api-keys');
     if (res.ok) apiKeys = await res.json();
+  }
+
+  async function loadGroups() {
+    const res = await fetch('/api/admin/groups');
+    if (res.ok) groups = await res.json();
   }
 </script>
 
@@ -51,8 +65,14 @@
         <span class="tab-badge">{pendingCount}</span>
       {/if}
     </button>
+    <button class="tab" class:active={activeTab === 'groups'} onclick={() => (activeTab = 'groups')}>
+      {m.admin_tab_groups()} ({groups.length})
+    </button>
     <button class="tab" class:active={activeTab === 'oidc'} onclick={() => (activeTab = 'oidc')}>
-      OIDC Providers ({providers.length})
+      OIDC ({providers.length})
+    </button>
+    <button class="tab" class:active={activeTab === 'ldap'} onclick={() => (activeTab = 'ldap')}>
+      LDAP ({ldapProviders.length})
     </button>
     <button class="tab" class:active={activeTab === 'api-keys'} onclick={() => (activeTab = 'api-keys')}>
       API Keys ({apiKeys.length})
@@ -70,8 +90,12 @@
 
   {#if activeTab === 'users'}
     <AdminUsersTab {users} onreload={loadUsers} />
+  {:else if activeTab === 'groups'}
+    <AdminGroupsTab {groups} onreload={loadGroups} />
   {:else if activeTab === 'oidc'}
     <AdminOidcTab {providers} onreload={loadProviders} />
+  {:else if activeTab === 'ldap'}
+    <AdminLdapTab providers={ldapProviders} onreload={loadLdapProviders} />
   {:else if activeTab === 'api-keys'}
     <AdminApiKeysTab {apiKeys} onreload={loadApiKeys} />
   {:else if activeTab === 'projects'}
@@ -494,6 +518,17 @@
   .admin-page :global(.badge-auth-oidc) {
     background: #312e81;
     color: #c4b5fd;
+  }
+
+  .admin-page :global(.badge-auth-ldap) {
+    background: #1e3a3a;
+    color: #5eead4;
+  }
+
+  .admin-page :global(.badge-group) {
+    background: #1e293b;
+    color: #a78bfa;
+    border: 1px solid #4c1d95;
   }
 
   /* API Keys tab */

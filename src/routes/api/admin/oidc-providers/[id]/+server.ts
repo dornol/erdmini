@@ -9,7 +9,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
-  const { displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers } =
+  const { displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers, syncGroups, groupClaim, allowedGroups } =
     await request.json();
 
   db.prepare(
@@ -20,7 +20,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
          client_secret = COALESCE(?, client_secret),
          scopes = COALESCE(?, scopes),
          enabled = COALESCE(?, enabled),
-         auto_create_users = COALESCE(?, auto_create_users)
+         auto_create_users = COALESCE(?, auto_create_users),
+         sync_groups = COALESCE(?, sync_groups),
+         group_claim = COALESCE(?, group_claim),
+         allowed_groups = COALESCE(?, allowed_groups)
      WHERE id = ?`
   ).run(
     displayName ?? null,
@@ -30,13 +33,17 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     scopes ?? null,
     enabled ?? null,
     autoCreateUsers ?? null,
+    syncGroups ?? null,
+    groupClaim ?? null,
+    allowedGroups ?? null,
     params.id,
   );
 
   // Clear cached OIDC config
   clearConfigCache(params.id);
 
-  const fields = Object.keys({ displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers }).filter(k => ({ displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers } as any)[k] != null);
+  const body = { displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers, syncGroups, groupClaim, allowedGroups };
+  const fields = Object.keys(body).filter(k => (body as Record<string, unknown>)[k] != null);
   logAudit({ action: 'update', category: 'oidc-provider', userId: locals.user!.id, username: locals.user!.username, resourceType: 'provider', resourceId: params.id, detail: { fields } });
 
   return json({ ok: true });

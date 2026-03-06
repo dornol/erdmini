@@ -163,6 +163,159 @@ describe('checkAccess', () => {
   });
 });
 
+describe('checkAccess — group permissions', () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockAll.mockReset();
+    mockPrepare.mockClear();
+  });
+
+  it('group permission grants access when no direct permission', () => {
+    // project_index: no ownership
+    mockGet
+      .mockReturnValueOnce(undefined)  // project_index
+      .mockReturnValueOnce(undefined); // direct permission
+    // group permission: editor
+    mockAll.mockReturnValue([{ permission: 'editor' }]);
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(true);
+  });
+
+  it('group viewer grants viewer access', () => {
+    mockGet
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(undefined);
+    mockAll.mockReturnValue([{ permission: 'viewer' }]);
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'viewer')).toBe(true);
+  });
+
+  it('group viewer denies editor access', () => {
+    mockGet
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(undefined);
+    mockAll.mockReturnValue([{ permission: 'viewer' }]);
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(false);
+  });
+
+  it('group editor + direct viewer → editor access granted', () => {
+    mockGet
+      .mockReturnValueOnce(undefined)  // no project ownership
+      .mockReturnValueOnce({ permission: 'viewer' }); // direct: viewer
+    mockAll.mockReturnValue([{ permission: 'editor' }]); // group: editor
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(true);
+  });
+
+  it('direct owner + group viewer → owner access granted', () => {
+    mockGet
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce({ permission: 'owner' }); // direct: owner
+    mockAll.mockReturnValue([{ permission: 'viewer' }]); // group: viewer
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'owner')).toBe(true);
+  });
+
+  it('multiple groups — picks highest for access check', () => {
+    mockGet
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(undefined);
+    mockAll.mockReturnValue([
+      { permission: 'viewer' },
+      { permission: 'editor' },
+      { permission: 'viewer' },
+    ]);
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(true);
+    // But not owner
+  });
+
+  it('no direct, no group → denies access', () => {
+    mockGet
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(undefined);
+    mockAll.mockReturnValue([]);
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'viewer')).toBe(false);
+  });
+
+  it('group owner permission grants owner access', () => {
+    mockGet
+      .mockReturnValueOnce(undefined)
+      .mockReturnValueOnce(undefined);
+    mockAll.mockReturnValue([{ permission: 'owner' }]);
+
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'owner')).toBe(true);
+  });
+});
+
+describe('listUserProjects — group permissions', () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockAll.mockReset();
+    mockPrepare.mockClear();
+  });
+
+  it('includes group-shared projects for regular user', () => {
+    // Own projects
+    mockGet.mockReturnValue({ data: makeProjectIndex([{ id: 'p1', name: 'Own' }]) });
+    // Call sequence for mockAll:
+    // 1. direct permissions → none
+    // 2. group permissions → p2
+    // 3. all project_index rows → contains p2
+    mockAll
+      .mockReturnValueOnce([])  // direct permissions
+      .mockReturnValueOnce([{ project_id: 'p2' }])  // group permissions
+      .mockReturnValueOnce([  // all project_index rows
+        { data: makeProjectIndex([{ id: 'p2', name: 'Group Shared' }]) },
+      ]);
+
+    const result = listUserProjects(mockDb, 'user1', 'user');
+    expect(result).toHaveLength(2);
+    expect(result.map(p => p.id)).toContain('p1');
+    expect(result.map(p => p.id)).toContain('p2');
+  });
+
+  it('deduplicates direct and group shared projects', () => {
+    mockGet.mockReturnValue({ data: makeProjectIndex([{ id: 'p1', name: 'Own' }]) });
+    // Both direct and group point to p2
+    mockAll
+      .mockReturnValueOnce([{ project_id: 'p2' }])  // direct permissions
+      .mockReturnValueOnce([{ project_id: 'p2' }])  // group permissions (same project)
+      .mockReturnValueOnce([
+        { data: makeProjectIndex([{ id: 'p2', name: 'Shared' }]) },
+      ]);
+
+    const result = listUserProjects(mockDb, 'user1', 'user');
+    expect(result).toHaveLength(2); // p1 + p2 (not p2 twice)
+    const p2s = result.filter(p => p.id === 'p2');
+    expect(p2s).toHaveLength(1);
+  });
+
+  it('does not duplicate own projects that are also group-shared', () => {
+    mockGet.mockReturnValue({ data: makeProjectIndex([{ id: 'p1', name: 'Own' }]) });
+    mockAll
+      .mockReturnValueOnce([])  // direct permissions
+      .mockReturnValueOnce([{ project_id: 'p1' }]);  // group shares p1 (already owned)
+    // No call 3 since sharedIds should be empty (p1 filtered by ownIds)
+
+    const result = listUserProjects(mockDb, 'user1', 'user');
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('p1');
+  });
+
+  it('empty group permissions still works', () => {
+    mockGet.mockReturnValue({ data: makeProjectIndex([{ id: 'p1', name: 'Own' }]) });
+    mockAll
+      .mockReturnValueOnce([])  // direct
+      .mockReturnValueOnce([]);  // group
+
+    const result = listUserProjects(mockDb, 'user1', 'user');
+    expect(result).toHaveLength(1);
+  });
+});
+
 describe('getSchema', () => {
   beforeEach(() => {
     mockGet.mockReset();

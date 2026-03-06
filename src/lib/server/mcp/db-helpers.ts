@@ -64,13 +64,23 @@ export function listUserProjects(
     } catch { /* skip */ }
   }
 
-  // Shared projects via permissions
+  // Shared projects via direct permissions + group permissions
   const permRows = db.prepare(
     `SELECT pp.project_id FROM project_permissions pp WHERE pp.user_id = ?`
   ).all(userId) as { project_id: string }[];
 
+  const groupPermRows = (db.prepare(
+    `SELECT DISTINCT gpp.project_id FROM group_project_permissions gpp
+     JOIN group_members gm ON gm.group_id = gpp.group_id
+     WHERE gm.user_id = ?`
+  ).all(userId) ?? []) as { project_id: string }[];
+
   const ownIds = new Set(ownProjects.map(p => p.id));
-  const sharedIds = permRows.map(r => r.project_id).filter(id => !ownIds.has(id));
+  const sharedIdSet = new Set([
+    ...permRows.map(r => r.project_id),
+    ...groupPermRows.map(r => r.project_id),
+  ]);
+  const sharedIds = [...sharedIdSet].filter(id => !ownIds.has(id));
 
   // Look up shared project metadata from all project_index rows
   if (sharedIds.length > 0) {
@@ -127,15 +137,27 @@ export function checkAccess(
     } catch { /* skip */ }
   }
 
-  // Check permissions table
+  // Check direct permissions
   const perm = db.prepare(
     'SELECT permission FROM project_permissions WHERE project_id = ? AND user_id = ?'
   ).get(projectId, userId) as { permission: ProjectPermissionLevel } | undefined;
 
-  if (!perm) return false;
-
   const levelOrder: Record<ProjectPermissionLevel, number> = { viewer: 0, editor: 1, owner: 2 };
-  return levelOrder[perm.permission] >= levelOrder[requiredLevel];
+  let best = perm ? (levelOrder[perm.permission] ?? -1) : -1;
+
+  // Check group permissions
+  const groupPerms = (db.prepare(
+    `SELECT gpp.permission FROM group_project_permissions gpp
+     JOIN group_members gm ON gm.group_id = gpp.group_id
+     WHERE gpp.project_id = ? AND gm.user_id = ?`
+  ).all(projectId, userId) ?? []) as { permission: ProjectPermissionLevel }[];
+
+  for (const gp of groupPerms) {
+    const level = levelOrder[gp.permission] ?? -1;
+    if (level > best) best = level;
+  }
+
+  return best >= levelOrder[requiredLevel];
 }
 
 export function getSchema(db: Database.Database, projectId: string): ERDSchema | null {

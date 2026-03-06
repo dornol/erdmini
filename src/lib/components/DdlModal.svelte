@@ -20,12 +20,16 @@
   let {
     mode = 'export',
     onclose,
+    exportOnly = false,
+    projectName,
   }: {
     mode: 'import' | 'export';
     onclose: () => void;
+    exportOnly?: boolean;
+    projectName?: string;
   } = $props();
 
-  let activeTab = $state<'import' | 'export'>(untrack(() => mode));
+  let activeTab = $state<'import' | 'export'>(untrack(() => exportOnly ? 'export' : mode));
 
   type ExportFormat = 'ddl' | 'mermaid' | 'plantuml' | 'prisma' | 'dbml';
   type ImportFormat = 'ddl' | 'prisma' | 'dbml';
@@ -93,7 +97,7 @@
   }
 
   function downloadFile() {
-    const projName = sanitizeFilename(projectStore.activeProject?.name ?? 'schema');
+    const projName = sanitizeFilename(projectName ?? projectStore.activeProject?.name ?? 'schema');
     const extMap: Record<string, string> = { mermaid: '.mmd', plantuml: '.puml', prisma: '.prisma', dbml: '.dbml' };
     const ext = extMap[exportFormat] ?? `_${exportDialect}.sql`;
     downloadBlob(exportText, `erdmini_${projName}${ext}`, 'text/plain');
@@ -256,10 +260,16 @@
     }
   }
 
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') onclose();
+  }
+
   function handleBackdrop(e: MouseEvent) {
     if (e.target === e.currentTarget) onclose();
   }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="backdrop" onmousedown={handleBackdrop}>
@@ -271,11 +281,13 @@
           class:active={activeTab === 'export'}
           onclick={() => (activeTab = 'export')}
         >Export DDL</button>
-        <button
-          class="tab"
-          class:active={activeTab === 'import'}
-          onclick={() => (activeTab = 'import')}
-        >Import DDL</button>
+        {#if !exportOnly}
+          <button
+            class="tab"
+            class:active={activeTab === 'import'}
+            onclick={() => (activeTab = 'import')}
+          >Import DDL</button>
+        {/if}
       </div>
       <button class="close-btn" onclick={onclose}>✕</button>
     </div>
