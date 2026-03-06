@@ -179,15 +179,12 @@
 - `src/lib/utils/dbml-import.ts`, `src/lib/utils/dbml-export.ts`, DdlModal 통합, MCP 도구 (export_dbml, import_dbml)
 - 89 tests (53 import + 36 export)
 
-### 32. ORM / Framework Schema Import
+### ~~32. ORM / Framework Schema Import~~ — Won't Do (Rails/Django/TypeORM)
 - ORM 및 프레임워크 스키마 파일에서 직접 ERD 생성
 - ~~**Prisma** (`schema.prisma`): model, @id, @relation, @unique, enum 파싱~~ ✅ (Import + Export 구현 완료)
-- **Rails** (`schema.rb`): create_table, t.string/integer/references, add_index, add_foreign_key 파싱
-- **Django** (`models.py`): class Model, CharField, ForeignKey, ManyToManyField, Meta.unique_together 파싱
-- **TypeORM / Sequelize** (TypeScript): @Entity, @Column, @ManyToOne, @JoinColumn 데코레이터 파싱
-- DdlModal의 Import 탭에 포맷 선택 드롭다운 추가 (DDL / DBML / Prisma / Rails / Django)
-- 각 포맷별 `src/lib/utils/orm-import-{format}.ts` 모듈
-- Difficulty: Large
+- ~~**Rails** (`schema.rb`)~~ — Won't Do: DDL 7방언 + DBML + Prisma import로 충분. 사용층 겹침 낮음
+- ~~**Django** (`models.py`)~~ — Won't Do: 동일 사유
+- ~~**TypeORM / Sequelize** (TypeScript)~~ — Won't Do: 동일 사유
 
 ### ~~33. SQL Playground (Browser SQLite via WASM)~~ ✅
 - ~~브라우저에서 SQLite WASM(`sql.js`)으로 현재 스키마를 실제 DB로 생성하고 SQL 쿼리 실행~~
