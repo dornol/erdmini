@@ -11,6 +11,7 @@ COPY . .
 ARG PUBLIC_SITE_URL=https://erdmini.dornol.dev
 ENV PUBLIC_STORAGE_MODE=server
 ENV PUBLIC_SITE_URL=$PUBLIC_SITE_URL
+ENV ADMIN_PASSWORD=build-placeholder
 
 RUN pnpm prepare && pnpm build:server
 

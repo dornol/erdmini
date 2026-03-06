@@ -10,7 +10,12 @@ function generateRandomPassword(length = 16): string {
   return Array.from(bytes, b => chars[b % chars.length]).join('');
 }
 
+let _adminSetupDone = false;
+
 export async function setupAdmin(db: Database.Database): Promise<void> {
+  if (_adminSetupDone) return;
+  _adminSetupDone = true;
+
   const userCount = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   if (userCount.cnt > 0) return;
 
