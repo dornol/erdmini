@@ -5,14 +5,9 @@ import { snapshotStore } from '$lib/store/snapshot.svelte';
 import { generateId, now } from '$lib/utils/common';
 import { normalizeSchema } from '$lib/utils/schema-normalize';
 
-function migrateSchema(raw: string): ERDSchema {
-  try {
-    const parsed = JSON.parse(raw) as ERDSchema;
-    normalizeSchema(parsed);
-    return parsed;
-  } catch {
-    return defaultSchema();
-  }
+function migrateSchema(schema: ERDSchema): ERDSchema {
+  normalizeSchema(schema);
+  return schema;
 }
 
 class ProjectStore {
@@ -63,7 +58,8 @@ class ProjectStore {
         lastOpenedAt: ts,
       };
       this.index = { version: '1', activeProjectId: id, projects: [meta] };
-      const schema = migrateSchema(legacyRaw);
+      let schema: ERDSchema;
+      try { schema = migrateSchema(JSON.parse(legacyRaw)); } catch { schema = defaultSchema(); }
       await this.provider.saveSchema(id, schema);
       await this.saveIndex();
       await this.provider.deleteLegacyKey();
@@ -94,7 +90,7 @@ class ProjectStore {
   private async loadProjectSchema(projectId: string) {
     const schema = await this.provider.loadSchema(projectId);
     if (schema) {
-      erdStore.loadSchema(migrateSchema(JSON.stringify(schema)));
+      erdStore.loadSchema(migrateSchema(schema));
     } else {
       erdStore.loadSchema(defaultSchema());
     }
@@ -146,7 +142,7 @@ class ProjectStore {
   }
 
   async switchProject(id: string) {
-    if (id === this.index.activeProjectId) return;
+    if (id === this.index.activeProjectId || this._loading) return;
     await this.saveCurrentSchema();
     this._loading = true;
     try {
@@ -163,6 +159,7 @@ class ProjectStore {
   }
 
   async createProject(name: string) {
+    if (this._loading) return;
     await this.saveCurrentSchema();
     this._loading = true;
     try {
@@ -197,7 +194,7 @@ class ProjectStore {
   }
 
   async deleteProject(id: string) {
-    if (this.index.projects.length <= 1) return;
+    if (this.index.projects.length <= 1 || this._loading) return;
     this._loading = true;
     try {
       this.index.projects = this.index.projects.filter((p) => p.id !== id);
@@ -220,6 +217,7 @@ class ProjectStore {
   }
 
   async loadSharedProject(projectId: string, name: string, schema: ERDSchema) {
+    if (this._loading) return;
     await this.saveCurrentSchema();
     // Check if project already exists in our index
     const existing = this.index.projects.find((p) => p.id === projectId);
@@ -261,6 +259,7 @@ class ProjectStore {
   }
 
   async createProjectWithSchema(name: string, schema: ERDSchema) {
+    if (this._loading) return;
     await this.saveCurrentSchema();
     this._loading = true;
     try {
@@ -301,6 +300,7 @@ class ProjectStore {
   }
 
   async importAll(json: string): Promise<{ ok: boolean; error?: string }> {
+    if (this._loading) return { ok: false, error: 'Operation in progress' };
     this._loading = true;
     try {
       const backup = JSON.parse(json);
@@ -331,6 +331,7 @@ class ProjectStore {
   }
 
   async duplicateProject(id: string) {
+    if (this._loading) return;
     const src = this.index.projects.find((p) => p.id === id);
     if (!src) return;
     if (id === this.index.activeProjectId) {

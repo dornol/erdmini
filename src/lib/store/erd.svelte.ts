@@ -49,6 +49,7 @@ class ERDStore {
   _undoVersion = $state(0);
   _isUndoRedoing = false;
   _isRemoteOp = false;
+  _isLoadingSchema = false;
   _lastOperation = $state<import('$lib/types/collab').CollabOperation | null>(null);
   _opVersion = $state(0);
 
@@ -783,6 +784,7 @@ class ERDStore {
 
   loadSchema(schema: ERDSchema) {
     normalizeSchema(schema);
+    this._isLoadingSchema = true;
     this.schema = schema;
     this.schema.updatedAt = now();
     this.selectedTableId = null;

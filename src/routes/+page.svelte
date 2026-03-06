@@ -233,6 +233,8 @@
         erdStore._isUndoRedoing = false;
       } else if (erdStore._isRemoteOp) {
         // Remote operations don't go into undo stack
+      } else if (erdStore._isLoadingSchema) {
+        erdStore._isLoadingSchema = false;
       } else {
         const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
         const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;
@@ -249,7 +251,7 @@
     // Guard: skip save until init done AND no async project switch in progress
     if (projectStore.safeToSave) {
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => { await projectStore.saveCurrentSchema(); }, 300);
+      saveTimer = setTimeout(async () => { if (projectStore.safeToSave) await projectStore.saveCurrentSchema(); }, 300);
     }
   });
 
