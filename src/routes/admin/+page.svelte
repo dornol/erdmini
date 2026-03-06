@@ -11,6 +11,7 @@
   import AdminAuditTab from './_components/AdminAuditTab.svelte';
   import AdminGroupsTab from './_components/AdminGroupsTab.svelte';
   import AdminBrandingTab from './_components/AdminBrandingTab.svelte';
+  import AdminEmbedTab from './_components/AdminEmbedTab.svelte';
   import type { UserInfo } from './_components/AdminUsersTab.svelte';
   import type { ApiKeyInfo } from './_components/AdminApiKeysTab.svelte';
 
@@ -19,7 +20,7 @@
   let ldapProviders = $state<LdapProviderRow[]>([]);
   let apiKeys = $state<ApiKeyInfo[]>([]);
   let groups = $state<any[]>([]);
-  let activeTab = $state<'users' | 'groups' | 'oidc' | 'ldap' | 'api-keys' | 'projects' | 'branding' | 'backup' | 'audit-log'>('users');
+  let activeTab = $state<'users' | 'groups' | 'oidc' | 'ldap' | 'api-keys' | 'embeds' | 'projects' | 'branding' | 'backup' | 'audit-log'>('users');
 
   let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
 
@@ -78,6 +79,9 @@
     <button class="tab" class:active={activeTab === 'api-keys'} onclick={() => (activeTab = 'api-keys')}>
       API Keys ({apiKeys.length})
     </button>
+    <button class="tab" class:active={activeTab === 'embeds'} onclick={() => (activeTab = 'embeds')}>
+      Embeds
+    </button>
     <button class="tab" class:active={activeTab === 'projects'} onclick={() => (activeTab = 'projects')}>
       {m.admin_tab_projects()}
     </button>
@@ -102,6 +106,8 @@
     <AdminLdapTab providers={ldapProviders} onreload={loadLdapProviders} />
   {:else if activeTab === 'api-keys'}
     <AdminApiKeysTab {apiKeys} {users} onreload={loadApiKeys} />
+  {:else if activeTab === 'embeds'}
+    <AdminEmbedTab />
   {:else if activeTab === 'projects'}
     <AdminProjectsTab {users} />
   {:else if activeTab === 'branding'}
