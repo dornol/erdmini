@@ -12,7 +12,7 @@ ARG PUBLIC_SITE_URL=https://erdmini.dornol.dev
 ENV PUBLIC_STORAGE_MODE=server
 ENV PUBLIC_SITE_URL=$PUBLIC_SITE_URL
 
-RUN pnpm build:server
+RUN pnpm prepare && pnpm build:server
 
 # --- Production stage ---
 FROM base AS production
