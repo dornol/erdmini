@@ -21,6 +21,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Compile paraglide messages
+        run: npx paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+
       - name: Type check
         run: pnpm check
 
