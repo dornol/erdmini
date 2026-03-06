@@ -38,9 +38,11 @@
         <div class="shortcut-row"><kbd>{mod}+Shift+Z</kbd><span>{m.shortcuts_redo()}</span></div>
         <div class="shortcut-row"><kbd>Delete / Backspace</kbd><span>{m.shortcuts_delete()}</span></div>
         <div class="shortcut-row"><kbd>Esc</kbd><span>{m.shortcuts_deselect()}</span></div>
-        <div class="shortcut-row"><kbd>{mod}+K</kbd><span>{m.cmd_palette_open()}</span></div>
+        <div class="shortcut-row"><kbd>{mod}+K / {mod}+F</kbd><span>{m.shortcuts_search()}</span></div>
         <div class="shortcut-row"><kbd>{mod}+A</kbd><span>{m.shortcuts_select_all()}</span></div>
         <div class="shortcut-row"><kbd>{mod}+D</kbd><span>{m.shortcuts_duplicate()}</span></div>
+        <div class="shortcut-row"><kbd>{mod}+C</kbd><span>{m.shortcuts_copy_tables()}</span></div>
+        <div class="shortcut-row"><kbd>{mod}+V</kbd><span>{m.shortcuts_paste_tables()}</span></div>
       </div>
 
       <div class="shortcuts-group">
