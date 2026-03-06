@@ -4,16 +4,59 @@
 
   export type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null; scopes: ApiKeyScopeRow[] };
 
+  interface UserOption {
+    id: string;
+    username: string | null;
+    display_name: string;
+  }
+
   interface Props {
     apiKeys: ApiKeyInfo[];
+    users: UserOption[];
     onreload: () => Promise<void>;
   }
 
-  let { apiKeys, onreload }: Props = $props();
+  let { apiKeys, users, onreload }: Props = $props();
 
   let apiKeyError = $state('');
   let apiKeySuccess = $state('');
-  let newApiKey = $state({ name: '', expiresAt: '' });
+  let newApiKey = $state({ name: '', expiresAt: '', userId: '' });
+
+  // User search combobox
+  let userSearch = $state('');
+  let userDropdownOpen = $state(false);
+  let selectedUserLabel = $state('');
+  let filteredUsers = $derived(
+    userSearch.trim()
+      ? users.filter(u => {
+          const q = userSearch.toLowerCase();
+          return (u.display_name?.toLowerCase().includes(q)) ||
+                 (u.username?.toLowerCase().includes(q));
+        })
+      : users
+  );
+
+  function selectUser(u: UserOption) {
+    newApiKey.userId = u.id;
+    selectedUserLabel = `${u.display_name}${u.username ? ` (${u.username})` : ''}`;
+    userSearch = '';
+    userDropdownOpen = false;
+  }
+
+  function clearUser() {
+    newApiKey.userId = '';
+    selectedUserLabel = '';
+    userSearch = '';
+  }
+
+  function handleUserSearchFocus() {
+    userDropdownOpen = true;
+  }
+
+  function handleUserSearchBlur() {
+    // Delay to allow click on dropdown item
+    setTimeout(() => { userDropdownOpen = false; }, 150);
+  }
   let newApiKeyScopes = $state<{ projectId: string; permission: 'viewer' | 'editor' }[]>([]);
   let apiKeyScopeMode = $state<'all' | 'scoped'>('all');
   let createdKey = $state<string | null>(null);
@@ -65,6 +108,7 @@
     const body: Record<string, unknown> = {
       name: newApiKey.name,
       expiresAt: newApiKey.expiresAt || undefined,
+      userId: newApiKey.userId || undefined,
     };
     if (apiKeyScopeMode === 'scoped' && newApiKeyScopes.length > 0) {
       body.scopes = newApiKeyScopes;
@@ -82,7 +126,9 @@
     const data = await res.json();
     createdKey = data.key;
     apiKeySuccess = `API key "${newApiKey.name}" created`;
-    newApiKey = { name: '', expiresAt: '' };
+    newApiKey = { name: '', expiresAt: '', userId: '' };
+    selectedUserLabel = '';
+    userSearch = '';
     apiKeyScopeMode = 'all';
     newApiKeyScopes = [];
     await onreload();
@@ -224,6 +270,35 @@
     <h3>Create API Key</h3>
     <div class="form-grid">
       <input placeholder="Key name (e.g. MCP Server)" bind:value={newApiKey.name} />
+      <div class="user-picker">
+        {#if selectedUserLabel}
+          <div class="user-picked">
+            <span class="user-picked-label">{selectedUserLabel}</span>
+            <button class="user-picked-clear" onclick={clearUser} type="button">&times;</button>
+          </div>
+        {:else}
+          <input
+            class="inline-input"
+            placeholder="Owner (default: me)"
+            bind:value={userSearch}
+            onfocus={handleUserSearchFocus}
+            onblur={handleUserSearchBlur}
+          />
+        {/if}
+        {#if userDropdownOpen && !selectedUserLabel}
+          <div class="user-dropdown">
+            {#each filteredUsers as u}
+              <button class="user-dropdown-item" type="button" onmousedown={() => selectUser(u)}>
+                <span class="user-dropdown-name">{u.display_name}</span>
+                {#if u.username}<span class="user-dropdown-username">{u.username}</span>{/if}
+              </button>
+            {/each}
+            {#if filteredUsers.length === 0}
+              <div class="user-dropdown-empty">No users found</div>
+            {/if}
+          </div>
+        {/if}
+      </div>
       <label class="input-label">
         <span>Expires</span>
         <input type="date" bind:value={newApiKey.expiresAt} />
@@ -259,3 +334,93 @@
     {#if apiKeySuccess && !createdKey}<div class="msg-success">{apiKeySuccess}</div>{/if}
   </div>
 </section>
+
+<style>
+  .user-picker {
+    position: relative;
+    min-width: 180px;
+    flex: 1;
+  }
+
+  .user-picked {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #f1f5f9;
+  }
+
+  .user-picked-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-picked-clear {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+  }
+
+  .user-picked-clear:hover {
+    color: #f87171;
+  }
+
+  .user-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    z-index: 10;
+    margin-top: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .user-dropdown-item:hover {
+    background: #334155;
+    color: #f1f5f9;
+  }
+
+  .user-dropdown-name {
+    font-weight: 500;
+  }
+
+  .user-dropdown-username {
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  .user-dropdown-empty {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #64748b;
+  }
+</style>

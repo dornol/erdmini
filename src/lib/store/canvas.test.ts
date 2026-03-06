@@ -30,7 +30,7 @@ describe('CanvasState defaults', () => {
   });
 
   it('showRelationLines ignores invalid localStorage values', () => {
-    const savedValue = 'invalid';
+    const savedValue: string | null = 'invalid';
     const showRelationLines = savedValue === 'false' ? false : true;
     expect(showRelationLines).toBe(true);
   });

@@ -101,7 +101,7 @@
   {:else if activeTab === 'ldap'}
     <AdminLdapTab providers={ldapProviders} onreload={loadLdapProviders} />
   {:else if activeTab === 'api-keys'}
-    <AdminApiKeysTab {apiKeys} onreload={loadApiKeys} />
+    <AdminApiKeysTab {apiKeys} {users} onreload={loadApiKeys} />
   {:else if activeTab === 'projects'}
     <AdminProjectsTab {users} />
   {:else if activeTab === 'branding'}
