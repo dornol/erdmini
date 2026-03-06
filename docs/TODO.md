@@ -247,3 +247,10 @@
 - ~~마커 간격/크기 정리 (tick 7px, circle r4.5, participation 15px offset)~~
 - 13 new tests (canvas defaults + FK marker geometry)
 - Difficulty: Easy
+
+### Phase 39c — Admin UX Improvements
+- ~~**API Key User Picker**: Create API Key에서 사용자 검색 UI (이름/유저네임/이메일 검색, 역할 배지, 드롭다운)~~
+- ~~**Embed Admin Tab**: 전체 프로젝트 임베드 토큰 관리 탭 (목록, URL 복사, 삭제)~~
+- ~~**Tab Counts**: Embeds/Projects 탭에 개수 표시 (Branding/Backup/Audit 제외)~~
+- 41 new tests (embed token CRUD + validation)
+- Difficulty: Easy
