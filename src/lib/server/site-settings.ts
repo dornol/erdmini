@@ -55,9 +55,11 @@ export function getDefaultPermissions(dbInstance: { prepare: (sql: string) => { 
 
 function validateLogoUrl(url: string): boolean {
   if (!url) return true; // empty = reset
+  if (url.startsWith('/')) return true;
   try {
     const parsed = new URL(url, 'https://placeholder.local');
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:' || url.startsWith('/');
+    if (parsed.protocol === 'data:' || parsed.protocol === 'javascript:') return false;
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
   } catch {
     return false;
   }

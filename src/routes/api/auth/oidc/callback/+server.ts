@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { handleCallback, findOrCreateOIDCUser, cleanupExpiredStates } from '$lib/server/auth/oidc';
-import { createSession } from '$lib/server/auth/session';
+import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { syncUserGroups, syncAdminRole } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
 import { logger } from '$lib/server/logger';
@@ -85,7 +85,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
       httpOnly: true,
       sameSite: 'lax',
       secure: url.protocol === 'https:',
-      maxAge: 30 * 24 * 60 * 60,
+      maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
     });
 
     logAudit({ action: 'oidc_login', category: 'auth', userId: result.userId, username: email ?? name, detail: { provider: provider.display_name } });

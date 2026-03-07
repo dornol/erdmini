@@ -41,6 +41,9 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
   // Update expiresAt if provided (null to remove expiry)
   if (expiresAt !== undefined) {
+    if (expiresAt !== null && isNaN(new Date(expiresAt).getTime())) {
+      return json({ error: 'Invalid expiresAt date' }, { status: 400 });
+    }
     db.prepare('UPDATE api_keys SET expires_at = ? WHERE id = ?').run(expiresAt, params.id);
   }
 

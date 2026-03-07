@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { authenticateLdap, findOrCreateLdapUser } from '$lib/server/auth/ldap';
-import { createSession } from '$lib/server/auth/session';
+import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { syncUserGroups, extractCN } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
 import { RateLimiter } from '$lib/server/auth/rate-limiter';
@@ -76,7 +76,7 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
     httpOnly: true,
     sameSite: 'strict',
     secure: url.protocol === 'https:',
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
   });
 
   logAudit({ action: 'ldap_login', category: 'auth', userId: result.userId, username, detail: { provider: provider.display_name }, ip, source: 'web' });

@@ -2,6 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { validateEmbedToken, verifyEmbedPassword } from '$lib/server/embed';
+import { RateLimiter } from '$lib/server/auth/rate-limiter';
+
+const embedPasswordLimiter = new RateLimiter({ maxAttempts: 10, windowMs: 15 * 60_000, maxMapSize: 1000 });
+setInterval(() => embedPasswordLimiter.cleanup(), 5 * 60 * 1000);
 
 function getProjectName(projectId: string): string {
   // Search all project_index rows for the project name
@@ -46,7 +50,12 @@ export const GET: RequestHandler = async ({ params }) => {
   });
 };
 
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ params, request, getClientAddress }) => {
+  const ip = getClientAddress();
+  if (!embedPasswordLimiter.check(ip)) {
+    return json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
+  }
+
   const result = validateEmbedToken(db, params.token);
 
   if (!result) {

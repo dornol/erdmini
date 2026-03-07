@@ -370,8 +370,8 @@ export function createMcpServer(
       tableId: z.string().max(256).describe('Table ID'),
       name: z.string().max(256).optional().describe('Column name'),
       type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Column type'),
-      length: z.number().optional().describe('Column length'),
-      scale: z.number().optional().describe('Decimal scale'),
+      length: z.number().min(0).max(65535).optional().describe('Column length'),
+      scale: z.number().min(0).max(30).optional().describe('Decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique constraint'),
@@ -406,8 +406,8 @@ export function createMcpServer(
       columnId: z.string().max(256).describe('Column ID'),
       name: z.string().max(256).optional().describe('New column name'),
       type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('New column type'),
-      length: z.number().optional().describe('New length'),
-      scale: z.number().optional().describe('New decimal scale'),
+      length: z.number().min(0).max(65535).optional().describe('New length'),
+      scale: z.number().min(0).max(30).optional().describe('New decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique'),
@@ -475,6 +475,23 @@ export function createMcpServer(
     async ({ projectId, tableId, columnIds, referencedTableId, referencedColumnIds, onDelete, onUpdate }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      // Validate column IDs exist
+      const srcTable = schema.tables.find(t => t.id === tableId);
+      const refTable = schema.tables.find(t => t.id === referencedTableId);
+      if (srcTable) {
+        for (const colId of columnIds) {
+          if (!srcTable.columns.find(c => c.id === colId)) {
+            return { content: [{ type: 'text', text: `Column ${colId} not found in source table` }], isError: true };
+          }
+        }
+      }
+      if (refTable) {
+        for (const colId of referencedColumnIds) {
+          if (!refTable.columns.find(c => c.id === colId)) {
+            return { content: [{ type: 'text', text: `Column ${colId} not found in referenced table` }], isError: true };
+          }
+        }
+      }
       const result = addForeignKey(schema, tableId, {
         columnIds,
         referencedTableId,
@@ -614,10 +631,10 @@ export function createMcpServer(
       content: z.string().max(10000).optional().describe('Memo text content'),
       color: z.enum(['yellow', 'blue', 'green', 'pink', 'purple', 'orange']).optional().describe('Memo color'),
       schema: z.string().max(256).optional().describe('Schema namespace to assign this memo to'),
-      x: z.number().optional().describe('X position on canvas'),
-      y: z.number().optional().describe('Y position on canvas'),
-      width: z.number().optional().describe('Memo width (default: 200)'),
-      height: z.number().optional().describe('Memo height (default: 150)'),
+      x: z.number().min(-100000).max(100000).optional().describe('X position on canvas'),
+      y: z.number().min(-100000).max(100000).optional().describe('Y position on canvas'),
+      width: z.number().min(0).max(10000).optional().describe('Memo width (default: 200)'),
+      height: z.number().min(0).max(10000).optional().describe('Memo height (default: 150)'),
     },
     async ({ projectId, ...opts }) => {
       requireAccess(projectId, 'editor');
@@ -639,10 +656,10 @@ export function createMcpServer(
       memoId: z.string().max(256).describe('Memo ID'),
       content: z.string().max(10000).optional().describe('New memo text content'),
       color: z.enum(['yellow', 'blue', 'green', 'pink', 'purple', 'orange', '']).optional().describe('New color (empty string to reset to yellow)'),
-      x: z.number().optional().describe('New X position'),
-      y: z.number().optional().describe('New Y position'),
-      width: z.number().optional().describe('New width'),
-      height: z.number().optional().describe('New height'),
+      x: z.number().min(-100000).max(100000).optional().describe('New X position'),
+      y: z.number().min(-100000).max(100000).optional().describe('New Y position'),
+      width: z.number().min(0).max(10000).optional().describe('New width'),
+      height: z.number().min(0).max(10000).optional().describe('New height'),
       locked: z.boolean().optional().describe('Lock/unlock the memo'),
     },
     async ({ projectId, memoId, ...patch }) => {
@@ -815,8 +832,8 @@ export function createMcpServer(
       domainId: z.string().max(256).describe('Domain ID'),
       name: z.string().max(256).optional().describe('New domain name'),
       type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('New column type'),
-      length: z.number().optional().describe('New length'),
-      scale: z.number().optional().describe('New decimal scale'),
+      length: z.number().min(0).max(65535).optional().describe('New length'),
+      scale: z.number().min(0).max(30).optional().describe('New decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique'),
@@ -944,6 +961,10 @@ export function createMcpServer(
     },
     async ({ projectId, name, description }) => {
       requireAccess(projectId, 'editor');
+      const snapshotCount = db.prepare('SELECT COUNT(*) as count FROM schema_snapshots WHERE project_id = ?').get(projectId) as { count: number };
+      if (snapshotCount.count >= 50) {
+        return { content: [{ type: 'text', text: 'Snapshot limit reached (50). Delete old snapshots before creating new ones.' }], isError: true };
+      }
       const schema = getSchemaOrFail(projectId);
       const id = generateId();
       const now = Date.now();

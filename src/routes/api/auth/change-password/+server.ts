@@ -2,10 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { hashPassword, verifyPassword } from '$lib/server/auth/password';
+import { createSession, deleteUserSessions, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
 import type { UserRow } from '$lib/types/auth';
 
-export const PUT: RequestHandler = async ({ locals, request }) => {
+export const PUT: RequestHandler = async ({ locals, request, cookies, url }) => {
   const user = (locals as any).user;
   if (!user) {
     return json({ error: 'Unauthorized' }, { status: 401 });
@@ -29,6 +30,17 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 
   const newHash = await hashPassword(newPassword);
   db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newHash, user.id);
+
+  // Invalidate all existing sessions and create a new one
+  deleteUserSessions(db, user.id);
+  const session = createSession(db, user.id);
+  cookies.set('erdmini_session', session.id, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: url.protocol === 'https:',
+    maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
+  });
 
   logAudit({ action: 'change_password', category: 'auth', userId: user.id, username: user.username, source: 'web' });
 

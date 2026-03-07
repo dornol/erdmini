@@ -56,7 +56,8 @@ export const POST: RequestHandler = async ({ request }): Promise<Response> => {
     const response = await transport.handleRequest(correctedRequest, { parsedBody });
     return response ?? new Response(null, { status: 204 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const rawMsg = error instanceof Error ? error.message : String(error);
+    const message = rawMsg.includes('SQLITE') || rawMsg.includes('node_modules') ? 'Internal server error' : rawMsg;
     return new Response(JSON.stringify({
       jsonrpc: '2.0',
       error: { code: -32603, message },

@@ -147,22 +147,31 @@ async function getParser(dialect: Dialect): Promise<any> {
  */
 function extractCheckConstraints(sql: string): Map<string, Map<string, string>> {
   const result = new Map<string, Map<string, string>>();
-  const tableRe = /create\s+table\s+(?:\[?\w+\]?\.)?[\[`"]?(\w+)[\]`"]?\s*\(([\s\S]*?)\)\s*(?:ENGINE|;|\))/gi;
+  const headerRe = /create\s+table\s+(?:\[?\w+\]?\.)?[\[`"]?(\w+)[\]`"]?\s*\(/gi;
   let tMatch: RegExpExecArray | null;
-  while ((tMatch = tableRe.exec(sql)) !== null) {
+  while ((tMatch = headerRe.exec(sql)) !== null) {
     const tableName = tMatch[1];
-    const body = tMatch[2];
+    // Use paren depth tracking to find the matching closing ')'
+    let depth = 1, i = tMatch.index + tMatch[0].length;
+    const start = i;
+    while (i < sql.length && depth > 0) {
+      if (sql[i] === '(') depth++;
+      else if (sql[i] === ')') depth--;
+      i++;
+    }
+    if (depth !== 0) continue;
+    const body = sql.slice(start, i - 1);
     const colDefs: string[] = [];
-    let depth = 0, start = 0;
-    for (let i = 0; i < body.length; i++) {
-      if (body[i] === '(') depth++;
-      else if (body[i] === ')') depth--;
-      else if (body[i] === ',' && depth === 0) {
-        colDefs.push(body.slice(start, i));
-        start = i + 1;
+    let d2 = 0, s2 = 0;
+    for (let j = 0; j < body.length; j++) {
+      if (body[j] === '(') d2++;
+      else if (body[j] === ')') d2--;
+      else if (body[j] === ',' && d2 === 0) {
+        colDefs.push(body.slice(s2, j));
+        s2 = j + 1;
       }
     }
-    colDefs.push(body.slice(start));
+    colDefs.push(body.slice(s2));
 
     for (const colDef of colDefs) {
       const trimmed = colDef.trim();

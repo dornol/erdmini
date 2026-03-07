@@ -83,7 +83,7 @@ function detectBaseline(db: InstanceType<typeof Database>): number {
 	}
 
 	// V003 is idempotent (INSERT OR IGNORE), safe to baseline
-	baselineVersion = 3;
+	if (baselineVersion >= 2) baselineVersion = 3;
 
 	return baselineVersion;
 }

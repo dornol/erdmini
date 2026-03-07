@@ -135,6 +135,7 @@ export const DELETE: RequestHandler = ({ params, locals }) => {
     db.prepare(
       `UPDATE project_index SET user_id = ? WHERE user_id = ?`
     ).run(adminId, params.id);
+    db.prepare('UPDATE groups SET created_by = ? WHERE created_by = ?').run(adminId, params.id);
     db.prepare('DELETE FROM project_permissions WHERE user_id = ?').run(params.id);
     db.prepare('DELETE FROM users WHERE id = ?').run(params.id);
   });

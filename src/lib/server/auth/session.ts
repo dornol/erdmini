@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import type { AuthUser, SessionRow, UserRow } from '$lib/types/auth';
 import { env } from '$env/dynamic/private';
 
-const SESSION_MAX_AGE_DAYS = parseInt(env.SESSION_MAX_AGE_DAYS || '30', 10);
+export const SESSION_MAX_AGE_DAYS = parseInt(env.SESSION_MAX_AGE_DAYS || '30', 10);
 
 export function createSession(db: Database.Database, userId: string): SessionRow {
   const id = randomBytes(32).toString('hex');

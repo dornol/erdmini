@@ -189,6 +189,33 @@ describe('Baseline detection logic', () => {
 
     expect(baseline).toBe(2);
   });
+
+  it('V3 baseline is conditional on V2 (baselineVersion >= 2)', () => {
+    // Simulates the fixed detectBaseline logic
+    function detectBaseline(tables: Set<string>, piColumns: string[]): number {
+      if (!tables.has('users')) return 0;
+      let baselineVersion = 1;
+      if (tables.has('project_index')) {
+        if (piColumns.includes('user_id')) {
+          baselineVersion = 2;
+        }
+      }
+      if (baselineVersion >= 2) baselineVersion = 3;
+      return baselineVersion;
+    }
+
+    // Fresh DB
+    expect(detectBaseline(new Set(), [])).toBe(0);
+
+    // V1 only (users exist but no project_index.user_id)
+    expect(detectBaseline(new Set(['users', 'sessions']), [])).toBe(1);
+
+    // V1 with project_index but without user_id
+    expect(detectBaseline(new Set(['users', 'project_index']), ['id', 'data'])).toBe(1);
+
+    // V2+ (project_index.user_id exists) → should jump to V3
+    expect(detectBaseline(new Set(['users', 'project_index']), ['id', 'user_id', 'data'])).toBe(3);
+  });
 });
 
 describe('Pending migration filtering', () => {

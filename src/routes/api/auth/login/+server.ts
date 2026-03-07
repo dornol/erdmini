@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { verifyPassword } from '$lib/server/auth/password';
-import { createSession } from '$lib/server/auth/session';
+import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
 import { RateLimiter } from '$lib/server/auth/rate-limiter';
 import type { UserRow } from '$lib/types/auth';
@@ -52,7 +52,7 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
     httpOnly: true,
     sameSite: 'strict',
     secure: url.protocol === 'https:',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
   });
 
   logAudit({ action: 'login', category: 'auth', userId: user.id, username: user.username, ip, source: 'web' });

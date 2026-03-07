@@ -129,65 +129,80 @@ function handleMessage(peerId, raw, db, userId, userRole) {
     return;
   }
 
-  switch (msg.type) {
-    case 'join': {
-      if (!hasProjectAccess(db, msg.projectId, userId, userRole, 'viewer')) {
-        roomManager.sendTo(peerId, { type: 'error', message: 'No access to project' });
-        return;
+  try {
+    switch (msg.type) {
+      case 'join': {
+        if (typeof msg.projectId !== 'string' || !msg.projectId) {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Invalid projectId' });
+          return;
+        }
+        if (!hasProjectAccess(db, msg.projectId, userId, userRole, 'viewer')) {
+          roomManager.sendTo(peerId, { type: 'error', message: 'No access to project' });
+          return;
+        }
+        roomManager.joinRoom(msg.projectId, peerId);
+        break;
       }
-      roomManager.joinRoom(msg.projectId, peerId);
-      break;
+      case 'leave': {
+        roomManager.leaveRoom(peerId);
+        break;
+      }
+      case 'operation': {
+        // Basic operation payload validation
+        if (!msg.op || typeof msg.op !== 'object') {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation: op must be an object' });
+          return;
+        }
+        if (!msg.op.kind || typeof msg.op.kind !== 'string') {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation: op.kind must be a non-empty string' });
+          return;
+        }
+        const opStr = JSON.stringify(msg.op);
+        if (opStr.length > 512 * 1024) {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Operation payload too large' });
+          return;
+        }
+        const projectId = roomManager.getProjectId(peerId);
+        if (!projectId) { roomManager.sendTo(peerId, { type: 'error', message: 'Not in a room' }); return; }
+        if (!hasProjectAccess(db, projectId, userId, userRole, 'editor')) {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Insufficient permission' });
+          return;
+        }
+        roomManager.broadcast(projectId, { type: 'operation', op: msg.op, fromPeerId: peerId }, peerId);
+        break;
+      }
+      case 'presence': {
+        const projectId = roomManager.getProjectId(peerId);
+        if (!projectId) return;
+        const presenceStr = JSON.stringify(msg.data);
+        if (presenceStr.length > 4096) {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Presence data too large' });
+          return;
+        }
+        roomManager.broadcast(projectId, { type: 'presence', data: msg.data, fromPeerId: peerId }, peerId);
+        break;
+      }
+      case 'request-sync': {
+        const projectId = roomManager.getProjectId(peerId);
+        if (!projectId) { roomManager.sendTo(peerId, { type: 'error', message: 'Not in a room' }); return; }
+        const row = db.prepare('SELECT data FROM schemas WHERE project_id = ?').get(projectId);
+        if (row) {
+          let schema;
+          try { schema = JSON.parse(row.data); } catch (parseErr) {
+            log.error('Corrupted schema data in DB', { projectId, error: parseErr.message });
+            roomManager.sendTo(peerId, { type: 'error', message: 'Schema data corrupted' });
+            return;
+          }
+          roomManager.sendTo(peerId, { type: 'sync', schema });
+        } else {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Schema not found' });
+        }
+        break;
+      }
     }
-    case 'leave': {
-      roomManager.leaveRoom(peerId);
-      break;
-    }
-    case 'operation': {
-      // Basic operation payload validation
-      if (!msg.op || typeof msg.op !== 'object') {
-        roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation: op must be an object' });
-        return;
-      }
-      if (!msg.op.kind || typeof msg.op.kind !== 'string') {
-        roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation: op.kind must be a non-empty string' });
-        return;
-      }
-      const opStr = JSON.stringify(msg.op);
-      if (opStr.length > 512 * 1024) {
-        roomManager.sendTo(peerId, { type: 'error', message: 'Operation payload too large' });
-        return;
-      }
-      const projectId = roomManager.getProjectId(peerId);
-      if (!projectId) { roomManager.sendTo(peerId, { type: 'error', message: 'Not in a room' }); return; }
-      if (!hasProjectAccess(db, projectId, userId, userRole, 'editor')) {
-        roomManager.sendTo(peerId, { type: 'error', message: 'Insufficient permission' });
-        return;
-      }
-      roomManager.broadcast(projectId, { type: 'operation', op: msg.op, fromPeerId: peerId }, peerId);
-      break;
-    }
-    case 'presence': {
-      const projectId = roomManager.getProjectId(peerId);
-      if (!projectId) return;
-      const presenceStr = JSON.stringify(msg.data);
-      if (presenceStr.length > 4096) {
-        roomManager.sendTo(peerId, { type: 'error', message: 'Presence data too large' });
-        return;
-      }
-      roomManager.broadcast(projectId, { type: 'presence', data: msg.data, fromPeerId: peerId }, peerId);
-      break;
-    }
-    case 'request-sync': {
-      const projectId = roomManager.getProjectId(peerId);
-      if (!projectId) { roomManager.sendTo(peerId, { type: 'error', message: 'Not in a room' }); return; }
-      const row = db.prepare('SELECT data FROM schemas WHERE project_id = ?').get(projectId);
-      if (row) {
-        roomManager.sendTo(peerId, { type: 'sync', schema: JSON.parse(row.data) });
-      } else {
-        roomManager.sendTo(peerId, { type: 'error', message: 'Schema not found' });
-      }
-      break;
-    }
+  } catch (err) {
+    log.error('Unhandled error in handleMessage', { peerId, error: err.message });
+    roomManager.sendTo(peerId, { type: 'error', message: 'Internal server error' });
   }
 }
 

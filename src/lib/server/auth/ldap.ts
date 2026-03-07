@@ -5,6 +5,19 @@ import type { LdapProviderRow } from '$lib/types/auth';
 import { logger } from '$lib/server/logger';
 import { getDefaultPermissions } from '$lib/server/site-settings';
 
+/**
+ * Escape special characters in LDAP filter values per RFC 4515.
+ */
+function escapeLdapFilter(value: string): string {
+  return value.replace(/\\/g, '\\5c')
+    .replace(/\*/g, '\\2a')
+    .replace(/\(/g, '\\28')
+    .replace(/\)/g, '\\29')
+    .replace(/\0/g, '\\00');
+}
+
+export { escapeLdapFilter as _escapeLdapFilter_for_testing };
+
 export interface LdapAuthResult {
   dn: string;
   email: string | undefined;
@@ -36,7 +49,7 @@ export async function authenticateLdap(
     await client.bind(provider.bind_dn, provider.bind_password);
 
     // Search for user
-    const filter = provider.user_search_filter.replace(/\{\{username\}\}/g, username);
+    const filter = provider.user_search_filter.replace(/\{\{username\}\}/g, escapeLdapFilter(username));
     const { searchEntries } = await client.search(provider.user_search_base, {
       scope: 'sub',
       filter,

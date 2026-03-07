@@ -67,6 +67,54 @@ function getDefaultPermissions(db: InstanceType<typeof Database>): { canCreatePr
   };
 }
 
+// Inline validateLogoUrl to test the same logic as production code
+function validateLogoUrl(url: string): boolean {
+  if (!url) return true; // empty = reset
+  if (url.startsWith('/')) return true;
+  try {
+    const parsed = new URL(url, 'https://placeholder.local');
+    if (parsed.protocol === 'data:' || parsed.protocol === 'javascript:') return false;
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+describe('validateLogoUrl', () => {
+  it('allows empty string (reset)', () => {
+    expect(validateLogoUrl('')).toBe(true);
+  });
+
+  it('allows https URLs', () => {
+    expect(validateLogoUrl('https://example.com/logo.png')).toBe(true);
+  });
+
+  it('allows http URLs', () => {
+    expect(validateLogoUrl('http://example.com/logo.png')).toBe(true);
+  });
+
+  it('allows absolute paths', () => {
+    expect(validateLogoUrl('/images/logo.png')).toBe(true);
+  });
+
+  it('rejects data: protocol', () => {
+    expect(validateLogoUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+    expect(validateLogoUrl('data:image/svg+xml;base64,abc')).toBe(false);
+  });
+
+  it('rejects javascript: protocol', () => {
+    expect(validateLogoUrl('javascript:alert(1)')).toBe(false);
+  });
+
+  it('rejects ftp: protocol', () => {
+    expect(validateLogoUrl('ftp://example.com/logo.png')).toBe(false);
+  });
+
+  it('rejects blob: protocol', () => {
+    expect(validateLogoUrl('blob:http://example.com/abc')).toBe(false);
+  });
+});
+
 describe('site-settings', () => {
   let db: InstanceType<typeof Database>;
 

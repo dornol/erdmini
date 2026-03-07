@@ -2629,6 +2629,27 @@ describe('Edge: CHECK constraint with nested parens', () => {
   });
 });
 
+describe('Edge: ReDoS resilience', () => {
+  it('handles malicious input with many unmatched parens without hanging', async () => {
+    // This input would cause catastrophic backtracking with the old [\s\S]*? regex
+    const malicious = 'CREATE TABLE t (' + ')'.repeat(1000) + ' no_terminator_here';
+    const start = Date.now();
+    const result = await importDDL(malicious, 'mysql');
+    const elapsed = Date.now() - start;
+    // Should complete in under 1 second, not hang
+    expect(elapsed).toBeLessThan(1000);
+    // May or may not parse — the point is it doesn't hang
+  });
+
+  it('handles deeply nested parentheses without hanging', async () => {
+    const nested = 'CREATE TABLE t (' + '('.repeat(500) + 'id INT' + ')'.repeat(500) + ');';
+    const start = Date.now();
+    const result = await importDDL(nested, 'mysql');
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1000);
+  });
+});
+
 describe('Edge: CREATE INDEX edge cases', () => {
   it('parses index with ASC/DESC modifiers', async () => {
     const sql = `

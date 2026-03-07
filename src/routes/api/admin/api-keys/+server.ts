@@ -51,6 +51,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'User not found' }, { status: 404 });
   }
 
+  if (expiresAt) {
+    const d = new Date(expiresAt);
+    if (isNaN(d.getTime())) {
+      return json({ error: 'Invalid expiresAt date' }, { status: 400 });
+    }
+  }
+
   const id = randomUUID();
   const { key, hash } = generateApiKey();
 
