@@ -309,3 +309,28 @@
   - ~~WebSocket presence: 4KB size limit added~~
 - Audit results: Critical 0, High 0 (server API side), no SQL injection, all admin routes confirmed with requireAdmin()
 - Difficulty: Medium
+
+### Phase 42 — Comprehensive Security Audit (6-Agent)
+- ~~**Critical — LDAP injection fix**: RFC 4515 escape for username in LDAP search filter (`ldap.ts`)~~
+- ~~**High — WebSocket hardening**: top-level try-catch in handleMessage, JSON.parse protection for request-sync, projectId type validation (`collab-server.js`)~~
+- ~~**Medium — Auth hardening (4 fixes)**~~
+  - ~~Embed password rate limiting (10 attempts / 15 min)~~
+  - ~~Session invalidation on password change + new session issuance~~
+  - ~~Cookie maxAge linked to SESSION_MAX_AGE_DAYS (3 login routes)~~
+  - ~~API key expiresAt date validation (3 routes)~~
+- ~~**Medium — MCP hardening (3 fixes)**~~
+  - ~~Snapshot count limit (max 50 per project)~~
+  - ~~Numeric input bounds (length, scale, x, y, width, height)~~
+  - ~~FK column ID existence validation~~
+- ~~**Medium — Client-side fixes (2 fixes)**~~
+  - ~~DDL import ReDoS fix: `[\s\S]*?` regex → paren depth tracking parser (ddl-import.ts, ddl-import-oracle.ts)~~
+  - ~~logo_url validation: reject `data:` / `javascript:` protocols~~
+- ~~**Low — DB & misc (5 fixes)**~~
+  - ~~migrate.ts baseline V3 conditional logic fix~~
+  - ~~V016 migration: sessions.user_id + project_permissions.user_id indexes~~
+  - ~~MCP error message sanitization (filter SQLITE / node_modules details)~~
+  - ~~User deletion: transfer groups.created_by to admin~~
+  - ~~SESSION_MAX_AGE_DAYS exported from session.ts~~
+- 11 new tests (LDAP escape 8, validateLogoUrl 8, baseline V3 1, ReDoS resilience 2) — minus overlap with existing
+- 54 test files, 2092 tests total, svelte-check 0 errors
+- Difficulty: Medium
