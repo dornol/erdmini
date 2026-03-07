@@ -64,7 +64,7 @@ Access at default port `8080`: http://localhost:8080
 | `ADMIN_USERNAME` | `admin` | Initial admin username |
 | `ADMIN_PASSWORD` | *(randomly generated)* | Initial admin password. If not set, a random password is generated and printed to the logs |
 | `SESSION_MAX_AGE_DAYS` | `30` | Session expiry period (days) |
-| `PUBLIC_APP_URL` | `http://localhost:5173` | App URL (for OIDC callback, etc.) |
+| `PUBLIC_APP_URL` | `http://localhost:3000` | App URL (for OIDC callback, etc.) |
 
 ### OIDC / LDAP Configuration
 

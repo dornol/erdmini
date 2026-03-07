@@ -121,7 +121,7 @@ Paraglide JS v2 with four languages: Korean (base locale), English, Japanese, Ch
 | `ADMIN_PASSWORD` | auto-generated | Initial admin password |
 | `BASE_PATH` | — | Subdirectory deployment path |
 | `PUBLIC_SITE_URL` | — | Canonical URL for SEO |
-| `PUBLIC_APP_URL` | `http://localhost:5173` | App URL for OIDC redirect URIs |
+| `PUBLIC_APP_URL` | `http://localhost:3000` | App URL for OIDC redirect URIs |
 | `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry in days |
 | `AUDIT_RETENTION_DAYS` | `720` | Audit log retention period in days |
 | `AUDIT_CLEANUP_HOUR` | `3` | Hour (0-23) for daily audit log cleanup |

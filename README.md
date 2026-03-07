@@ -170,7 +170,7 @@ pnpm check            # svelte-check
 | `ADMIN_PASSWORD` | auto-generated | Initial admin password (printed to logs) |
 | `BASE_PATH` | — | Subdirectory deployment path (e.g., `/erdmini`) |
 | `PUBLIC_SITE_URL` | — | Canonical URL for SEO |
-| `PUBLIC_APP_URL` | `http://localhost:5173` | App URL for OIDC redirect URIs |
+| `PUBLIC_APP_URL` | `http://localhost:3000` | App URL for OIDC redirect URIs |
 | `SESSION_MAX_AGE_DAYS` | `30` | Session cookie expiry |
 | `LOG_FORMAT` | `text` | `json` or `text` |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
