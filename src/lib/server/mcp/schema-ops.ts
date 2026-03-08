@@ -669,6 +669,119 @@ export function renameGroup(
   return { ...schema, tables, groupColors, updatedAt: now() };
 }
 
+// ---- Bulk update tables ----
+
+export function bulkUpdateTables(
+  schema: ERDSchema,
+  updates: { tableId: string; name?: string; comment?: string; color?: string; group?: string; schema?: string }[],
+): { schema: ERDSchema; updated: number; notFound: string[] } {
+  const tableIds = new Set(schema.tables.map(t => t.id));
+  const notFound: string[] = [];
+  let s = schema;
+  let updated = 0;
+
+  for (const { tableId, ...patch } of updates) {
+    if (!tableIds.has(tableId)) {
+      notFound.push(tableId);
+      continue;
+    }
+    s = updateTable(s, tableId, patch);
+    updated++;
+  }
+
+  return { schema: s, updated, notFound };
+}
+
+// ---- Bulk update columns ----
+
+export function bulkUpdateColumns(
+  schema: ERDSchema,
+  updates: { tableId: string; columnId: string; [key: string]: unknown }[],
+): { schema: ERDSchema; updated: number; notFound: string[] } {
+  const notFound: string[] = [];
+  let s = schema;
+  let updated = 0;
+
+  for (const { tableId, columnId, ...patch } of updates) {
+    const table = s.tables.find(t => t.id === tableId);
+    if (!table || !table.columns.find(c => c.id === columnId)) {
+      notFound.push(`${tableId}/${columnId}`);
+      continue;
+    }
+    s = updateColumn(s, tableId, columnId, patch as Partial<Omit<Column, 'id'>>);
+    updated++;
+  }
+
+  return { schema: s, updated, notFound };
+}
+
+// ---- Bulk assign domain ----
+
+export function bulkAssignDomainByName(
+  schema: ERDSchema,
+  domainId: string,
+  columnName: string,
+  maxCount = 1000,
+): { schema: ERDSchema; updated: number } {
+  const patch = { domainId: domainId || undefined };
+  let s = schema;
+  let updated = 0;
+
+  for (const table of s.tables) {
+    for (const col of table.columns) {
+      if (col.name === columnName) {
+        s = updateColumn(s, table.id, col.id, patch);
+        updated++;
+        if (updated >= maxCount) return { schema: s, updated };
+      }
+    }
+  }
+
+  return { schema: s, updated };
+}
+
+export function bulkAssignDomainByPattern(
+  schema: ERDSchema,
+  domainId: string,
+  pattern: RegExp,
+  maxCount = 1000,
+): { schema: ERDSchema; updated: number } {
+  const patch = { domainId: domainId || undefined };
+  let s = schema;
+  let updated = 0;
+
+  for (const table of s.tables) {
+    for (const col of table.columns) {
+      if (pattern.test(col.name)) {
+        s = updateColumn(s, table.id, col.id, patch);
+        updated++;
+        if (updated >= maxCount) return { schema: s, updated };
+      }
+    }
+  }
+
+  return { schema: s, updated };
+}
+
+export function bulkAssignDomainByList(
+  schema: ERDSchema,
+  domainId: string,
+  columns: { tableId: string; columnId: string }[],
+): { schema: ERDSchema; updated: number } {
+  const patch = { domainId: domainId || undefined };
+  let s = schema;
+  let updated = 0;
+
+  for (const { tableId, columnId } of columns) {
+    const table = s.tables.find(t => t.id === tableId);
+    if (!table || !table.columns.find(c => c.id === columnId)) continue;
+    s = updateColumn(s, tableId, columnId, patch);
+    updated++;
+  }
+
+  return { schema: s, updated };
+}
+
 // ---- Delete multiple tables ----
 
 export function deleteTables(schema: ERDSchema, tableIds: string[]): ERDSchema {
