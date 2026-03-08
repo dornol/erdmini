@@ -88,12 +88,18 @@
     resizeStart = { mouseX: e.clientX, mouseY: e.clientY, width: memo.width, height: memo.height };
   }
 
+  let _lastEfpTime = 0;
+  let _lastEfpResult: string | null = null;
   function findTableAtPoint(clientX: number, clientY: number): string | null {
+    const now = performance.now();
+    if (now - _lastEfpTime < 50) return _lastEfpResult;
+    _lastEfpTime = now;
     const elements = document.elementsFromPoint(clientX, clientY);
     for (const el of elements) {
       const tid = (el as HTMLElement).dataset?.tableId;
-      if (tid) return tid;
+      if (tid) { _lastEfpResult = tid; return tid; }
     }
+    _lastEfpResult = null;
     return null;
   }
 
@@ -212,6 +218,7 @@
   class="memo-card"
   class:selected={isSelected}
   class:locked={memo.locked}
+  class:editing={isEditing}
   style="left:{memo.position.x}px; top:{memo.position.y}px; width:{memo.width}px; height:{memo.height}px; background:{colors.bg}; cursor:{memo.locked ? 'default' : isDragging ? 'grabbing' : 'default'}; z-index:{isHovered ? 20 : isSelected ? 10 : 1}"
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}
@@ -282,7 +289,9 @@
   <!-- Resize handle -->
   {#if !memo.locked && !permissionStore.isReadOnly}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="resize-handle" onmousedown={onResizeMouseDown}>◢</div>
+    <div class="resize-handle" onmousedown={onResizeMouseDown}>
+      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M9 1L1 9M9 4L4 9M9 7L7 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+    </div>
   {/if}
 </div>
 
@@ -302,6 +311,11 @@
   .memo-card.selected {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
+  .memo-card.editing {
+    border-style: dashed;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
   .memo-header {
@@ -424,20 +438,26 @@
     position: absolute;
     bottom: 0;
     right: 0;
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
     opacity: 0;
     cursor: nwse-resize;
     color: rgba(0, 0, 0, 0.3);
     transition: opacity 0.15s;
     user-select: none;
+    touch-action: none;
+    padding: 4px;
   }
 
   .memo-card:hover .resize-handle {
-    opacity: 1;
+    opacity: 0.6;
+  }
+
+  .resize-handle:hover {
+    opacity: 1 !important;
+    color: rgba(0, 0, 0, 0.5);
   }
 </style>

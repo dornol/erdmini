@@ -114,6 +114,8 @@
   .col-row.drag-over {
     border-color: #3b82f6;
     border-top: 2px solid #3b82f6;
+    background: rgba(59, 130, 246, 0.05);
+    box-shadow: 0 -1px 0 0 #3b82f6;
   }
 
   .drag-handle {

@@ -57,9 +57,40 @@
   };
 
   let presetOpen = $state(false);
+  let presetIdx = $state(-1);
   let currentPresets = $derived(
     col ? (DEFAULT_VALUE_PRESETS[col.type] ?? ['NULL']) : ['NULL']
   );
+
+  function onPresetKeyDown(e: KeyboardEvent) {
+    if (!presetOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        presetOpen = true;
+        presetIdx = 0;
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      presetIdx = (presetIdx + 1) % currentPresets.length;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      presetIdx = (presetIdx - 1 + currentPresets.length) % currentPresets.length;
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (presetIdx >= 0 && presetIdx < currentPresets.length) {
+        const preset = currentPresets[presetIdx];
+        onChange('defaultValue', preset === 'NULL' ? undefined : preset);
+      }
+      presetOpen = false;
+      presetIdx = -1;
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      presetOpen = false;
+      presetIdx = -1;
+    }
+  }
 
   function applyDomain(domainId: string) {
     const domain = erdStore.schema.domains.find((d) => d.id === domainId);
@@ -241,15 +272,17 @@
             <div class="preset-wrap">
               <button
                 class="preset-btn"
-                onclick={() => (presetOpen = !presetOpen)}
+                onclick={() => { presetOpen = !presetOpen; presetIdx = presetOpen ? 0 : -1; }}
+                onkeydown={onPresetKeyDown}
                 title="Presets"
               >▼</button>
               {#if presetOpen}
                 <div class="preset-dropdown">
-                  {#each currentPresets as preset}
+                  {#each currentPresets as preset, pi}
                     <button
                       class="preset-item"
-                      onclick={() => { onChange('defaultValue', preset === 'NULL' ? undefined : preset); presetOpen = false; }}
+                      class:preset-highlighted={pi === presetIdx}
+                      onclick={() => { onChange('defaultValue', preset === 'NULL' ? undefined : preset); presetOpen = false; presetIdx = -1; }}
                     >{preset}</button>
                   {/each}
                 </div>
@@ -558,7 +591,8 @@
     cursor: pointer;
   }
 
-  .preset-item:hover {
+  .preset-item:hover,
+  .preset-item.preset-highlighted {
     background: #eff6ff;
     color: #2563eb;
   }

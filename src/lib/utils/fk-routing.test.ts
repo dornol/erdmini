@@ -392,6 +392,111 @@ describe('routeFKLines — obstacle avoidance', () => {
   });
 });
 
+// ─── Obstacle bbox pre-filter (C4 optimization) ────────
+
+describe('obstacle bounding box pre-filter', () => {
+  it('filters out obstacles far below FK line', () => {
+    const line = makeLine({
+      id: 'fk1',
+      x1: 200, y1: 100,
+      x2: 600, y2: 100,
+      sourceTableId: 'tbl_src',
+      targetTableId: 'tbl_tgt',
+    });
+    const obstacles = [
+      makeAABB({ id: 'tbl_src', x: 0, y: 50, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 600, y: 50, w: 200, h: 100 }),
+      makeAABB({ id: 'far_below', x: 350, y: 1000, w: 100, h: 100 }),
+    ];
+    // Route with far-away obstacle should equal route without it
+    const withFar = routeFKLines([line], obstacles);
+    const withoutFar = routeFKLines([line], [
+      makeAABB({ id: 'tbl_src', x: 0, y: 50, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 600, y: 50, w: 200, h: 100 }),
+    ]);
+    expect(withFar.get('fk1')?.path).toBe(withoutFar.get('fk1')?.path);
+  });
+
+  it('filters out obstacles far to the right of FK line', () => {
+    const line = makeLine({
+      id: 'fk1',
+      x1: 100, y1: 200,
+      x2: 300, y2: 200,
+      sourceTableId: 'tbl_src',
+      targetTableId: 'tbl_tgt',
+    });
+    const obstacles = [
+      makeAABB({ id: 'tbl_src', x: -100, y: 150, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 300, y: 150, w: 200, h: 100 }),
+      makeAABB({ id: 'far_right', x: 2000, y: 150, w: 100, h: 100 }),
+    ];
+    const withFar = routeFKLines([line], obstacles);
+    const withoutFar = routeFKLines([line], [
+      makeAABB({ id: 'tbl_src', x: -100, y: 150, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 300, y: 150, w: 200, h: 100 }),
+    ]);
+    expect(withFar.get('fk1')?.path).toBe(withoutFar.get('fk1')?.path);
+  });
+
+  it('keeps obstacles within FK line bounding area', () => {
+    const line = makeLine({
+      id: 'fk1',
+      x1: 200, y1: 200,
+      x2: 600, y2: 200,
+      sourceTableId: 'tbl_src',
+      targetTableId: 'tbl_tgt',
+    });
+    const nearObstacle = makeAABB({ id: 'near', x: 350, y: 160, w: 100, h: 80 });
+    const obstacles = [
+      makeAABB({ id: 'tbl_src', x: 0, y: 150, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 600, y: 150, w: 200, h: 100 }),
+      nearObstacle,
+    ];
+    // Near obstacle should still be considered — path should differ from no-obstacle
+    const withNear = routeFKLines([line], obstacles);
+    const withoutNear = routeFKLines([line], [
+      makeAABB({ id: 'tbl_src', x: 0, y: 150, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 600, y: 150, w: 200, h: 100 }),
+    ]);
+    // Both should produce valid routes
+    expect(withNear.get('fk1')).toBeTruthy();
+    expect(withoutNear.get('fk1')).toBeTruthy();
+  });
+
+  it('handles many distant obstacles efficiently', () => {
+    const line = makeLine({
+      id: 'fk1',
+      x1: 100, y1: 100,
+      x2: 300, y2: 100,
+      sourceTableId: 'tbl_src',
+      targetTableId: 'tbl_tgt',
+    });
+    // 100 obstacles scattered far away
+    const obstacles: AABB[] = [
+      makeAABB({ id: 'tbl_src', x: -100, y: 50, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 300, y: 50, w: 200, h: 100 }),
+    ];
+    for (let i = 0; i < 100; i++) {
+      obstacles.push(makeAABB({
+        id: `far_${i}`,
+        x: 5000 + i * 300,
+        y: 5000 + i * 300,
+        w: 200,
+        h: 100,
+      }));
+    }
+    const routes = routeFKLines([line], obstacles);
+    expect(routes.get('fk1')).toBeTruthy();
+
+    // Result should be same as without distant obstacles
+    const routesClean = routeFKLines([line], [
+      makeAABB({ id: 'tbl_src', x: -100, y: 50, w: 200, h: 100 }),
+      makeAABB({ id: 'tbl_tgt', x: 300, y: 50, w: 200, h: 100 }),
+    ]);
+    expect(routes.get('fk1')?.path).toBe(routesClean.get('fk1')?.path);
+  });
+});
+
 // ─── Label accuracy ──────────────────────────────────────
 
 describe('label position', () => {

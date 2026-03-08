@@ -117,9 +117,16 @@ export function computeSmartBezier(
   let cy1 = y1 + spreadOffset;
   let cy2 = y2 + spreadOffset;
 
-  // Filter obstacles: exclude source and target tables
+  // Filter obstacles: exclude source/target tables and those outside FK line bounding box
+  const pad = OBSTACLE_PADDING + 60; // generous padding for bezier curves
+  const bboxMinX = Math.min(x1, x2) - pad;
+  const bboxMaxX = Math.max(x1, x2) + pad;
+  const bboxMinY = Math.min(y1, y2) - pad - 100; // extra Y for control point offsets
+  const bboxMaxY = Math.max(y1, y2) + pad + 100;
   const relevantObstacles = obstacles.filter(
-    (o) => o.id !== sourceTableId && o.id !== targetTableId,
+    (o) => o.id !== sourceTableId && o.id !== targetTableId &&
+      o.x + o.w > bboxMinX && o.x < bboxMaxX &&
+      o.y + o.h > bboxMinY && o.y < bboxMaxY,
   );
 
   // Obstacle avoidance iterations

@@ -5,6 +5,7 @@
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { copyToClipboard as clipCopy } from '$lib/utils/clipboard';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { toastStore } from '$lib/store/toast.svelte';
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import LintPanel from './LintPanel.svelte';
@@ -53,10 +54,12 @@
 
   function addTable() {
     erdStore.addTable(viewportWidth, viewportHeight);
+    toastStore.success(m.toast_table_added());
   }
 
   function addMemo() {
     erdStore.addMemo(viewportWidth, viewportHeight);
+    toastStore.success(m.toast_memo_added());
   }
 
   // Dropdown state — only one open at a time

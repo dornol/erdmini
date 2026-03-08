@@ -6,6 +6,7 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { themeStore, type ThemeId } from '$lib/store/theme.svelte';
   import { now } from '$lib/utils/common';
+  import { toastStore } from '$lib/store/toast.svelte';
   import * as m from '$lib/paraglide/messages';
 
   type BarDropdown = 'layout' | 'columns' | 'lines' | 'align' | 'theme';
@@ -44,6 +45,7 @@
   function applyLayout(type: LayoutType, options?: LayoutOptions) {
     const positions = computeLayout(erdStore.schema.tables, type, options);
     erdStore.applyLayout(positions);
+    toastStore.success(m.toast_layout_applied());
   }
 
   const LAYOUT_TYPES: { type: LayoutType; label: () => string }[] = [
@@ -251,7 +253,7 @@
     class="bar-btn bar-btn-icon"
     class:bar-btn-active={canvasState.showRelationLines}
     onclick={() => (canvasState.showRelationLines = !canvasState.showRelationLines)}
-    title={canvasState.showRelationLines ? 'Hide FK Lines' : 'Show FK Lines'}
+    title={canvasState.showRelationLines ? m.tooltip_hide_fk_lines() : m.tooltip_show_fk_lines()}
   >
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
       <path d="M2 12 C4 12, 12 4, 14 4"/>
@@ -280,7 +282,7 @@
     class="bar-btn bar-btn-icon"
     class:bar-btn-active={canvasState.snapToGrid}
     onclick={() => (canvasState.snapToGrid = !canvasState.snapToGrid)}
-    title={canvasState.snapToGrid ? 'Snap: ON' : 'Snap: OFF'}
+    title={canvasState.snapToGrid ? m.tooltip_snap_on() : m.tooltip_snap_off()}
     disabled={permissionStore.isReadOnly}
   >
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -329,7 +331,7 @@
       <button
         class="bar-btn bar-btn-icon"
         onclick={() => toggleDropdown('align')}
-        title="Align / Distribute"
+        title={m.tooltip_align_distribute()}
         disabled={permissionStore.isReadOnly}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -340,14 +342,14 @@
       </button>
       {#if alignOpen}
         <div class="bar-dropdown-menu" role="menu" tabindex="-1" onmouseleave={() => closeDropdown()}>
-          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('left'); closeDropdown(); }}>Align Left</button>
-          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('right'); closeDropdown(); }}>Align Right</button>
-          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('top'); closeDropdown(); }}>Align Top</button>
-          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('bottom'); closeDropdown(); }}>Align Bottom</button>
+          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('left'); closeDropdown(); }}>{m.align_left()}</button>
+          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('right'); closeDropdown(); }}>{m.align_right()}</button>
+          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('top'); closeDropdown(); }}>{m.align_top()}</button>
+          <button class="bar-dropdown-item" role="menuitem" onclick={() => { alignTables('bottom'); closeDropdown(); }}>{m.align_bottom()}</button>
           {#if erdStore.selectedTableIds.size >= 3}
             <div class="bar-dropdown-divider"></div>
-            <button class="bar-dropdown-item" role="menuitem" onclick={() => { distributeTables('h'); closeDropdown(); }}>Distribute H</button>
-            <button class="bar-dropdown-item" role="menuitem" onclick={() => { distributeTables('v'); closeDropdown(); }}>Distribute V</button>
+            <button class="bar-dropdown-item" role="menuitem" onclick={() => { distributeTables('h'); closeDropdown(); }}>{m.distribute_h()}</button>
+            <button class="bar-dropdown-item" role="menuitem" onclick={() => { distributeTables('v'); closeDropdown(); }}>{m.distribute_v()}</button>
           {/if}
         </div>
       {/if}

@@ -346,3 +346,20 @@
 - 230 new tests (table-ops 44, column-ops 41, fk-ops 47, memo-ops 34, schema-ns-ops 36, domain-ops 15, api-helpers 13)
 - 73 test files, 2329 tests total, svelte-check 0 errors
 - Difficulty: Large
+
+### Phase UX — UX Polish & Performance (Phase A/B/C)
+- **A1 — Toast Notifications**: `toast.svelte.ts` store + `Toast.svelte` component (fixed bottom-right, auto-dismiss 3s, 4 types: success/error/warning/info). Integrated with Toolbar (addTable/addMemo), CanvasBottomBar (layout), SnapshotPanel (save/restore), DdlModal (import)
+- **A2 — Table Flash Animation**: `@keyframes flash-new` on TableCard (scale pulse + blue glow, 600ms). `erdStore.lastAddedTableId` tracking
+- **A3 — MemoCard Resize Handle**: Enlarged 18→24px hit area, SVG grip dots replacing `◢` character, `touch-action: none`
+- **A4 — MemoCard Edit Visual**: Editing mode dashed border + inset shadow CSS distinction
+- **A5 — Schema Delete Confirmation**: `dialogStore.confirm()` when schema has tables (SchemaTabBar)
+- **A6 — i18n Tooltips**: Hardcoded English strings → `m.*()` calls in TableCardColumnRow, TableCardFooter, CanvasBottomBar (~21 new i18n keys × 4 languages)
+- **B2 — Drop Zone Indicator**: Column drag-over blue line + subtle background highlight (TableEditorColumnRow)
+- **B3 — CommandPalette Column Distinction**: Column results indented + darker background tint
+- **B4 — ColumnEditPopup Preset Keyboard Nav**: ArrowUp/Down/Enter/Escape for preset dropdown
+- **C1 — elementsFromPoint Throttle**: 50ms throttle on MemoCard drag `findTableAtPoint()` (performance)
+- **C4 — FK Routing Obstacle Pre-Filter**: Bounding box pre-filter before obstacle avoidance loop (fk-routing.ts)
+- Skipped: B1 (column transitions — Svelte 5 limitation), B5 (loading — already exists), C2 (marquee — marginal gain), C3 (RelationLines incremental — high refactor risk)
+- 18 new tests (14 toast + 4 FK routing obstacle filter)
+- 75 test files, 2380 tests total, svelte-check 0 errors
+- Difficulty: Medium

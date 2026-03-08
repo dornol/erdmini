@@ -155,7 +155,7 @@
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
-              class="cmd-item"
+              class="cmd-item cmd-item-column"
               class:highlighted={highlightIdx === globalIdx}
               onmouseenter={() => (highlightIdx = globalIdx)}
               onclick={() => navigateTo(item)}
@@ -258,6 +258,15 @@
 
   .cmd-item.highlighted {
     background: #334155;
+  }
+
+  .cmd-item-column {
+    background: rgba(15, 23, 42, 0.4);
+    padding-left: 24px;
+  }
+
+  .cmd-item-column.highlighted {
+    background: #2d3a4e;
   }
 
   .cmd-item-icon {

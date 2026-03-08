@@ -43,6 +43,7 @@ class ERDStore {
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
   hoveredUkInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
   hoveredIdxInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
+  lastAddedTableId = $state<string | null>(null);
   // Undo/Redo
   private _undoStack: HistoryEntry[] = [];
   private _redoStack: HistoryEntry[] = [];
@@ -143,6 +144,7 @@ class ERDStore {
     const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
     const { table, id } = createTable(this.schema, { x: worldX - 100, y: worldY - 60 }, activeSchema);
     this.selectedTableId = id;
+    this.lastAddedTableId = id;
     this._emitOp({ kind: 'add-table', table });
   }
 

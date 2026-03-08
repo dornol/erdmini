@@ -3,6 +3,7 @@
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { toastStore } from '$lib/store/toast.svelte';
   import type { Dialect } from '$lib/types/erd';
   import { exportDDL, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
   import { DIALECT_OPTIONS, loadDdlOptions, saveDdlOptions } from '$lib/utils/ddl-options';
@@ -244,6 +245,7 @@
           : importFormat === 'dbml'
             ? m.dbml_import_success({ count: result.tables.length })
             : m.ddl_import_success({ count: result.tables.length });
+        toastStore.success(importSuccess);
       }
     } catch (e) {
       importErrors = [`Import error: ${e instanceof Error ? e.message : e}`];

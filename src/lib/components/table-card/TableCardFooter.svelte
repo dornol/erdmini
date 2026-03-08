@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Table } from '$lib/types/erd';
+  import * as m from '$lib/paraglide/messages';
 
   interface Props {
     table: Table;
@@ -32,7 +33,7 @@
   <div class="table-tooltip">
     {#if (table.uniqueKeys?.length ?? 0) > 0}
       <div class="ttt-section">
-        <div class="ttt-heading">Unique Keys</div>
+        <div class="ttt-heading">{m.tt_unique_keys()}</div>
         {#each table.uniqueKeys as uk}
           <div class="ttt-item">
             {#if uk.name}<span class="ttt-name">{uk.name}</span>{/if}
@@ -43,7 +44,7 @@
     {/if}
     {#if (table.indexes?.length ?? 0) > 0}
       <div class="ttt-section">
-        <div class="ttt-heading">Indexes</div>
+        <div class="ttt-heading">{m.tt_indexes()}</div>
         {#each table.indexes as idx}
           <div class="ttt-item">
             {#if idx.name}<span class="ttt-name">{idx.name}</span>{/if}

@@ -2,6 +2,7 @@
   import { snapshotStore } from '$lib/store/snapshot.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { toastStore } from '$lib/store/toast.svelte';
   import * as m from '$lib/paraglide/messages';
 
   let { onclose, ondiff }: { onclose: () => void; ondiff?: (snapshotId: string) => void } = $props();
@@ -27,6 +28,7 @@
       await snapshotStore.create(name, descInput.trim() || undefined);
       nameInput = '';
       descInput = '';
+      toastStore.success(m.snapshot_saved());
     } finally {
       saving = false;
     }
@@ -40,6 +42,7 @@
     });
     if (ok) {
       await snapshotStore.restore(id);
+      toastStore.success(m.snapshot_restored());
     }
   }
 

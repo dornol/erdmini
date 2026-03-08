@@ -58,9 +58,9 @@
   <!-- Key badge: PK (gold) or FK (blue) or nothing -->
   <div class="col-key">
     {#if col.primaryKey}
-      <span class="key-badge pk" title="Primary Key">PK</span>
+      <span class="key-badge pk" title={m.tt_primary_key()}>PK</span>
     {:else if isFkSource}
-      <span class="key-badge fk" title="Foreign Key">FK</span>
+      <span class="key-badge fk" title="FK">FK</span>
     {/if}
   </div>
 
@@ -77,10 +77,10 @@
     {#if ((col.unique || isUniqueKeyCol) && !col.primaryKey) || col.autoIncrement || col.check}
       <div class="col-attrs">
         {#if (col.unique || isUniqueKeyCol) && !col.primaryKey}
-          <span class="attr uq" title="Unique">U</span>
+          <span class="attr uq" title={m.tt_unique()}>U</span>
         {/if}
         {#if col.autoIncrement}
-          <span class="attr ai" title="Auto Increment">AI</span>
+          <span class="attr ai" title={m.tt_auto_increment()}>AI</span>
         {/if}
         {#if col.check}
           <span class="attr ck" title="CHECK ({col.check})">CK</span>
@@ -108,7 +108,7 @@
       <span class="tt-mono">{col.type}{col.length ? `(${col.length})` : ''}</span>
     </div>
     <div class="tt-row">
-      <span class="tt-label">Nullable</span>
+      <span class="tt-label">{m.tt_nullable()}</span>
       <span class:tt-yes={col.nullable} class:tt-no={!col.nullable}>
         {col.nullable ? 'YES' : 'NO'}
       </span>
@@ -116,16 +116,16 @@
 
     <div class="tt-badges">
       {#if col.primaryKey}
-        <span class="tt-badge pk">Primary Key</span>
+        <span class="tt-badge pk">{m.tt_primary_key()}</span>
       {/if}
       {#if fk && refTableName && refColName}
         <span class="tt-badge fk">FK → {refTableName}.{refColName}</span>
       {/if}
       {#if (col.unique || isUniqueKeyCol) && !col.primaryKey}
-        <span class="tt-badge uq">Unique</span>
+        <span class="tt-badge uq">{m.tt_unique()}</span>
       {/if}
       {#if col.autoIncrement}
-        <span class="tt-badge ai">Auto Increment</span>
+        <span class="tt-badge ai">{m.tt_auto_increment()}</span>
       {/if}
     </div>
 

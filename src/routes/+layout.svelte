@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { languageStore } from '$lib/store/language.svelte';
 	import { authStore } from '$lib/store/auth.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { data, children } = $props();
 
@@ -130,3 +131,4 @@
 {#key languageStore.current}
   {@render children()}
 {/key}
+<Toast />

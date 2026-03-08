@@ -1,6 +1,7 @@
 <script lang="ts">
   import { canvasState, erdStore } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import * as m from '$lib/paraglide/messages';
 
   let addingSchema = $state(false);
@@ -89,6 +90,15 @@
   async function deleteSchema(name: string, e: MouseEvent) {
     e.stopPropagation();
     if (permissionStore.isReadOnly) return;
+    const tablesInSchema = erdStore.schema.tables.filter((t) => t.schema === name);
+    if (tablesInSchema.length > 0) {
+      const ok = await dialogStore.confirm(m.schema_delete_confirm({ name }), {
+        title: m.schema_delete(),
+        confirmText: m.action_delete(),
+        variant: 'danger',
+      });
+      if (!ok) return;
+    }
     erdStore.deleteSchema(name);
     if (canvasState.activeSchema === name) {
       switchSchema('(all)');

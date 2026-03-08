@@ -34,6 +34,14 @@
   let isMemoDragTarget = $derived(memoDragState.isDragging && memoDragState.hoverTableId === table.id);
   let attachedMemos = $derived(erdStore.schema.memos.filter((mm) => mm.attachedTableId === table.id));
   let isColumnHovered = $state(false);
+  let isNew = $state(erdStore.lastAddedTableId === table.id);
+
+  $effect(() => {
+    if (isNew) {
+      const timer = setTimeout(() => { isNew = false; erdStore.lastAddedTableId = null; }, 600);
+      return () => clearTimeout(timer);
+    }
+  });
 
   // Remote peer selection glow
   let remoteSelectColor = $derived.by(() => {
@@ -247,6 +255,7 @@
   class:locked={table.locked}
   class:fk-dragging={fkDragStore.active}
   class:memo-drop-target={isMemoDragTarget}
+  class:flash-new={isNew}
   data-table-id={table.id}
   bind:offsetWidth={cardWidth}
   style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}{remoteSelectColor ? `; box-shadow: 0 0 0 2px ${remoteSelectColor}40, 0 0 8px ${remoteSelectColor}30` : ''}"
@@ -369,6 +378,16 @@
   .table-card.memo-drop-target {
     border-color: #f59e0b;
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35);
+  }
+
+  .table-card.flash-new {
+    animation: flash-new 0.5s ease-out;
+  }
+
+  @keyframes flash-new {
+    0% { transform: scale(0.92); opacity: 0.5; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4); }
+    50% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.2); }
+    100% { transform: scale(1); opacity: 1; box-shadow: var(--erd-card-shadow); }
   }
 
   /* Hide tooltips while FK dragging — targets child component tooltips */
