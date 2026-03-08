@@ -1,5 +1,16 @@
-import type { ERDSchema } from '$lib/types/erd';
+import type { ColumnType, ERDSchema } from '$lib/types/erd';
 import { validateHierarchy } from '$lib/utils/domain-hierarchy';
+
+const TYPE_COMPAT_GROUP: Record<string, string> = {
+  INT: 'integer', BIGINT: 'integer', SMALLINT: 'integer',
+  VARCHAR: 'string', CHAR: 'string', TEXT: 'string',
+  DECIMAL: 'numeric', FLOAT: 'numeric', DOUBLE: 'numeric',
+  DATE: 'temporal', DATETIME: 'temporal', TIMESTAMP: 'temporal',
+};
+
+function typeGroup(t: ColumnType): string {
+  return TYPE_COMPAT_GROUP[t] ?? t;
+}
 
 export interface LintIssue {
   id: string;
@@ -212,6 +223,98 @@ export function lintSchema(schema: ERDSchema): LintIssue[] {
         tableId: table.id,
         message: `${table.name}`,
       });
+    }
+  }
+
+  // Rule 10: nullable-pk — PK column that is nullable
+  for (const table of schema.tables) {
+    for (const col of table.columns) {
+      if (col.primaryKey && col.nullable) {
+        issues.push({
+          id: nextId(),
+          severity: 'warning',
+          ruleId: 'nullable-pk',
+          tableId: table.id,
+          columnId: col.id,
+          message: `${table.name}.${col.name}`,
+        });
+      }
+    }
+  }
+
+  // Rule 11: fk-column-count-mismatch — FK columnIds and referencedColumnIds have different lengths
+  for (const table of schema.tables) {
+    for (const fk of table.foreignKeys) {
+      if (fk.columnIds.length !== fk.referencedColumnIds.length) {
+        const refTable = tableById.get(fk.referencedTableId);
+        issues.push({
+          id: nextId(),
+          severity: 'error',
+          ruleId: 'fk-column-count-mismatch',
+          tableId: table.id,
+          message: `${table.name} → ${refTable?.name ?? '?'} (${fk.columnIds.length} vs ${fk.referencedColumnIds.length})`,
+        });
+      }
+    }
+  }
+
+  // Rule 12: fk-references-non-unique — FK references columns that are not PK or unique
+  for (const table of schema.tables) {
+    for (const fk of table.foreignKeys) {
+      const refTable = tableById.get(fk.referencedTableId);
+      if (!refTable) continue;
+      if (fk.referencedColumnIds.length === 0) continue;
+      const refColById = new Map(refTable.columns.map((c) => [c.id, c]));
+
+      // Check if referenced columns are all PK
+      const allPk = fk.referencedColumnIds.every((id) => refColById.get(id)?.primaryKey);
+      if (allPk) continue;
+
+      // Check if referenced columns form a single-column unique
+      if (fk.referencedColumnIds.length === 1) {
+        const refCol = refColById.get(fk.referencedColumnIds[0]);
+        if (refCol?.unique) continue;
+      }
+
+      // Check if referenced columns match a unique key
+      const refColSet = new Set(fk.referencedColumnIds);
+      const matchesUniqueKey = (refTable.uniqueKeys ?? []).some((uk) =>
+        uk.columnIds.length === refColSet.size && uk.columnIds.every((id) => refColSet.has(id))
+      );
+      if (matchesUniqueKey) continue;
+
+      const refColNames = fk.referencedColumnIds.map((id) => refColById.get(id)?.name ?? '?').join(', ');
+      issues.push({
+        id: nextId(),
+        severity: 'warning',
+        ruleId: 'fk-references-non-unique',
+        tableId: table.id,
+        message: `${table.name} → ${refTable.name}(${refColNames})`,
+      });
+    }
+  }
+
+  // Rule 13: fk-type-mismatch — FK column type incompatible with referenced column
+  for (const table of schema.tables) {
+    const colById = new Map(table.columns.map((c) => [c.id, c]));
+    for (const fk of table.foreignKeys) {
+      const refTable = tableById.get(fk.referencedTableId);
+      if (!refTable) continue;
+      const refColById = new Map(refTable.columns.map((c) => [c.id, c]));
+      for (let i = 0; i < fk.columnIds.length; i++) {
+        const srcCol = colById.get(fk.columnIds[i]);
+        const refCol = refColById.get(fk.referencedColumnIds[i]);
+        if (srcCol && refCol && typeGroup(srcCol.type) !== typeGroup(refCol.type)) {
+          issues.push({
+            id: nextId(),
+            severity: 'warning',
+            ruleId: 'fk-type-mismatch',
+            tableId: table.id,
+            columnId: srcCol.id,
+            message: `${table.name}.${srcCol.name}(${srcCol.type}) → ${refTable.name}.${refCol.name}(${refCol.type})`,
+          });
+        }
+      }
     }
   }
 

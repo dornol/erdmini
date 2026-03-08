@@ -16,6 +16,11 @@
     'duplicate-index': () => m.lint_duplicate_index(),
     'circular-fk': () => m.lint_circular_fk(),
     'empty-table': () => m.lint_empty_table(),
+    'fk-type-mismatch': () => m.lint_fk_type_mismatch(),
+    'nullable-pk': () => m.lint_nullable_pk(),
+    'fk-column-count-mismatch': () => m.lint_fk_column_count_mismatch(),
+    'fk-references-non-unique': () => m.lint_fk_references_non_unique(),
+    'domain-circular-hierarchy': () => m.lint_domain_circular_hierarchy(),
   };
 
   const SEVERITY_ICON: Record<string, string> = {

@@ -145,7 +145,7 @@ A web application for visually authoring ERDs (Entity-Relationship Diagrams) in 
 
 ### ✅ Phase 13 — Additional Tools
 
-- [x] Schema validation/linting (9 rules, LintPanel)
+- [x] Schema validation/linting (13 rules, LintPanel)
 - [x] PDF export (jsPDF + svg2pdf.js)
 - [x] Bulk table edit / bulk lock-unlock
 - [x] DDL export format options (indentation, quoting, keywords, included items)
@@ -322,7 +322,7 @@ src/
 │       ├── auto-layout.ts           Grid / hierarchical / radial algorithms
 │       ├── ddl-export.ts            7-dialect DDL generation + format options
 │       ├── ddl-import.ts            DDL parsing → ERDSchema
-│       ├── schema-lint.ts           Schema validation (9 rules)
+│       ├── schema-lint.ts           Schema validation (13 rules)
 │       ├── schema-diff.ts           Schema version comparison
 │       ├── svg-export.ts            SVG export
 │       ├── pdf-export.ts            PDF export
@@ -390,4 +390,4 @@ Monolithic SvelteKit structure — authentication, API, and MCP are all handled 
 
 53 test files, 2073 tests — all passing.
 
-Covers: DDL import/export (7 dialects), Prisma import/export, DBML import/export, auto-layout, schema lint (9 rules), schema diff, migration SQL, domain analysis/hierarchy, SVG/diagram export, sidebar search, keyboard shortcuts, URL share, table templates, dummy data, and more.
+Covers: DDL import/export (7 dialects), Prisma import/export, DBML import/export, auto-layout, schema lint (13 rules), schema diff, migration SQL, domain analysis/hierarchy, SVG/diagram export, sidebar search, keyboard shortcuts, URL share, table templates, dummy data, and more.

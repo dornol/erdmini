@@ -28,7 +28,7 @@
 | `export_diagram` | Export as Mermaid or PlantUML diagram |
 | `export_prisma` | Export as Prisma schema |
 | `export_dbml` | Export as DBML |
-| `lint_schema` | Run schema lint validation (9 rules) |
+| `lint_schema` | Run schema lint validation (13 rules) |
 
 ## Import Tools
 

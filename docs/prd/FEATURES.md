@@ -355,7 +355,7 @@ All image formats include memos.
 
 ### Lint (Validation)
 
-9 rules:
+13 rules:
 
 | Rule | Severity | Description |
 |---|---|---|
@@ -368,6 +368,10 @@ All image formats include memos.
 | `circular-fk` | warning | Circular FK reference (DFS detection) |
 | `empty-table` | info | Table with no columns |
 | `domain-circular-hierarchy` | error | Domain hierarchy circular reference |
+| `fk-type-mismatch` | warning | FK column type incompatible with referenced column (compat groups: integer, string, numeric, temporal) |
+| `nullable-pk` | warning | PK column that is nullable |
+| `fk-column-count-mismatch` | error | FK columnIds and referencedColumnIds have different lengths |
+| `fk-references-non-unique` | warning | FK references columns that are not PK or unique |
 
 LintPanel displays results. Click an issue to navigate to the affected table.
 
