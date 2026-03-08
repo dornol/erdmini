@@ -12,7 +12,7 @@ Runs in the browser with zero setup, or self-host with SQLite for team collabora
 
 ![erdmini screenshot](docs/screenshot.png)
 
-[![Watch Demo Video](https://img.youtube.com/vi/1q-bGKXrrvM/maxresdefault.jpg)](https://youtu.be/1q-bGKXrrvM)
+https://github.com/user-attachments/assets/332257be-b152-4422-83f7-94394e6bd207
 
 ---
 
