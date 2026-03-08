@@ -4,6 +4,7 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { memoDragState } from '$lib/store/memo-drag.svelte';
+  import { hasDragExceededThreshold } from '$lib/utils/memo-expand';
   import type { Memo } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
 
@@ -108,7 +109,7 @@
     if (!isDragging) return;
     const dx = (e.clientX - dragStart.mouseX) / canvasState.scale;
     const dy = (e.clientY - dragStart.mouseY) / canvasState.scale;
-    if (!hasDragged && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+    if (!hasDragged && hasDragExceededThreshold(e.clientX - dragStart.mouseX, e.clientY - dragStart.mouseY)) {
       hasDragged = true;
     }
     if (groupDragStarts && groupDragStarts.size > 1) {
@@ -227,6 +228,7 @@
       <button
         class="pin-btn"
         title={m.memo_detach()}
+        onmousedown={(e) => e.stopPropagation()}
         onclick={(e) => { e.stopPropagation(); if (!permissionStore.isReadOnly) erdStore.detachMemo(memo.id); }}
         style="color:{colors.text}"
       >📌</button>
@@ -252,10 +254,11 @@
         bind:value={editContent}
         onblur={commitContent}
         onkeydown={onTextareaKeyDown}
+        onwheel={(e) => e.stopPropagation()}
         style="color:{colors.text}"
       ></textarea>
     {:else if memo.content}
-      <div class="memo-text">{memo.content}</div>
+      <div class="memo-text thin-scrollbar" onwheel={(e) => e.stopPropagation()}>{memo.content}</div>
     {:else}
       <div class="memo-placeholder">{m.memo_placeholder()}</div>
     {/if}
@@ -369,6 +372,8 @@
     word-break: break-word;
     overflow-y: auto;
     max-height: 100%;
+    --sb-thumb: rgba(0, 0, 0, 0.2);
+    --sb-thumb-hover: rgba(0, 0, 0, 0.35);
   }
 
   .memo-placeholder {
