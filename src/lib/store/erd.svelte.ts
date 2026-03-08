@@ -1,18 +1,19 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
-import { generateId, now } from '$lib/utils/common';
-import { propagateWithHierarchy, getDescendantIds } from '$lib/utils/domain-hierarchy';
+import { now } from '$lib/utils/common';
 import { normalizeSchema } from '$lib/utils/schema-normalize';
 import { canvasState } from '$lib/store/canvas.svelte';
+
+// Ops
+import { createTable, createTableFromTemplate, pasteTables, deleteTableOp, deleteTablesOp, duplicateTableOp, moveTableOp, moveTablesOp, cleanupOrphanedGroupColors } from '$lib/store/ops/table-ops';
+import { addColumnOp, updateColumnOp, deleteColumnOp, moveColumnUpOp, moveColumnDownOp, moveColumnToIndexOp, duplicateColumnOp } from '$lib/store/ops/column-ops';
+import { addForeignKeyOp, updateForeignKeyOp, updateFkLabelOp, deleteForeignKeyOp, addUniqueKeyOp, deleteUniqueKeyOp, addIndexOp, deleteIndexOp } from '$lib/store/ops/fk-ops';
+import { createMemo, deleteMemoOp, deleteMemosOp, updateMemoOp, attachMemoOp, detachMemoOp } from '$lib/store/ops/memo-ops';
+import { addDomainOp, updateDomainOp, deleteDomainOp } from '$lib/store/ops/domain-ops';
+import { addSchemaOp, renameSchemaOp, reorderSchemasOp, deleteSchemaOp, updateTableSchemaOp } from '$lib/store/ops/schema-ns-ops';
 
 // Re-export for backward compatibility
 export { canvasState } from '$lib/store/canvas.svelte';
 export type { ColumnDisplayMode, LineType } from '$lib/store/canvas.svelte';
-
-function getNextTableName(tables: Table[]): string {
-  let i = 1;
-  while (tables.some((t) => t.name === `table_${i}`)) i++;
-  return `table_${i}`;
-}
 
 export function defaultSchema(): ERDSchema {
   return {
@@ -25,7 +26,6 @@ export function defaultSchema(): ERDSchema {
     updatedAt: now(),
   };
 }
-
 
 export type HistoryEntry = { snap: string; label: string; detail: string; time: number };
 
@@ -57,7 +57,6 @@ class ERDStore {
   get canRedo(): boolean { void this._undoVersion; return this._redoStack.length > 0; }
 
   get historyEntries(): HistoryEntry[] {
-    // Access version to make this reactive
     void this._undoVersion;
     return [...this._undoStack];
   }
@@ -68,7 +67,6 @@ class ERDStore {
   }
 
   pushSnapshotRaw(snap: string, label: string, detail: string = '') {
-    // Avoid duplicate snapshots
     if (this._undoStack.length > 0 && this._undoStack[this._undoStack.length - 1].snap === snap) return;
     this._undoStack.push({ snap, label, detail, time: Date.now() });
     if (this._undoStack.length > MAX_HISTORY) this._undoStack.shift();
@@ -101,13 +99,11 @@ class ERDStore {
   jumpToHistory(index: number) {
     if (index < 0 || index >= this._undoStack.length) return;
     const current = JSON.stringify($state.snapshot(this.schema));
-    // Push items from index+1..end and current state onto redo stack
     for (let i = this._undoStack.length - 1; i > index; i--) {
       this._redoStack.push(this._undoStack[i]);
     }
     const target = this._undoStack[index];
     this._redoStack.push({ snap: current, label: target.label, detail: target.detail, time: Date.now() });
-    // Restore the target snapshot
     this._undoStack = this._undoStack.slice(0, index);
     this._isUndoRedoing = true;
     this.schema = JSON.parse(target.snap);
@@ -122,17 +118,8 @@ class ERDStore {
     }
   }
 
-  // Private lookup helpers (reduce repeated .find() calls)
   private _t(id: string): Table | undefined {
     return this.schema.tables.find((t) => t.id === id);
-  }
-
-  private _m(id: string): Memo | undefined {
-    return this.schema.memos.find((m) => m.id === id);
-  }
-
-  private _d(id: string): ColumnDomain | undefined {
-    return this.schema.domains?.find((d) => d.id === id);
   }
 
   get selectedTable(): Table | undefined {
@@ -149,169 +136,46 @@ class ERDStore {
     this._undoVersion++;
   }
 
+  // ── Table Operations ──
+
   addTable(viewportWidth = 800, viewportHeight = 600) {
     const { x: worldX, y: worldY } = canvasState.viewportCenterToWorld(viewportWidth, viewportHeight);
-    const id = generateId();
-    const name = getNextTableName(this.schema.tables);
     const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
-    const newTable: Table = {
-      id,
-      name,
-      columns: [
-        {
-          id: generateId(),
-          name: 'id',
-          type: 'INT',
-          nullable: false,
-          primaryKey: true,
-          unique: true,
-          autoIncrement: true,
-        },
-      ],
-      foreignKeys: [],
-      uniqueKeys: [],
-      indexes: [],
-      position: { x: worldX - 100, y: worldY - 60 },
-      ...(activeSchema ? { schema: activeSchema } : {}),
-    };
-    this.schema.tables = [...this.schema.tables, newTable];
-    this.schema.updatedAt = now();
+    const { table, id } = createTable(this.schema, { x: worldX - 100, y: worldY - 60 }, activeSchema);
     this.selectedTableId = id;
-    this._emitOp({ kind: 'add-table', table: newTable });
+    this._emitOp({ kind: 'add-table', table });
   }
 
   addTableFromTemplate(templateColumns: Omit<Column, 'id'>[], tableName: string, viewportWidth = 800, viewportHeight = 600) {
     const { x: worldX, y: worldY } = canvasState.viewportCenterToWorld(viewportWidth, viewportHeight);
-    const id = generateId();
-    // Avoid name collision
-    let name = tableName;
-    let suffix = 1;
-    while (this.schema.tables.some((t) => t.name === name)) {
-      name = `${tableName}_${suffix++}`;
-    }
     const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
-    const columns: Column[] = templateColumns.map((c) => ({ ...c, id: generateId() }));
-    const newTable: Table = {
-      id,
-      name,
-      columns,
-      foreignKeys: [],
-      uniqueKeys: [],
-      indexes: [],
-      position: { x: worldX - 100, y: worldY - 60 },
-      ...(activeSchema ? { schema: activeSchema } : {}),
-    };
-    this.schema.tables = [...this.schema.tables, newTable];
-    this.schema.updatedAt = now();
+    const { table, id } = createTableFromTemplate(this.schema, templateColumns, tableName, { x: worldX - 100, y: worldY - 60 }, activeSchema);
     this.selectedTableId = id;
     this.selectedTableIds = new Set([id]);
-    this._emitOp({ kind: 'add-table', table: newTable });
+    this._emitOp({ kind: 'add-table', table });
   }
 
   pasteTablesFromClipboard(tables: Table[]) {
-    const idMap = new Map<string, string>();
-    const newIds: string[] = [];
     const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
-
-    for (const srcTable of tables) {
-      const newId = generateId();
-      idMap.set(srcTable.id, newId);
-      // Avoid name collision
-      let name = srcTable.name;
-      let suffix = 1;
-      while (this.schema.tables.some((t) => t.name === name)) {
-        name = `${srcTable.name}_${suffix++}`;
-      }
-      const columns: Column[] = srcTable.columns.map((c) => {
-        const newColId = generateId();
-        idMap.set(c.id, newColId);
-        return { ...c, id: newColId };
-      });
-      const newTable: Table = {
-        id: newId,
-        name,
-        columns,
-        foreignKeys: [],
-        uniqueKeys: (srcTable.uniqueKeys ?? []).map((uk) => ({
-          ...uk, id: generateId(),
-          columnIds: uk.columnIds.map((cid) => idMap.get(cid) ?? cid),
-        })),
-        indexes: (srcTable.indexes ?? []).map((idx) => ({
-          ...idx, id: generateId(),
-          columnIds: idx.columnIds.map((cid) => idMap.get(cid) ?? cid),
-        })),
-        position: { x: srcTable.position.x + 30, y: srcTable.position.y + 30 },
-        comment: srcTable.comment,
-        color: srcTable.color,
-        group: srcTable.group,
-        ...(activeSchema ? { schema: activeSchema } : srcTable.schema ? { schema: srcTable.schema } : {}),
-      };
-      this.schema.tables = [...this.schema.tables, newTable];
-      newIds.push(newId);
-      this._emitOp({ kind: 'add-table', table: newTable });
-    }
-    // Re-map FKs between pasted tables
-    for (const srcTable of tables) {
-      const newTableId = idMap.get(srcTable.id)!;
-      const newTable = this._t(newTableId);
-      if (!newTable) continue;
-      for (const fk of srcTable.foreignKeys) {
-        const refId = idMap.get(fk.referencedTableId);
-        if (!refId) continue; // FK target not in pasted set
-        const newFk: ForeignKey = {
-          id: generateId(),
-          columnIds: fk.columnIds.map((cid) => idMap.get(cid) ?? cid),
-          referencedTableId: refId,
-          referencedColumnIds: fk.referencedColumnIds.map((cid) => idMap.get(cid) ?? cid),
-          onDelete: fk.onDelete,
-          onUpdate: fk.onUpdate,
-          label: fk.label,
-        };
-        newTable.foreignKeys = [...newTable.foreignKeys, newFk];
-      }
-    }
-    this.schema.updatedAt = now();
+    const { newIds } = pasteTables(this.schema, tables, activeSchema);
     this.selectedTableIds = new Set(newIds);
     if (newIds.length > 0) this.selectedTableId = newIds[0];
+    // Emit ops for each new table
+    for (const id of newIds) {
+      const t = this._t(id);
+      if (t) this._emitOp({ kind: 'add-table', table: t });
+    }
   }
 
   deleteTable(id: string) {
-    // Detach memos attached to this table
-    for (const memo of this.schema.memos) {
-      if (memo.attachedTableId === id) {
-        delete memo.attachedTableId;
-      }
-    }
-    // Also remove FK references to this table from other tables
-    this.schema.tables = this.schema.tables
-      .filter((t) => t.id !== id)
-      .map((t) => ({
-        ...t,
-        foreignKeys: t.foreignKeys.filter((fk) => fk.referencedTableId !== id),
-      }));
-    this.schema.updatedAt = now();
-    if (this.selectedTableId === id) {
-      this.selectedTableId = null;
-    }
+    deleteTableOp(this.schema, id);
+    if (this.selectedTableId === id) this.selectedTableId = null;
     this._emitOp({ kind: 'delete-table', tableId: id });
   }
 
   deleteTables(ids: string[]) {
-    const idSet = new Set(ids);
-    // Detach memos attached to deleted tables
-    for (const memo of this.schema.memos) {
-      if (memo.attachedTableId && idSet.has(memo.attachedTableId)) {
-        delete memo.attachedTableId;
-      }
-    }
-    this.schema.tables = this.schema.tables
-      .filter((t) => !idSet.has(t.id))
-      .map((t) => ({
-        ...t,
-        foreignKeys: t.foreignKeys.filter((fk) => !idSet.has(fk.referencedTableId)),
-      }));
-    this.schema.updatedAt = now();
-    if (this.selectedTableId && idSet.has(this.selectedTableId)) this.selectedTableId = null;
+    deleteTablesOp(this.schema, ids);
+    if (this.selectedTableId && new Set(ids).has(this.selectedTableId)) this.selectedTableId = null;
     this.selectedTableIds = new Set();
     this._emitOp({ kind: 'delete-tables', tableIds: ids });
   }
@@ -345,7 +209,7 @@ class ERDStore {
     if (!table) return;
     table.group = group || undefined;
     this.schema.updatedAt = now();
-    this._cleanupOrphanedGroupColors();
+    cleanupOrphanedGroupColors(this.schema);
     this._emitOp({ kind: 'update-table-group', tableId: id, group });
   }
 
@@ -356,7 +220,6 @@ class ERDStore {
     } else {
       delete this.schema.groupColors[group];
     }
-    // Trigger reactivity by reassigning
     this.schema.groupColors = { ...this.schema.groupColors };
     this.schema.updatedAt = now();
     this._emitOp({ kind: 'update-group-color', group, color });
@@ -376,58 +239,17 @@ class ERDStore {
     this._emitOp({ kind: 'rename-group', oldName, newName });
   }
 
-  private _cleanupOrphanedGroupColors() {
-    if (!this.schema.groupColors) return;
-    const activeGroups = new Set(this.schema.tables.map((t) => t.group).filter(Boolean));
-    let changed = false;
-    for (const g of Object.keys(this.schema.groupColors)) {
-      if (!activeGroups.has(g)) {
-        delete this.schema.groupColors[g];
-        changed = true;
-      }
-    }
-    if (changed) this.schema.groupColors = { ...this.schema.groupColors };
-  }
-
   moveTable(id: string, x: number, y: number) {
-    const table = this._t(id);
-    if (!table) return;
-    const oldX = table.position.x;
-    const oldY = table.position.y;
     const sx = canvasState.snap(x);
     const sy = canvasState.snap(y);
-    const dx = sx - oldX;
-    const dy = sy - oldY;
-    table.position = { x: sx, y: sy };
-    // Move attached memos by the same delta
-    for (const memo of this.schema.memos) {
-      if (memo.attachedTableId === id) {
-        memo.position = { x: memo.position.x + dx, y: memo.position.y + dy };
-      }
-    }
+    moveTableOp(this.schema, id, sx, sy);
     this._emitOp({ kind: 'move-table', tableId: id, x: sx, y: sy });
   }
 
   moveTables(moves: { id: string; x: number; y: number }[]) {
-    const opMoves: { tableId: string; x: number; y: number }[] = [];
-    for (const move of moves) {
-      const table = this._t(move.id);
-      if (!table) continue;
-      const oldX = table.position.x;
-      const oldY = table.position.y;
-      const sx = canvasState.snap(move.x);
-      const sy = canvasState.snap(move.y);
-      const dx = sx - oldX;
-      const dy = sy - oldY;
-      table.position = { x: sx, y: sy };
-      // Move attached memos by the same delta
-      for (const memo of this.schema.memos) {
-        if (memo.attachedTableId === move.id) {
-          memo.position = { x: memo.position.x + dx, y: memo.position.y + dy };
-        }
-      }
-      opMoves.push({ tableId: move.id, x: sx, y: sy });
-    }
+    const snapped = moves.map(m => ({ id: m.id, x: canvasState.snap(m.x), y: canvasState.snap(m.y) }));
+    moveTablesOp(this.schema, snapped);
+    const opMoves = snapped.map(m => ({ tableId: m.id, x: m.x, y: m.y }));
     if (opMoves.length > 0) {
       this._emitOp({ kind: 'move-tables', moves: opMoves });
     }
@@ -446,99 +268,55 @@ class ERDStore {
     this._emitOp({ kind: 'apply-layout', positions: moves });
   }
 
+  duplicateTable(id: string) {
+    const newTable = duplicateTableOp(this.schema, id);
+    if (!newTable) return;
+    this.selectedTableId = newTable.id;
+    this.selectedTableIds = new Set([newTable.id]);
+    this._emitOp({ kind: 'duplicate-table', table: newTable });
+  }
+
+  // ── Column Operations ──
+
   addColumn(tableId: string): string | undefined {
-    const table = this._t(tableId);
-    if (!table) return;
-    const n = table.columns.length + 1;
-    const newColumn: Column = {
-      id: generateId(),
-      name: `column_${n}`,
-      type: 'VARCHAR',
-      length: 255,
-      nullable: false,
-      primaryKey: false,
-      unique: false,
-      autoIncrement: false,
-    };
-    table.columns = [...table.columns, newColumn];
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'add-column', tableId, column: newColumn });
-    return newColumn.id;
+    const col = addColumnOp(this.schema, tableId);
+    if (!col) return;
+    this._emitOp({ kind: 'add-column', tableId, column: col });
+    return col.id;
   }
 
   updateColumn(tableId: string, columnId: string, patch: Partial<Column>) {
-    const table = this._t(tableId);
-    if (!table) return;
-    // PK implies NOT NULL
-    if (patch.primaryKey) patch.nullable = false;
-    table.columns = table.columns.map((c) =>
-      c.id === columnId ? { ...c, ...patch } : c
-    );
-    this.schema.updatedAt = now();
+    updateColumnOp(this.schema, tableId, columnId, patch);
     this._emitOp({ kind: 'update-column', tableId, columnId, patch });
   }
 
   deleteColumn(tableId: string, columnId: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    table.columns = table.columns.filter((c) => c.id !== columnId);
-    // Remove FKs that reference this column (in same table)
-    table.foreignKeys = table.foreignKeys.filter((fk) => !fk.columnIds.includes(columnId));
-    // Remove UniqueKeys that reference this column
-    if (table.uniqueKeys) {
-      table.uniqueKeys = table.uniqueKeys.filter((uk) => !uk.columnIds.includes(columnId));
-    }
-    // Remove Indexes that reference this column
-    if (table.indexes) {
-      table.indexes = table.indexes.filter((idx) => !idx.columnIds.includes(columnId));
-    }
-    // Remove FKs in other tables that reference this column
-    for (const t of this.schema.tables) {
-      if (t.id === tableId) continue;
-      t.foreignKeys = t.foreignKeys.filter(
-        (fk) => !(fk.referencedTableId === tableId && fk.referencedColumnIds.includes(columnId))
-      );
-    }
-    this.schema.updatedAt = now();
+    deleteColumnOp(this.schema, tableId, columnId);
     this._emitOp({ kind: 'delete-column', tableId, columnId });
   }
 
   moveColumnUp(tableId: string, columnId: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    const idx = table.columns.findIndex((c) => c.id === columnId);
-    if (idx <= 0) return;
-    const cols = [...table.columns];
-    [cols[idx - 1], cols[idx]] = [cols[idx], cols[idx - 1]];
-    table.columns = cols;
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'move-column', tableId, columnId, toIndex: idx - 1 });
+    const toIndex = moveColumnUpOp(this.schema, tableId, columnId);
+    if (toIndex !== undefined) this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
   }
 
   moveColumnDown(tableId: string, columnId: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    const idx = table.columns.findIndex((c) => c.id === columnId);
-    if (idx < 0 || idx >= table.columns.length - 1) return;
-    const cols = [...table.columns];
-    [cols[idx], cols[idx + 1]] = [cols[idx + 1], cols[idx]];
-    table.columns = cols;
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'move-column', tableId, columnId, toIndex: idx + 1 });
+    const toIndex = moveColumnDownOp(this.schema, tableId, columnId);
+    if (toIndex !== undefined) this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
   }
 
   moveColumnToIndex(tableId: string, columnId: string, toIndex: number) {
-    const table = this._t(tableId);
-    if (!table) return;
-    const fromIdx = table.columns.findIndex((c) => c.id === columnId);
-    if (fromIdx < 0 || fromIdx === toIndex) return;
-    const cols = [...table.columns];
-    const [item] = cols.splice(fromIdx, 1);
-    cols.splice(toIndex, 0, item);
-    table.columns = cols;
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
+    if (moveColumnToIndexOp(this.schema, tableId, columnId, toIndex)) {
+      this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
+    }
   }
+
+  duplicateColumn(tableId: string, columnId: string) {
+    const col = duplicateColumnOp(this.schema, tableId, columnId);
+    if (col) this._emitOp({ kind: 'add-column', tableId, column: col });
+  }
+
+  // ── Foreign Key Operations ──
 
   addForeignKey(
     tableId: string,
@@ -548,19 +326,8 @@ class ERDStore {
     onDelete: ForeignKey['onDelete'] = 'RESTRICT',
     onUpdate: ForeignKey['onUpdate'] = 'RESTRICT',
   ) {
-    const table = this._t(tableId);
-    if (!table) return;
-    const fk: ForeignKey = {
-      id: generateId(),
-      columnIds,
-      referencedTableId,
-      referencedColumnIds,
-      onDelete,
-      onUpdate,
-    };
-    table.foreignKeys = [...table.foreignKeys, fk];
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'add-fk', tableId, fk });
+    const fk = addForeignKeyOp(this.schema, tableId, columnIds, referencedTableId, referencedColumnIds, onDelete, onUpdate);
+    if (fk) this._emitOp({ kind: 'add-fk', tableId, fk });
   }
 
   updateForeignKey(
@@ -572,125 +339,58 @@ class ERDStore {
     onDelete: ForeignKey['onDelete'] = 'RESTRICT',
     onUpdate: ForeignKey['onUpdate'] = 'RESTRICT',
   ) {
+    updateForeignKeyOp(this.schema, tableId, fkId, columnIds, referencedTableId, referencedColumnIds, onDelete, onUpdate);
     const table = this._t(tableId);
-    if (!table) return;
-    const fk = table.foreignKeys.find((f) => f.id === fkId);
-    if (!fk) return;
-    fk.columnIds = columnIds;
-    fk.referencedTableId = referencedTableId;
-    fk.referencedColumnIds = referencedColumnIds;
-    fk.onDelete = onDelete;
-    fk.onUpdate = onUpdate;
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'update-fk', tableId, fk: { ...fk } });
+    const fk = table?.foreignKeys.find((f) => f.id === fkId);
+    if (fk) this._emitOp({ kind: 'update-fk', tableId, fk: { ...fk } });
   }
 
   updateFkLabel(tableId: string, fkId: string, label: string) {
+    updateFkLabelOp(this.schema, tableId, fkId, label);
     const table = this._t(tableId);
-    if (!table) return;
-    const fk = table.foreignKeys.find((f) => f.id === fkId);
-    if (!fk) return;
-    fk.label = label || undefined;
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'update-fk', tableId, fk: { ...fk } });
+    const fk = table?.foreignKeys.find((f) => f.id === fkId);
+    if (fk) this._emitOp({ kind: 'update-fk', tableId, fk: { ...fk } });
   }
 
   deleteForeignKey(tableId: string, fkId: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    table.foreignKeys = table.foreignKeys.filter((fk) => fk.id !== fkId);
-    this.schema.updatedAt = now();
+    deleteForeignKeyOp(this.schema, tableId, fkId);
     this._emitOp({ kind: 'delete-fk', tableId, fkId });
   }
 
   addUniqueKey(tableId: string, columnIds: string[], name?: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    const uk: UniqueKey = {
-      id: generateId(),
-      columnIds,
-      name: name || undefined,
-    };
-    table.uniqueKeys = [...table.uniqueKeys, uk];
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'add-uk', tableId, uk });
+    const uk = addUniqueKeyOp(this.schema, tableId, columnIds, name);
+    if (uk) this._emitOp({ kind: 'add-uk', tableId, uk });
   }
 
   deleteUniqueKey(tableId: string, ukId: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    table.uniqueKeys = table.uniqueKeys.filter((uk) => uk.id !== ukId);
-    this.schema.updatedAt = now();
+    deleteUniqueKeyOp(this.schema, tableId, ukId);
     this._emitOp({ kind: 'delete-uk', tableId, ukId });
   }
 
   addIndex(tableId: string, columnIds: string[], unique: boolean, name?: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    const idx: TableIndex = {
-      id: generateId(),
-      columnIds,
-      unique,
-      name: name || undefined,
-    };
-    table.indexes = [...(table.indexes ?? []), idx];
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'add-index', tableId, index: idx });
+    const idx = addIndexOp(this.schema, tableId, columnIds, unique, name);
+    if (idx) this._emitOp({ kind: 'add-index', tableId, index: idx });
   }
 
   deleteIndex(tableId: string, indexId: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    table.indexes = (table.indexes ?? []).filter((idx) => idx.id !== indexId);
-    this.schema.updatedAt = now();
+    deleteIndexOp(this.schema, tableId, indexId);
     this._emitOp({ kind: 'delete-index', tableId, indexId });
   }
 
-  // Domain CRUD
+  // ── Domain Operations ──
+
   addDomain(fields: Omit<ColumnDomain, 'id'>) {
-    const domain: ColumnDomain = { id: generateId(), ...fields };
-    this.schema.domains = [...this.schema.domains, domain];
-    this.schema.updatedAt = now();
+    const domain = addDomainOp(this.schema, fields);
     this._emitOp({ kind: 'add-domain', domain });
   }
 
   updateDomain(id: string, patch: Partial<Omit<ColumnDomain, 'id'>>) {
-    // Use hierarchy-aware propagation (cascades to child domains' linked columns)
-    const result = propagateWithHierarchy(this.schema, id, patch);
-    this.schema.domains = result.domains;
-    this.schema.tables = result.tables;
-    this.schema.updatedAt = now();
+    updateDomainOp(this.schema, id, patch);
     this._emitOp({ kind: 'update-domain', domainId: id, patch });
   }
 
   deleteDomain(id: string) {
-    const deleted = this._d(id);
-    const parentIdOfDeleted = deleted?.parentId;
-
-    // Re-parent children: assign deleted domain's parentId to its children
-    this.schema.domains = this.schema.domains
-      .filter((d) => d.id !== id)
-      .map((d) => d.parentId === id ? { ...d, parentId: parentIdOfDeleted } : d);
-
-    // Unlink columns that referenced this domain (keep their current settings)
-    for (const table of this.schema.tables) {
-      table.columns = table.columns.map((c) =>
-        c.domainId === id ? { ...c, domainId: undefined } : c
-      );
-    }
-
-    // Re-propagate for re-parented children
-    if (parentIdOfDeleted) {
-      const childIds = this.schema.domains
-        .filter(d => d.parentId === parentIdOfDeleted)
-        .map(d => d.id);
-      for (const childId of childIds) {
-        const result = propagateWithHierarchy(this.schema, childId, {});
-        this.schema.tables = result.tables;
-      }
-    }
-
-    this.schema.updatedAt = now();
+    deleteDomainOp(this.schema, id);
     this._emitOp({ kind: 'delete-domain', domainId: id });
   }
 
@@ -710,75 +410,20 @@ class ERDStore {
     return { added, updated };
   }
 
-  duplicateColumn(tableId: string, columnId: string) {
-    const table = this._t(tableId);
-    if (!table) return;
-    const src = table.columns.find((c) => c.id === columnId);
-    if (!src) return;
-    const newCol: Column = {
-      ...src,
-      id: generateId(),
-      name: `${src.name}_copy`,
-      primaryKey: false,
-      autoIncrement: false,
-      domainId: undefined,
-    };
-    const idx = table.columns.findIndex((c) => c.id === columnId);
-    const cols = [...table.columns];
-    cols.splice(idx + 1, 0, newCol);
-    table.columns = cols;
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'add-column', tableId, column: newCol });
-  }
+  // ── Memo Operations ──
 
-  duplicateTable(id: string) {
-    const src = this._t(id);
-    if (!src) return;
-    const newId = generateId();
-    const newName = `${src.name}_copy`;
-    const newTable: Table = {
-      id: newId,
-      name: newName,
-      columns: src.columns.map((c) => ({ ...c, id: generateId() })),
-      foreignKeys: [],
-      uniqueKeys: [],
-      indexes: [],
-      position: { x: src.position.x + 30, y: src.position.y + 30 },
-      comment: src.comment,
-      color: src.color,
-      group: src.group,
-    };
-    this.schema.tables = [...this.schema.tables, newTable];
-    this.schema.updatedAt = now();
-    this.selectedTableId = newId;
-    this.selectedTableIds = new Set([newId]);
-    this._emitOp({ kind: 'duplicate-table', table: newTable });
-  }
-
-  // Memo CRUD
   addMemo(viewportWidth = 800, viewportHeight = 600) {
     const { x: worldX, y: worldY } = canvasState.viewportCenterToWorld(viewportWidth, viewportHeight);
-    const id = generateId();
     const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
-    const memo: Memo = {
-      id,
-      content: '',
-      position: { x: worldX - 100, y: worldY - 75 },
-      width: 200,
-      height: 150,
-      ...(activeSchema ? { schema: activeSchema } : {}),
-    };
-    this.schema.memos = [...this.schema.memos, memo];
-    this.schema.updatedAt = now();
-    this.selectedMemoId = id;
-    this.selectedMemoIds = new Set([id]);
-    this.editingMemoId = id;
+    const memo = createMemo(this.schema, { x: worldX - 100, y: worldY - 75 }, activeSchema);
+    this.selectedMemoId = memo.id;
+    this.selectedMemoIds = new Set([memo.id]);
+    this.editingMemoId = memo.id;
     this._emitOp({ kind: 'add-memo', memo });
   }
 
   deleteMemo(id: string) {
-    this.schema.memos = this.schema.memos.filter((m) => m.id !== id);
-    this.schema.updatedAt = now();
+    deleteMemoOp(this.schema, id);
     if (this.selectedMemoId === id) this.selectedMemoId = null;
     this.selectedMemoIds.delete(id);
     this.selectedMemoIds = new Set(this.selectedMemoIds);
@@ -787,18 +432,17 @@ class ERDStore {
 
   deleteMemos(ids: string[]) {
     const idSet = new Set(ids);
-    this.schema.memos = this.schema.memos.filter((m) => !idSet.has(m.id));
-    this.schema.updatedAt = now();
+    deleteMemosOp(this.schema, ids);
     if (this.selectedMemoId && idSet.has(this.selectedMemoId)) this.selectedMemoId = null;
     this.selectedMemoIds = new Set();
     this._emitOp({ kind: 'delete-memos', memoIds: ids });
   }
 
   moveMemo(id: string, x: number, y: number) {
-    const memo = this._m(id);
-    if (!memo) return;
     const sx = canvasState.snap(x);
     const sy = canvasState.snap(y);
+    const memo = this.schema.memos.find((m) => m.id === id);
+    if (!memo) return;
     memo.position = { x: sx, y: sy };
     this._emitOp({ kind: 'move-memo', memoId: id, x: sx, y: sy });
   }
@@ -806,7 +450,7 @@ class ERDStore {
   moveMemos(moves: { id: string; x: number; y: number }[]) {
     const opMoves: { memoId: string; x: number; y: number }[] = [];
     for (const move of moves) {
-      const memo = this._m(move.id);
+      const memo = this.schema.memos.find((m) => m.id === move.id);
       if (!memo) continue;
       const sx = canvasState.snap(move.x);
       const sy = canvasState.snap(move.y);
@@ -819,86 +463,50 @@ class ERDStore {
   }
 
   updateMemo(id: string, patch: Partial<Omit<Memo, 'id'>>) {
-    const memo = this._m(id);
-    if (!memo) return;
-    Object.assign(memo, patch);
-    this.schema.updatedAt = now();
+    updateMemoOp(this.schema, id, patch);
     this._emitOp({ kind: 'update-memo', memoId: id, patch });
   }
 
   attachMemo(memoId: string, tableId: string) {
-    const memo = this._m(memoId);
-    if (!memo) return;
-    memo.attachedTableId = tableId;
-    this.schema.updatedAt = now();
+    attachMemoOp(this.schema, memoId, tableId);
     this._emitOp({ kind: 'attach-memo', memoId, tableId });
   }
 
   detachMemo(memoId: string) {
-    const memo = this._m(memoId);
-    if (!memo) return;
-    const tableId = memo.attachedTableId;
-    delete memo.attachedTableId;
-    // Reposition near the table if possible
-    if (tableId) {
-      const table = this._t(tableId);
-      if (table) {
-        memo.position = { x: table.position.x, y: table.position.y - memo.height - 12 };
-      }
-    }
-    this.schema.updatedAt = now();
+    detachMemoOp(this.schema, memoId);
     this._emitOp({ kind: 'detach-memo', memoId });
   }
 
-  // Schema namespace methods
+  // ── Schema Namespace Operations ──
+
   addSchema(name: string) {
-    if (!this.schema.schemas) this.schema.schemas = [];
-    if (!this.schema.schemas.includes(name)) {
-      this.schema.schemas = [...this.schema.schemas, name];
-      this.schema.updatedAt = now();
+    if (addSchemaOp(this.schema, name)) {
       this._emitOp({ kind: 'add-schema', name });
     }
   }
 
   renameSchema(oldName: string, newName: string) {
-    if (!newName || oldName === newName) return;
-    if (this.schema.schemas?.includes(newName)) return; // duplicate
-    this.schema.schemas = this.schema.schemas?.map((s) => (s === oldName ? newName : s));
-    for (const t of this.schema.tables) {
-      if (t.schema === oldName) t.schema = newName;
+    if (renameSchemaOp(this.schema, oldName, newName)) {
+      this._emitOp({ kind: 'rename-schema', oldName, newName });
     }
-    for (const mm of this.schema.memos) {
-      if (mm.schema === oldName) mm.schema = newName;
-    }
-    this.schema.updatedAt = now();
-    this._emitOp({ kind: 'rename-schema', oldName, newName });
   }
 
   reorderSchemas(schemas: string[]) {
-    this.schema.schemas = schemas;
-    this.schema.updatedAt = now();
+    reorderSchemasOp(this.schema, schemas);
     this._emitOp({ kind: 'reorder-schemas', schemas });
   }
 
   deleteSchema(name: string) {
-    this.schema.schemas = this.schema.schemas?.filter((s) => s !== name);
-    for (const t of this.schema.tables) {
-      if (t.schema === name) delete t.schema;
-    }
-    for (const mm of this.schema.memos) {
-      if (mm.schema === name) delete mm.schema;
-    }
-    this.schema.updatedAt = now();
+    deleteSchemaOp(this.schema, name);
     this._emitOp({ kind: 'delete-schema', name });
   }
 
   updateTableSchema(tableId: string, schema: string | undefined) {
-    const tbl = this._t(tableId);
-    if (!tbl) return;
-    if (schema) tbl.schema = schema; else delete tbl.schema;
-    this.schema.updatedAt = now();
+    updateTableSchemaOp(this.schema, tableId, schema);
     this._emitOp({ kind: 'update-table-schema', tableId, schema: schema ?? '' });
   }
+
+  // ── Schema Loading ──
 
   loadSchema(schema: ERDSchema) {
     normalizeSchema(schema);

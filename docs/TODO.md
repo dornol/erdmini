@@ -334,3 +334,15 @@
 - 11 new tests (LDAP escape 8, validateLogoUrl 8, baseline V3 1, ReDoS resilience 2) — minus overlap with existing
 - 54 test files, 2092 tests total, svelte-check 0 errors
 - Difficulty: Medium
+
+### Phase R — Full Codebase Refactoring (7-Phase)
+- ~~**R1 — MCP server.ts Split**: 1,871 → ~80 line orchestrator + 14 domain tool modules in `src/lib/server/mcp/tools/` (types.ts, read-tools, table-tools, column-tools, fk-tools, constraint-tools, memo-tools, domain-tools, schema-ns-tools, snapshot-tools, import-tools, export-tools, analysis-tools, template-tools, bulk-tools)~~
+- ~~**R2 — +page.svelte Composable Extraction**: 836 → 446 lines. 6 composables in `src/lib/composables/`: use-collab, use-auto-save, use-auto-snapshot, use-permission, use-url-share, use-fullscreen~~
+- ~~**R3 — Large Component Splits**: TableCard (1,129→~280 + 3 sub-components), Sidebar (1,429→1,196 + 2), DomainModal (1,197→450 + 3), TableEditor (916→~278 + 2)~~
+- ~~**R4 — erd.svelte.ts Ops Extraction**: 922 → 530 lines. 6 pure mutation modules in `src/lib/store/ops/`: table-ops, column-ops, fk-ops, memo-ops, domain-ops, schema-ns-ops~~
+- ~~**R5 — Template/CSS Extraction**: MobileNotice.svelte + StorageBanner.svelte extracted from +page.svelte~~
+- ~~**R6 — Test File Splits**: ddl-import.test.ts → 7 files, prisma-integration.test.ts → 3 files, migration-sql.test.ts → 4 files~~
+- ~~**R7 — API Response Helpers**: `src/lib/server/api-helpers.ts` (ok/err/notFound/unauthorized/forbidden)~~
+- 230 new tests (table-ops 44, column-ops 41, fk-ops 47, memo-ops 34, schema-ns-ops 36, domain-ops 15, api-helpers 13)
+- 73 test files, 2329 tests total, svelte-check 0 errors
+- Difficulty: Large

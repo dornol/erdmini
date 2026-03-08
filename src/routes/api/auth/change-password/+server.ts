@@ -4,28 +4,29 @@ import db from '$lib/server/db';
 import { hashPassword, verifyPassword } from '$lib/server/auth/password';
 import { createSession, deleteUserSessions, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
+import { unauthorized, err } from '$lib/server/api-helpers';
 import type { UserRow } from '$lib/types/auth';
 
 export const PUT: RequestHandler = async ({ locals, request, cookies, url }) => {
   const user = (locals as any).user;
   if (!user) {
-    return json({ error: 'Unauthorized' }, { status: 401 });
+    return unauthorized();
   }
 
   const { currentPassword, newPassword } = await request.json();
 
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) as UserRow | undefined;
   if (!row || !row.password_hash) {
-    return json({ error: 'Password change not available for this account' }, { status: 400 });
+    return err('Password change not available for this account');
   }
 
   const valid = await verifyPassword(row.password_hash, currentPassword);
   if (!valid) {
-    return json({ error: 'Current password is incorrect' }, { status: 401 });
+    return unauthorized('Current password is incorrect');
   }
 
   if (!newPassword || newPassword.length < 4) {
-    return json({ error: 'Password must be at least 4 characters' }, { status: 400 });
+    return err('Password must be at least 4 characters');
   }
 
   const newHash = await hashPassword(newPassword);

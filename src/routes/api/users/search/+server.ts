@@ -1,11 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
+import { unauthorized } from '$lib/server/api-helpers';
 import type { UserRow } from '$lib/types/auth';
 
 export const GET: RequestHandler = ({ url, locals }) => {
   if (!locals.user) {
-    return json({ error: 'Unauthorized' }, { status: 401 });
+    return unauthorized();
   }
 
   const q = url.searchParams.get('q')?.trim();

@@ -12,30 +12,29 @@
   import BulkEditModal from '$lib/components/BulkEditModal.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import SchemaTabBar from '$lib/components/SchemaTabBar.svelte';
-  import { onMount, onDestroy, tick } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
-  import { downloadBlob } from '$lib/utils/blob-download';
-  import type { ERDSchema } from '$lib/types/erd';
+  import MobileNotice from '$lib/components/MobileNotice.svelte';
+  import StorageBanner from '$lib/components/StorageBanner.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
-  import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
-  import { deriveLabel } from '$lib/utils/history-labels';
   import { filterBySchema } from '$lib/utils/canvas-grid';
   import { getStorageProvider } from '$lib/storage';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { authStore } from '$lib/store/auth.svelte';
-  import { collabClient } from '$lib/collab/collab-client';
-  import { collabStore } from '$lib/store/collab.svelte';
-  import { snapshotStore, AUTO_SNAPSHOT_INTERVAL_MS } from '$lib/store/snapshot.svelte';
-  import { handleServerMessage, sendPresence, sendOperation } from '$lib/collab/operation-bridge';
+  import { snapshotStore } from '$lib/store/snapshot.svelte';
   import { browser } from '$app/environment';
-  import { replaceState } from '$app/navigation';
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
   import { restoreCanvasSettings, persistColumnDisplayMode, persistLineType, persistShowGrid, persistShowRelationLines, persistSchemaView } from '$lib/utils/canvas-persistence';
   import { handleKeydown as handleKBShortcut, type KeyboardContext } from '$lib/utils/keyboard-shortcuts';
-  import { env } from '$env/dynamic/public';
+  import { useCollab } from '$lib/composables/use-collab.svelte';
+  import { useAutoSave } from '$lib/composables/use-auto-save.svelte';
+  import { useAutoSnapshot } from '$lib/composables/use-auto-snapshot.svelte';
+  import { usePermission } from '$lib/composables/use-permission.svelte';
+  import { useUrlShare, loadShareFromHash, autoLoadSharedProjects } from '$lib/composables/use-url-share.svelte';
+  import { useFullscreen } from '$lib/composables/use-fullscreen.svelte';
 
   // Restore persisted canvas settings synchronously (before $effects run)
   if (browser) {
@@ -64,10 +63,14 @@
   let viewportWidth = $state(768);
   let forceDesktop = $state(false);
   let isMobile = $derived(viewportWidth < 768);
-  let storageBannerDismissed = $state(false);
-  let fullscreenMode = $state(false);
-  let fullscreenBarVisible = $state(true);
-  let fullscreenBarTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // ── Composables (must be called during component init) ──
+  const fullscreen = useFullscreen();
+  const cleanupCollab = useCollab();
+  const cleanupAutoSave = useAutoSave();
+  useAutoSnapshot();
+  usePermission();
+  useUrlShare();
 
   onMount(async () => {
     const provider = await getStorageProvider();
@@ -83,29 +86,6 @@
     }
   });
 
-  async function autoLoadSharedProjects() {
-    try {
-      const res = await fetch('/api/storage/shared');
-      if (!res.ok) return;
-      const shared = await res.json();
-      if (!shared.length) return;
-      // Load the first shared project
-      const first = shared[0];
-      const schemaRes = await fetch(`/api/storage/schemas/${first.projectId}`);
-      if (!schemaRes.ok) return;
-      const schema = await schemaRes.json();
-      await projectStore.loadSharedProject(first.projectId, first.projectName, schema);
-      // Load remaining shared projects into index
-      for (let i = 1; i < shared.length; i++) {
-        const s = shared[i];
-        const sRes = await fetch(`/api/storage/schemas/${s.projectId}`);
-        if (!sRes.ok) continue;
-        const sSchema = await sRes.json();
-        await projectStore.loadSharedProject(s.projectId, s.projectName, sSchema);
-      }
-    } catch { /* ignore */ }
-  }
-
   // Persist canvas settings
   $effect(() => { persistColumnDisplayMode(canvasState.columnDisplayMode); });
   $effect(() => { persistLineType(canvasState.lineType); });
@@ -113,177 +93,16 @@
   $effect(() => { persistShowRelationLines(canvasState.showRelationLines); });
   $effect(() => { persistSchemaView(canvasState.activeSchema, canvasState.schemaViewports); });
 
-  /** Measure viewport, apply state change, then compensate canvas position to keep center stable */
-  async function preserveCenter(applyChange: () => void) {
-    const vp = document.querySelector('.canvas-viewport');
-    const oldRect = vp?.getBoundingClientRect();
-    const oldW = oldRect?.width ?? 0;
-    const oldH = oldRect?.height ?? 0;
-
-    applyChange();
-    await tick();
-    // Force layout recalculation after DOM update
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-
-    const newVp = document.querySelector('.canvas-viewport');
-    const newRect = newVp?.getBoundingClientRect();
-    const newW = newRect?.width ?? oldW;
-    const newH = newRect?.height ?? oldH;
-
-    canvasState.x += (newW - oldW) / 2;
-    canvasState.y += (newH - oldH) / 2;
-  }
-
-  function enterFullscreen() {
-    preserveCenter(() => {
-      fullscreenMode = true;
-      fullscreenBarVisible = true;
-      clearTimeout(fullscreenBarTimer);
-      fullscreenBarTimer = setTimeout(() => (fullscreenBarVisible = false), 3000);
-    });
-  }
-
-  function exitFullscreen() {
-    preserveCenter(() => {
-      fullscreenMode = false;
-      fullscreenBarVisible = true;
-      clearTimeout(fullscreenBarTimer);
-    });
-  }
-
-  function showFullscreenBar() {
-    fullscreenBarVisible = true;
-    clearTimeout(fullscreenBarTimer);
-    fullscreenBarTimer = setTimeout(() => (fullscreenBarVisible = false), 3000);
-  }
-
   function toggleSidebar() {
-    preserveCenter(() => {
+    fullscreen.preserveCenter(() => {
       sidebarCollapsed = !sidebarCollapsed;
     });
   }
 
-  // ── Collab: WebSocket lifecycle ──
-  const unsubCollab = collabClient.onMessage(handleServerMessage);
-
-  // Connect/disconnect on project change (server mode + logged in)
-  $effect(() => {
-    const projectId = projectStore.index.activeProjectId;
-    if (!projectId || !authStore.isLoggedIn) {
-      collabClient.disconnect();
-      collabStore.reset();
-      return;
-    }
-    collabClient.connect(projectId);
-  });
-
-  // Send selection presence when selected tables change
-  $effect(() => {
-    const ids = [...erdStore.selectedTableIds];
-    sendPresence({ selectedTableIds: ids });
-  });
-
-  // Send operations to peers when erdStore emits them
-  $effect(() => {
-    void erdStore._opVersion; // trigger on each new operation
-    const op = erdStore._lastOperation;
-    if (op) sendOperation(op);
-  });
-
   onDestroy(() => {
-    unsubCollab();
-    collabClient.disconnect();
-    collabStore.reset();
-    clearTimeout(fullscreenBarTimer);
-    clearTimeout(saveTimer);
-  });
-
-  // Load permission when project changes (server mode only)
-  $effect(() => {
-    const projectId = projectStore.index.activeProjectId;
-    if (!projectId || !authStore.isLoggedIn) {
-      permissionStore.set(null);
-      return;
-    }
-    loadPermission(projectId);
-  });
-
-  async function loadPermission(projectId: string) {
-    try {
-      const res = await fetch(`/api/storage/projects/${projectId}/my-permission`);
-      if (res.ok) {
-        const data = await res.json();
-        permissionStore.set(data.permission);
-      }
-    } catch {
-      permissionStore.set(null);
-    }
-  }
-
-  // Auto-save to localStorage and push undo snapshot whenever schema changes
-  // prevSchemaSnap captures the state BEFORE the mutation so undo restores the correct state
-  let prevUpdatedAt = $state(erdStore.schema.updatedAt);
-  let prevSchemaSnap: string = JSON.stringify($state.snapshot(erdStore.schema));
-  let saveTimer: ReturnType<typeof setTimeout> | undefined;
-  $effect(() => {
-    const cur = erdStore.schema.updatedAt;
-    if (cur !== prevUpdatedAt) {
-      if (erdStore._isUndoRedoing) {
-        erdStore._isUndoRedoing = false;
-      } else if (erdStore._isRemoteOp) {
-        // Remote operations don't go into undo stack
-      } else if (erdStore._isLoadingSchema) {
-        erdStore._isLoadingSchema = false;
-      } else {
-        const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
-        const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;
-        const result = deriveLabel(prevSchema, curSchema);
-        if (result) {
-          erdStore.pushSnapshotRaw(prevSchemaSnap, result.label, result.detail);
-        }
-      }
-      prevUpdatedAt = cur;
-    }
-    // Always capture current state for next mutation
-    prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
-    // Debounced save — avoid writing to storage on every drag frame
-    // Guard: skip save until init done AND no async project switch in progress
-    if (projectStore.safeToSave) {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => { if (projectStore.safeToSave) await projectStore.saveCurrentSchema(); }, 300);
-    }
-  });
-
-  // Auto-snapshot: create periodic snapshots for persistent history
-  let lastAutoSnapshotSnap = '';
-  let autoSnapshotTimer: ReturnType<typeof setInterval> | undefined;
-  $effect(() => {
-    // Re-run when project changes
-    const _projectId = projectStore.index.activeProjectId;
-    clearInterval(autoSnapshotTimer);
-    lastAutoSnapshotSnap = JSON.stringify($state.snapshot(erdStore.schema));
-
-    autoSnapshotTimer = setInterval(async () => {
-      // Skip if tab is hidden or read-only
-      if (document.hidden || permissionStore.isReadOnly) return;
-
-      // In collab mode, only the lexicographically first peer creates auto-snapshots
-      if (collabStore.myPeerId && collabStore.peers.length > 0) {
-        const allPeerIds = [collabStore.myPeerId, ...collabStore.peers.map((p) => p.peerId)];
-        allPeerIds.sort();
-        if (allPeerIds[0] !== collabStore.myPeerId) return;
-      }
-
-      const currentSnap = JSON.stringify($state.snapshot(erdStore.schema));
-      if (currentSnap === lastAutoSnapshotSnap) return; // no changes
-
-      const now = new Date();
-      const name = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      await snapshotStore.createAuto(name);
-      lastAutoSnapshotSnap = currentSnap;
-    }, AUTO_SNAPSHOT_INTERVAL_MS);
-
-    return () => clearInterval(autoSnapshotTimer);
+    cleanupCollab();
+    fullscreen.cleanup();
+    cleanupAutoSave();
   });
 
   // Keyboard shortcuts
@@ -293,9 +112,9 @@
       canvasState,
       dialogStore,
       isReadOnly: permissionStore.isReadOnly,
-      fullscreenMode,
+      fullscreenMode: fullscreen.mode,
       commandPaletteOpen,
-      setFullscreen: (v) => { if (v) enterFullscreen(); else exitFullscreen(); },
+      setFullscreen: (v) => { if (v) fullscreen.enter(); else fullscreen.exit(); },
       setCommandPalette: (v) => { commandPaletteOpen = v; },
     };
     handleKBShortcut(e, ctx);
@@ -315,46 +134,6 @@
     return () => window.removeEventListener('resize', handleResize);
   });
 
-  // Load shared schema from URL hash (#s=...)
-  async function loadShareFromHash() {
-    const shareData = getShareDataFromUrl();
-    if (!shareData) return;
-    // Clear hash using SvelteKit's shallow replaceState (won't trigger load functions)
-    replaceState(window.location.pathname, {});
-    try {
-      const { schema, projectName } = await shareStringToSchema(shareData);
-
-      // Server mode: load as read-only temporary view (no project creation)
-      if (env.PUBLIC_STORAGE_MODE === 'server') {
-        erdStore.loadSchema(schema);
-        permissionStore.current = 'viewer';
-        dialogStore.alert(m.share_readonly_notice());
-        return;
-      }
-
-      let name: string;
-      if (projectName) {
-        name = `shared: ${projectName}`;
-      } else {
-        const tableSummary = schema.tables.slice(0, 3).map((t) => t.name).join(', ');
-        name = tableSummary
-          ? `Shared: ${tableSummary}${schema.tables.length > 3 ? '…' : ''}`
-          : 'Shared Project';
-      }
-      await projectStore.createProjectWithSchema(name, schema);
-    } catch {
-      dialogStore.alert(m.share_load_failed());
-    }
-  }
-
-  // Handle hashchange (user navigates to share URL while app is already open)
-  onMount(() => {
-    const handleHashChange = () => {
-      if (projectStore.initialized) loadShareFromHash();
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  });
 </script>
 
 {#if !projectStore.initialized}
@@ -362,42 +141,10 @@
     <div class="loading-spinner"></div>
   </div>
 {:else if isMobile && !forceDesktop}
-  <div class="mobile-notice">
-    <div class="mobile-card">
-      <svg class="mobile-logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="ml" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient></defs>
-        <rect width="32" height="32" rx="7" fill="#1e293b"/>
-        <path d="M16 5 L25 10.5 L25 21.5 L16 27 L7 21.5 L7 10.5 Z" fill="none" stroke="url(#ml)" stroke-width="2" stroke-linejoin="round"/>
-        <line x1="16" y1="5" x2="16" y2="27" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-        <line x1="7" y1="10.5" x2="25" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-        <line x1="25" y1="10.5" x2="7" y2="21.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-        <circle cx="16" cy="5" r="2.2" fill="#60a5fa"/>
-        <circle cx="25" cy="10.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="25" cy="21.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="16" cy="27" r="2.2" fill="#60a5fa"/>
-        <circle cx="7" cy="21.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="7" cy="10.5" r="2.2" fill="#60a5fa"/>
-        <circle cx="16" cy="16" r="2.8" fill="#60a5fa"/>
-      </svg>
-      <h1 class="mobile-title">erdmini</h1>
-      <p class="mobile-heading">{m.mobile_desktop_optimized()}</p>
-      <p class="mobile-desc">{m.mobile_description()}</p>
-
-      {#if erdStore.schema.tables.length > 0 || (erdStore.schema.domains ?? []).length > 0}
-        <div class="mobile-summary">
-          {m.mobile_schema_summary({ tables: erdStore.schema.tables.length, domains: (erdStore.schema.domains ?? []).length })}
-        </div>
-      {/if}
-
-      <p class="mobile-sub">{m.mobile_open_on_desktop()}</p>
-      <button class="mobile-btn" onclick={() => (forceDesktop = true)}>
-        {m.mobile_continue_anyway()} &rarr;
-      </button>
-    </div>
-  </div>
+  <MobileNotice oncontinue={() => (forceDesktop = true)} />
 {:else}
   <div class="app" data-dark={themeStore.darkMode || undefined}>
-    {#if fullscreenMode}
+    {#if fullscreen.mode}
       <!-- Fullscreen Presentation Mode -->
       <div class="fullscreen-canvas">
         <Canvas>
@@ -418,32 +165,24 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
           class="fullscreen-topbar"
-          class:fullscreen-topbar-hidden={!fullscreenBarVisible}
-          onmouseenter={showFullscreenBar}
+          class:fullscreen-topbar-hidden={!fullscreen.barVisible}
+          onmouseenter={fullscreen.showBar}
         >
           <span class="fullscreen-project-name">{projectStore.activeProject?.name ?? 'Project'}</span>
-          <button class="fullscreen-close-btn" onclick={exitFullscreen}>
+          <button class="fullscreen-close-btn" onclick={fullscreen.exit}>
             {m.fullscreen_exit()} ✕
           </button>
         </div>
 
         <!-- Invisible hover zone at top to reveal bar -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="fullscreen-hover-zone" onmouseenter={showFullscreenBar}></div>
+        <div class="fullscreen-hover-zone" onmouseenter={fullscreen.showBar}></div>
       </div>
     {:else}
       <!-- Normal Mode -->
-      {#if projectStore.storageFull && !storageBannerDismissed}
-        <div class="storage-banner">
-          <span class="storage-msg">{m.storage_full_warning()}</span>
-          <button class="storage-export-btn" onclick={() => {
-            downloadBlob(JSON.stringify($state.snapshot(erdStore.schema), null, 2), 'erdmini-backup.json', 'application/json');
-          }}>{m.storage_full_export()}</button>
-          <button class="storage-close-btn" onclick={() => (storageBannerDismissed = true)}>✕</button>
-        </div>
-      {/if}
+      <StorageBanner storageFull={projectStore.storageFull} />
       {@const noProject = projectStore.index.projects.length === 0 && !!authStore.user && !authStore.user.canCreateProject}
-      <Toolbar onfullscreen={enterFullscreen} minimal={noProject} />
+      <Toolbar onfullscreen={fullscreen.enter} minimal={noProject} />
       {#if noProject}
         <!-- No-project placeholder for users without create permission -->
         <div class="no-project-screen">
@@ -638,135 +377,6 @@
     font-size: 0.78rem;
     color: var(--app-text-muted, #64748b);
     margin: 0;
-  }
-
-  .mobile-notice {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    min-height: 100dvh;
-    background: #0f172a;
-    padding: 24px;
-  }
-
-  .mobile-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    max-width: 360px;
-    width: 100%;
-  }
-
-  .mobile-logo {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 12px;
-  }
-
-  .mobile-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: #f1f5f9;
-    margin: 0 0 20px;
-    letter-spacing: -0.5px;
-  }
-
-  .mobile-heading {
-    font-size: 16px;
-    font-weight: 600;
-    color: #e2e8f0;
-    margin: 0 0 12px;
-  }
-
-  .mobile-desc {
-    font-size: 14px;
-    color: #94a3b8;
-    line-height: 1.6;
-    margin: 0 0 20px;
-    white-space: pre-line;
-  }
-
-  .mobile-summary {
-    font-size: 13px;
-    color: #cbd5e1;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 10px 16px;
-    margin-bottom: 20px;
-  }
-
-  .mobile-sub {
-    font-size: 13px;
-    color: #64748b;
-    margin: 0 0 24px;
-  }
-
-  .mobile-btn {
-    font-size: 14px;
-    color: #94a3b8;
-    background: transparent;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 10px 24px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .mobile-btn:hover {
-    color: #e2e8f0;
-    border-color: #475569;
-    background: #1e293b;
-  }
-
-  .storage-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    background: #fef3c7;
-    border-bottom: 1px solid #f59e0b;
-    flex-shrink: 0;
-  }
-
-  .storage-msg {
-    flex: 1;
-    font-size: 13px;
-    color: #92400e;
-    font-weight: 500;
-  }
-
-  .storage-export-btn {
-    font-size: 12px;
-    color: #92400e;
-    background: white;
-    border: 1px solid #f59e0b;
-    border-radius: 4px;
-    padding: 4px 10px;
-    cursor: pointer;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .storage-export-btn:hover {
-    background: #fffbeb;
-  }
-
-  .storage-close-btn {
-    background: none;
-    border: none;
-    font-size: 14px;
-    color: #b45309;
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    line-height: 1;
-  }
-
-  .storage-close-btn:hover {
-    background: #fde68a;
   }
 
   /* Fullscreen Presentation Mode */

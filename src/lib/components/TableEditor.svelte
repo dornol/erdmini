@@ -1,66 +1,20 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
-  import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import FkModal from './FkModal.svelte';
   import UniqueKeyModal from './UniqueKeyModal.svelte';
   import IndexModal from './IndexModal.svelte';
-  import ColorDotPicker from './ColorDotPicker.svelte';
+  import TableEditorHeader from './table-editor/TableEditorHeader.svelte';
+  import TableEditorColumnRow from './table-editor/TableEditorColumnRow.svelte';
   import * as m from '$lib/paraglide/messages';
-  import { TABLE_COLORS } from '$lib/constants/table-colors';
-  import type { TableColorId } from '$lib/constants/table-colors';
-  import { now } from '$lib/utils/common';
-  import { getEffectiveColor } from '$lib/utils/table-color';
 
   let selectedTable = $derived(erdStore.selectedTable);
-
-  let tableNameInput = $state('');
-  let tableCommentInput = $state('');
-  let tableGroupInput = $state('');
-  // Plain variable (not $state) — holds the ID of the table being edited.
-  // Canvas mousedown sets selectedTableId=null BEFORE blur fires, so we can't
-  // rely on selectedTable in blur handlers. capturedTableId persists through that gap.
-  let capturedTableId: string | null = null;
 
   // All distinct group names for datalist autocomplete
   let existingGroups = $derived(
     [...new Set(erdStore.schema.tables.map((t) => t.group).filter(Boolean))] as string[]
   );
-
-  // Color & Group section collapsible (collapsed by default)
-  let colorGroupExpanded = $state(false);
-
-  $effect(() => {
-    if (selectedTable) {
-      tableNameInput = selectedTable.name;
-      tableCommentInput = selectedTable.comment ?? '';
-      tableGroupInput = selectedTable.group ?? '';
-      capturedTableId = selectedTable.id;
-    }
-  });
-
-  function onTableNameBlur() {
-    if (capturedTableId && tableNameInput.trim()) {
-      erdStore.updateTableName(capturedTableId, tableNameInput.trim());
-    }
-  }
-
-  function onTableNameKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter') (e.target as HTMLElement).blur();
-  }
-
-  function saveComment() {
-    if (capturedTableId) {
-      erdStore.updateTableComment(capturedTableId, tableCommentInput);
-    }
-  }
-
-  function saveGroup() {
-    if (capturedTableId) {
-      erdStore.updateTableGroup(capturedTableId, tableGroupInput.trim() || undefined);
-    }
-  }
 
   // FK modal
   let showFkModal = $state(false);
@@ -154,12 +108,6 @@
       anchorY: rect.top + rect.height / 2,
     };
   }
-
-  // Check if column is referenced by any FK
-  function isFK(colId: string): boolean {
-    if (!selectedTable) return false;
-    return selectedTable.foreignKeys.some((fk) => fk.columnIds.includes(colId));
-  }
 </script>
 
 {#if selectedTable}
@@ -167,118 +115,12 @@
     {#if permissionStore.isReadOnly}
       <div class="readonly-notice">Read Only</div>
     {/if}
-    <div class="editor-header">
-      <span class="editor-title">{m.editor_title()}</span>
-      <button
-        class="id-badge"
-        title="Copy table ID"
-        onclick={() => {
-          navigator.clipboard.writeText(selectedTable!.id);
-        }}
-      >{selectedTable.id}</button>
-      <button
-        class="lock-btn"
-        class:locked={selectedTable.locked}
-        title={selectedTable.locked ? 'Unlock position' : 'Lock position'}
-        onclick={() => {
-          const table = erdStore.schema.tables.find((t) => t.id === selectedTable!.id);
-          if (table) {
-            table.locked = !table.locked;
-            erdStore.schema.updatedAt = now();
-          }
-        }}
-      >
-        {selectedTable.locked ? '🔒' : '🔓'}
-      </button>
-    </div>
 
-    <!-- Table name & comment -->
-    <div class="section">
-      <label class="field-label" for="tbl-name">{m.editor_table_name()}</label>
-      <input
-        id="tbl-name"
-        class="text-input"
-        bind:value={tableNameInput}
-        onblur={onTableNameBlur}
-        onkeydown={onTableNameKeyDown}
-      />
-      <label class="field-label" for="tbl-comment" style="margin-top:8px">{m.column_comment()}</label>
-      <input
-        id="tbl-comment"
-        class="text-input"
-        bind:value={tableCommentInput}
-        oninput={saveComment}
-        onblur={saveComment}
-        placeholder={m.optional()}
-      />
-    </div>
-
-    <!-- Color & Group (collapsible) -->
-    <div class="section color-group-section">
-      <button class="cg-header" onclick={() => (colorGroupExpanded = !colorGroupExpanded)} type="button">
-        <span class="cg-toggle">{colorGroupExpanded ? '▼' : '▶'}</span>
-        <span class="cg-label">{m.table_color()} & {m.table_group()}</span>
-        {#if !colorGroupExpanded}
-          {@const effectiveId = getEffectiveColor(selectedTable, erdStore.schema)}
-          {#if effectiveId}
-            <span class="cg-dot" style="background:{TABLE_COLORS[effectiveId]?.dot ?? '#ccc'}"></span>
-          {/if}
-          {#if selectedTable.group}
-            <span class="cg-group-text">{selectedTable.group}</span>
-          {/if}
-        {/if}
-      </button>
-
-      {#if colorGroupExpanded}
-        {@const inheritedColor = selectedTable.group ? erdStore.schema.groupColors?.[selectedTable.group] as TableColorId | undefined : undefined}
-        <!-- svelte-ignore a11y_label_has_associated_control -->
-        <label class="field-label" style="margin-top:8px">{m.table_color()}</label>
-        {#if !selectedTable.color && inheritedColor}
-          <div class="color-inherited-hint">
-            <span class="inherited-dot" style="background:{TABLE_COLORS[inheritedColor]?.dot ?? '#ccc'}"></span>
-            <span class="inherited-text">{m.group_color_inherited()}</span>
-          </div>
-        {/if}
-        <ColorDotPicker value={selectedTable.color} onchange={(c) => erdStore.updateTableColor(selectedTable!.id, c)} />
-        {#if selectedTable.color && inheritedColor}
-          <button
-            class="reset-to-group-btn"
-            onclick={() => erdStore.updateTableColor(selectedTable!.id, undefined)}
-          >{m.group_color_use()}</button>
-        {/if}
-
-        <label class="field-label" for="tbl-group" style="margin-top:8px">{m.table_group()}</label>
-        <input
-          id="tbl-group"
-          class="text-input"
-          list="group-list"
-          bind:value={tableGroupInput}
-          oninput={saveGroup}
-          onblur={saveGroup}
-          placeholder={m.table_group_placeholder()}
-        />
-        <datalist id="group-list">
-          {#each existingGroups as g}
-            <option value={g}></option>
-          {/each}
-        </datalist>
-
-        {#if (erdStore.schema.schemas?.length ?? 0) > 0}
-          <label class="field-label" for="tbl-schema" style="margin-top:8px">Schema</label>
-          <select
-            id="tbl-schema"
-            class="text-input"
-            value={selectedTable.schema ?? ''}
-            onchange={(e) => erdStore.updateTableSchema(selectedTable!.id, (e.target as HTMLSelectElement).value || undefined)}
-          >
-            <option value="">({m.schema_tab_all()})</option>
-            {#each erdStore.schema.schemas ?? [] as s}
-              <option value={s}>{s}</option>
-            {/each}
-          </select>
-        {/if}
-      {/if}
-    </div>
+    <TableEditorHeader
+      table={selectedTable}
+      schema={erdStore.schema}
+      {existingGroups}
+    />
 
     <!-- Columns (compact) -->
     <div class="section columns-section thin-scrollbar">
@@ -291,59 +133,19 @@
 
       <div class="columns-list" role="listbox" aria-label="Columns">
         {#each selectedTable.columns as col, idx (col.id)}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <div
-            role="option"
-            tabindex="0"
-            aria-selected="false"
-            class="col-row"
-            class:drag-over={dragOverIdx === idx}
-            class:dragging={dragColId === col.id}
-            draggable="true"
-            ondragstart={(e) => onDragStart(e, col.id)}
-            ondragover={(e) => onDragOver(e, idx)}
-            ondrop={(e) => onDrop(e, idx)}
+          <TableEditorColumnRow
+            {col}
+            {idx}
+            tableId={selectedTable.id}
+            foreignKeys={selectedTable.foreignKeys}
+            {dragOverIdx}
+            {dragColId}
+            ondragstart={onDragStart}
+            ondragover={onDragOver}
+            ondrop={onDrop}
             ondragend={onDragEnd}
-            onclick={(e) => {
-              // Don't open popup if clicking drag handle or delete button
-              const target = e.target as HTMLElement;
-              if (target.closest('.drag-handle') || target.closest('.col-del-btn')) return;
-              openColumnPopup(col.id, e);
-            }}
-          >
-            <span class="drag-handle" title={m.editor_drag_hint()}>⠿</span>
-            {#if col.primaryKey}
-              <span class="col-badge col-badge-pk">PK</span>
-            {:else if isFK(col.id)}
-              <span class="col-badge col-badge-fk">FK</span>
-            {/if}
-            <span class="col-name">{col.name}</span>
-            <span class="col-type-badge">{col.type}{col.length ? `(${col.length}${col.scale != null ? `,${col.scale}` : ''})` : ''}</span>
-            <button
-              class="col-del-btn"
-              title={m.action_delete()}
-              onclick={async (e) => {
-                e.stopPropagation();
-                const table = selectedTable!;
-                // Count FKs in this table that use this column
-                let fkCount = table.foreignKeys.filter((fk) => fk.columnIds.includes(col.id)).length;
-                // Count FKs in other tables that reference this column
-                fkCount += erdStore.schema.tables
-                  .filter((t) => t.id !== table.id)
-                  .reduce((sum, t) => sum + t.foreignKeys.filter(
-                    (fk) => fk.referencedTableId === table.id && fk.referencedColumnIds.includes(col.id)
-                  ).length, 0);
-                if (fkCount > 0) {
-                  const ok = await dialogStore.confirm(
-                    m.column_delete_fk_confirm({ count: fkCount }),
-                    { title: m.action_delete(), confirmText: m.action_delete(), variant: 'danger' }
-                  );
-                  if (!ok) return;
-                }
-                erdStore.deleteColumn(table.id, col.id);
-              }}
-            >✕</button>
-          </div>
+            onopenPopup={openColumnPopup}
+          />
         {:else}
           <p class="no-cols">{m.editor_no_columns()}</p>
         {/each}
@@ -512,59 +314,6 @@
     font-size: 13px;
   }
 
-  .editor-header {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--app-border, #e2e8f0);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .lock-btn {
-    background: none;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 4px;
-    opacity: 0.5;
-    transition: opacity 0.15s;
-    margin-left: auto;
-  }
-
-  .lock-btn:hover {
-    opacity: 1;
-  }
-
-  .lock-btn.locked {
-    opacity: 1;
-  }
-
-  .editor-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--app-text-muted, #64748b);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .id-badge {
-    font-size: 10px;
-    font-family: monospace;
-    color: var(--app-text-faint, #94a3b8);
-    background: var(--app-badge-bg, #f1f5f9);
-    border: 1px solid var(--app-badge-border, #e2e8f0);
-    border-radius: 3px;
-    padding: 1px 5px;
-    cursor: pointer;
-    line-height: 1.4;
-  }
-
-  .id-badge:hover {
-    color: var(--app-text-muted, #64748b);
-    background: var(--app-hover-bg, #e2e8f0);
-  }
-
   .section {
     padding: 12px 16px;
     border-bottom: 1px solid var(--app-border-light, #f1f5f9);
@@ -604,23 +353,6 @@
     margin-bottom: 6px;
   }
 
-  .text-input {
-    width: 100%;
-    border: 1px solid var(--app-input-border, #e2e8f0);
-    border-radius: 5px;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: var(--app-text, #1e293b);
-    background: var(--app-input-bg, white);
-    outline: none;
-    box-sizing: border-box;
-    transition: border-color 0.15s;
-  }
-
-  .text-input:focus {
-    border-color: #3b82f6;
-  }
-
   .add-col-btn {
     font-size: 11px;
     color: #3b82f6;
@@ -640,111 +372,6 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
-  }
-
-  /* Compact column row */
-  .col-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    height: 26px;
-    padding: 0 6px;
-    background: var(--app-panel-bg, #f8fafc);
-    border: 1px solid transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.1s, border-color 0.15s;
-    user-select: none;
-  }
-
-  .col-row:hover {
-    background: var(--app-hover-bg, #f1f5f9);
-    border-color: var(--app-border, #e2e8f0);
-  }
-
-  .col-row.dragging {
-    opacity: 0.4;
-  }
-
-  .col-row.drag-over {
-    border-color: #3b82f6;
-    border-top: 2px solid #3b82f6;
-  }
-
-  .drag-handle {
-    cursor: grab;
-    color: var(--app-text-faint, #94a3b8);
-    font-size: 12px;
-    line-height: 1;
-    user-select: none;
-    flex-shrink: 0;
-  }
-
-  .drag-handle:hover {
-    color: var(--app-text-secondary, #475569);
-  }
-
-  .col-badge {
-    font-size: 9px;
-    font-weight: 700;
-    border-radius: 3px;
-    padding: 1px 4px;
-    flex-shrink: 0;
-    line-height: 1.2;
-  }
-
-  .col-badge-pk {
-    color: #b45309;
-    background: #fef3c7;
-    border: 1px solid #fcd34d;
-  }
-
-  .col-badge-fk {
-    color: #1d4ed8;
-    background: #dbeafe;
-    border: 1px solid #93c5fd;
-  }
-
-  .col-name {
-    flex: 1;
-    min-width: 0;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--app-text, #1e293b);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .col-type-badge {
-    font-size: 10px;
-    color: var(--app-text-muted, #64748b);
-    background: var(--app-card-bg, white);
-    border: 1px solid var(--app-border, #e2e8f0);
-    border-radius: 3px;
-    padding: 1px 5px;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .col-del-btn {
-    display: none;
-    background: none;
-    border: none;
-    font-size: 10px;
-    color: var(--app-text-faint, #94a3b8);
-    cursor: pointer;
-    padding: 0 3px;
-    line-height: 1;
-    flex-shrink: 0;
-  }
-
-  .col-row:hover .col-del-btn {
-    display: block;
-  }
-
-  .col-del-btn:hover {
-    color: #ef4444;
   }
 
   .icon-btn {
@@ -823,94 +450,5 @@
     border-radius: 3px;
     padding: 0 4px;
     flex-shrink: 0;
-  }
-
-  /* Color & Group collapsible header */
-  .color-group-section {
-    padding: 8px 16px;
-    border-bottom: 1px solid var(--app-border-light, #f1f5f9);
-  }
-
-  .cg-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    user-select: none;
-    padding: 2px 0;
-    background: none;
-    border: none;
-    font: inherit;
-    color: inherit;
-    width: 100%;
-    text-align: left;
-  }
-
-  .cg-toggle {
-    font-size: 9px;
-    color: var(--app-text-muted, #64748b);
-    flex-shrink: 0;
-    width: 10px;
-  }
-
-  .cg-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--app-text-muted, #64748b);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .cg-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .cg-group-text {
-    font-size: 11px;
-    color: var(--app-text-secondary, #475569);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .color-inherited-hint {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-    font-size: 11px;
-    color: var(--app-text-muted, #64748b);
-  }
-
-  .inherited-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .inherited-text {
-    font-style: italic;
-  }
-
-  .reset-to-group-btn {
-    margin-top: 6px;
-    font-size: 11px;
-    color: #3b82f6;
-    background: none;
-    border: 1px solid #93c5fd;
-    border-radius: 4px;
-    padding: 2px 8px;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .reset-to-group-btn:hover {
-    background: #eff6ff;
   }
 </style>
