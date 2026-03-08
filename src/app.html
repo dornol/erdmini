@@ -58,48 +58,6 @@
 		}
 		</script>
 
-		<!-- JSON-LD: FAQPage -->
-		<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "FAQPage",
-			"mainEntity": [
-				{
-					"@type": "Question",
-					"name": "Is erdmini free?",
-					"acceptedAnswer": {
-						"@type": "Answer",
-						"text": "Yes. erdmini is completely free and open-source. No sign-up or payment required."
-					}
-				},
-				{
-					"@type": "Question",
-					"name": "What databases does erdmini support?",
-					"acceptedAnswer": {
-						"@type": "Answer",
-						"text": "erdmini exports DDL for MySQL, PostgreSQL, MariaDB, and Microsoft SQL Server (MSSQL)."
-					}
-				},
-				{
-					"@type": "Question",
-					"name": "Does erdmini require a server?",
-					"acceptedAnswer": {
-						"@type": "Answer",
-						"text": "No. erdmini runs entirely in the browser using local storage. An optional server mode with SQLite, Docker, and real-time collaboration is also available."
-					}
-				},
-				{
-					"@type": "Question",
-					"name": "Can I share my ERD with others?",
-					"acceptedAnswer": {
-						"@type": "Answer",
-						"text": "Yes. You can share schemas via URL (compressed, no server needed) or export as DDL, Mermaid, PlantUML, SVG, or PNG."
-					}
-				}
-			]
-		}
-		</script>
-
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
