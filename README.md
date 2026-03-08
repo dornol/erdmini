@@ -1,7 +1,12 @@
 # erdmini
 
-**A free, open-source ERD (Entity Relationship Diagram) editor that runs entirely in your browser.**
-Design database schemas visually — no signup, no installation required. Just open and start modeling.
+**A free, open-source ERD (Entity Relationship Diagram) editor.**
+Runs in the browser with zero setup, or self-host with SQLite for team collaboration.
+
+| Mode | Description |
+|---|---|
+| **Local** | Pure browser SPA — IndexedDB storage, no signup, no server needed. [Try it now](https://erdmini.dornol.dev) |
+| **Server** | Self-hosted Node.js + SQLite — auth (local + OIDC + LDAP), real-time collaboration, MCP AI integration |
 
 [Live Demo](https://erdmini.dornol.dev) | [Docker](https://github.com/dornol/erdmini/pkgs/container/erdmini)
 
@@ -13,8 +18,7 @@ Design database schemas visually — no signup, no installation required. Just o
 
 ## Highlights
 
-- **Zero setup** — Works in the browser with IndexedDB. No backend needed.
-- **Self-hostable** — Optional server mode with SQLite, auth (local + OIDC + LDAP), and real-time collaboration.
+- **Two modes** — Browser-only (IndexedDB) or self-hosted server (SQLite + auth + real-time collab).
 - **AI-powered** — Claude MCP integration with 72 tools for schema design via natural language.
 - **Full DDL support** — Import/export SQL for MySQL, PostgreSQL, MariaDB, MSSQL, SQLite, Oracle, H2.
 - **Multiple formats** — Prisma, DBML, Mermaid, PlantUML, JSON, PNG, SVG, PDF.
@@ -141,7 +145,7 @@ pnpm dev              # http://localhost:3000 (local mode)
 pnpm dev:server       # server mode (SQLite + Auth)
 pnpm build            # static SPA build
 pnpm build:server     # server build (Node.js)
-pnpm test             # vitest (54 files, 2092 tests)
+pnpm test             # vitest (73 files, 2329 tests)
 pnpm check            # svelte-check
 ```
 
