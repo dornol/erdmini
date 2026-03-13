@@ -182,7 +182,7 @@
       <!-- Normal Mode -->
       <StorageBanner storageFull={projectStore.storageFull} />
       {@const noProject = projectStore.index.projects.length === 0 && !!authStore.user && !authStore.user.canCreateProject}
-      <Toolbar onfullscreen={fullscreen.enter} minimal={noProject} />
+      <Toolbar minimal={noProject} />
       {#if noProject}
         <!-- No-project placeholder for users without create permission -->
         <div class="no-project-screen">
@@ -203,7 +203,7 @@
         <SchemaTabBar />
         <div class="main">
           <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
-          <Canvas>
+          <Canvas onfullscreen={fullscreen.enter}>
             {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
             {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
               <div

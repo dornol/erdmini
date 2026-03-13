@@ -28,11 +28,11 @@
   import ImportDropdown from './toolbar/ImportDropdown.svelte';
   import ExportDropdown from './toolbar/ExportDropdown.svelte';
   import ToolsDropdown from './toolbar/ToolsDropdown.svelte';
-  import SettingsDropdown from './toolbar/SettingsDropdown.svelte';
   import ShortcutsDropdown from './toolbar/ShortcutsDropdown.svelte';
+  import LanguageDropdown from './toolbar/LanguageDropdown.svelte';
   import UserMenu from './toolbar/UserMenu.svelte';
 
-  let { onfullscreen, minimal = false }: { onfullscreen?: () => void; minimal?: boolean } = $props();
+  let { minimal = false }: { minimal?: boolean } = $props();
 
   const siteSettings = $derived((page.data as any)?.siteSettings as { site_name: string; logo_url: string } | null);
   const isServerMode = $derived(!!(page.data as any)?.isServerMode);
@@ -216,19 +216,6 @@
   <div class="toolbar-right">
     {#if !minimal}
       <button
-        class="btn-icon"
-        onclick={() => onfullscreen?.()}
-        title={m.toolbar_fullscreen()}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <polyline points="1,5 1,1 5,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="11,1 15,1 15,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="15,11 15,15 11,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="5,15 1,15 1,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-
-      <button
         class="btn-dark-toggle"
         onclick={() => themeStore.toggleDark()}
         title={themeStore.darkMode ? 'Light Mode' : 'Dark Mode'}
@@ -252,7 +239,7 @@
         {/if}
       </button>
 
-      <SettingsDropdown
+      <LanguageDropdown
         open={activeDropdown === 'settings'}
         ontoggle={() => toggleDropdown('settings')}
         onclose={closeDropdown}
@@ -263,6 +250,18 @@
         ontoggle={() => toggleDropdown('shortcuts')}
         onclose={closeDropdown}
       />
+
+      <a
+        class="btn-icon"
+        href="https://github.com/dornol/erdmini"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="GitHub"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+      </a>
     {/if}
 
     <UserMenu
@@ -581,27 +580,36 @@
     letter-spacing: 0.03em;
   }
 
-  .toolbar :global(.theme-item) {
+  .toolbar :global(.btn-lang) {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
   }
 
-  .toolbar :global(.theme-item.active) {
+  .toolbar :global(.btn-lang:hover) {
+    background: #334155;
+    color: white;
+  }
+
+  .toolbar :global(.lang-dropdown) {
+    min-width: 100px;
+  }
+
+  .toolbar :global(.lang-dropdown .active) {
     color: white;
     background: #334155;
-  }
-
-  .toolbar :global(.theme-dot) {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    flex-shrink: 0;
-  }
-
-  .toolbar :global(.settings-dropdown) {
-    min-width: 150px;
+    font-weight: 600;
   }
 
   .toolbar :global(.btn-help) {
