@@ -9,7 +9,7 @@
   import { toastStore } from '$lib/store/toast.svelte';
   import * as m from '$lib/paraglide/messages';
 
-  let { onfullscreen }: { onfullscreen?: () => void } = $props();
+  let { onfullscreen, fullscreenMode = false }: { onfullscreen?: () => void; fullscreenMode?: boolean } = $props();
 
   type BarDropdown = 'layout' | 'columns' | 'lines' | 'align' | 'theme';
   let activeDropdown = $state<BarDropdown | null>(null);
@@ -361,18 +361,28 @@
   {#if onfullscreen}
     <span class="bar-sep"></span>
 
-    <!-- Fullscreen / Present -->
+    <!-- Fullscreen / Present toggle -->
     <button
       class="bar-btn bar-btn-icon"
+      class:bar-btn-active={fullscreenMode}
       onclick={() => onfullscreen?.()}
-      title={m.toolbar_fullscreen()}
+      title={fullscreenMode ? m.fullscreen_exit() : m.toolbar_fullscreen()}
     >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <polyline points="1,5 1,1 5,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="11,1 15,1 15,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="15,11 15,15 11,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-        <polyline points="5,15 1,15 1,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      {#if fullscreenMode}
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <polyline points="5,1 5,5 1,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="11,5 15,5 15,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="11,15 11,11 15,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="1,11 1,15 5,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      {:else}
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <polyline points="1,5 1,1 5,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="11,1 15,1 15,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="15,11 15,15 11,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="5,15 1,15 1,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      {/if}
     </button>
   {/if}
 </div>

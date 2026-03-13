@@ -14,7 +14,7 @@
   import { sendPresence } from '$lib/collab/operation-bridge';
   import { computeGridBgStyle } from '$lib/utils/canvas-grid';
 
-  let { children, onfullscreen }: { children: any; onfullscreen?: () => void } = $props();
+  let { children, onfullscreen, fullscreenMode = false }: { children: any; onfullscreen?: () => void; fullscreenMode?: boolean } = $props();
 
   let viewportEl: HTMLDivElement;
 
@@ -404,7 +404,7 @@
   {/if}
 
   <CanvasHistory />
-  <CanvasBottomBar {onfullscreen} />
+  <CanvasBottomBar {onfullscreen} {fullscreenMode} />
 
   {#if erdStore.schema.tables.length > 0 || erdStore.schema.memos.length > 0}
     <Minimap />

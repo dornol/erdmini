@@ -147,7 +147,7 @@
     {#if fullscreen.mode}
       <!-- Fullscreen Presentation Mode -->
       <div class="fullscreen-canvas">
-        <Canvas>
+        <Canvas onfullscreen={fullscreen.exit} fullscreenMode>
           {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
           {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
             <div class="fullscreen-table-wrapper">
