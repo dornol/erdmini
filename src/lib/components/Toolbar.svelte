@@ -239,15 +239,15 @@
         {/if}
       </button>
 
-      <LanguageDropdown
-        open={activeDropdown === 'settings'}
-        ontoggle={() => toggleDropdown('settings')}
-        onclose={closeDropdown}
-      />
-
       <ShortcutsDropdown
         open={activeDropdown === 'shortcuts'}
         ontoggle={() => toggleDropdown('shortcuts')}
+        onclose={closeDropdown}
+      />
+
+      <LanguageDropdown
+        open={activeDropdown === 'settings'}
+        ontoggle={() => toggleDropdown('settings')}
         onclose={closeDropdown}
       />
 
