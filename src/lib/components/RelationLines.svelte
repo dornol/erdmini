@@ -207,9 +207,9 @@
         const cTickX = x1 + cDir * 7;
         childMarker = `M ${cTickX} ${y1 - 7} L ${cTickX} ${y1 + 7}`;
       } else {
-        // Crow's foot: three lines fanning from tip to base
-        const tipX = x1 + cDir * 5;
-        const baseX = x1 + cDir * 14;
+        // Crow's foot: prongs toward table, vertex toward line
+        const baseX = x1 + cDir * 5;
+        const tipX = x1 + cDir * 14;
         const spread = 8;
         childMarker = `M ${baseX} ${y1 - spread} L ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
       }
