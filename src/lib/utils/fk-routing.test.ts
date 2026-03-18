@@ -241,11 +241,10 @@ describe('computeSelfRefLoop', () => {
     expect(r.path).toMatch(/200 200$/);
   });
 
-  it('loopIndex=0 matches original computeBezier extent', () => {
-    // Original: gap=8, offset=40 → apexX = x1 + 48
+  it('loopIndex=0 uses gap=22 and offset=40', () => {
+    // gap=22, offset=40 → exitX=222, apexX=262
     const r = computeSelfRefLoop(200, 150, 200, 176, 0);
-    // Path should contain the apex control point at x1+8+40 = 248
-    expect(r.path).toContain('248');
+    expect(r.path).toContain('262');
   });
 });
 

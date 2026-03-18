@@ -69,9 +69,12 @@ function baseBezierParams(
 ) {
   const dx = Math.abs(x2 - x1);
   const dy = Math.abs(y2 - y1);
-  const straight = Math.min(20, Math.max(8, dx * 0.25));
   const dirS = fromRight ? 1 : -1;
   const dirT = toLeft ? -1 : 1;
+  // Straight segment must clear markers (child circle at 20px, parent at 15px)
+  const MARKER_END = 22;
+  const facing = (fromRight && toLeft) || (!fromRight && !toLeft);
+  const straight = facing ? Math.min(MARKER_END, Math.max(8, dx * 0.4)) : MARKER_END;
   const sx1 = x1 + dirS * straight;
   const sx2 = x2 + dirT * straight;
   const curveDx = Math.abs(sx2 - sx1);
@@ -180,18 +183,17 @@ export function computeSelfRefLoop(
   x1: number, y1: number, x2: number, y2: number,
   loopIndex: number,
 ): FKLineRoute {
-  // Match original computeBezier geometry: gap=8, base offset=40
-  // Each additional self-ref loop extends further right
-  const gap = 8;
+  // Clear markers before curve starts (child circle at 20px)
+  const gap = 22;
   const baseOffset = 40;
   const loopStep = 25;
   const offset = baseOffset + loopIndex * loopStep;
 
-  const exitX = x1 + gap;   // short straight segment out
-  const enterX = x2 + gap;  // short straight segment back
-  const apexX = x1 + gap + offset; // control point X (rightward bulge)
+  const exitX = x1 + gap;
+  const enterX = x2 + gap;
+  const apexX = exitX + offset;
 
-  // Single cubic bezier — clean U-shape
+  // Straight from table edge to exit, curve, straight back to table edge
   const path = `M ${x1} ${y1} L ${exitX} ${y1} C ${apexX} ${y1}, ${apexX} ${y2}, ${enterX} ${y2} L ${x2} ${y2}`;
 
   // Label at t=0.5 of the cubic portion
