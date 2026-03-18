@@ -12,7 +12,7 @@ class CanvasState {
   showRelationLines = $state(true);
   gridSize = 20;
   columnDisplayMode = $state<ColumnDisplayMode>('all');
-  lineType = $state<LineType>('bezier');
+  lineType = $state<LineType>('orthogonal');
   tableWidths = $state<Map<string, number>>(new Map());
   activeSchema = $state<string>('(all)');
   schemaViewports = $state<Record<string, { x: number; y: number; scale: number }>>({});

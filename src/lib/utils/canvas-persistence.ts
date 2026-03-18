@@ -25,7 +25,7 @@ export function restoreCanvasSettings(): CanvasSettings {
     settings.columnDisplayMode = savedMode;
   }
   const savedLineType = localStorage.getItem(KEYS.lineType);
-  if (savedLineType === 'straight' || savedLineType === 'orthogonal') {
+  if (savedLineType === 'bezier' || savedLineType === 'straight') {
     settings.lineType = savedLineType;
   }
   const savedShowGrid = localStorage.getItem(KEYS.showGrid);
@@ -47,7 +47,7 @@ export function persistColumnDisplayMode(mode: ColumnDisplayMode): void {
 }
 
 export function persistLineType(lt: LineType): void {
-  if (lt === 'bezier') localStorage.removeItem(KEYS.lineType);
+  if (lt === 'orthogonal') localStorage.removeItem(KEYS.lineType);
   else localStorage.setItem(KEYS.lineType, lt);
 }
 

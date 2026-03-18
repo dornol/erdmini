@@ -54,9 +54,9 @@ describe('restoreCanvasSettings', () => {
     expect(restoreCanvasSettings().lineType).toBe('straight');
   });
 
-  it('restores lineType orthogonal', () => {
-    store['erdmini_line_type'] = 'orthogonal';
-    expect(restoreCanvasSettings().lineType).toBe('orthogonal');
+  it('restores lineType bezier', () => {
+    store['erdmini_line_type'] = 'bezier';
+    expect(restoreCanvasSettings().lineType).toBe('bezier');
   });
 
   it('ignores invalid lineType', () => {
@@ -97,7 +97,7 @@ describe('restoreCanvasSettings', () => {
 
   it('restores all settings at once', () => {
     store['erdmini_column_display_mode'] = 'pk-fk-only';
-    store['erdmini_line_type'] = 'orthogonal';
+    store['erdmini_line_type'] = 'bezier';
     store['erdmini_show_grid'] = 'false';
     store['erdmini_show_relation_lines'] = 'false';
     store['erdmini_active_schema'] = 'sales';
@@ -105,7 +105,7 @@ describe('restoreCanvasSettings', () => {
 
     const s = restoreCanvasSettings();
     expect(s.columnDisplayMode).toBe('pk-fk-only');
-    expect(s.lineType).toBe('orthogonal');
+    expect(s.lineType).toBe('bezier');
     expect(s.showGrid).toBe(false);
     expect(s.showRelationLines).toBe(false);
     expect(s.activeSchema).toBe('sales');
@@ -129,15 +129,15 @@ describe('persistColumnDisplayMode', () => {
 });
 
 describe('persistLineType', () => {
-  it('removes key for "bezier" (default)', () => {
+  it('removes key for "orthogonal" (default)', () => {
     store['erdmini_line_type'] = 'straight';
-    persistLineType('bezier');
+    persistLineType('orthogonal');
     expect(store['erdmini_line_type']).toBeUndefined();
   });
 
   it('saves non-default value', () => {
-    persistLineType('orthogonal');
-    expect(store['erdmini_line_type']).toBe('orthogonal');
+    persistLineType('bezier');
+    expect(store['erdmini_line_type']).toBe('bezier');
   });
 });
 
