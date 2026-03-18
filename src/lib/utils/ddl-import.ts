@@ -759,6 +759,30 @@ function applyPreprocessedComments(
   }
 }
 
+// ─── SQLite type normalization ───────────────────────────────────────
+
+const SQLITE_KNOWN_TYPES = new Set([
+  'integer','int','bigint','smallint','tinyint','mediumint','text','real','blob',
+  'numeric','decimal','float','double','boolean','date','datetime','timestamp',
+  'varchar','char','nvarchar','nchar','character','mediumtext','longtext',
+  'bit','binary','varbinary','json',
+]);
+
+function normalizeSqliteTypes(sql: string): string {
+  // Replace unknown column types inside CREATE TABLE definitions.
+  // Match column defs that start after '(' or ',' at the beginning of a logical column line.
+  return sql.replace(
+    /([,(]\s*)([\[`"]?\w+[\]`"]?)\s+([A-Za-z]\w*)/g,
+    (m, prefix: string, colName: string, type: string) => {
+      const name = colName.replace(/[\[`"]/g, '').toLowerCase();
+      // Skip table-level constraints
+      if (/^(constraint|primary|unique|check|foreign|key|index|references)$/i.test(name)) return m;
+      if (SQLITE_KNOWN_TYPES.has(type.toLowerCase())) return m;
+      return prefix + colName + ' TEXT /* ' + type + ' */';
+    },
+  );
+}
+
 // ─── Main entry point ────────────────────────────────────────────────
 
 export async function importDDL(sql: string, dialect: Dialect = 'mysql', messages?: DDLImportMessages): Promise<ImportResult> {
@@ -782,6 +806,10 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   if (dialect === 'sqlite') {
     sql = sql.replace(/\bmain\./gi, '');
     sql = sql.replace(/\breferences\s+(\w+)\b(?!\s*\()/gi, 'references $1(id)');
+    // SQLite allows any type name — normalize ones the parser doesn't recognize
+    sql = normalizeSqliteTypes(sql);
+    // Skip sqlite system tables
+    sql = sql.replace(/create\s+table\s+(?:main\.)?sqlite_\w+\s*\([^)]*\)\s*;/gi, '');
   }
 
   // Extract raw SQL patterns before AST parsing
