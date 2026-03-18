@@ -93,7 +93,10 @@ interface ParsedFK {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractFKFromRefDef(refDef: any, fkColumns: any[]): ParsedFK | null {
   if (!refDef) return null;
-  const refTable = refDef.table?.[0]?.table ?? '';
+  // Skip ON UPDATE CURRENT_TIMESTAMP() — parser puts it in reference_definition
+  // but without a table reference, it's not a real FK
+  if (!refDef.table?.[0]?.table) return null;
+  const refTable = refDef.table[0].table;
   const refCols = refDef.definition ?? [];
   let onDelete: ReferentialAction = 'RESTRICT';
   let onUpdate: ReferentialAction = 'RESTRICT';
@@ -768,6 +771,11 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   // Strip bracket identifiers (MSSQL preprocessor handles this separately)
   if (dialect !== 'mssql') {
     sql = sql.replace(/\[([^\]]+)\]/g, '$1');
+  }
+
+  // MySQL/MariaDB: convert `charset` shorthand to `CHARACTER SET` (parser only accepts full form)
+  if (dialect === 'mysql' || dialect === 'mariadb') {
+    sql = sql.replace(/\bcharset\s+/gi, 'CHARACTER SET ');
   }
 
   // SQLite: strip "main." default database prefix + fix inline REFERENCES without column list
