@@ -36,8 +36,8 @@
 
   const LINE_TYPES: { type: LineType; label: () => string }[] = [
     { type: 'bezier', label: () => m.line_type_bezier() },
-    { type: 'straight', label: () => m.line_type_straight() },
     { type: 'orthogonal', label: () => m.line_type_orthogonal() },
+    { type: 'rounded', label: () => m.line_type_rounded() },
   ];
 
   let currentViewLabel = $derived(VIEW_MODES.find(v => v.mode === canvasState.columnDisplayMode)?.short() ?? '');

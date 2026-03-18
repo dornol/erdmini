@@ -3,8 +3,8 @@ import {
   routeFKLines,
   computeSmartBezier,
   computeSelfRefLoop,
-  computeStraightLine,
   computeOrthogonalLine,
+  computeRoundedOrthogonalLine,
   sampleCubicBezier,
   pointInAABB,
   type AABB,
@@ -538,32 +538,31 @@ describe('edge cases', () => {
   });
 });
 
-// ─── computeStraightLine ─────────────────────────────────
+// ─── computeRoundedOrthogonalLine ────────────────────────
 
-describe('computeStraightLine', () => {
-  it('returns a simple M L path', () => {
-    const route = computeStraightLine(0, 0, 100, 50);
-    expect(route.path).toBe('M 0 0 L 100 50');
+describe('computeRoundedOrthogonalLine', () => {
+  it('produces a valid SVG path with Q commands for rounded corners', () => {
+    const route = computeRoundedOrthogonalLine(0, 0, 200, 100, true, true);
+    expect(route.path).toMatch(/^M /);
+    expect(route.path).toContain('Q');
   });
 
-  it('label is at midpoint', () => {
-    const route = computeStraightLine(0, 0, 100, 100);
-    expect(route.labelX).toBe(50);
-    expect(route.labelY).toBe(50);
+  it('has same label position as orthogonal', () => {
+    const rounded = computeRoundedOrthogonalLine(0, 0, 200, 100, true, true);
+    const ortho = computeOrthogonalLine(0, 0, 200, 100, true, true);
+    expect(rounded.labelX).toBe(ortho.labelX);
+    expect(rounded.labelY).toBe(ortho.labelY);
   });
 
-  it('handles same-point degenerate case', () => {
-    const route = computeStraightLine(50, 50, 50, 50);
-    expect(route.path).toBe('M 50 50 L 50 50');
-    expect(route.labelX).toBe(50);
-    expect(route.labelY).toBe(50);
+  it('falls back gracefully for degenerate input', () => {
+    const route = computeRoundedOrthogonalLine(50, 50, 50, 50, true, true);
+    expect(route.path).toBeTruthy();
   });
 
-  it('handles negative coordinates', () => {
-    const route = computeStraightLine(-50, -20, 150, 80);
-    expect(route.path).toBe('M -50 -20 L 150 80');
-    expect(route.labelX).toBe(50);
-    expect(route.labelY).toBe(30);
+  it('handles overlap case (same-direction exit)', () => {
+    const route = computeRoundedOrthogonalLine(200, 100, 220, 200, true, false);
+    expect(route.path).toMatch(/^M /);
+    expect(route.path).toContain('Q');
   });
 });
 

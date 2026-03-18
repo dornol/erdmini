@@ -1,7 +1,7 @@
 import { TABLE_W } from '$lib/constants/layout';
 
 export type ColumnDisplayMode = 'all' | 'pk-fk-only' | 'names-only';
-export type LineType = 'bezier' | 'straight' | 'orthogonal';
+export type LineType = 'bezier' | 'orthogonal' | 'rounded';
 
 class CanvasState {
   x = $state(0);

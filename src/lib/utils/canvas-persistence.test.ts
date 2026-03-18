@@ -49,9 +49,9 @@ describe('restoreCanvasSettings', () => {
     expect(restoreCanvasSettings().columnDisplayMode).toBeUndefined();
   });
 
-  it('restores lineType straight', () => {
-    store['erdmini_line_type'] = 'straight';
-    expect(restoreCanvasSettings().lineType).toBe('straight');
+  it('restores lineType rounded', () => {
+    store['erdmini_line_type'] = 'rounded';
+    expect(restoreCanvasSettings().lineType).toBe('rounded');
   });
 
   it('restores lineType bezier', () => {
@@ -130,7 +130,7 @@ describe('persistColumnDisplayMode', () => {
 
 describe('persistLineType', () => {
   it('removes key for "orthogonal" (default)', () => {
-    store['erdmini_line_type'] = 'straight';
+    store['erdmini_line_type'] = 'rounded';
     persistLineType('orthogonal');
     expect(store['erdmini_line_type']).toBeUndefined();
   });
@@ -186,14 +186,14 @@ describe('persistSchemaView', () => {
     const viewports = { hr: { x: 100, y: -50, scale: 0.8 } };
     persistSchemaView('hr', viewports);
     persistColumnDisplayMode('names-only');
-    persistLineType('straight');
+    persistLineType('rounded');
     persistShowGrid(false);
 
     const restored = restoreCanvasSettings();
     expect(restored.activeSchema).toBe('hr');
     expect(restored.schemaViewports).toEqual(viewports);
     expect(restored.columnDisplayMode).toBe('names-only');
-    expect(restored.lineType).toBe('straight');
+    expect(restored.lineType).toBe('rounded');
     expect(restored.showGrid).toBe(false);
   });
 });

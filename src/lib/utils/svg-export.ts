@@ -3,7 +3,7 @@ import { TABLE_W, TABLE_CARD_W, HEADER_H, ROW_H, COMMENT_H } from '$lib/constant
 import { TABLE_COLORS } from '$lib/constants/table-colors';
 import type { TableColorId } from '$lib/constants/table-colors';
 import type { ThemeId } from '$lib/store/theme.svelte';
-import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput, type FKLineRoute } from '$lib/utils/fk-routing';
+import { routeFKLines, computeOrthogonalLine, computeRoundedOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput, type FKLineRoute } from '$lib/utils/fk-routing';
 import type { LineType } from '$lib/store/erd.svelte';
 
 const PAD = 40;
@@ -320,8 +320,8 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
       const meta = metas[i];
       if (input.sourceTableId === input.targetTableId) {
         routes.set(input.id, computeSelfRefLoop(meta.x1, meta.y1, meta.x2, meta.y2, selfRefLoopIndex.get(input.id) ?? 0));
-      } else if (lineType === 'straight') {
-        routes.set(input.id, computeStraightLine(meta.x1, meta.y1, meta.x2, meta.y2));
+      } else if (lineType === 'rounded') {
+        routes.set(input.id, computeRoundedOrthogonalLine(meta.x1, meta.y1, meta.x2, meta.y2, meta.fromRight, meta.toLeft));
       } else {
         routes.set(input.id, computeOrthogonalLine(meta.x1, meta.y1, meta.x2, meta.y2, meta.fromRight, meta.toLeft));
       }

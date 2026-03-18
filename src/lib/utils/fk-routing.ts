@@ -206,18 +206,6 @@ export function computeSelfRefLoop(
   return { path, labelX: mid.x, labelY: mid.y };
 }
 
-// ─── Straight line ────────────────────────────────────────
-
-export function computeStraightLine(
-  x1: number, y1: number, x2: number, y2: number,
-): FKLineRoute {
-  return {
-    path: `M ${x1} ${y1} L ${x2} ${y2}`,
-    labelX: (x1 + x2) / 2,
-    labelY: (y1 + y2) / 2,
-  };
-}
-
 // ─── Orthogonal (right-angle) line ────────────────────────
 
 export function computeOrthogonalLine(
@@ -261,6 +249,59 @@ export function computeOrthogonalLine(
   }
 
   return { path, labelX, labelY };
+}
+
+// ─── Rounded orthogonal (right-angle with rounded corners) ──
+
+function roundedCorner(
+  x1: number, y1: number,
+  cx: number, cy: number,
+  x2: number, y2: number,
+  r: number,
+): string {
+  // Corner from (x1,y1)→(cx,cy)→(x2,y2) with radius r
+  const dx1 = cx - x1, dy1 = cy - y1;
+  const dx2 = x2 - cx, dy2 = y2 - cy;
+  const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+  const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+  const clampR = Math.min(r, len1 / 2, len2 / 2);
+  if (clampR < 1) return `L ${cx} ${cy}`;
+  const ax = cx - (dx1 / len1) * clampR;
+  const ay = cy - (dy1 / len1) * clampR;
+  const bx = cx + (dx2 / len2) * clampR;
+  const by = cy + (dy2 / len2) * clampR;
+  return `L ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`;
+}
+
+export function computeRoundedOrthogonalLine(
+  x1: number, y1: number, x2: number, y2: number,
+  fromRight: boolean, toLeft: boolean,
+): FKLineRoute {
+  // Compute the same waypoints as orthogonal, then round the corners
+  const base = computeOrthogonalLine(x1, y1, x2, y2, fromRight, toLeft);
+
+  // Parse waypoints from the orthogonal path (M x y L x y L x y ...)
+  const nums = base.path.match(/-?\d+(\.\d+)?/g);
+  if (!nums || nums.length < 4) return base;
+
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i < nums.length; i += 2) {
+    pts.push({ x: parseFloat(nums[i]), y: parseFloat(nums[i + 1]) });
+  }
+
+  const r = 20;
+  let path = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    path += roundedCorner(
+      pts[i - 1].x, pts[i - 1].y,
+      pts[i].x, pts[i].y,
+      pts[i + 1].x, pts[i + 1].y,
+      r,
+    );
+  }
+  path += ` L ${pts[pts.length - 1].x} ${pts[pts.length - 1].y}`;
+
+  return { path, labelX: base.labelX, labelY: base.labelY };
 }
 
 // ─── Main entry point ─────────────────────────────────────

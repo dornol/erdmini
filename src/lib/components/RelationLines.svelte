@@ -6,7 +6,7 @@
   import type { ForeignKey, Table } from '$lib/types/erd';
   import { HEADER_H, ROW_H, COMMENT_H } from '$lib/constants/layout';
   import { permissionStore } from '$lib/store/permission.svelte';
-  import { routeFKLines, computeStraightLine, computeOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
+  import { routeFKLines, computeOrthogonalLine, computeRoundedOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
   import { getFilteredColumns as getFilteredCols } from '$lib/utils/column-filter';
   import * as m from '$lib/paraglide/messages';
 
@@ -173,8 +173,8 @@
           // Always use loop for self-ref regardless of line type
           const loopIdx = selfRefLoopIndex.get(input.id) ?? 0;
           routes.set(input.id, computeSelfRefLoop(input.x1, input.y1, input.x2, input.y2, loopIdx));
-        } else if (lineType === 'straight') {
-          routes.set(input.id, computeStraightLine(input.x1, input.y1, input.x2, input.y2));
+        } else if (lineType === 'rounded') {
+          routes.set(input.id, computeRoundedOrthogonalLine(input.x1, input.y1, input.x2, input.y2, input.fromRight, input.toLeft));
         } else {
           routes.set(input.id, computeOrthogonalLine(input.x1, input.y1, input.x2, input.y2, input.fromRight, input.toLeft));
         }

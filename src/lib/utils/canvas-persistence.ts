@@ -25,7 +25,7 @@ export function restoreCanvasSettings(): CanvasSettings {
     settings.columnDisplayMode = savedMode;
   }
   const savedLineType = localStorage.getItem(KEYS.lineType);
-  if (savedLineType === 'bezier' || savedLineType === 'straight') {
+  if (savedLineType === 'bezier' || savedLineType === 'rounded') {
     settings.lineType = savedLineType;
   }
   const savedShowGrid = localStorage.getItem(KEYS.showGrid);

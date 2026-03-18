@@ -386,7 +386,7 @@
   "lint_domain_circular_hierarchy": "域循环层级引用",
   "line_type_title": "线条样式",
   "line_type_bezier": "贝塞尔",
-  "line_type_straight": "直线",
+  "line_type_rounded": "圆角直角",
   "line_type_orthogonal": "直角",
   "memo_detach": "从表格分离",
   "schema_tab_all": "全部",
