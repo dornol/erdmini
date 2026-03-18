@@ -235,29 +235,29 @@ export function computeOrthogonalLine(
   let labelY: number;
 
   if (fromRight === !toLeft) {
-    // Same-direction exit (overlap): both go right or both go left
-    // Vertical must be past both exit points to avoid crossing tables
-    const midX = cDir > 0 ? Math.max(ex1, ex2) : Math.min(ex1, ex2);
-    path = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
-    labelX = midX;
-    labelY = (y1 + y2) / 2;
+    // Same-direction exit (overlap): route via two exit points + midY
+    const dy = Math.abs(y2 - y1);
+    const minDetour = 30;
+    const midY = dy < minDetour
+      ? Math.min(y1, y2) - minDetour   // detour above when rows are close
+      : (y1 + y2) / 2;
+    path = `M ${x1} ${y1} L ${ex1} ${y1} L ${ex1} ${midY} L ${ex2} ${midY} L ${ex2} ${y2} L ${x2} ${y2}`;
+    labelX = (ex1 + ex2) / 2;
+    labelY = midY;
   } else {
     // Opposite directions (tables face each other or back-to-back)
-    const gap = Math.abs(x2 - x1);
-    if (gap < 2 * minOffset) {
-      // Narrow gap: go around (same side) to avoid line entering tables
-      const farX = cDir > 0
-        ? Math.max(x1, x2) + minOffset
-        : Math.min(x1, x2) - minOffset;
-      path = `M ${x1} ${y1} L ${farX} ${y1} L ${farX} ${y2} L ${x2} ${y2}`;
-      labelX = farX;
-      labelY = (y1 + y2) / 2;
-    } else {
-      const midY = (y1 + y2) / 2;
-      path = `M ${x1} ${y1} L ${ex1} ${y1} L ${ex1} ${midY} L ${ex2} ${midY} L ${ex2} ${y2} L ${x2} ${y2}`;
-      labelX = (ex1 + ex2) / 2;
-      labelY = midY;
-    }
+    // Clamp exit points to stay within the gap between tables
+    const halfGap = Math.max(minOffset, Math.abs(x2 - x1) / 2);
+    const safeEx1 = x1 + cDir * Math.min(minOffset, halfGap);
+    const safeEx2 = x2 + tDir * Math.min(minOffset, halfGap);
+    const dy = Math.abs(y2 - y1);
+    const minDetour = 30;
+    const midY = dy < minDetour
+      ? Math.min(y1, y2) - minDetour
+      : (y1 + y2) / 2;
+    path = `M ${x1} ${y1} L ${safeEx1} ${y1} L ${safeEx1} ${midY} L ${safeEx2} ${midY} L ${safeEx2} ${y2} L ${x2} ${y2}`;
+    labelX = (safeEx1 + safeEx2) / 2;
+    labelY = midY;
   }
 
   return { path, labelX, labelY };
