@@ -1,6 +1,6 @@
 # MCP Setup Guide
 
-erdmini server has a built-in MCP (Model Context Protocol) Streamable HTTP endpoint at `/mcp` with 66 tools. Server mode only — local mode does not support MCP.
+erdmini server has a built-in MCP (Model Context Protocol) Streamable HTTP endpoint at `/mcp` with 69 tools. Server mode only — local mode does not support MCP.
 
 ```
 http://localhost:3000/mcp   ← MCP endpoint
@@ -45,11 +45,22 @@ The key is stored as a SHA-256 hash in the database. The raw key cannot be recov
 
 ---
 
-## 2. Client Configuration
+## 2. Quick Setup — Copy & Paste
+
+Replace `YOUR_API_KEY` with your actual `erd_...` key. Replace `http://localhost:3000` with your server URL if deployed remotely.
+
+### Claude Code (CLI)
+
+```bash
+claude mcp add --transport http erdmini http://localhost:3000/mcp \
+  --header "Authorization: Bearer YOUR_API_KEY"
+```
+
+Verify: `claude mcp list`
 
 ### Claude Desktop
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+Config file: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) / `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
 
 ```json
 {
@@ -58,7 +69,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
       "type": "streamable-http",
       "url": "http://localhost:3000/mcp",
       "headers": {
-        "Authorization": "Bearer erd_<your-api-key>"
+        "Authorization": "Bearer YOUR_API_KEY"
       }
     }
   }
@@ -67,30 +78,127 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 
 Restart Claude Desktop after editing.
 
-### Claude Code
-
-```bash
-claude mcp add --transport http erdmini http://localhost:3000/mcp \
-  --header "Authorization: Bearer erd_<your-api-key>"
-```
-
-To verify:
-
-```bash
-claude mcp list
-```
-
 ### Cursor
 
-In Cursor settings, add an MCP server:
+Config file: `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global)
 
-- **Type**: HTTP
-- **URL**: `http://localhost:3000/mcp`
-- **Headers**: `Authorization: Bearer erd_<your-api-key>`
+```json
+{
+  "mcpServers": {
+    "erdmini": {
+      "type": "streamable-http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
 
-### Other MCP Clients
+Or add via Cursor Settings → MCP → Add Server.
 
-Any MCP client that supports Streamable HTTP transport can connect. Required:
+### Windsurf
+
+Config file: `~/.codeium/windsurf/mcp_config.json`
+
+```json
+{
+  "mcpServers": {
+    "erdmini": {
+      "type": "streamable-http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+### VS Code (GitHub Copilot)
+
+Config file: `.vscode/mcp.json` (project) or User Settings (global)
+
+```json
+{
+  "servers": {
+    "erdmini": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Or via Command Palette → `MCP: Add Server`.
+
+### Cline (VS Code Extension)
+
+Config file: `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` (macOS)
+
+```json
+{
+  "mcpServers": {
+    "erdmini": {
+      "type": "streamable-http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Or add via Cline Settings → MCP Servers → Add.
+
+### OpenAI Codex CLI
+
+```bash
+codex --mcp-config mcp.json
+```
+
+`mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "erdmini": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+### Roo Code (VS Code Extension)
+
+Config file: Add via Roo Code Settings → MCP Servers, or edit `~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json`
+
+```json
+{
+  "mcpServers": {
+    "erdmini": {
+      "type": "streamable-http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+### Any MCP Client (Generic)
+
+Any client supporting Streamable HTTP transport:
 
 - **Method**: `POST`
 - **URL**: `http://<host>:<port>/mcp`
@@ -119,7 +227,7 @@ For remote Docker deployments, use the public URL:
       "type": "streamable-http",
       "url": "https://erd.example.com/mcp",
       "headers": {
-        "Authorization": "Bearer erd_<your-api-key>"
+        "Authorization": "Bearer YOUR_API_KEY"
       }
     }
   }

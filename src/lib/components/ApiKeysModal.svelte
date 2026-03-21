@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as m from '$lib/paraglide/messages';
   import { projectStore } from '$lib/store/project.svelte';
+  import { SNIPPET_TABS, getSnippet, getSnippetHint } from '$lib/utils/mcp-snippets';
   import type { ApiKeyScopeRow } from '$lib/types/auth';
 
   interface Props {
@@ -37,6 +38,18 @@
   // Created key reveal
   let createdKey = $state<string | null>(null);
   let keyCopied = $state(false);
+
+  // MCP snippet
+  let activeSnippet = $state<string>('claude-code');
+  let snippetCopied = $state(false);
+
+  async function copySnippet() {
+    if (!createdKey) return;
+    const text = getSnippet(activeSnippet, createdKey);
+    await navigator.clipboard.writeText(text);
+    snippetCopied = true;
+    setTimeout(() => (snippetCopied = false), 2000);
+  }
 
   $effect(() => {
     loadKeys();
@@ -214,7 +227,7 @@
       <button class="close-btn" onclick={onclose}>✕</button>
     </div>
 
-    <div class="modal-body">
+    <div class="modal-body thin-scrollbar" style="--sb-thumb:#475569;--sb-thumb-hover:#64748b">
       {#if createdKey}
         <div class="key-reveal">
           <p class="key-reveal-warning">{m.api_keys_copy_warning()}</p>
@@ -224,6 +237,27 @@
               {keyCopied ? 'Copied!' : 'Copy'}
             </button>
           </div>
+
+          <div class="snippet-section">
+            <p class="snippet-title">MCP Setup — Copy & Paste</p>
+            <div class="snippet-tabs">
+              {#each SNIPPET_TABS as tab}
+                <button
+                  class="snippet-tab"
+                  class:active={activeSnippet === tab.id}
+                  onclick={() => { activeSnippet = tab.id; snippetCopied = false; }}
+                >{tab.label}</button>
+              {/each}
+            </div>
+            <div class="snippet-hint">{getSnippetHint(activeSnippet)}</div>
+            <div class="snippet-code-wrap">
+              <pre class="snippet-code thin-scrollbar" style="--sb-thumb:#475569;--sb-thumb-hover:#64748b">{getSnippet(activeSnippet, createdKey)}</pre>
+              <button class="btn-sm btn-copy snippet-copy-btn" onclick={copySnippet}>
+                {snippetCopied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
           <button class="btn-sm" onclick={() => (createdKey = null)}>Dismiss</button>
         </div>
       {/if}
@@ -398,9 +432,9 @@
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 12px;
-    width: 560px;
+    width: 720px;
     max-width: 90vw;
-    max-height: 80vh;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -710,5 +744,78 @@
     display: flex;
     gap: 8px;
     margin-top: 10px;
+  }
+
+  /* MCP snippet section */
+  .snippet-section {
+    margin-top: 12px;
+    border-top: 1px solid #334155;
+    padding-top: 12px;
+  }
+
+  .snippet-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 0 0 8px 0;
+  }
+
+  .snippet-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .snippet-tab {
+    padding: 4px 10px;
+    font-size: 11px;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .snippet-tab:hover {
+    background: #1e293b;
+    color: #e2e8f0;
+  }
+
+  .snippet-tab.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+  }
+
+  .snippet-hint {
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 6px;
+    font-family: monospace;
+  }
+
+  .snippet-code-wrap {
+    position: relative;
+  }
+
+  .snippet-code {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #e2e8f0;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .snippet-copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
   }
 </style>

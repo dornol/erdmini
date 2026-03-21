@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-66 tools available. Read tools require `viewer` permission, write tools require `editor`.
+69 tools available. Read tools require `viewer` permission, write tools require `editor`.
 
 ---
 
