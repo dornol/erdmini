@@ -50,13 +50,13 @@
 		"better-sqlite3": "^12.8.0",
 		"d3-force": "^3.0.0",
 		"html-to-image": "^1.11.13",
-		"jspdf": "^4.2.0",
+		"jspdf": "^4.2.1",
 		"ldapts": "^8.1.7",
 		"node-sql-parser": "^5.4.0",
 		"openid-client": "^6.8.2",
 		"sql.js": "^1.14.1",
 		"svg2pdf.js": "^2.7.0",
-		"ws": "^8.19.0",
+		"ws": "^8.20.0",
 		"xlsx": "^0.18.5",
 		"zod": "^4.3.6"
 	}
