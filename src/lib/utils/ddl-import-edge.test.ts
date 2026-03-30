@@ -532,3 +532,316 @@ describe('Edge: multiple dialects with same DDL', () => {
     }
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// Reserved word column names — cross-dialect
+// ═══════════════════════════════════════════════════════════════════════
+describe('Edge: reserved word column names', () => {
+  it('MySQL — parses columns named `key`, `order`, `group`, `left`', async () => {
+    const sql = `
+      CREATE TABLE settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        \`key\` VARCHAR(200) NOT NULL,
+        \`order\` INT DEFAULT 0,
+        \`group\` VARCHAR(100),
+        \`left\` INT
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.errors).toHaveLength(0);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('key');
+    expect(cols).toContain('order');
+    expect(cols).toContain('group');
+    expect(cols).toContain('left');
+  });
+
+  it('MySQL — bare reserved words get auto-quoted', async () => {
+    const sql = `
+      CREATE TABLE t (
+        id INT PRIMARY KEY,
+        read INT,
+        write INT,
+        end VARCHAR(50)
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('read');
+    expect(cols).toContain('write');
+    expect(cols).toContain('end');
+  });
+
+  it('PostgreSQL — parses reserved word columns', async () => {
+    const sql = `
+      CREATE TABLE audit_log (
+        id SERIAL PRIMARY KEY,
+        "session" VARCHAR(200),
+        "left" INT,
+        "offset" INT,
+        "desc" TEXT
+      );
+    `;
+    const result = await importDDL(sql, 'postgresql');
+    expect(result.errors).toHaveLength(0);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('session');
+    expect(cols).toContain('left');
+    expect(cols).toContain('offset');
+    expect(cols).toContain('desc');
+  });
+
+  it('PostgreSQL — bare reserved words get auto-quoted', async () => {
+    const sql = `
+      CREATE TABLE t (
+        id SERIAL PRIMARY KEY,
+        end VARCHAR(50),
+        order INT,
+        json TEXT
+      );
+    `;
+    const result = await importDDL(sql, 'postgresql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('end');
+    expect(cols).toContain('order');
+    expect(cols).toContain('json');
+  });
+
+  it('MSSQL — bare reserved words without brackets', async () => {
+    const sql = `
+      CREATE TABLE t (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        Session NVARCHAR(200),
+        End NVARCHAR(100),
+        Left INT,
+        JSON NVARCHAR(MAX)
+      )
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('Session');
+    expect(cols).toContain('End');
+    expect(cols).toContain('Left');
+    expect(cols).toContain('JSON');
+  });
+
+  it('MSSQL — mixed bracket and bare reserved words', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[EventLog] (
+        [Seq] BIGINT IDENTITY(1,1) NOT NULL,
+        [Key] NVARCHAR(200) NOT NULL,
+        [Value] NVARCHAR(MAX),
+        [Order] INT DEFAULT 0,
+        [Desc] NVARCHAR(500),
+        [Read] BIT DEFAULT 0,
+        CONSTRAINT [PK_EventLog] PRIMARY KEY ([Seq])
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    const t = result.tables[0];
+    expect(t.name).toBe('EventLog');
+    const cols = t.columns.map(c => c.name);
+    expect(cols).toContain('Key');
+    expect(cols).toContain('Value');
+    expect(cols).toContain('Order');
+    expect(cols).toContain('Desc');
+    expect(cols).toContain('Read');
+    expect(cols).toHaveLength(6);
+  });
+
+  it('MySQL — KEY index definition not confused with Key column', async () => {
+    const sql = `
+      CREATE TABLE users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100),
+        email VARCHAR(200),
+        KEY idx_email (email)
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.errors).toHaveLength(0);
+    expect(result.tables[0].columns).toHaveLength(3);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).not.toContain('KEY');
+    expect(cols).not.toContain('idx_email');
+  });
+
+  it('MSSQL — Desc column not stripped by ASC/DESC cleanup', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[Items] (
+        [Id] INT IDENTITY(1,1) NOT NULL,
+        [Desc] NVARCHAR(500),
+        [Asc] NVARCHAR(500),
+        CONSTRAINT [PK_Items] PRIMARY KEY ([Id] ASC)
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('Desc');
+    expect(cols).toContain('Asc');
+  });
+
+  it('does not quote column names that are prefixes/suffixes of reserved words', async () => {
+    const sql = `
+      CREATE TABLE t (
+        endpoint VARCHAR(200),
+        order_id INT,
+        group_name VARCHAR(50),
+        description TEXT,
+        session_id VARCHAR(100),
+        left_margin INT,
+        key_type VARCHAR(20)
+      );
+    `;
+    for (const dialect of ['mysql', 'postgresql', 'mssql'] as const) {
+      const result = await importDDL(sql, dialect);
+      expect(result.tables).toHaveLength(1);
+      const cols = result.tables[0].columns.map(c => c.name);
+      expect(cols).toEqual(['endpoint', 'order_id', 'group_name', 'description', 'session_id', 'left_margin', 'key_type']);
+    }
+  });
+
+  it('handles already-quoted reserved words without double-quoting', async () => {
+    // MySQL backtick
+    const mysqlSql = 'CREATE TABLE t (`key` INT, `order` VARCHAR(50), `desc` TEXT);';
+    const mysqlResult = await importDDL(mysqlSql, 'mysql');
+    expect(mysqlResult.errors).toHaveLength(0);
+    expect(mysqlResult.tables[0].columns.map(c => c.name)).toEqual(['key', 'order', 'desc']);
+
+    // PostgreSQL double-quote
+    const pgSql = 'CREATE TABLE t ("key" INT, "order" VARCHAR(50), "desc" TEXT);';
+    const pgResult = await importDDL(pgSql, 'postgresql');
+    expect(pgResult.errors).toHaveLength(0);
+    expect(pgResult.tables[0].columns.map(c => c.name)).toEqual(['key', 'order', 'desc']);
+  });
+
+  it('handles all columns being reserved words', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[AllReserved] (
+        [Set] INT NOT NULL,
+        [Get] INT,
+        [Key] NVARCHAR(100),
+        [Value] NVARCHAR(MAX),
+        [Order] INT,
+        [End] DATETIME
+      )
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('Set');
+    expect(cols).toContain('Key');
+    expect(cols).toContain('Value');
+    expect(cols).toContain('Order');
+    expect(cols).toContain('End');
+    expect(cols).toHaveLength(6);
+  });
+
+  it('reserved word column with DEFAULT value containing reserved word', async () => {
+    const sql = `
+      CREATE TABLE t (
+        id INT PRIMARY KEY,
+        \`set\` INT DEFAULT 0,
+        \`order\` VARCHAR(20) DEFAULT 'none',
+        \`desc\` TEXT DEFAULT NULL
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.errors).toHaveLength(0);
+    const cols = result.tables[0].columns;
+    expect(cols.map(c => c.name)).toEqual(['id', 'set', 'order', 'desc']);
+    expect(cols.find(c => c.name === 'set')?.defaultValue).toBe('0');
+  });
+
+  it('IF NOT EXISTS + reserved word columns', async () => {
+    const sql = `
+      CREATE TABLE IF NOT EXISTS t (
+        id INT PRIMARY KEY,
+        end VARCHAR(50),
+        left INT
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('end');
+    expect(cols).toContain('left');
+  });
+
+  it('multiple tables with reserved word columns in one DDL', async () => {
+    const sql = `
+      CREATE TABLE orders (
+        id INT PRIMARY KEY,
+        \`key\` VARCHAR(100),
+        \`desc\` TEXT
+      );
+      CREATE TABLE sessions (
+        id INT PRIMARY KEY,
+        \`end\` DATETIME,
+        \`left\` INT
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.tables).toHaveLength(2);
+    expect(result.tables[0].columns.map(c => c.name)).toContain('key');
+    expect(result.tables[0].columns.map(c => c.name)).toContain('desc');
+    expect(result.tables[1].columns.map(c => c.name)).toContain('end');
+    expect(result.tables[1].columns.map(c => c.name)).toContain('left');
+  });
+
+  it('MSSQL — reserved word column with FK reference', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[child] (
+        [Id] INT IDENTITY(1,1) NOT NULL,
+        [Key] NVARCHAR(200) NOT NULL,
+        [Value] NVARCHAR(MAX),
+        CONSTRAINT [PK_child] PRIMARY KEY ([Id])
+      )
+      GO
+      ALTER TABLE [dbo].[child] ADD CONSTRAINT [FK_child_parent]
+        FOREIGN KEY ([Key]) REFERENCES [dbo].[parent] ([Key])
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('Key');
+    expect(cols).toContain('Value');
+  });
+
+  it('PostgreSQL — schema-qualified table with reserved words', async () => {
+    const sql = `
+      CREATE TABLE myschema.config (
+        id SERIAL PRIMARY KEY,
+        "key" VARCHAR(200),
+        "value" TEXT,
+        "order" INT
+      );
+    `;
+    const result = await importDDL(sql, 'postgresql');
+    expect(result.tables).toHaveLength(1);
+    const cols = result.tables[0].columns.map(c => c.name);
+    expect(cols).toContain('key');
+    expect(cols).toContain('value');
+    expect(cols).toContain('order');
+  });
+
+  it('MSSQL — single reserved word column only', async () => {
+    const sql = `
+      CREATE TABLE t (
+        [End] NVARCHAR(100) NOT NULL
+      )
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    expect(result.tables[0].columns).toHaveLength(1);
+    expect(result.tables[0].columns[0].name).toBe('End');
+  });
+});

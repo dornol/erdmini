@@ -53,6 +53,96 @@ function normalizeTypeInternal(raw: string): { type: ColumnType; warning?: { ori
   return { type: 'VARCHAR', warning: { original: raw.trim(), normalized: 'VARCHAR' } };
 }
 
+// ─── Reserved-word column name quoting ───────────────────────────────
+
+/**
+ * Words that node-sql-parser rejects as bare column names.
+ * We quote them in CREATE TABLE bodies before parsing.
+ */
+const PARSER_RESERVED = new Set([
+  'explain','show','key','call','read','write','end','insert','update','delete',
+  'drop','table','create','alter','into','set','truncate','desc','asc','order',
+  'group','by','from','where','join','add','rename','values','limit','between',
+  'in','exists','not','null','is','cross','outer','pivot','unpivot','else',
+  'case','when','then','session','left','json','select','like','grant','revoke',
+  'lock','use','open','close','return','begin','if','replace',
+  // MySQL-specific
+  'get','right','option','rank','row','rows','range','over','partition',
+  'cursor','fetch','function','procedure','trigger','database','schema',
+  'default','references','signal','condition','loop','repeat','leave',
+  'iterate','declare','continue',
+  // PostgreSQL-specific
+  'offset',
+  // shared — also constraint keywords (skip-list prevents false quoting)
+  'primary','unique','foreign','constraint','check',
+]);
+
+/**
+ * Quote reserved-word column names inside CREATE TABLE bodies so the parser
+ * can handle them.  Works by finding each CREATE TABLE (...) body, splitting
+ * by top-level commas, and quoting the first identifier of each column def
+ * if it is a reserved word and not already quoted.
+ */
+function quoteReservedColumnNames(sql: string, dialect: Dialect): string {
+  const q = (dialect === 'mysql' || dialect === 'mariadb') ? '`' : '"';
+  // Match CREATE TABLE ... ( with paren depth
+  const headerRe = /create\s+table\s+(?:(?:if\s+not\s+exists)\s+)?(?:[\w."'`[\]]+\.)?[\w"'`[\]]+\s*\(/gi;
+  let result = '';
+  let lastEnd = 0;
+  let hm: RegExpExecArray | null;
+
+  while ((hm = headerRe.exec(sql)) !== null) {
+    const bodyStart = hm.index + hm[0].length;
+    // Find matching closing paren
+    let depth = 1, i = bodyStart;
+    while (i < sql.length && depth > 0) {
+      if (sql[i] === '(') depth++;
+      else if (sql[i] === ')') depth--;
+      if (depth > 0) i++;
+    }
+    if (depth !== 0) continue;
+    const bodyEnd = i; // index of closing ')'
+
+    // Append everything before the body
+    result += sql.slice(lastEnd, bodyStart);
+
+    // Process body: split by top-level commas
+    const body = sql.slice(bodyStart, bodyEnd);
+    const parts: string[] = [];
+    let d = 0, s = 0;
+    for (let j = 0; j < body.length; j++) {
+      if (body[j] === '(') d++;
+      else if (body[j] === ')') d--;
+      else if (body[j] === ',' && d === 0) {
+        parts.push(body.slice(s, j));
+        s = j + 1;
+      }
+    }
+    parts.push(body.slice(s));
+
+    const quotedParts = parts.map(part => {
+      // Match leading whitespace + first bare identifier
+      const m = part.match(/^(\s*)([\w]+)(.*)/s);
+      if (!m) return part;
+      const [, ws, word, rest] = m;
+      // Skip table-level constraints
+      if (/^(constraint|primary|foreign|unique|check|index|key)$/i.test(word)) return part;
+      // Quote if reserved
+      if (PARSER_RESERVED.has(word.toLowerCase())) {
+        return `${ws}${q}${word}${q}${rest}`;
+      }
+      return part;
+    });
+
+    result += quotedParts.join(',');
+    lastEnd = bodyEnd;
+    headerRe.lastIndex = bodyEnd;
+  }
+
+  result += sql.slice(lastEnd);
+  return result;
+}
+
 // ─── AST helpers ─────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -263,13 +353,14 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     preprocessed.mssqlAlterUQs = result.alterUQs;
     stmts = [];
     for (const stmtSql of result.statements) {
+      const quoted = quoteReservedColumnNames(stmtSql, dialect);
       try {
-        const parsed = parser.astify(stmtSql);
+        const parsed = parser.astify(quoted);
         const arr = Array.isArray(parsed) ? parsed : [parsed];
         stmts.push(...arr);
       } catch {
         try {
-          const cleaned = cleanMSSQLStatement(stmtSql);
+          const cleaned = quoteReservedColumnNames(cleanMSSQLStatement(stmtSql), dialect);
           const parsed = parser.astify(cleaned);
           const arr = Array.isArray(parsed) ? parsed : [parsed];
           stmts.push(...arr);
@@ -291,7 +382,8 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
       if (!trimmed) continue;
       if (!/^\s*(create\s+table|alter\s+table)\b/i.test(trimmed)) continue;
       try {
-        const parsed = parser.astify(trimmed);
+        const quoted = quoteReservedColumnNames(trimmed, dialect);
+        const parsed = parser.astify(quoted);
         const arr = Array.isArray(parsed) ? parsed : [parsed];
         stmts.push(...arr);
       } catch (e) {
@@ -310,7 +402,8 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
       const trimmed = rawStmt.trim();
       if (!trimmed) continue;
       try {
-        const parsed = parser.astify(trimmed);
+        const quoted = quoteReservedColumnNames(trimmed, dialect);
+        const parsed = parser.astify(quoted);
         const arr = Array.isArray(parsed) ? parsed : [parsed];
         stmts.push(...arr);
       } catch (e) {
@@ -322,7 +415,8 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     }
   } else {
     try {
-      const parsed = parser.astify(sql);
+      const quoted = quoteReservedColumnNames(sql, dialect);
+      const parsed = parser.astify(quoted);
       stmts = Array.isArray(parsed) ? parsed : [parsed];
     } catch {
       stmts = [];
@@ -331,7 +425,8 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
         const trimmed = rawStmt.trim();
         if (!trimmed) continue;
         try {
-          const parsed = parser.astify(trimmed);
+          const quoted = quoteReservedColumnNames(trimmed, dialect);
+          const parsed = parser.astify(quoted);
           const arr = Array.isArray(parsed) ? parsed : [parsed];
           stmts.push(...arr);
         } catch (e) {
@@ -442,7 +537,9 @@ function buildTableFromCreateStmt(
   for (const def of defs) {
     if (def.resource === 'column') {
       const colName = extractColumnName(def.column?.column);
-      if (/^(unique|primary|key|foreign|constraint|check|index|references)$/i.test(colName)) continue;
+      if (/^(unique|primary|foreign|constraint|check|index|references)$/i.test(colName)) continue;
+      // 'key' without a real data type is a MySQL KEY index — skip it
+      if (/^key$/i.test(colName) && !def.definition?.dataType) continue;
       const rawType = def.definition?.dataType ?? 'VARCHAR';
       const length = def.definition?.length ?? undefined;
       const scale = def.definition?.scale ?? undefined;

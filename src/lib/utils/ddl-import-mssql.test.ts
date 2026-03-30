@@ -277,4 +277,55 @@ GO
     expect(child.foreignKeys[0].onDelete).toBe('CASCADE');
     expect(child.foreignKeys[0].onUpdate).toBe('SET NULL');
   });
+
+  it('parses reserved word column names (Explain, Key, Session, etc.)', async () => {
+    const sql = `
+      create table dbo.tSecurityEvent
+      (
+          Seq                bigint identity
+              constraint pk_tsecurityviolation
+                  primary key,
+          Create_Datetime    datetime2(3) not null,
+          Create_Manager_Seq bigint,
+          Event_Type         tinyint      not null,
+          IP                 nvarchar(40) not null,
+          Explain            nvarchar(1000),
+          Report_Datetime    datetime2(3),
+          Manager_Seq        bigint
+              constraint FK_SECURITY_VIOLATION_MANAGER
+                  references dbo.tManager
+      )
+      go
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    const t = result.tables[0];
+    expect(t.name).toBe('tSecurityEvent');
+    const colNames = t.columns.map(c => c.name);
+    expect(colNames).toContain('Explain');
+    expect(colNames).toContain('Seq');
+    expect(colNames).toContain('IP');
+    expect(colNames).toContain('Event_Type');
+    // Manager_Seq gets parsed as FK source + also as a regular column
+    expect(colNames.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('parses multiple reserved word columns across tables', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[Config] (
+        [Id] INT IDENTITY(1,1) NOT NULL,
+        [Key] NVARCHAR(200) NOT NULL,
+        [Value] NVARCHAR(MAX),
+        [Desc] NVARCHAR(500),
+        CONSTRAINT [PK_Config] PRIMARY KEY ([Id])
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.tables).toHaveLength(1);
+    const colNames = result.tables[0].columns.map(c => c.name);
+    expect(colNames).toContain('Key');
+    expect(colNames).toContain('Value');
+    expect(colNames).toContain('Desc');
+  });
 });

@@ -103,8 +103,10 @@ export function cleanMSSQLSyntax(sql: string): string {
   // Strip block comments
   sql = sql.replace(/\/\*[\s\S]*?\*\//g, '');
 
-  // Strip [bracket] identifiers → bare names
-  sql = sql.replace(/\[([^\]]+)\]/g, '$1');
+  // Strip [bracket] identifiers → bare names (preserve reserved words as double-quoted)
+  // Excludes SQL structural keywords (PRIMARY, UNIQUE, etc.) that appear in constraint/filegroup contexts
+  const mssqlReserved = /^(explain|show|key|call|read|write|end|insert|update|delete|drop|table|create|alter|into|set|truncate|desc|asc|order|group|by|from|where|join|add|rename|values|limit|between|in|exists|not|null|is|cross|outer|pivot|unpivot|else|case|when|then|session|left|json|select|like|grant|revoke|lock|use|open|close|return|begin|if|replace|get|right|option|rank|row|rows|range|over|partition|cursor|fetch|function|procedure|trigger|signal|condition|loop|repeat|leave|iterate|declare|continue|offset)$/i;
+  sql = sql.replace(/\[([^\]]+)\]/g, (_m, name) => mssqlReserved.test(name) ? `"${name}"` : name);
 
   // Strip schema prefixes: dbo. / schema.
   sql = sql.replace(/\bdbo\./gi, '');
@@ -177,8 +179,10 @@ export function cleanMSSQLSyntax(sql: string): string {
   // Strip ON [filegroup] clauses
   sql = sql.replace(/\bON\s+\[?\w+\]?(?=\s*$|\s*,|\s*\))/gim, '');
 
-  // Strip ASC/DESC after column in PK/index definitions
-  sql = sql.replace(/\b(ASC|DESC)\b/gi, '');
+  // Strip ASC/DESC only when following a column ref (PK/index defs)
+  // e.g. "([ColName] ASC)" but not "Desc NVARCHAR(500)" as column definition
+  // Matches: word + ASC/DESC + followed by comma, closing paren, or end-of-string
+  sql = sql.replace(/(\w)\s+(ASC|DESC)\b(?=\s*[,)]|\s*$)/gim, '$1');
 
   // Strip TEXTIMAGE_ON [filegroup]
   sql = sql.replace(/\bTEXTIMAGE_ON\s+\[?\w+\]?/gi, '');
