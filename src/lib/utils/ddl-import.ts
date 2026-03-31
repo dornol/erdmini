@@ -161,8 +161,21 @@ function extractDefaultValue(def: any): string | undefined {
   if (val.type === 'number') return String(val.value);
   if (val.type === 'single_quote_string') return `'${val.value}'`;
   if (val.type === 'null') return 'NULL';
+  if (val.type === 'bool') return val.value ? 'TRUE' : 'FALSE';
+  if (val.type === 'function') {
+    // e.g. getdate(), CURRENT_TIMESTAMP(), NOW()
+    const funcName = val.name?.name?.[0]?.value ?? val.name?.value ?? 'UNKNOWN';
+    const args = val.args?.value;
+    if (args && args.length > 0) {
+      return `${funcName}(${args.map((a: any) => a.value ?? a).join(', ')})`;
+    }
+    return `${funcName}()`;
+  }
   if (typeof val.value === 'string') return val.value;
-  return String(val.value ?? val);
+  if (typeof val.value === 'number') return String(val.value);
+  // Fallback: avoid [object Object]
+  if (val.value !== undefined && val.value !== null) return String(val.value);
+  return undefined;
 }
 
 function getUniqueName(name: string, existing: string[]): string {

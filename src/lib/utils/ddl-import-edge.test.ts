@@ -96,8 +96,37 @@ describe('Edge: DEFAULT value extraction', () => {
     const result = await importDDL(sql, 'mysql');
     expect(result.tables).toHaveLength(1);
     const col = result.tables[0].columns.find(c => c.name === 'created_at')!;
-    // Should have some default value extracted
-    expect(col.defaultValue).toBeDefined();
+    expect(col.defaultValue).toMatch(/current_timestamp/i);
+  });
+
+  it('extracts function defaults correctly (not [object Object])', async () => {
+    // MSSQL getdate()
+    const mssqlSql = `CREATE TABLE t (id INT PRIMARY KEY, created DATETIME DEFAULT getdate())`;
+    const mssqlResult = await importDDL(mssqlSql, 'mssql');
+    const mssqlCol = mssqlResult.tables[0].columns.find(c => c.name === 'created')!;
+    expect(mssqlCol.defaultValue).toBeDefined();
+    expect(mssqlCol.defaultValue).toMatch(/getdate/i);
+
+    // MySQL NOW()
+    const mysqlSql = `CREATE TABLE t (id INT PRIMARY KEY, created DATETIME DEFAULT NOW())`;
+    const mysqlResult = await importDDL(mysqlSql, 'mysql');
+    const mysqlCol = mysqlResult.tables[0].columns.find(c => c.name === 'created')!;
+    expect(mysqlCol.defaultValue).toBeDefined();
+    expect(mysqlCol.defaultValue).toMatch(/now/i);
+
+    // PostgreSQL now()
+    const pgSql = `CREATE TABLE t (id SERIAL PRIMARY KEY, created TIMESTAMP DEFAULT now())`;
+    const pgResult = await importDDL(pgSql, 'postgresql');
+    const pgCol = pgResult.tables[0].columns.find(c => c.name === 'created')!;
+    expect(pgCol.defaultValue).toBeDefined();
+    expect(pgCol.defaultValue).toMatch(/now/i);
+  });
+
+  it('MSSQL — empty string default extracts correctly', async () => {
+    const sql = `CREATE TABLE t (id INT PRIMARY KEY, name NVARCHAR(255) DEFAULT (''))`;
+    const result = await importDDL(sql, 'mssql');
+    const col = result.tables[0].columns.find(c => c.name === 'name')!;
+    expect(col.defaultValue).toBe("''");
   });
 
   it('extracts numeric default', async () => {

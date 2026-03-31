@@ -161,6 +161,8 @@ describe('importDDL — PostgreSQL', () => {
     const result = await importDDL(sql, 'postgresql');
     const statusCol = result.tables[0].columns.find(c => c.name === 'status')!;
     expect(statusCol.defaultValue).toBe("'pending'");
+    const createdCol = result.tables[0].columns.find(c => c.name === 'created_at')!;
+    expect(createdCol.defaultValue).toMatch(/current_timestamp/i);
   });
 
   // --- CHECK ---
