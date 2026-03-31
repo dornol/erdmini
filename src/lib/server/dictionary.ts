@@ -15,6 +15,7 @@ export interface WordRow {
   category: string | null;
   status: WordStatus;
   created_by: string;
+  created_by_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,32 +40,32 @@ export function listWords(
 
   // Default: approved only
   const status = opts?.status ?? 'approved';
-  conditions.push('status = ?');
+  conditions.push('w.status = ?');
   params.push(status);
 
   if (opts?.search) {
-    conditions.push('(word LIKE ? OR meaning LIKE ?)');
+    conditions.push('(w.word LIKE ? OR w.meaning LIKE ?)');
     const like = `%${opts.search}%`;
     params.push(like, like);
   }
   if (opts?.category !== undefined) {
     if (opts.category === '') {
-      conditions.push('(category IS NULL OR category = \'\')');
+      conditions.push('(w.category IS NULL OR w.category = \'\')');
     } else {
-      conditions.push('category = ?');
+      conditions.push('w.category = ?');
       params.push(opts.category);
     }
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const total = (db.prepare(`SELECT COUNT(*) as cnt FROM word_dictionary ${where}`).get(...params) as { cnt: number }).cnt;
+  const total = (db.prepare(`SELECT COUNT(*) as cnt FROM word_dictionary w ${where}`).get(...params) as { cnt: number }).cnt;
 
   const limit = opts?.limit ?? 50;
   const page = opts?.page ?? 1;
   const offset = (page - 1) * limit;
 
   const words = db
-    .prepare(`SELECT * FROM word_dictionary ${where} ORDER BY category, word COLLATE NOCASE ASC LIMIT ? OFFSET ?`)
+    .prepare(`SELECT w.*, u.display_name as created_by_name FROM word_dictionary w LEFT JOIN users u ON w.created_by = u.id ${where} ORDER BY w.category, w.word COLLATE NOCASE ASC LIMIT ? OFFSET ?`)
     .all(...params, limit, offset) as WordRow[];
 
   return { words, total };

@@ -14,6 +14,7 @@
     category: string | null;
     status: string;
     created_by: string;
+    created_by_name: string | null;
     created_at: string;
     updated_at: string;
   }
@@ -361,7 +362,7 @@
                 <td>{w.meaning}</td>
                 <td style="color:var(--app-text-faint)">{w.description || ''}</td>
                 <td>{#if w.category}<span class="badge">{w.category}</span>{/if}</td>
-                <td style="color:var(--app-text-faint);font-size:12px">{w.created_by}</td>
+                <td style="color:var(--app-text-faint);font-size:12px">{w.created_by_name || w.created_by}</td>
                 <td><div class="btn-row">
                   <button class="btn-sm" onclick={() => startEdit(w)}>{m.dict_edit()}</button>
                   <button class="btn-sm btn-approve" onclick={() => approveWord(w.id)}>{m.dict_approve()}</button>

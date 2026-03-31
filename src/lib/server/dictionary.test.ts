@@ -50,15 +50,15 @@ describe('dictionary', () => {
     it('returns words and total count', () => {
       mockGet.mockReturnValueOnce({ cnt: 3 });
       mockAll.mockReturnValueOnce([
-        { id: '1', word: 'seq', meaning: '일련번호', description: null, category: null, created_by: 'u1', created_at: '', updated_at: '' },
-        { id: '2', word: 'nm', meaning: '명', description: null, category: '접미어', created_by: 'u1', created_at: '', updated_at: '' },
+        { id: '1', word: 'seq', meaning: '일련번호', description: null, category: null, created_by: 'u1', created_by_name: 'User1', created_at: '', updated_at: '' },
+        { id: '2', word: 'nm', meaning: '명', description: null, category: '접미어', created_by: 'u1', created_by_name: 'User1', created_at: '', updated_at: '' },
       ]);
 
       const result = listWords(db);
       expect(result.total).toBe(3);
       expect(result.words).toHaveLength(2);
       expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT COUNT'));
-      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT *'));
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN users'));
     });
 
     it('applies search filter', () => {
