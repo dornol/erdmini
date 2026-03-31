@@ -151,6 +151,8 @@
   "no_project_title": "No Projects",
   "no_project_desc": "You don't have permission to create projects. Ask an administrator to share a project with you or grant project creation permission.",
   "no_project_shared_hint": "Shared projects will appear here automatically.",
+  "no_project_loading_shared": "Loading shared projects...",
+  "no_project_load_shared": "Load shared projects",
   "domain_delete_confirm": "Delete domain \"{name}\"? {count} column(s) will be unlinked.",
   "column_delete_fk_confirm": "Deleting this column will also remove {count} related FK(s). Continue?",
   "cmd_palette_placeholder": "Search tables or columns...",

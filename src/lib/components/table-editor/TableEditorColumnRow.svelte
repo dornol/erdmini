@@ -1,6 +1,7 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import type { Column, ForeignKey } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
 
@@ -61,6 +62,7 @@
   {/if}
   <span class="col-name">{col.name}</span>
   <span class="col-type-badge">{col.type}{col.length ? `(${col.length}${col.scale != null ? `,${col.scale}` : ''})` : ''}</span>
+  {#if !permissionStore.isReadOnly}
   <button
     class="col-del-btn"
     title={m.action_delete()}
@@ -84,6 +86,7 @@
       erdStore.deleteColumn(tableId, col.id);
     }}
   >✕</button>
+  {/if}
 </div>
 
 <style>

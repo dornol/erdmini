@@ -53,6 +53,7 @@
 
   let sidebarCollapsed = $state(false);
   let commandPaletteOpen = $state(false);
+  let loadingSharedProjects = $state(false);
   let fkModalTableId = $state<string | null>(null);
   let fkModalEditId = $state<string | undefined>(undefined);
 
@@ -88,7 +89,9 @@
 
     // Auto-load shared projects for users with no projects
     if (projectStore.index.projects.length === 0 && authStore.user) {
+      loadingSharedProjects = true;
       await autoLoadSharedProjects();
+      loadingSharedProjects = false;
     }
 
     // Load naming rules in server mode
@@ -213,14 +216,27 @@
               {/if}
             </div>
             <h2 class="no-project-title">{siteSettings?.site_name || 'erdmini'}</h2>
-            {#if canCreate}
+            {#if loadingSharedProjects}
+              <p class="no-project-desc">{m.no_project_loading_shared()}</p>
+            {:else if canCreate}
               <p class="no-project-desc">{m.welcome_desc()}</p>
               <button class="no-project-btn" onclick={async () => {
                 await projectStore.createProject('My Project');
               }}>{m.project_new()}</button>
+              {#if authStore.user}
+                <button class="no-project-link" onclick={async () => {
+                  loadingSharedProjects = true;
+                  await autoLoadSharedProjects();
+                  loadingSharedProjects = false;
+                }}>{m.no_project_load_shared()}</button>
+              {/if}
             {:else}
               <p class="no-project-desc">{m.no_project_desc()}</p>
-              <p class="no-project-hint">{m.no_project_shared_hint()}</p>
+              <button class="no-project-link" onclick={async () => {
+                loadingSharedProjects = true;
+                await autoLoadSharedProjects();
+                loadingSharedProjects = false;
+              }}>{m.no_project_load_shared()}</button>
             {/if}
           </div>
         </div>
@@ -405,12 +421,6 @@
     margin: 0 0 20px;
   }
 
-  .no-project-hint {
-    font-size: 0.78rem;
-    color: var(--app-text-muted, #64748b);
-    margin: 0;
-  }
-
   :global(.no-project-btn) {
     padding: 10px 28px;
     background: #3b82f6;
@@ -425,6 +435,22 @@
 
   :global(.no-project-btn:hover) {
     background: #2563eb;
+  }
+
+  :global(.no-project-link) {
+    margin-top: 8px;
+    padding: 6px 16px;
+    background: none;
+    color: #60a5fa;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  :global(.no-project-link:hover) {
+    background: #1e293b;
   }
 
   /* Fullscreen Presentation Mode */

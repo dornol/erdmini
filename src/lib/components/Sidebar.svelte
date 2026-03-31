@@ -273,7 +273,7 @@
 
   function onGroupDrop(e: DragEvent, groupName: string) {
     e.preventDefault();
-    if (!dragTableId) return;
+    if (!dragTableId || permissionStore.isReadOnly) return;
     const table = erdStore.schema.tables.find(t => t.id === dragTableId);
     const currentGroup = table?.group || '';
     if (currentGroup !== groupName) {

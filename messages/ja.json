@@ -147,6 +147,8 @@
   "no_project_title": "プロジェクトがありません",
   "no_project_desc": "プロジェクト作成権限がありません。管理者にプロジェクトの共有またはプロジェクト作成権限の付与を依頼してください。",
   "no_project_shared_hint": "共有されたプロジェクトは自動的に表示されます。",
+  "no_project_loading_shared": "共有プロジェクトを読み込み中...",
+  "no_project_load_shared": "共有プロジェクトを読み込む",
   "domain_delete_confirm": "ドメイン「{name}」を削除しますか？{count} 件のカラムの連携が解除されます。",
   "column_delete_fk_confirm": "このカラムを削除すると、関連する FK {count} 件も削除されます。続行しますか？",
   "cmd_palette_placeholder": "テーブルまたはカラムを検索...",

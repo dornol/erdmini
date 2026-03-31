@@ -1,6 +1,7 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import { COLUMN_TYPES } from '$lib/types/erd';
   import type { ColumnDomain, ColumnType } from '$lib/types/erd';
   import { computeImpact } from '$lib/utils/domain-analysis';
@@ -108,7 +109,7 @@
   }
 
   export async function saveEdit() {
-    if (!formName.trim()) return;
+    if (!formName.trim() || permissionStore.isReadOnly) return;
     const fields = {
       name: formName.trim(),
       group: formGroup.trim() || undefined,

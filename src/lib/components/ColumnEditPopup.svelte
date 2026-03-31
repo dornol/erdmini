@@ -93,6 +93,7 @@
   }
 
   function applyDomain(domainId: string) {
+    if (permissionStore.isReadOnly) return;
     const domain = erdStore.schema.domains.find((d) => d.id === domainId);
     if (!domain) return;
     erdStore.updateColumn(tableId, columnId, {

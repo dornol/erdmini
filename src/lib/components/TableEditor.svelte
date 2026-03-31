@@ -126,7 +126,7 @@
     <div class="section columns-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.editor_columns()}</span>
-        <button class="add-col-btn" bind:this={addBtnEl} onclick={addColumnAndEdit}>
+        <button class="add-col-btn" bind:this={addBtnEl} onclick={addColumnAndEdit} disabled={permissionStore.isReadOnly}>
           {m.action_add()}
         </button>
       </div>
@@ -156,7 +156,7 @@
     <div class="section fk-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">Foreign Keys</span>
-        <button class="add-col-btn" onclick={() => { editingFkId = undefined; showFkModal = true; }}>{m.fk_add()}</button>
+        <button class="add-col-btn" onclick={() => { editingFkId = undefined; showFkModal = true; }} disabled={permissionStore.isReadOnly}>{m.fk_add()}</button>
       </div>
 
       {#each selectedTable.foreignKeys as fk (fk.id)}
@@ -198,7 +198,7 @@
     <div class="section uk-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.uq_section()}</span>
-        <button class="add-col-btn" onclick={() => (showUkModal = true)}>{m.uq_add()}</button>
+        <button class="add-col-btn" onclick={() => (showUkModal = true)} disabled={permissionStore.isReadOnly}>{m.uq_add()}</button>
       </div>
 
       {#each selectedTable.uniqueKeys as uk (uk.id)}
@@ -228,7 +228,7 @@
     <div class="section idx-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.idx_section()}</span>
-        <button class="add-col-btn" onclick={() => (showIdxModal = true)}>{m.idx_add()}</button>
+        <button class="add-col-btn" onclick={() => (showIdxModal = true)} disabled={permissionStore.isReadOnly}>{m.idx_add()}</button>
       </div>
 
       {#each (selectedTable.indexes ?? []) as idx (idx.id)}

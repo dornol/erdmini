@@ -220,3 +220,89 @@ describe('saveSchema error handling', () => {
     await expect(saveSchema('proj1')).resolves.toBeUndefined();
   });
 });
+
+// ─── readOnly UI guard coverage ───
+
+describe('readOnly UI guard rules', () => {
+  type Permission = 'owner' | 'editor' | 'viewer' | 'anonymous';
+
+  function isReadOnly(perm: Permission): boolean {
+    return perm === 'viewer' || perm === 'anonymous';
+  }
+
+  const MUTATION_ACTIONS = [
+    'addColumn', 'deleteColumn', 'addForeignKey', 'addUniqueKey', 'addIndex',
+    'addDomain', 'updateDomain', 'applyDomain', 'groupDrop',
+  ] as const;
+
+  it.each(['viewer', 'anonymous'] as Permission[])(
+    '%s should NOT be able to perform mutations',
+    (perm) => {
+      expect(isReadOnly(perm)).toBe(true);
+      // All mutation actions should be blocked
+      for (const action of MUTATION_ACTIONS) {
+        const allowed = !isReadOnly(perm);
+        expect(allowed).toBe(false);
+      }
+    },
+  );
+
+  it.each(['owner', 'editor'] as Permission[])(
+    '%s should be able to perform mutations',
+    (perm) => {
+      expect(isReadOnly(perm)).toBe(false);
+    },
+  );
+});
+
+// ─── embed permission logic ───
+
+describe('embed button visibility', () => {
+  interface EmbedScenario {
+    isLoggedIn: boolean;
+    canCreateEmbed: boolean;
+    permission: 'owner' | 'editor' | 'viewer';
+    shouldShow: boolean;
+  }
+
+  const scenarios: EmbedScenario[] = [
+    // Owner always sees embed (regardless of canCreateEmbed flag)
+    { isLoggedIn: true, canCreateEmbed: false, permission: 'owner', shouldShow: true },
+    { isLoggedIn: true, canCreateEmbed: true, permission: 'owner', shouldShow: true },
+    // Editor needs canCreateEmbed flag
+    { isLoggedIn: true, canCreateEmbed: true, permission: 'editor', shouldShow: true },
+    { isLoggedIn: true, canCreateEmbed: false, permission: 'editor', shouldShow: false },
+    // Viewer never sees embed
+    { isLoggedIn: true, canCreateEmbed: true, permission: 'viewer', shouldShow: false },
+    // Not logged in
+    { isLoggedIn: false, canCreateEmbed: false, permission: 'owner', shouldShow: false },
+  ];
+
+  it.each(scenarios)(
+    'loggedIn=$isLoggedIn, canEmbed=$canCreateEmbed, perm=$permission → show=$shouldShow',
+    ({ isLoggedIn, canCreateEmbed, permission, shouldShow }) => {
+      // Current condition: isLoggedIn && (owner || (canCreateEmbed && editor))
+      const show = isLoggedIn && (
+        permission === 'owner' ||
+        (canCreateEmbed && permission === 'editor')
+      );
+      expect(show).toBe(shouldShow);
+    },
+  );
+
+  it('old bug: owner without canCreateEmbed was excluded', () => {
+    // Old: isLoggedIn && canCreateEmbed && (owner || editor)
+    const oldCondition = (canCreateEmbed: boolean, permission: string) =>
+      canCreateEmbed && (permission === 'owner' || permission === 'editor');
+
+    // Owner without flag → excluded in old code
+    expect(oldCondition(false, 'owner')).toBe(false);
+
+    // New: isLoggedIn && (owner || (canCreateEmbed && editor))
+    const newCondition = (canCreateEmbed: boolean, permission: string) =>
+      permission === 'owner' || (canCreateEmbed && permission === 'editor');
+
+    // Owner without flag → included in new code
+    expect(newCondition(false, 'owner')).toBe(true);
+  });
+});

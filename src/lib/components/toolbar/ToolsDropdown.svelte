@@ -92,7 +92,7 @@
           </div>
         </div>
       {/if}
-      {#if authStore.isLoggedIn && authStore.user?.canCreateEmbed && (permissionStore.current === 'owner' || permissionStore.current === 'editor')}
+      {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || (authStore.user?.canCreateEmbed && permissionStore.current === 'editor'))}
         <div class="dropdown-sep"></div>
         <button class="dropdown-item" role="menuitem" onclick={() => { onaction('embed'); onclose(); }}>
           {m.embed_title()}
