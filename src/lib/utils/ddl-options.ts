@@ -22,5 +22,5 @@ export function loadDdlOptions(): DDLExportOptions {
 }
 
 export function saveDdlOptions(options: DDLExportOptions): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(options));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(options)); } catch { /* quota exceeded */ }
 }

@@ -1,5 +1,13 @@
 import type { ColumnDisplayMode, LineType } from '$lib/store/canvas.svelte';
 
+function safeLsSet(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* quota exceeded — ignore */ }
+}
+
+function safeLsRemove(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
+
 interface CanvasSettings {
   columnDisplayMode?: ColumnDisplayMode;
   lineType?: LineType;
@@ -42,27 +50,27 @@ export function restoreCanvasSettings(): CanvasSettings {
 }
 
 export function persistColumnDisplayMode(mode: ColumnDisplayMode): void {
-  if (mode === 'all') localStorage.removeItem(KEYS.columnDisplayMode);
-  else localStorage.setItem(KEYS.columnDisplayMode, mode);
+  if (mode === 'all') safeLsRemove(KEYS.columnDisplayMode);
+  else safeLsSet(KEYS.columnDisplayMode, mode);
 }
 
 export function persistLineType(lt: LineType): void {
-  if (lt === 'orthogonal') localStorage.removeItem(KEYS.lineType);
-  else localStorage.setItem(KEYS.lineType, lt);
+  if (lt === 'orthogonal') safeLsRemove(KEYS.lineType);
+  else safeLsSet(KEYS.lineType, lt);
 }
 
 export function persistShowGrid(show: boolean): void {
-  if (show) localStorage.removeItem(KEYS.showGrid);
-  else localStorage.setItem(KEYS.showGrid, 'false');
+  if (show) safeLsRemove(KEYS.showGrid);
+  else safeLsSet(KEYS.showGrid, 'false');
 }
 
 export function persistShowRelationLines(show: boolean): void {
-  if (show) localStorage.removeItem(KEYS.showRelationLines);
-  else localStorage.setItem(KEYS.showRelationLines, 'false');
+  if (show) safeLsRemove(KEYS.showRelationLines);
+  else safeLsSet(KEYS.showRelationLines, 'false');
 }
 
 export function persistSchemaView(activeSchema: string, viewports: Record<string, unknown>): void {
-  if (activeSchema === '(all)') localStorage.removeItem(KEYS.activeSchema);
-  else localStorage.setItem(KEYS.activeSchema, activeSchema);
-  localStorage.setItem(KEYS.schemaViewports, JSON.stringify(viewports));
+  if (activeSchema === '(all)') safeLsRemove(KEYS.activeSchema);
+  else safeLsSet(KEYS.activeSchema, activeSchema);
+  safeLsSet(KEYS.schemaViewports, JSON.stringify(viewports));
 }

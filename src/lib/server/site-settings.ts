@@ -103,8 +103,24 @@ export function getNamingRules(): SiteNamingRules {
   return _namingRulesCache;
 }
 
+const MAX_NAMING_RULES_SIZE = 10240; // 10KB
+
 export function updateNamingRules(rules: SiteNamingRules): SiteNamingRules {
   const json = JSON.stringify(rules);
+  if (json.length > MAX_NAMING_RULES_SIZE) {
+    throw new Error('Naming rules payload too large');
+  }
+  // Validate structure: only allow known rule types
+  const VALID_RULE_TYPES = new Set(['tableCase', 'columnCase', 'tablePrefix', 'tableSuffix', 'columnPrefix', 'columnSuffix', 'dictionaryCheck']);
+  for (const key of Object.keys(rules)) {
+    if (!VALID_RULE_TYPES.has(key)) {
+      throw new Error(`Invalid naming rule type: ${key}`);
+    }
+    const entry = (rules as Record<string, unknown>)[key];
+    if (typeof entry !== 'object' || entry === null) {
+      throw new Error(`Invalid naming rule entry for ${key}`);
+    }
+  }
   db.prepare("INSERT INTO site_settings (key, value) VALUES ('naming_rules', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(json);
   _namingRulesCache = null;
   return getNamingRules();

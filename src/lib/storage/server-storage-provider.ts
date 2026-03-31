@@ -10,11 +10,12 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   async saveIndex(index: ProjectIndex): Promise<void> {
-    await fetch('/api/storage/index', {
+    const res = await fetch('/api/storage/index', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(index),
     });
+    if (!res.ok) throw new Error(`Failed to save index (${res.status})`);
   }
 
   async loadSchema(projectId: string): Promise<ERDSchema | null> {
@@ -35,9 +36,10 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   async deleteSchema(projectId: string): Promise<void> {
-    await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}`, {
+    const res = await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}`, {
       method: 'DELETE',
     });
+    if (!res.ok) throw new Error(`Failed to delete schema (${res.status})`);
   }
 
   async loadCanvasState(projectId: string): Promise<CanvasData | null> {
@@ -47,17 +49,19 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   async saveCanvasState(projectId: string, data: CanvasData): Promise<void> {
-    await fetch(`/api/storage/canvas/${encodeURIComponent(projectId)}`, {
+    const res = await fetch(`/api/storage/canvas/${encodeURIComponent(projectId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    if (!res.ok) throw new Error(`Failed to save canvas state (${res.status})`);
   }
 
   async deleteCanvasState(projectId: string): Promise<void> {
-    await fetch(`/api/storage/canvas/${encodeURIComponent(projectId)}`, {
+    const res = await fetch(`/api/storage/canvas/${encodeURIComponent(projectId)}`, {
       method: 'DELETE',
     });
+    if (!res.ok) throw new Error(`Failed to delete canvas state (${res.status})`);
   }
 
   async listSnapshots(projectId: string): Promise<SchemaSnapshot[]> {
@@ -67,11 +71,12 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   async saveSnapshot(projectId: string, snapshot: SchemaSnapshot): Promise<void> {
-    await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots`, {
+    const res = await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(snapshot),
     });
+    if (!res.ok) throw new Error(`Failed to save snapshot (${res.status})`);
   }
 
   async loadSnapshot(projectId: string, snapshotId: string): Promise<SchemaSnapshot | null> {
@@ -81,9 +86,10 @@ export class ServerStorageProvider implements StorageProvider {
   }
 
   async deleteSnapshot(projectId: string, snapshotId: string): Promise<void> {
-    await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots/${encodeURIComponent(snapshotId)}`, {
+    const res = await fetch(`/api/storage/schemas/${encodeURIComponent(projectId)}/snapshots/${encodeURIComponent(snapshotId)}`, {
       method: 'DELETE',
     });
+    if (!res.ok) throw new Error(`Failed to delete snapshot (${res.status})`);
   }
 
   async loadLegacySchema(): Promise<string | null> {
