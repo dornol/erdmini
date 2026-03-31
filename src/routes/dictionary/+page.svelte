@@ -42,15 +42,11 @@
   let page = $state(1);
   const limit = 50;
 
-  // Inline edit
   let editingId = $state<string | null>(null);
   let editForm = $state({ word: '', meaning: '', description: '', category: '' });
-
-  // Inline add (shown as first row of table)
   let addForm = $state({ word: '', meaning: '', description: '', category: '' });
   let showAddRow = $state(false);
 
-  // Share
   let shareTokens = $state<ShareToken[]>([]);
   let showShare = $state(false);
   let newSharePassword = $state('');
@@ -112,8 +108,6 @@
   function selectCategory(cat: string | undefined) { selectedCategory = cat; page = 1; loadWords(); }
   function prevPage() { if (page > 1) { page--; loadWords(); } }
   function nextPage() { if (page * limit < total) { page++; loadWords(); } }
-
-  // ── CRUD ──────────────────────────────────────────
 
   async function submitAdd() {
     error = ''; success = '';
@@ -179,15 +173,13 @@
 
   function handleAddKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter') submitAdd();
-    if (e.key === 'Escape') { showAddRow = false; }
+    if (e.key === 'Escape') showAddRow = false;
   }
 
   function handleEditKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter') saveEdit();
-    if (e.key === 'Escape') { editingId = null; }
+    if (e.key === 'Escape') editingId = null;
   }
-
-  // ── Import / Export ───────────────────────────────
 
   async function exportWordsJson() {
     const res = await fetch('/api/dictionary/export');
@@ -232,8 +224,6 @@
     input.click();
   }
 
-  // ── Share ─────────────────────────────────────────
-
   async function createShareToken() {
     const body: Record<string, unknown> = {};
     if (newSharePassword) body.password = newSharePassword;
@@ -261,97 +251,116 @@
   const totalPages = $derived(Math.ceil(total / limit));
 </script>
 
-<div class="page">
-  <!-- Header -->
-  <div class="topbar">
-    <a href="/" class="back">&larr;</a>
+<div class="dict-page">
+  <div class="dict-header">
+    <a href="/" class="back-link">&larr; {m.dict_back()}</a>
     <h1>{m.dict_title()}</h1>
-    <span class="count">{total}</span>
-    {#if isAdmin && pendingCount > 0}
-      <span class="badge-pending">{pendingCount} {m.dict_pending()}</span>
-    {/if}
-    <span class="grow"></span>
+  </div>
 
-    {#if isAdmin}
-      <button class="tb" onclick={importWordsFromFile}>{m.dict_import()}</button>
-      <button class="tb" onclick={() => exportDictionaryTemplate()}>Template</button>
+  <p class="section-desc">
+    {m.dict_total_words({ count: total })}
+    {#if isAdmin && pendingCount > 0}
+      &middot; <span class="badge badge-pending">{m.dict_pending_count({ count: pendingCount })}</span>
     {/if}
-    <button class="tb" onclick={exportWordsXlsx}>Excel</button>
-    <button class="tb" onclick={exportWordsJson}>JSON</button>
+  </p>
+
+  <!-- Toolbar -->
+  <div class="toolbar-row">
+    <button class="btn-primary" onclick={() => { showAddRow = true; }}>
+      {isAdmin ? m.dict_add() : m.dict_suggest()}
+    </button>
     {#if isAdmin}
-      <button class="tb" class:tb-active={showShare} onclick={() => (showShare = !showShare)}>{m.dict_share_title()}</button>
+      <button class="btn-sm" onclick={importWordsFromFile}>{m.dict_import()}</button>
+      <button class="btn-sm" onclick={() => exportDictionaryTemplate()}>Template</button>
+    {/if}
+    <button class="btn-sm" onclick={exportWordsXlsx}>Excel</button>
+    <button class="btn-sm" onclick={exportWordsJson}>JSON</button>
+    {#if isAdmin}
+      <button class="btn-sm" class:btn-sm-active={showShare} onclick={() => (showShare = !showShare)}>{m.dict_share_title()}</button>
     {/if}
   </div>
 
-  {#if error}<div class="toast toast-error">{error}</div>{/if}
-  {#if success}<div class="toast toast-success">{success}</div>{/if}
+  {#if error}<div class="msg-error">{error}</div>{/if}
+  {#if success}<div class="msg-success">{success}</div>{/if}
 
-  <!-- Share panel -->
+  <!-- Share section -->
   {#if isAdmin && showShare}
-    <div class="panel">
-      <div class="panel-row">
+    <div class="form-section">
+      <h3>{m.dict_share_title()}</h3>
+      <div class="form-grid">
         <input type="password" placeholder={m.dict_share_password()} bind:value={newSharePassword} />
         <select bind:value={newShareExpires}>
           <option value="">{m.dict_share_never()}</option>
           <option value="7">7d</option><option value="30">30d</option><option value="90">90d</option><option value="365">1y</option>
         </select>
-        <button class="btn-accent" onclick={createShareToken}>{m.dict_share_create()}</button>
+        <button class="btn-primary" onclick={createShareToken}>{m.dict_share_create()}</button>
       </div>
-      {#each shareTokens as t}
-        <div class="panel-row token-row">
-          <code>{t.token.slice(0, 20)}...</code>
-          {#if t.hasPassword}<span class="chip">🔒</span>{/if}
-          {#if t.expiresAt}<span class="chip" class:chip-expired={new Date(t.expiresAt) < new Date()}>{new Date(t.expiresAt).toLocaleDateString()}</span>{/if}
-          <span class="grow"></span>
-          <button class="tb" onclick={() => copyShareUrl(t.token)}>{shareCopied === t.token ? '✓' : 'Copy URL'}</button>
-          <button class="tb tb-danger" onclick={() => deleteShareToken(t.id)}>✕</button>
-        </div>
-      {/each}
-      {#if shareTokens.length === 0}<p class="hint">{m.dict_share_no_tokens()}</p>{/if}
+      {#if shareTokens.length > 0}
+        <table class="data-table" style="margin-top:12px">
+          <thead><tr><th>Token</th><th>{m.dict_share_password()}</th><th>{m.dict_share_expires()}</th><th></th></tr></thead>
+          <tbody>
+            {#each shareTokens as t}
+              <tr>
+                <td><code style="color:#4ade80;font-size:11px">{t.token.slice(0,20)}...</code></td>
+                <td>{t.hasPassword ? '🔒' : '—'}</td>
+                <td>
+                  {#if t.expiresAt}
+                    <span class:expired={new Date(t.expiresAt) < new Date()}>{new Date(t.expiresAt).toLocaleDateString()}</span>
+                  {:else}
+                    {m.dict_share_never()}
+                  {/if}
+                </td>
+                <td>
+                  <div class="btn-row">
+                    <button class="btn-sm" onclick={() => copyShareUrl(t.token)}>{shareCopied === t.token ? '✓ Copied' : 'Copy URL'}</button>
+                    <button class="btn-sm btn-danger" onclick={() => deleteShareToken(t.id)}>✕</button>
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {:else}
+        <p style="color:#64748b;font-size:12px;margin-top:8px">{m.dict_share_no_tokens()}</p>
+      {/if}
     </div>
   {/if}
 
-  <!-- Admin: Pending review -->
+  <!-- Admin: Pending -->
   {#if isAdmin && pendingWords.length > 0}
-    <div class="panel panel-warn">
-      <div class="panel-title">{m.dict_pending()} ({pendingWords.length})</div>
-      <table class="tbl tbl-compact">
-        <thead>
-          <tr>
-            <th>{m.dict_word()}</th>
-            <th>{m.dict_meaning()}</th>
-            <th>{m.dict_description()}</th>
-            <th>{m.dict_category()}</th>
-            <th>{m.dict_requested_by()}</th>
-            <th></th>
-          </tr>
-        </thead>
+    <div class="form-section pending-section">
+      <h3 style="color:#fbbf24">{m.dict_pending()} ({pendingWords.length})</h3>
+      <table class="data-table">
+        <thead><tr>
+          <th>{m.dict_word()}</th><th>{m.dict_meaning()}</th><th>{m.dict_description()}</th>
+          <th>{m.dict_category()}</th><th>{m.dict_requested_by()}</th><th></th>
+        </tr></thead>
         <tbody>
           {#each pendingWords as w}
             {#if editingId === w.id}
               <tr>
-                <td><input class="cell" bind:value={editForm.word} onkeydown={handleEditKeydown} /></td>
-                <td><input class="cell" bind:value={editForm.meaning} onkeydown={handleEditKeydown} /></td>
-                <td><input class="cell" bind:value={editForm.description} onkeydown={handleEditKeydown} /></td>
-                <td><input class="cell" bind:value={editForm.category} onkeydown={handleEditKeydown} /></td>
+                <td><input class="inline-input" bind:value={editForm.word} onkeydown={handleEditKeydown} /></td>
+                <td><input class="inline-input" bind:value={editForm.meaning} onkeydown={handleEditKeydown} /></td>
+                <td><input class="inline-input" bind:value={editForm.description} onkeydown={handleEditKeydown} /></td>
+                <td><input class="inline-input" bind:value={editForm.category} onkeydown={handleEditKeydown} /></td>
                 <td></td>
-                <td class="acts">
-                  <button class="tb tb-approve" onclick={() => saveEdit(true)}>{m.dict_approve()}</button>
-                  <button class="tb" onclick={() => (editingId = null)}>{m.action_cancel()}</button>
-                </td>
+                <td><div class="btn-row">
+                  <button class="btn-sm btn-approve" onclick={() => saveEdit(true)}>{m.dict_approve()}</button>
+                  <button class="btn-sm" onclick={() => (editingId = null)}>{m.action_cancel()}</button>
+                </div></td>
               </tr>
             {:else}
               <tr>
-                <td class="mono">{w.word}</td>
+                <td><strong style="color:#60a5fa;font-family:monospace">{w.word}</strong></td>
                 <td>{w.meaning}</td>
-                <td class="hint">{w.description || ''}</td>
-                <td>{#if w.category}<span class="chip">{w.category}</span>{/if}</td>
-                <td class="hint">{w.created_by}</td>
-                <td class="acts">
-                  <button class="tb" onclick={() => startEdit(w)}>{m.dict_edit()}</button>
-                  <button class="tb tb-approve" onclick={() => approveWord(w.id)}>{m.dict_approve()}</button>
-                  <button class="tb tb-danger" onclick={() => rejectWord(w.id)}>{m.dict_reject()}</button>
-                </td>
+                <td style="color:#64748b">{w.description || ''}</td>
+                <td>{#if w.category}<span class="badge">{w.category}</span>{/if}</td>
+                <td style="color:#64748b;font-size:12px">{w.created_by}</td>
+                <td><div class="btn-row">
+                  <button class="btn-sm" onclick={() => startEdit(w)}>{m.dict_edit()}</button>
+                  <button class="btn-sm btn-approve" onclick={() => approveWord(w.id)}>{m.dict_approve()}</button>
+                  <button class="btn-sm btn-danger" onclick={() => rejectWord(w.id)}>{m.dict_reject()}</button>
+                </div></td>
               </tr>
             {/if}
           {/each}
@@ -362,383 +371,243 @@
 
   <!-- User: My pending -->
   {#if !isAdmin && myPending.length > 0}
-    <div class="panel">
-      <div class="panel-title">{m.dict_pending()} ({myPending.length})</div>
-      {#each myPending as w}
-        <div class="panel-row">
-          <span class="mono">{w.word}</span>
-          <span>{w.meaning}</span>
-          <span class="grow"></span>
-          <span class="chip chip-pending">{m.dict_pending()}</span>
-        </div>
-      {/each}
+    <div class="form-section">
+      <h3>{m.dict_pending()} ({myPending.length})</h3>
+      <table class="data-table">
+        <thead><tr><th>{m.dict_word()}</th><th>{m.dict_meaning()}</th><th></th></tr></thead>
+        <tbody>
+          {#each myPending as w}
+            <tr>
+              <td><strong style="color:#60a5fa;font-family:monospace">{w.word}</strong></td>
+              <td>{w.meaning}</td>
+              <td><span class="badge badge-pending">{m.dict_pending()}</span></td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   {/if}
 
   <!-- Filters -->
-  <div class="filters">
-    <input class="search" placeholder={m.dict_search()} bind:value={search} oninput={onSearchInput} />
+  <div class="filter-row">
+    <input class="filter-search" placeholder={m.dict_search()} bind:value={search} oninput={onSearchInput} />
     {#if categories.length > 0}
-      <div class="pills">
-        <button class="pill" class:on={selectedCategory === undefined} onclick={() => selectCategory(undefined)}>{m.dict_all_categories()}</button>
-        <button class="pill" class:on={selectedCategory === ''} onclick={() => selectCategory('')}>{m.dict_uncategorized()}</button>
+      <div class="filter-pills">
+        <button class="pill" class:active={selectedCategory === undefined} onclick={() => selectCategory(undefined)}>{m.dict_all_categories()}</button>
+        <button class="pill" class:active={selectedCategory === ''} onclick={() => selectCategory('')}>{m.dict_uncategorized()}</button>
         {#each categories as cat}
-          <button class="pill" class:on={selectedCategory === cat} onclick={() => selectCategory(cat)}>{cat}</button>
+          <button class="pill" class:active={selectedCategory === cat} onclick={() => selectCategory(cat)}>{cat}</button>
         {/each}
       </div>
     {/if}
   </div>
 
-  <!-- Dictionary table -->
+  <!-- Main table -->
   {#if loading}
-    <div class="empty">{m.dict_share_loading()}</div>
-  {:else if words.length === 0 && !showAddRow}
-    <div class="empty">{m.dict_no_words()}</div>
+    <div class="empty-state">{m.dict_share_loading()}</div>
   {:else}
-    <table class="tbl">
+    <table class="data-table">
       <thead>
         <tr>
-          <th class="cw">{m.dict_word()}</th>
-          <th class="cm">{m.dict_meaning()}</th>
-          <th class="cd">{m.dict_description()}</th>
-          <th class="cc">{m.dict_category()}</th>
-          {#if isAdmin}<th class="ca"></th>{/if}
+          <th style="width:16%">{m.dict_word()}</th>
+          <th style="width:28%">{m.dict_meaning()}</th>
+          <th style="width:30%">{m.dict_description()}</th>
+          <th style="width:14%">{m.dict_category()}</th>
+          {#if isAdmin}<th style="width:12%"></th>{/if}
         </tr>
       </thead>
       <tbody>
         <!-- Inline add row -->
         {#if showAddRow}
-          <tr class="row-add">
-            <td><input class="cell" placeholder="seq" bind:value={addForm.word} onkeydown={handleAddKeydown} /></td>
-            <td><input class="cell" placeholder="일련번호" bind:value={addForm.meaning} onkeydown={handleAddKeydown} /></td>
-            <td><input class="cell" placeholder="" bind:value={addForm.description} onkeydown={handleAddKeydown} /></td>
-            <td><input class="cell" placeholder="" bind:value={addForm.category} onkeydown={handleAddKeydown} /></td>
-            {#if isAdmin}
-              <td class="acts">
-                <button class="tb tb-approve" onclick={submitAdd}>{m.dict_save()}</button>
-                <button class="tb" onclick={() => (showAddRow = false)}>✕</button>
-              </td>
-            {:else}
-              <td class="acts">
-                <button class="tb tb-approve" onclick={submitAdd}>{m.dict_suggest()}</button>
-                <button class="tb" onclick={() => (showAddRow = false)}>✕</button>
-              </td>
-            {/if}
-          </tr>
-        {:else}
-          <tr class="row-add-trigger" onclick={() => (showAddRow = true)}>
-            <td colspan={isAdmin ? 5 : 4}>
-              <span class="add-hint">+ {isAdmin ? m.dict_add() : m.dict_suggest()}</span>
-            </td>
+          <tr>
+            <td><input class="inline-input" placeholder="seq" bind:value={addForm.word} onkeydown={handleAddKeydown} /></td>
+            <td><input class="inline-input" placeholder="일련번호" bind:value={addForm.meaning} onkeydown={handleAddKeydown} /></td>
+            <td><input class="inline-input" bind:value={addForm.description} onkeydown={handleAddKeydown} /></td>
+            <td><input class="inline-input" bind:value={addForm.category} onkeydown={handleAddKeydown} /></td>
+            {#if isAdmin}<td><div class="btn-row">
+              <button class="btn-sm btn-save" onclick={submitAdd}>{m.dict_save()}</button>
+              <button class="btn-sm" onclick={() => (showAddRow = false)}>✕</button>
+            </div></td>{/if}
           </tr>
         {/if}
 
         {#each words as w}
           {#if editingId === w.id}
-            <tr class="row-edit">
-              <td><input class="cell" bind:value={editForm.word} onkeydown={handleEditKeydown} /></td>
-              <td><input class="cell" bind:value={editForm.meaning} onkeydown={handleEditKeydown} /></td>
-              <td><input class="cell" bind:value={editForm.description} onkeydown={handleEditKeydown} /></td>
-              <td><input class="cell" bind:value={editForm.category} onkeydown={handleEditKeydown} /></td>
-              <td class="acts">
-                <button class="tb tb-approve" onclick={() => saveEdit()}>{m.dict_save()}</button>
-                <button class="tb" onclick={() => (editingId = null)}>✕</button>
-              </td>
+            <tr>
+              <td><input class="inline-input" bind:value={editForm.word} onkeydown={handleEditKeydown} /></td>
+              <td><input class="inline-input" bind:value={editForm.meaning} onkeydown={handleEditKeydown} /></td>
+              <td><input class="inline-input" bind:value={editForm.description} onkeydown={handleEditKeydown} /></td>
+              <td><input class="inline-input" bind:value={editForm.category} onkeydown={handleEditKeydown} /></td>
+              <td><div class="btn-row">
+                <button class="btn-sm btn-save" onclick={() => saveEdit()}>{m.dict_save()}</button>
+                <button class="btn-sm" onclick={() => (editingId = null)}>✕</button>
+              </div></td>
             </tr>
           {:else}
             <tr>
-              <td class="mono">{w.word}</td>
+              <td><strong style="color:#60a5fa;font-family:monospace">{w.word}</strong></td>
               <td>{w.meaning}</td>
-              <td class="hint">{w.description || ''}</td>
-              <td>{#if w.category}<span class="chip">{w.category}</span>{/if}</td>
+              <td style="color:#64748b;font-size:12px">{w.description || ''}</td>
+              <td>{#if w.category}<span class="badge">{w.category}</span>{/if}</td>
               {#if isAdmin}
-                <td class="acts">
-                  <button class="tb" onclick={() => startEdit(w)}>{m.dict_edit()}</button>
-                  <button class="tb tb-danger" onclick={() => deleteWordById(w.id, w.word)}>✕</button>
-                </td>
+                <td><div class="btn-row">
+                  <button class="btn-sm" onclick={() => startEdit(w)}>{m.dict_edit()}</button>
+                  <button class="btn-sm btn-danger" onclick={() => deleteWordById(w.id, w.word)}>✕</button>
+                </div></td>
               {/if}
             </tr>
           {/if}
         {/each}
+
+        {#if words.length === 0 && !showAddRow}
+          <tr><td colspan={isAdmin ? 5 : 4} class="empty-state">{m.dict_no_words()}</td></tr>
+        {/if}
       </tbody>
     </table>
 
     {#if totalPages > 1}
-      <div class="paging">
-        <button class="tb" disabled={page <= 1} onclick={prevPage}>&laquo;</button>
+      <div class="pagination">
+        <button class="btn-sm" disabled={page <= 1} onclick={prevPage}>&laquo;</button>
         <span>{page} / {totalPages}</span>
-        <button class="tb" disabled={page >= totalPages} onclick={nextPage}>&raquo;</button>
+        <button class="btn-sm" disabled={page >= totalPages} onclick={nextPage}>&raquo;</button>
       </div>
     {/if}
   {/if}
 </div>
 
 <style>
-  /* ── Page ────────────────────────────────────────── */
-  .page {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 16px 20px 40px;
-    color: #cbd5e1;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 13px;
-  }
-
-  /* ── Top bar ────────────────────────────────────── */
-  .topbar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #1e293b;
-    margin-bottom: 12px;
-  }
-
-  .back {
-    color: #64748b;
-    text-decoration: none;
-    font-size: 16px;
-    line-height: 1;
-  }
-
-  .back:hover { color: #f1f5f9; }
-
-  h1 { font-size: 16px; font-weight: 600; margin: 0; color: #f1f5f9; }
-
-  .count {
-    background: #334155;
-    color: #94a3b8;
-    font-size: 11px;
-    padding: 1px 7px;
-    border-radius: 8px;
-  }
-
-  .badge-pending {
-    background: #92400e;
-    color: #fbbf24;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 8px;
-    font-weight: 600;
-  }
-
-  .grow { flex: 1; }
-
-  /* ── Toolbar buttons ────────────────────────────── */
-  .tb {
-    padding: 4px 10px;
-    background: none;
-    color: #94a3b8;
-    border: 1px solid #334155;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .tb:hover { background: #1e293b; color: #e2e8f0; }
-  .tb:disabled { opacity: 0.3; cursor: default; }
-  .tb-active { border-color: #60a5fa; color: #60a5fa; }
-
-  .tb-approve { border-color: #059669; color: #34d399; }
-  .tb-approve:hover { background: #059669; color: white; }
-
-  .tb-danger { border-color: transparent; color: #64748b; }
-  .tb-danger:hover { color: #f87171; }
-
-  .btn-accent {
-    padding: 4px 12px;
-    background: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-  }
-
-  .btn-accent:hover { background: #2563eb; }
-
-  /* ── Panels ─────────────────────────────────────── */
-  .panel {
-    border: 1px solid #1e293b;
-    border-radius: 6px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
-    background: #0f172a08;
-  }
-
-  .panel-warn { border-color: #92400e; }
-
-  .panel-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: #94a3b8;
-    margin-bottom: 8px;
-  }
-
-  .panel-warn .panel-title { color: #fbbf24; }
-
-  .panel-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
-    font-size: 12px;
-  }
-
-  .panel-row input, .panel-row select {
-    padding: 4px 8px;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 4px;
+  .dict-page {
+    min-height: 100vh;
+    background: #0f172a;
     color: #f1f5f9;
-    font-size: 12px;
-    flex: 1;
-    min-width: 60px;
+    padding: 24px 40px;
   }
 
-  .panel-row input:focus, .panel-row select:focus { outline: none; border-color: #60a5fa; }
-
-  .token-row code {
-    font-family: monospace;
-    color: #4ade80;
-    font-size: 11px;
+  .dict-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 4px;
   }
 
-  /* ── Chips / Tags ───────────────────────────────── */
-  .chip {
-    padding: 1px 6px;
-    border: 1px solid #334155;
-    border-radius: 3px;
-    font-size: 11px;
-    color: #94a3b8;
-    white-space: nowrap;
-  }
+  .dict-header h1 { font-size: 22px; font-weight: 700; margin: 0; }
 
-  .chip-pending { border-color: #92400e; color: #fbbf24; }
-  .chip-expired { color: #f87171; border-color: #7f1d1d; }
+  .back-link { color: #60a5fa; text-decoration: none; font-size: 14px; }
+  .back-link:hover { text-decoration: underline; }
+
+  .section-desc { color: #94a3b8; font-size: 13px; margin: 0 0 16px; }
+
+  /* ── Toolbar ────────────────────────────────────── */
+  .toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
 
   /* ── Filters ────────────────────────────────────── */
-  .filters { margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
-
-  .search {
-    padding: 6px 10px;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 5px;
-    color: #f1f5f9;
-    font-size: 13px;
-    width: 100%;
-    box-sizing: border-box;
+  .filter-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
   }
 
-  .search:focus { outline: none; border-color: #60a5fa; }
+  .filter-search {
+    padding: 8px 12px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #f1f5f9;
+    font-size: 13px;
+    min-width: 200px;
+    flex: 1;
+    max-width: 360px;
+  }
 
-  .pills { display: flex; gap: 3px; flex-wrap: wrap; }
+  .filter-search:focus { outline: none; border-color: #60a5fa; }
+
+  .filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
 
   .pill {
-    padding: 2px 9px;
+    padding: 4px 12px;
     background: none;
     border: 1px solid #334155;
-    border-radius: 10px;
-    color: #64748b;
-    font-size: 11px;
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 12px;
     cursor: pointer;
   }
 
-  .pill:hover { color: #cbd5e1; border-color: #475569; }
-  .pill.on { background: #3b82f6; border-color: #3b82f6; color: white; }
+  .pill:hover { color: #e2e8f0; background: #1e293b; }
+  .pill.active { background: #3b82f6; border-color: #3b82f6; color: white; }
 
-  /* ── Table ──────────────────────────────────────── */
-  .tbl {
-    width: 100%;
-    border-collapse: collapse;
-  }
+  /* ── Pending section ────────────────────────────── */
+  .pending-section { border-color: #92400e !important; }
 
-  .tbl th {
-    text-align: left;
-    padding: 5px 8px;
-    font-size: 11px;
-    font-weight: 500;
-    color: #475569;
-    border-bottom: 1px solid #1e293b;
-  }
+  .expired { color: #f87171; }
 
-  .cw { width: 16%; }
-  .cm { width: 28%; }
-  .cd { width: 30%; }
-  .cc { width: 14%; }
-  .ca { width: 12%; }
-
-  .tbl td {
-    padding: 5px 8px;
-    border-bottom: 1px solid #0f172a;
-    vertical-align: middle;
-  }
-
-  .tbl tbody tr:hover { background: #1e293b44; }
-
-  .tbl-compact { font-size: 12px; }
-  .tbl-compact th { font-size: 10px; }
-
-  /* ── Inline cells ───────────────────────────────── */
-  .cell {
-    width: 100%;
-    padding: 4px 7px;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 3px;
-    color: #f1f5f9;
-    font-size: 13px;
-    box-sizing: border-box;
-  }
-
-  .cell:focus { outline: none; border-color: #60a5fa; background: #1e293b; }
-
-  .row-add td, .row-edit td { padding: 3px 4px; }
-  .row-add { background: #1e293b33; }
-  .row-edit { background: #1e293b55; }
-
-  .row-add-trigger { cursor: pointer; }
-  .row-add-trigger:hover { background: #1e293b33; }
-
-  .add-hint {
-    color: #475569;
-    font-size: 12px;
-  }
-
-  .row-add-trigger:hover .add-hint { color: #60a5fa; }
-
-  /* ── Utility ────────────────────────────────────── */
-  .mono { font-family: monospace; font-weight: 600; color: #60a5fa; font-size: 13px; }
-  .hint { color: #475569; font-size: 12px; }
-  .acts { display: flex; gap: 3px; white-space: nowrap; }
-
-  .paging {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-    font-size: 12px;
-    color: #475569;
-  }
-
-  .empty {
+  .empty-state {
     text-align: center;
-    padding: 40px;
-    color: #334155;
+    padding: 32px;
+    color: #475569;
     font-size: 14px;
   }
 
-  .toast {
-    padding: 6px 12px;
-    border-radius: 5px;
-    font-size: 12px;
-    margin-bottom: 8px;
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #94a3b8;
   }
 
-  .toast-error { color: #fca5a5; background: #7f1d1d22; }
-  .toast-success { color: #6ee7b7; background: #06524422; }
+  .btn-sm-active { border-color: #60a5fa !important; color: #60a5fa !important; }
+
+  /* ── Reuse admin-page global styles ─────────────── */
+  .dict-page :global(.section h2) { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+
+  .dict-page :global(.data-table) { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+  .dict-page :global(.data-table th) { text-align: left; padding: 8px 12px; color: #94a3b8; font-weight: 500; border-bottom: 1px solid #334155; }
+  .dict-page :global(.data-table td) { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+  .dict-page :global(.data-table tbody tr:hover) { background: #1e293b; }
+
+  .dict-page :global(.badge) { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #334155; color: #94a3b8; }
+  .dict-page :global(.badge-pending) { background: #713f12; color: #fbbf24; }
+
+  .dict-page :global(.form-section) { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .dict-page :global(.form-section h3) { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: #e2e8f0; }
+
+  .dict-page :global(.form-grid) { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .dict-page :global(.form-grid input),
+  .dict-page :global(.form-grid select) { padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f1f5f9; font-size: 13px; min-width: 140px; flex: 1; }
+  .dict-page :global(.form-grid input:focus),
+  .dict-page :global(.form-grid select:focus) { outline: none; border-color: #60a5fa; }
+
+  .dict-page :global(.btn-primary) { padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .dict-page :global(.btn-primary:hover) { background: #2563eb; }
+
+  .dict-page :global(.btn-sm) { padding: 4px 10px; background: #334155; color: #cbd5e1; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .dict-page :global(.btn-sm:hover) { background: #475569; }
+  .dict-page :global(.btn-sm:disabled) { opacity: 0.3; cursor: default; }
+
+  .dict-page :global(.btn-danger) { color: #f87171; }
+  .dict-page :global(.btn-danger:hover:not(:disabled)) { background: rgba(248, 113, 113, 0.15); }
+
+  .dict-page :global(.btn-save) { background: #22c55e; color: white; }
+  .dict-page :global(.btn-save:hover) { background: #16a34a; }
+
+  .dict-page :global(.btn-approve) { background: #22c55e; color: white; }
+  .dict-page :global(.btn-approve:hover) { background: #16a34a; }
+
+  .dict-page :global(.btn-row) { display: flex; gap: 6px; }
+
+  .dict-page :global(.inline-input) { padding: 4px 8px; background: #0f172a; border: 1px solid #334155; border-radius: 4px; color: #f1f5f9; font-size: 12px; width: 100%; min-width: 60px; }
+  .dict-page :global(.inline-input:focus) { outline: none; border-color: #60a5fa; }
+
+  .dict-page :global(.msg-error) { margin-bottom: 12px; font-size: 13px; color: #f87171; }
+  .dict-page :global(.msg-success) { margin-bottom: 12px; font-size: 13px; color: #4ade80; }
 </style>
