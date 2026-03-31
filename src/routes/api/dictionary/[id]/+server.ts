@@ -51,15 +51,25 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 };
 
 export const DELETE: RequestHandler = ({ locals, params }) => {
-  const adminErr = requireAdmin(locals);
-  if (adminErr) return adminErr;
+  if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
+
+  const isAdmin = locals.user.role === 'admin';
+
+  if (!isAdmin) {
+    // Non-admin can only delete their own pending/rejected suggestions
+    const row = db.prepare('SELECT created_by, status FROM word_dictionary WHERE id = ?').get(params.id) as { created_by: string; status: string } | undefined;
+    if (!row) return json({ error: 'Not found' }, { status: 404 });
+    if (row.created_by !== locals.user.id || (row.status !== 'pending' && row.status !== 'rejected')) {
+      return json({ error: 'Forbidden' }, { status: 403 });
+    }
+  }
 
   deleteWord(db, params.id);
   logAudit({
     action: 'delete_dictionary_word',
     category: 'system',
-    userId: locals.user!.id,
-    username: locals.user!.username,
+    userId: locals.user.id,
+    username: locals.user.username,
     detail: { wordId: params.id },
     source: 'web',
   });

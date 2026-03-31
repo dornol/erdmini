@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import db from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth/guards';
 import { listWords, createWord, countPendingWords } from '$lib/server/dictionary';
-import type { WordStatus } from '$lib/server/dictionary';
+import type { WordStatus, WordRow } from '$lib/server/dictionary';
 import { logAudit } from '$lib/server/audit';
 import { err } from '$lib/server/api-helpers';
 
@@ -22,13 +22,17 @@ export const GET: RequestHandler = ({ locals, url }) => {
   const effectiveStatus = isAdmin && status ? status : 'approved';
   const result = listWords(db, { search, category, status: effectiveStatus, page, limit });
 
-  // Admin: pending count. Non-admin: own pending suggestions.
+  // Admin: pending count. Non-admin: own pending + rejected suggestions.
   const pendingCount = isAdmin ? countPendingWords(db) : 0;
-  const myPending = !isAdmin
-    ? (listWords(db, { status: 'pending', limit: 100 }).words.filter(w => w.created_by === locals.user!.id))
-    : [];
+  let mySuggestions: WordRow[] = [];
+  if (!isAdmin) {
+    const userId = locals.user!.id;
+    const pending = listWords(db, { status: 'pending', limit: 100 }).words.filter(w => w.created_by === userId);
+    const rejected = listWords(db, { status: 'rejected', limit: 100 }).words.filter(w => w.created_by === userId);
+    mySuggestions = [...pending, ...rejected];
+  }
 
-  return json({ ...result, pendingCount, myPending });
+  return json({ ...result, pendingCount, mySuggestions });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {

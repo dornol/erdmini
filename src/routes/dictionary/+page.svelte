@@ -31,7 +31,7 @@
   let total = $state(0);
   let pendingCount = $state(0);
   let pendingWords = $state<WordRow[]>([]);
-  let myPending = $state<WordRow[]>([]);
+  let mySuggestions = $state<WordRow[]>([]);
   let categories = $state<string[]>([]);
   let loading = $state(true);
   let error = $state('');
@@ -74,7 +74,7 @@
     words = data.words;
     total = data.total;
     pendingCount = data.pendingCount ?? 0;
-    myPending = data.myPending ?? [];
+    mySuggestions = data.mySuggestions ?? [];
   }
 
   async function loadPendingWords() {
@@ -168,6 +168,12 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'rejected' }),
     });
+    await reload();
+  }
+
+  // Cancel own pending suggestion / dismiss rejected
+  async function dismissSuggestion(id: string) {
+    await fetch(`/api/dictionary/${id}`, { method: 'DELETE' });
     await reload();
   }
 
@@ -369,18 +375,31 @@
     </div>
   {/if}
 
-  <!-- User: My pending -->
-  {#if !isAdmin && myPending.length > 0}
+  <!-- User: My suggestions (pending + rejected) -->
+  {#if !isAdmin && mySuggestions.length > 0}
     <div class="form-section">
-      <h3>{m.dict_pending()} ({myPending.length})</h3>
+      <h3>{m.dict_suggest()} ({mySuggestions.length})</h3>
       <table class="data-table">
-        <thead><tr><th>{m.dict_word()}</th><th>{m.dict_meaning()}</th><th></th></tr></thead>
+        <thead><tr><th>{m.dict_word()}</th><th>{m.dict_meaning()}</th><th></th><th></th></tr></thead>
         <tbody>
-          {#each myPending as w}
+          {#each mySuggestions as w}
             <tr>
               <td><strong style="color:var(--app-code);font-family:monospace">{w.word}</strong></td>
               <td>{w.meaning}</td>
-              <td><span class="badge badge-pending">{m.dict_pending()}</span></td>
+              <td>
+                {#if w.status === 'pending'}
+                  <span class="badge badge-pending">{m.dict_pending()}</span>
+                {:else if w.status === 'rejected'}
+                  <span class="badge badge-rejected">{m.dict_rejected()}</span>
+                {/if}
+              </td>
+              <td>
+                {#if w.status === 'pending'}
+                  <button class="btn-sm" onclick={() => dismissSuggestion(w.id)}>{m.action_cancel()}</button>
+                {:else if w.status === 'rejected'}
+                  <button class="btn-sm" onclick={() => dismissSuggestion(w.id)}>{m.action_dismiss()}</button>
+                {/if}
+              </td>
             </tr>
           {/each}
         </tbody>
@@ -543,6 +562,7 @@
 
   .dict-page :global(.badge) { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--app-badge-bg); color: var(--app-text-muted); }
   .dict-page :global(.badge-pending) { background: var(--app-warning-bg); color: var(--app-warning-text); }
+  .dict-page :global(.badge-rejected) { background: rgba(248,113,113,0.15); color: var(--app-danger); }
 
   .dict-page :global(.form-section) { background: var(--app-card-bg); border: 1px solid var(--app-border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
   .dict-page :global(.form-section h3) { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--app-text); }
