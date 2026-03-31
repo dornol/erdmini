@@ -9,6 +9,7 @@ export function normalizeSchema(schema: ERDSchema): void {
   if (!schema.domains) schema.domains = [];
   if (!schema.memos) (schema as ERDSchema).memos = [];
   if (!schema.groupColors) schema.groupColors = {};
+  if (!schema.namingRules) schema.namingRules = {};
 
   for (const table of schema.tables) {
     if (!table.uniqueKeys) table.uniqueKeys = [];

@@ -76,10 +76,12 @@ export function createMcpServer(
         return {
           version: '1',
           tables: importedTables,
-          domains: [],
-          memos: [],
-          groupColors: {},
-          createdAt: new Date().toISOString(),
+          domains: existing?.domains ?? [],
+          memos: existing?.memos ?? [],
+          groupColors: existing?.groupColors ?? {},
+          schemas: existing?.schemas,
+          namingRules: existing?.namingRules,
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
       }

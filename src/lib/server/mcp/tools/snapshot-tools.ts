@@ -4,6 +4,7 @@ import type { RegisterFn } from './types';
 import { generateId } from '$lib/utils/common';
 import { diffSchemas } from '$lib/utils/schema-diff';
 import { generateMigrationSQL } from '$lib/utils/migration-sql';
+import { normalizeSchema } from '$lib/utils/schema-normalize';
 
 export const registerSnapshotTools: RegisterFn = (server, ctx) => {
   const { db, keyInfo, requireAccess, getSchemaOrFail, saveAndNotify, mcpAudit } = ctx;
@@ -66,6 +67,7 @@ export const registerSnapshotTools: RegisterFn = (server, ctx) => {
         return { content: [{ type: 'text', text: 'Snapshot not found' }], isError: true };
       }
       const schema = JSON.parse(row.data) as ERDSchema;
+      normalizeSchema(schema);
       saveAndNotify(projectId, schema);
       mcpAudit('restore_snapshot', projectId, { snapshotId });
       return { content: [{ type: 'text', text: 'Snapshot restored' }] };
