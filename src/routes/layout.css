@@ -1,5 +1,70 @@
 @import 'tailwindcss';
 
+/* ── App-wide theme variables ── */
+:root {
+  --app-bg: #f8fafc;
+  --app-panel-bg: #f8fafc;
+  --app-card-bg: white;
+  --app-border: #e2e8f0;
+  --app-border-light: #f1f5f9;
+  --app-text: #1e293b;
+  --app-text-secondary: #475569;
+  --app-text-muted: #64748b;
+  --app-text-faint: #94a3b8;
+  --app-input-bg: white;
+  --app-input-border: #e2e8f0;
+  --app-hover-bg: #f1f5f9;
+  --app-active-bg: #eff6ff;
+  --app-popup-bg: white;
+  --app-popup-shadow: 0 8px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  --app-badge-bg: #f1f5f9;
+  --app-badge-border: #e2e8f0;
+  --app-cancel-bg: #f1f5f9;
+  --app-cancel-text: #475569;
+  --app-cancel-hover: #e2e8f0;
+  --app-scrollbar: #cbd5e1;
+  --app-accent: #3b82f6;
+  --app-accent-hover: #2563eb;
+  --app-success: #22c55e;
+  --app-success-hover: #16a34a;
+  --app-danger: #f87171;
+  --app-warning-bg: #713f12;
+  --app-warning-text: #fbbf24;
+  --app-code: #60a5fa;
+}
+
+[data-dark] {
+  --app-bg: #0f172a;
+  --app-panel-bg: #1e293b;
+  --app-card-bg: #1e293b;
+  --app-border: #334155;
+  --app-border-light: #1e293b;
+  --app-text: #f1f5f9;
+  --app-text-secondary: #cbd5e1;
+  --app-text-muted: #94a3b8;
+  --app-text-faint: #64748b;
+  --app-input-bg: #0f172a;
+  --app-input-border: #475569;
+  --app-hover-bg: #334155;
+  --app-active-bg: #1e3a5f;
+  --app-popup-bg: #1e293b;
+  --app-popup-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+  --app-badge-bg: #334155;
+  --app-badge-border: #475569;
+  --app-cancel-bg: #334155;
+  --app-cancel-text: #cbd5e1;
+  --app-cancel-hover: #475569;
+  --app-scrollbar: #475569;
+  --app-accent: #3b82f6;
+  --app-accent-hover: #2563eb;
+  --app-success: #22c55e;
+  --app-success-hover: #16a34a;
+  --app-danger: #f87171;
+  --app-warning-bg: #713f12;
+  --app-warning-text: #fbbf24;
+  --app-code: #60a5fa;
+}
+
 /* ── Thin scrollbar utility ── */
 .thin-scrollbar {
   scrollbar-width: thin;

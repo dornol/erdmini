@@ -301,7 +301,7 @@
           <tbody>
             {#each shareTokens as t}
               <tr>
-                <td><code style="color:#4ade80;font-size:11px">{t.token.slice(0,20)}...</code></td>
+                <td><code style="color:var(--app-success);font-size:11px">{t.token.slice(0,20)}...</code></td>
                 <td>{t.hasPassword ? '🔒' : '—'}</td>
                 <td>
                   {#if t.expiresAt}
@@ -321,7 +321,7 @@
           </tbody>
         </table>
       {:else}
-        <p style="color:#64748b;font-size:12px;margin-top:8px">{m.dict_share_no_tokens()}</p>
+        <p style="color:var(--app-text-faint);font-size:12px;margin-top:8px">{m.dict_share_no_tokens()}</p>
       {/if}
     </div>
   {/if}
@@ -329,7 +329,7 @@
   <!-- Admin: Pending -->
   {#if isAdmin && pendingWords.length > 0}
     <div class="form-section pending-section">
-      <h3 style="color:#fbbf24">{m.dict_pending()} ({pendingWords.length})</h3>
+      <h3 style="color:var(--app-warning-text)">{m.dict_pending()} ({pendingWords.length})</h3>
       <table class="data-table">
         <thead><tr>
           <th>{m.dict_word()}</th><th>{m.dict_meaning()}</th><th>{m.dict_description()}</th>
@@ -351,11 +351,11 @@
               </tr>
             {:else}
               <tr>
-                <td><strong style="color:#60a5fa;font-family:monospace">{w.word}</strong></td>
+                <td><strong style="color:var(--app-code);font-family:monospace">{w.word}</strong></td>
                 <td>{w.meaning}</td>
-                <td style="color:#64748b">{w.description || ''}</td>
+                <td style="color:var(--app-text-faint)">{w.description || ''}</td>
                 <td>{#if w.category}<span class="badge">{w.category}</span>{/if}</td>
-                <td style="color:#64748b;font-size:12px">{w.created_by}</td>
+                <td style="color:var(--app-text-faint);font-size:12px">{w.created_by}</td>
                 <td><div class="btn-row">
                   <button class="btn-sm" onclick={() => startEdit(w)}>{m.dict_edit()}</button>
                   <button class="btn-sm btn-approve" onclick={() => approveWord(w.id)}>{m.dict_approve()}</button>
@@ -378,7 +378,7 @@
         <tbody>
           {#each myPending as w}
             <tr>
-              <td><strong style="color:#60a5fa;font-family:monospace">{w.word}</strong></td>
+              <td><strong style="color:var(--app-code);font-family:monospace">{w.word}</strong></td>
               <td>{w.meaning}</td>
               <td><span class="badge badge-pending">{m.dict_pending()}</span></td>
             </tr>
@@ -445,9 +445,9 @@
             </tr>
           {:else}
             <tr>
-              <td><strong style="color:#60a5fa;font-family:monospace">{w.word}</strong></td>
+              <td><strong style="color:var(--app-code);font-family:monospace">{w.word}</strong></td>
               <td>{w.meaning}</td>
-              <td style="color:#64748b;font-size:12px">{w.description || ''}</td>
+              <td style="color:var(--app-text-faint);font-size:12px">{w.description || ''}</td>
               <td>{#if w.category}<span class="badge">{w.category}</span>{/if}</td>
               {#if isAdmin}
                 <td><div class="btn-row">
@@ -478,136 +478,102 @@
 <style>
   .dict-page {
     min-height: 100vh;
-    background: #0f172a;
-    color: #f1f5f9;
+    background: var(--app-bg);
+    color: var(--app-text);
     padding: 24px 40px;
   }
 
-  .dict-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 4px;
-  }
-
+  .dict-header { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
   .dict-header h1 { font-size: 22px; font-weight: 700; margin: 0; }
 
-  .back-link { color: #60a5fa; text-decoration: none; font-size: 14px; }
+  .back-link { color: var(--app-accent); text-decoration: none; font-size: 14px; }
   .back-link:hover { text-decoration: underline; }
 
-  .section-desc { color: #94a3b8; font-size: 13px; margin: 0 0 16px; }
+  .section-desc { color: var(--app-text-muted); font-size: 13px; margin: 0 0 16px; }
 
-  /* ── Toolbar ────────────────────────────────────── */
-  .toolbar-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
+  .toolbar-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 
   /* ── Filters ────────────────────────────────────── */
-  .filter-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-  }
+  .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
 
   .filter-search {
     padding: 8px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text);
     font-size: 13px;
     min-width: 200px;
     flex: 1;
     max-width: 360px;
   }
 
-  .filter-search:focus { outline: none; border-color: #60a5fa; }
+  .filter-search:focus { outline: none; border-color: var(--app-accent); }
 
   .filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
 
   .pill {
     padding: 4px 12px;
     background: none;
-    border: 1px solid #334155;
+    border: 1px solid var(--app-border);
     border-radius: 4px;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     font-size: 12px;
     cursor: pointer;
   }
 
-  .pill:hover { color: #e2e8f0; background: #1e293b; }
-  .pill.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+  .pill:hover { color: var(--app-text); background: var(--app-hover-bg); }
+  .pill.active { background: var(--app-accent); border-color: var(--app-accent); color: white; }
 
-  /* ── Pending section ────────────────────────────── */
-  .pending-section { border-color: #92400e !important; }
+  .pending-section { border-color: var(--app-warning-bg) !important; }
 
-  .expired { color: #f87171; }
+  .expired { color: var(--app-danger); }
 
-  .empty-state {
-    text-align: center;
-    padding: 32px;
-    color: #475569;
-    font-size: 14px;
-  }
+  .empty-state { text-align: center; padding: 32px; color: var(--app-text-faint); font-size: 14px; }
 
-  .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-top: 12px;
-    font-size: 13px;
-    color: #94a3b8;
-  }
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--app-text-muted); }
 
-  .btn-sm-active { border-color: #60a5fa !important; color: #60a5fa !important; }
+  .btn-sm-active { border-color: var(--app-accent) !important; color: var(--app-accent) !important; }
 
-  /* ── Reuse admin-page global styles ─────────────── */
-  .dict-page :global(.section h2) { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
-
+  /* ── Global class styles (CSS variable based) ──── */
   .dict-page :global(.data-table) { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
-  .dict-page :global(.data-table th) { text-align: left; padding: 8px 12px; color: #94a3b8; font-weight: 500; border-bottom: 1px solid #334155; }
-  .dict-page :global(.data-table td) { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
-  .dict-page :global(.data-table tbody tr:hover) { background: #1e293b; }
+  .dict-page :global(.data-table th) { text-align: left; padding: 8px 12px; color: var(--app-text-muted); font-weight: 500; border-bottom: 1px solid var(--app-border); }
+  .dict-page :global(.data-table td) { padding: 8px 12px; border-bottom: 1px solid var(--app-border-light); }
+  .dict-page :global(.data-table tbody tr:hover) { background: var(--app-hover-bg); }
 
-  .dict-page :global(.badge) { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #334155; color: #94a3b8; }
-  .dict-page :global(.badge-pending) { background: #713f12; color: #fbbf24; }
+  .dict-page :global(.badge) { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--app-badge-bg); color: var(--app-text-muted); }
+  .dict-page :global(.badge-pending) { background: var(--app-warning-bg); color: var(--app-warning-text); }
 
-  .dict-page :global(.form-section) { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
-  .dict-page :global(.form-section h3) { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: #e2e8f0; }
+  .dict-page :global(.form-section) { background: var(--app-card-bg); border: 1px solid var(--app-border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .dict-page :global(.form-section h3) { font-size: 15px; font-weight: 600; margin: 0 0 12px; color: var(--app-text); }
 
   .dict-page :global(.form-grid) { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .dict-page :global(.form-grid input),
-  .dict-page :global(.form-grid select) { padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f1f5f9; font-size: 13px; min-width: 140px; flex: 1; }
+  .dict-page :global(.form-grid select) { padding: 8px 12px; background: var(--app-input-bg); border: 1px solid var(--app-input-border); border-radius: 6px; color: var(--app-text); font-size: 13px; min-width: 140px; flex: 1; }
   .dict-page :global(.form-grid input:focus),
-  .dict-page :global(.form-grid select:focus) { outline: none; border-color: #60a5fa; }
+  .dict-page :global(.form-grid select:focus) { outline: none; border-color: var(--app-accent); }
 
-  .dict-page :global(.btn-primary) { padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-  .dict-page :global(.btn-primary:hover) { background: #2563eb; }
+  .dict-page :global(.btn-primary) { padding: 8px 16px; background: var(--app-accent); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .dict-page :global(.btn-primary:hover) { background: var(--app-accent-hover); }
 
-  .dict-page :global(.btn-sm) { padding: 4px 10px; background: #334155; color: #cbd5e1; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
-  .dict-page :global(.btn-sm:hover) { background: #475569; }
+  .dict-page :global(.btn-sm) { padding: 4px 10px; background: var(--app-badge-bg); color: var(--app-text-secondary); border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .dict-page :global(.btn-sm:hover) { background: var(--app-hover-bg); }
   .dict-page :global(.btn-sm:disabled) { opacity: 0.3; cursor: default; }
 
-  .dict-page :global(.btn-danger) { color: #f87171; }
-  .dict-page :global(.btn-danger:hover:not(:disabled)) { background: rgba(248, 113, 113, 0.15); }
+  .dict-page :global(.btn-danger) { color: var(--app-danger); }
+  .dict-page :global(.btn-danger:hover:not(:disabled)) { background: rgba(248, 113, 113, 0.1); }
 
-  .dict-page :global(.btn-save) { background: #22c55e; color: white; }
-  .dict-page :global(.btn-save:hover) { background: #16a34a; }
+  .dict-page :global(.btn-save) { background: var(--app-success); color: white; }
+  .dict-page :global(.btn-save:hover) { background: var(--app-success-hover); }
 
-  .dict-page :global(.btn-approve) { background: #22c55e; color: white; }
-  .dict-page :global(.btn-approve:hover) { background: #16a34a; }
+  .dict-page :global(.btn-approve) { background: var(--app-success); color: white; }
+  .dict-page :global(.btn-approve:hover) { background: var(--app-success-hover); }
 
   .dict-page :global(.btn-row) { display: flex; gap: 6px; }
 
-  .dict-page :global(.inline-input) { padding: 4px 8px; background: #0f172a; border: 1px solid #334155; border-radius: 4px; color: #f1f5f9; font-size: 12px; width: 100%; min-width: 60px; }
-  .dict-page :global(.inline-input:focus) { outline: none; border-color: #60a5fa; }
+  .dict-page :global(.inline-input) { padding: 4px 8px; background: var(--app-input-bg); border: 1px solid var(--app-input-border); border-radius: 4px; color: var(--app-text); font-size: 12px; width: 100%; min-width: 60px; box-sizing: border-box; }
+  .dict-page :global(.inline-input:focus) { outline: none; border-color: var(--app-accent); }
 
-  .dict-page :global(.msg-error) { margin-bottom: 12px; font-size: 13px; color: #f87171; }
-  .dict-page :global(.msg-success) { margin-bottom: 12px; font-size: 13px; color: #4ade80; }
+  .dict-page :global(.msg-error) { margin-bottom: 12px; font-size: 13px; color: var(--app-danger); }
+  .dict-page :global(.msg-success) { margin-bottom: 12px; font-size: 13px; color: var(--app-success); }
 </style>

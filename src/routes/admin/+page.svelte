@@ -139,8 +139,8 @@
 <style>
   .admin-page {
     min-height: 100vh;
-    background: #0f172a;
-    color: #f1f5f9;
+    background: var(--app-bg);
+    color: var(--app-text);
     padding: 24px 40px;
   }
 
@@ -158,7 +158,7 @@
   }
 
   .back-link {
-    color: #60a5fa;
+    color: var(--app-accent);
     text-decoration: none;
     font-size: 14px;
   }
@@ -172,7 +172,7 @@
     flex-wrap: wrap;
     gap: 4px;
     margin-bottom: 24px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border);
     padding-bottom: 0;
   }
 
@@ -180,7 +180,7 @@
     padding: 10px 20px;
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -190,12 +190,12 @@
   }
 
   .tab.active {
-    color: #60a5fa;
-    border-bottom-color: #60a5fa;
+    color: var(--app-accent);
+    border-bottom-color: var(--app-accent);
   }
 
   .tab:hover:not(.active) {
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
   }
 
   .tab-badge {
@@ -206,7 +206,7 @@
     height: 18px;
     padding: 0 5px;
     border-radius: 9px;
-    background: #f59e0b;
+    background: var(--app-warning-text, #f59e0b);
     color: #1e293b;
     font-size: 11px;
     font-weight: 700;
@@ -230,14 +230,14 @@
   .admin-page :global(.data-table th) {
     text-align: left;
     padding: 8px 12px;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     font-weight: 500;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border);
   }
 
   .admin-page :global(.data-table td) {
     padding: 8px 12px;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid var(--app-border-light);
   }
 
   .admin-page :global(.badge) {
@@ -246,8 +246,8 @@
     border-radius: 4px;
     font-size: 11px;
     font-weight: 600;
-    background: #334155;
-    color: #94a3b8;
+    background: var(--app-badge-bg);
+    color: var(--app-text-muted);
   }
 
   .admin-page :global(.badge-admin) {
@@ -299,23 +299,23 @@
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
     cursor: pointer;
     white-space: nowrap;
   }
 
   .admin-page :global(.btn-approve) {
-    background: #22c55e;
+    background: var(--app-success);
     color: white;
   }
 
   .admin-page :global(.btn-approve:hover) {
-    background: #16a34a;
+    background: var(--app-success-hover);
   }
 
   .admin-page :global(.form-section) {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
     padding: 20px;
     margin-top: 16px;
@@ -325,7 +325,7 @@
     font-size: 15px;
     font-weight: 600;
     margin: 0 0 12px;
-    color: #e2e8f0;
+    color: var(--app-text);
   }
 
   .admin-page :global(.form-grid) {
@@ -341,10 +341,10 @@
   .admin-page :global(.form-grid input:not([type])),
   .admin-page :global(.form-grid select) {
     padding: 8px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text);
     font-size: 13px;
     min-width: 160px;
     flex: 1;
@@ -353,7 +353,7 @@
   .admin-page :global(.form-grid input:focus),
   .admin-page :global(.form-grid select:focus) {
     outline: none;
-    border-color: #60a5fa;
+    border-color: var(--app-accent);
   }
 
   .admin-page :global(.checkbox-label) {
@@ -361,14 +361,14 @@
     align-items: center;
     gap: 6px;
     font-size: 13px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
     cursor: pointer;
     white-space: nowrap;
   }
 
   .admin-page :global(.btn-primary) {
     padding: 8px 16px;
-    background: #3b82f6;
+    background: var(--app-accent);
     color: white;
     border: none;
     border-radius: 6px;
@@ -379,13 +379,13 @@
   }
 
   .admin-page :global(.btn-primary:hover) {
-    background: #2563eb;
+    background: var(--app-accent-hover);
   }
 
   .admin-page :global(.btn-cancel) {
     padding: 8px 16px;
-    background: #334155;
-    color: #cbd5e1;
+    background: var(--app-cancel-bg);
+    color: var(--app-cancel-text);
     border: none;
     border-radius: 6px;
     font-size: 13px;
@@ -393,7 +393,7 @@
   }
 
   .admin-page :global(.btn-cancel:hover) {
-    background: #475569;
+    background: var(--app-cancel-hover);
   }
 
   .admin-page :global(.btn-row) {
@@ -403,8 +403,8 @@
 
   .admin-page :global(.btn-sm) {
     padding: 4px 10px;
-    background: #334155;
-    color: #cbd5e1;
+    background: var(--app-badge-bg);
+    color: var(--app-text-secondary);
     border: none;
     border-radius: 4px;
     font-size: 12px;
@@ -412,15 +412,15 @@
   }
 
   .admin-page :global(.btn-sm:hover) {
-    background: #475569;
+    background: var(--app-hover-bg);
   }
 
   .admin-page :global(.btn-danger) {
-    color: #f87171;
+    color: var(--app-danger);
   }
 
   .admin-page :global(.btn-danger:hover:not(:disabled)) {
-    background: rgba(248, 113, 113, 0.15);
+    background: rgba(248, 113, 113, 0.1);
   }
 
   .admin-page :global(.btn-danger:disabled) {
@@ -429,20 +429,20 @@
   }
 
   .admin-page :global(.btn-save) {
-    background: #22c55e;
+    background: var(--app-success);
     color: white;
   }
 
   .admin-page :global(.btn-save:hover) {
-    background: #16a34a;
+    background: var(--app-success-hover);
   }
 
   .admin-page :global(.inline-input) {
     padding: 4px 8px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 4px;
-    color: #f1f5f9;
+    color: var(--app-text);
     font-size: 12px;
     width: 100%;
     min-width: 80px;
@@ -450,45 +450,45 @@
 
   .admin-page :global(.inline-input:focus) {
     outline: none;
-    border-color: #60a5fa;
+    border-color: var(--app-accent);
   }
 
   .admin-page :global(.inline-select) {
     padding: 4px 8px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 4px;
-    color: #f1f5f9;
+    color: var(--app-text);
     font-size: 12px;
   }
 
   .admin-page :global(.inline-select:focus) {
     outline: none;
-    border-color: #60a5fa;
+    border-color: var(--app-accent);
   }
 
   .admin-page :global(.msg-error) {
     margin-top: 8px;
     font-size: 13px;
-    color: #f87171;
+    color: var(--app-danger);
   }
 
   .admin-page :global(.msg-success) {
     margin-top: 8px;
     font-size: 13px;
-    color: #4ade80;
+    color: var(--app-success);
   }
 
   .admin-page :global(.section-desc) {
     font-size: 13px;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     margin: 0 0 16px;
   }
 
   .admin-page :global(.btn-secondary) {
     padding: 8px 16px;
-    background: #334155;
-    color: #cbd5e1;
+    background: var(--app-cancel-bg);
+    color: var(--app-cancel-text);
     border: none;
     border-radius: 6px;
     font-size: 13px;
@@ -497,7 +497,7 @@
   }
 
   .admin-page :global(.btn-secondary:hover) {
-    background: #475569;
+    background: var(--app-cancel-hover);
   }
 
   .admin-page :global(.clickable-row) {

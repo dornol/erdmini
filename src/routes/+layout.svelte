@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { languageStore } from '$lib/store/language.svelte';
 	import { authStore } from '$lib/store/auth.svelte';
+	import { themeStore } from '$lib/store/theme.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 
 	let { data, children } = $props();
@@ -26,6 +27,15 @@
 	// Sync document lang attribute with language store
 	$effect(() => {
 		document.documentElement.lang = languageStore.current;
+	});
+
+	// Sync dark mode to body for global CSS variable cascade
+	$effect(() => {
+		if (themeStore.darkMode) {
+			document.body.setAttribute('data-dark', '');
+		} else {
+			document.body.removeAttribute('data-dark');
+		}
 	});
 
 	// Sanitize JSON-LD to prevent script injection
