@@ -9,6 +9,7 @@
   import DdlModal from './DdlModal.svelte';
   import DomainModal from './DomainModal.svelte';
   import LintPanel from './LintPanel.svelte';
+  import NamingRulesPanel from './NamingRulesPanel.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
   import SchemaDiffModal from './SchemaDiffModal.svelte';
   import SnapshotPanel from './SnapshotPanel.svelte';
@@ -72,6 +73,7 @@
   let modalMode = $state<'import' | 'export' | null>(null);
   let showDomainModal = $state(false);
   let showLintPanel = $state(false);
+  let showNamingRulesPanel = $state(false);
   let showHistoryPanel = $state(false);
   let showDiffModal = $state(false);
   let showSnapshotPanel = $state(false);
@@ -100,10 +102,11 @@
     }
   }
 
-  function handleToolsAction(action: 'domains' | 'lint' | 'history' | 'diff' | 'snapshots' | 'sql-playground' | 'embed') {
+  function handleToolsAction(action: 'domains' | 'lint' | 'history' | 'diff' | 'snapshots' | 'sql-playground' | 'embed' | 'naming-rules') {
     switch (action) {
       case 'domains': showDomainModal = true; break;
       case 'lint': showLintPanel = !showLintPanel; break;
+      case 'naming-rules': showNamingRulesPanel = !showNamingRulesPanel; break;
       case 'history': showHistoryPanel = !showHistoryPanel; break;
       case 'diff': showDiffModal = !showDiffModal; break;
       case 'snapshots': showSnapshotPanel = !showSnapshotPanel; break;
@@ -297,6 +300,10 @@
 
 {#if showLintPanel}
   <LintPanel onclose={() => (showLintPanel = false)} />
+{/if}
+
+{#if showNamingRulesPanel}
+  <NamingRulesPanel onclose={() => (showNamingRulesPanel = false)} />
 {/if}
 
 {#if showHistoryPanel}

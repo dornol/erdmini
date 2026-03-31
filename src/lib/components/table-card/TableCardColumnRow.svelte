@@ -17,6 +17,7 @@
     isUkHighlighted: boolean;
     isIdxHighlighted: boolean;
     isFkDragTarget: boolean;
+    isLintHighlighted: boolean;
     ondblclick: (e: MouseEvent) => void;
     onmouseenter: () => void;
     onmouseleave: () => void;
@@ -36,6 +37,7 @@
     isUkHighlighted,
     isIdxHighlighted,
     isFkDragTarget,
+    isLintHighlighted,
     ondblclick,
     onmouseenter,
     onmouseleave,
@@ -47,6 +49,7 @@
 <div
   class="column-row"
   class:fk-highlighted={isFkHighlighted || isUkHighlighted || isIdxHighlighted}
+  class:lint-highlighted={isLintHighlighted}
   class:fk-drag-target={isFkDragTarget}
   data-table-id={table.id}
   data-column-id={col.id}
@@ -164,6 +167,16 @@
 
   .column-row.fk-highlighted {
     background: var(--erd-fk-highlight);
+  }
+
+  .column-row.lint-highlighted {
+    background: #fef3c7;
+    animation: lint-flash 0.6s ease-in-out 2;
+  }
+
+  @keyframes lint-flash {
+    0%, 100% { background: #fef3c7; }
+    50% { background: #fde68a; }
   }
 
   /* Key badge (PK / FK) */

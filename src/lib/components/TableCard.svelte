@@ -307,6 +307,7 @@
       {@const isUkHighlighted = erdStore.hoveredUkInfo?.tableId === table.id && erdStore.hoveredUkInfo.columnIds.includes(col.id)}
       {@const isIdxHighlighted = erdStore.hoveredIdxInfo?.tableId === table.id && erdStore.hoveredIdxInfo.columnIds.includes(col.id)}
       {@const isFkDragTarget = fkDragStore.active && fkDragStore.targetTableId === table.id && fkDragStore.targetColumnId === col.id}
+      {@const isLintHighlighted = erdStore.highlightedColumn?.tableId === table.id && erdStore.highlightedColumn?.columnId === col.id}
       <TableCardColumnRow
         {col}
         {colIdx}
@@ -320,6 +321,7 @@
         {isUkHighlighted}
         {isIdxHighlighted}
         {isFkDragTarget}
+        {isLintHighlighted}
         ondblclick={(e) => onColumnDblClick(e, col.id)}
         onmouseenter={() => onColumnMouseEnter(col.id)}
         onmouseleave={onColumnMouseLeave}

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { lintSchema } from './schema-lint';
+import { lintSchema, matchesNamingConvention, splitNameToWords } from './schema-lint';
+import type { EffectiveNamingRules } from '$lib/types/naming-rules';
 import { makeColumn, makeTable, makeSchema, resetIdCounter } from './test-helpers';
 
 beforeEach(() => resetIdCounter());
@@ -668,6 +669,213 @@ describe('lintSchema', () => {
       const ruleIds = new Set(issues.map((i) => i.ruleId));
       expect(ruleIds.has('no-pk')).toBe(true);
       expect(ruleIds.has('empty-table')).toBe(true);
+    });
+  });
+
+  describe('naming-table-case', () => {
+    it('warns when table name violates snake_case', () => {
+      const t = makeTable({
+        name: 'UserAccounts',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = { tableCase: { value: 'snake_case', source: 'admin' } };
+      const issues = lintSchema(makeSchema([t]), rules);
+      const naming = issues.filter((i) => i.ruleId === 'naming-table-case');
+      expect(naming).toHaveLength(1);
+      expect(naming[0].severity).toBe('warning');
+    });
+
+    it('does not warn when table name matches snake_case', () => {
+      const t = makeTable({
+        name: 'user_accounts',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = { tableCase: { value: 'snake_case', source: 'admin' } };
+      const issues = lintSchema(makeSchema([t]), rules);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(0);
+    });
+
+    it('does not check when no naming rules passed', () => {
+      const t = makeTable({
+        name: 'UserAccounts',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const issues = lintSchema(makeSchema([t]));
+      expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(0);
+    });
+  });
+
+  describe('naming-column-case', () => {
+    it('warns when column name violates camelCase', () => {
+      const t = makeTable({
+        name: 'users',
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ name: 'user_name', type: 'VARCHAR' }),
+        ],
+      });
+      const rules: EffectiveNamingRules = { columnCase: { value: 'camelCase', source: 'admin' } };
+      const issues = lintSchema(makeSchema([t]), rules);
+      const naming = issues.filter((i) => i.ruleId === 'naming-column-case');
+      expect(naming).toHaveLength(1);
+      expect(naming[0].message).toContain('user_name');
+    });
+
+    it('does not warn when column names match camelCase', () => {
+      const t = makeTable({
+        name: 'users',
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ name: 'userName', type: 'VARCHAR' }),
+        ],
+      });
+      const rules: EffectiveNamingRules = { columnCase: { value: 'camelCase', source: 'admin' } };
+      const issues = lintSchema(makeSchema([t]), rules);
+      expect(issues.filter((i) => i.ruleId === 'naming-column-case')).toHaveLength(0);
+    });
+  });
+
+  describe('naming-prefix-suffix', () => {
+    it('warns when table missing required prefix', () => {
+      const t = makeTable({
+        name: 'users',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = { tablePrefix: { value: 'tbl_', source: 'admin' } };
+      const issues = lintSchema(makeSchema([t]), rules);
+      expect(issues.filter(i => i.ruleId === 'naming-table-prefix')).toHaveLength(1);
+    });
+
+    it('does not warn when table has required prefix', () => {
+      const t = makeTable({
+        name: 'tbl_users',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = { tablePrefix: { value: 'tbl_', source: 'admin' } };
+      const issues = lintSchema(makeSchema([t]), rules);
+      expect(issues.filter(i => i.ruleId === 'naming-table-prefix')).toHaveLength(0);
+    });
+
+    it('warns when column missing required suffix', () => {
+      const t = makeTable({
+        name: 'users',
+        columns: [makeColumn({ name: 'user_name', type: 'VARCHAR' })],
+      });
+      const rules: EffectiveNamingRules = { columnSuffix: { value: '_col', source: 'admin' } };
+      const issues = lintSchema(makeSchema([t]), rules);
+      expect(issues.filter(i => i.ruleId === 'naming-column-suffix')).toHaveLength(1);
+    });
+  });
+
+  describe('naming-dictionary', () => {
+    it('warns when table name has words not in dictionary', () => {
+      const t = makeTable({
+        name: 'user_accounts',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = { dictionaryCheck: { value: 'table', source: 'admin' } };
+      const dict = new Set(['user']);
+      const issues = lintSchema(makeSchema([t]), rules, dict);
+      const naming = issues.filter(i => i.ruleId === 'naming-dictionary');
+      expect(naming).toHaveLength(1);
+      expect(naming[0].message).toContain('accounts');
+    });
+
+    it('does not warn when all words in dictionary', () => {
+      const t = makeTable({
+        name: 'user_accounts',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = { dictionaryCheck: { value: 'table', source: 'admin' } };
+      const dict = new Set(['user', 'accounts']);
+      const issues = lintSchema(makeSchema([t]), rules, dict);
+      expect(issues.filter(i => i.ruleId === 'naming-dictionary')).toHaveLength(0);
+    });
+
+    it('checks both table and column when target is both', () => {
+      const t = makeTable({
+        name: 'user_table',
+        columns: [makeColumn({ name: 'unknown_col', type: 'VARCHAR' })],
+      });
+      const rules: EffectiveNamingRules = { dictionaryCheck: { value: 'both', source: 'admin' } };
+      const dict = new Set(['user', 'table']);
+      const issues = lintSchema(makeSchema([t]), rules, dict);
+      const naming = issues.filter(i => i.ruleId === 'naming-dictionary');
+      expect(naming).toHaveLength(1); // unknown_col has 'unknown' and 'col' not in dict
+      expect(naming[0].columnId).toBeDefined();
+    });
+  });
+});
+
+describe('splitNameToWords', () => {
+  it.each([
+    ['user_accounts', ['user', 'accounts']],
+    ['USER_ACCOUNTS', ['user', 'accounts']],
+    ['userAccounts', ['user', 'accounts']],
+    ['UserAccounts', ['user', 'accounts']],
+    ['id', ['id']],
+    ['user_id', ['user', 'id']],
+    ['userId', ['user', 'id']],
+  ])('%s → %j', (name, expected) => {
+    expect(splitNameToWords(name)).toEqual(expected);
+  });
+});
+
+describe('matchesNamingConvention', () => {
+  describe('snake_case', () => {
+    it.each([
+      ['user_accounts', true],
+      ['id', true],
+      ['user_id', true],
+      ['a1_b2', true],
+      ['UserAccounts', false],
+      ['userAccounts', false],
+      ['USER_ACCOUNTS', false],
+      ['_leading', false],
+      ['trailing_', false],
+      ['double__under', false],
+    ])('%s → %s', (name, expected) => {
+      expect(matchesNamingConvention(name, 'snake_case')).toBe(expected);
+    });
+  });
+
+  describe('camelCase', () => {
+    it.each([
+      ['userAccounts', true],
+      ['id', true],
+      ['userId', true],
+      ['user_accounts', false],
+      ['UserAccounts', false],
+      ['USER_ACCOUNTS', false],
+    ])('%s → %s', (name, expected) => {
+      expect(matchesNamingConvention(name, 'camelCase')).toBe(expected);
+    });
+  });
+
+  describe('PascalCase', () => {
+    it.each([
+      ['UserAccounts', true],
+      ['Id', true],
+      ['UserId', true],
+      ['user_accounts', false],
+      ['userAccounts', false],
+      ['USER_ACCOUNTS', false],
+    ])('%s → %s', (name, expected) => {
+      expect(matchesNamingConvention(name, 'PascalCase')).toBe(expected);
+    });
+  });
+
+  describe('UPPER_SNAKE_CASE', () => {
+    it.each([
+      ['USER_ACCOUNTS', true],
+      ['ID', true],
+      ['USER_ID', true],
+      ['A1_B2', true],
+      ['user_accounts', false],
+      ['UserAccounts', false],
+      ['userAccounts', false],
+    ])('%s → %s', (name, expected) => {
+      expect(matchesNamingConvention(name, 'UPPER_SNAKE_CASE')).toBe(expected);
     });
   });
 });

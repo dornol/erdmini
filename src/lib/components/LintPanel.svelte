@@ -1,11 +1,16 @@
 <script lang="ts">
   import { erdStore, canvasState } from '$lib/store/erd.svelte';
   import { lintSchema, type LintIssue } from '$lib/utils/schema-lint';
+  import { namingRuleStore } from '$lib/store/naming-rules.svelte';
   import * as m from '$lib/paraglide/messages';
 
   let { onclose }: { onclose: () => void } = $props();
 
-  let issues = $derived(lintSchema(erdStore.schema));
+  let issues = $derived(lintSchema(
+    erdStore.schema,
+    namingRuleStore.hasActiveRules ? namingRuleStore.effectiveRules : undefined,
+    namingRuleStore.dictionaryWords.size > 0 ? namingRuleStore.dictionaryWords : undefined,
+  ));
 
   const RULE_LABELS: Record<string, () => string> = {
     'no-pk': () => m.lint_no_pk(),
@@ -21,6 +26,13 @@
     'fk-column-count-mismatch': () => m.lint_fk_column_count_mismatch(),
     'fk-references-non-unique': () => m.lint_fk_references_non_unique(),
     'domain-circular-hierarchy': () => m.lint_domain_circular_hierarchy(),
+    'naming-table-case': () => m.lint_naming_table_case(),
+    'naming-column-case': () => m.lint_naming_column_case(),
+    'naming-table-prefix': () => m.lint_naming_table_prefix(),
+    'naming-table-suffix': () => m.lint_naming_table_suffix(),
+    'naming-column-prefix': () => m.lint_naming_column_prefix(),
+    'naming-column-suffix': () => m.lint_naming_column_suffix(),
+    'naming-dictionary': () => m.lint_naming_dictionary(),
   };
 
   const SEVERITY_ICON: Record<string, string> = {
@@ -56,6 +68,9 @@
   function handleIssueClick(issue: LintIssue) {
     if (issue.tableId) {
       navigateToTable(issue.tableId);
+      if (issue.columnId) {
+        erdStore.flashColumn(issue.tableId, issue.columnId);
+      }
     }
   }
 </script>

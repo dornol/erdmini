@@ -120,6 +120,7 @@ export interface ERDSchema {
   memos: Memo[];
   groupColors?: Record<string, string>;
   schemas?: string[];
+  namingRules?: import('./naming-rules').ProjectNamingOverrides;
   createdAt: string;
   updatedAt: string;
 }

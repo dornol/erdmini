@@ -1,5 +1,6 @@
 import { erdStore } from '$lib/store/erd.svelte';
 import { projectStore } from '$lib/store/project.svelte';
+import { permissionStore } from '$lib/store/permission.svelte';
 import { deriveLabel } from '$lib/utils/history-labels';
 import type { ERDSchema } from '$lib/types/erd';
 
@@ -33,9 +34,9 @@ export function useAutoSave(): () => void {
       prevUpdatedAt = cur;
     }
     prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
-    if (projectStore.safeToSave) {
+    if (projectStore.safeToSave && !permissionStore.isReadOnly) {
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => { if (projectStore.safeToSave) await projectStore.saveCurrentSchema(); }, 300);
+      saveTimer = setTimeout(async () => { if (projectStore.safeToSave && !permissionStore.isReadOnly) await projectStore.saveCurrentSchema(); }, 300);
     }
   });
 

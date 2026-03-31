@@ -1,4 +1,5 @@
 import db from './db';
+import type { SiteNamingRules } from '$lib/types/naming-rules';
 
 export interface SiteSettings {
   site_name: string;
@@ -81,4 +82,30 @@ export function updateSiteSettings(updates: Partial<SiteSettings>): SiteSettings
   tx();
   _cache = null; // invalidate cache
   return getSiteSettings();
+}
+
+// --- Naming Rules (stored as JSON in site_settings key 'naming_rules') ---
+
+let _namingRulesCache: SiteNamingRules | null = null;
+
+export function getNamingRules(): SiteNamingRules {
+  if (_namingRulesCache) return _namingRulesCache;
+  const row = db.prepare("SELECT value FROM site_settings WHERE key = 'naming_rules'").get() as { value: string } | undefined;
+  if (row?.value) {
+    try {
+      _namingRulesCache = JSON.parse(row.value) as SiteNamingRules;
+      return _namingRulesCache;
+    } catch {
+      // invalid JSON, return empty
+    }
+  }
+  _namingRulesCache = {};
+  return _namingRulesCache;
+}
+
+export function updateNamingRules(rules: SiteNamingRules): SiteNamingRules {
+  const json = JSON.stringify(rules);
+  db.prepare("INSERT INTO site_settings (key, value) VALUES ('naming_rules', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(json);
+  _namingRulesCache = null;
+  return getNamingRules();
 }

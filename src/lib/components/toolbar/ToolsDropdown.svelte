@@ -3,6 +3,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { lintSchema } from '$lib/utils/schema-lint';
+  import { namingRuleStore } from '$lib/store/naming-rules.svelte';
   import { TABLE_TEMPLATES } from '$lib/utils/table-templates';
   import * as m from '$lib/paraglide/messages';
 
@@ -10,12 +11,16 @@
     open: boolean;
     ontoggle: () => void;
     onclose: () => void;
-    onaction: (action: 'domains' | 'lint' | 'history' | 'diff' | 'snapshots' | 'sql-playground' | 'embed') => void;
+    onaction: (action: 'domains' | 'lint' | 'history' | 'diff' | 'snapshots' | 'sql-playground' | 'embed' | 'naming-rules') => void;
   }
 
   let { open, ontoggle, onclose, onaction }: Props = $props();
 
-  let lintIssueCount = $derived(lintSchema(erdStore.schema).length);
+  let lintIssueCount = $derived(lintSchema(
+    erdStore.schema,
+    namingRuleStore.hasActiveRules ? namingRuleStore.effectiveRules : undefined,
+    namingRuleStore.dictionaryWords.size > 0 ? namingRuleStore.dictionaryWords : undefined,
+  ).length);
 </script>
 
 <div class="dropdown-wrap">
@@ -48,6 +53,11 @@
           <span class="lint-badge">{lintIssueCount}</span>
         {/if}
       </button>
+      {#if namingRuleStore.hasActiveRules}
+        <button class="dropdown-item" role="menuitem" onclick={() => { onaction('naming-rules'); onclose(); }}>
+          {m.naming_rule_title()}
+        </button>
+      {/if}
       <div class="dropdown-sep"></div>
       <button class="dropdown-item" role="menuitem" onclick={() => { onaction('history'); onclose(); }}>
         {m.history_title()}

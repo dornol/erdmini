@@ -24,6 +24,7 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { authStore } from '$lib/store/auth.svelte';
   import { snapshotStore } from '$lib/store/snapshot.svelte';
+  import { namingRuleStore } from '$lib/store/naming-rules.svelte';
   import { browser } from '$app/environment';
   import { page } from '$app/state';
 
@@ -86,8 +87,14 @@
     await loadShareFromHash();
 
     // Auto-load shared projects for users with no projects
-    if (projectStore.index.projects.length === 0 && authStore.user && !authStore.user.canCreateProject) {
+    if (projectStore.index.projects.length === 0 && authStore.user) {
       await autoLoadSharedProjects();
+    }
+
+    // Load naming rules in server mode
+    if (authStore.user) {
+      namingRuleStore.fetchSiteRules();
+      namingRuleStore.fetchDictionaryWords();
     }
   });
 

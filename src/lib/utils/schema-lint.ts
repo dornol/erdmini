@@ -1,5 +1,32 @@
 import type { ColumnType, ERDSchema } from '$lib/types/erd';
+import type { EffectiveNamingRules, NamingConvention } from '$lib/types/naming-rules';
 import { validateHierarchy } from '$lib/utils/domain-hierarchy';
+
+// Naming convention matchers
+const SNAKE_CASE_RE = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
+const CAMEL_CASE_RE = /^[a-z][a-zA-Z0-9]*$/;
+const PASCAL_CASE_RE = /^[A-Z][a-zA-Z0-9]*$/;
+const UPPER_SNAKE_CASE_RE = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/;
+
+export function matchesNamingConvention(name: string, convention: NamingConvention): boolean {
+  switch (convention) {
+    case 'snake_case': return SNAKE_CASE_RE.test(name);
+    case 'camelCase': return CAMEL_CASE_RE.test(name);
+    case 'PascalCase': return PASCAL_CASE_RE.test(name);
+    case 'UPPER_SNAKE_CASE': return UPPER_SNAKE_CASE_RE.test(name);
+    default: return true;
+  }
+}
+
+/** Split a name into words based on convention */
+export function splitNameToWords(name: string): string[] {
+  // Handle snake_case / UPPER_SNAKE_CASE
+  if (name.includes('_')) {
+    return name.split('_').filter(Boolean).map(w => w.toLowerCase());
+  }
+  // Handle camelCase / PascalCase
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').split('_').filter(Boolean).map(w => w.toLowerCase());
+}
 
 const TYPE_COMPAT_GROUP: Record<string, string> = {
   INT: 'integer', BIGINT: 'integer', SMALLINT: 'integer',
@@ -26,7 +53,7 @@ function nextId(): string {
   return `lint_${++_issueCounter}`;
 }
 
-export function lintSchema(schema: ERDSchema): LintIssue[] {
+export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules, dictionaryWords?: Set<string>): LintIssue[] {
   _issueCounter = 0;
   const issues: LintIssue[] = [];
   const tableById = new Map(schema.tables.map((t) => [t.id, t]));
@@ -313,6 +340,153 @@ export function lintSchema(schema: ERDSchema): LintIssue[] {
             columnId: srcCol.id,
             message: `${table.name}.${srcCol.name}(${srcCol.type}) → ${refTable.name}.${refCol.name}(${refCol.type})`,
           });
+        }
+      }
+    }
+  }
+
+  // Naming convention rules (server mode, admin-configured)
+  if (namingRules) {
+    // Rule 14: naming-table-case — Table name violates case convention
+    const tableCase = namingRules.tableCase;
+    if (tableCase) {
+      for (const table of schema.tables) {
+        if (!matchesNamingConvention(table.name, tableCase.value as NamingConvention)) {
+          issues.push({
+            id: nextId(),
+            severity: 'warning',
+            ruleId: 'naming-table-case',
+            tableId: table.id,
+            message: `${table.name} (${tableCase.value})`,
+          });
+        }
+      }
+    }
+
+    // Rule 15: naming-column-case — Column name violates case convention
+    const columnCase = namingRules.columnCase;
+    if (columnCase) {
+      for (const table of schema.tables) {
+        for (const col of table.columns) {
+          if (!matchesNamingConvention(col.name, columnCase.value as NamingConvention)) {
+            issues.push({
+              id: nextId(),
+              severity: 'warning',
+              ruleId: 'naming-column-case',
+              tableId: table.id,
+              columnId: col.id,
+              message: `${table.name}.${col.name} (${columnCase.value})`,
+            });
+          }
+        }
+      }
+    }
+
+    // Rule 16: naming-table-prefix — Table name missing required prefix
+    const tablePrefix = namingRules.tablePrefix;
+    if (tablePrefix && tablePrefix.value) {
+      for (const table of schema.tables) {
+        if (!table.name.startsWith(tablePrefix.value)) {
+          issues.push({
+            id: nextId(),
+            severity: 'warning',
+            ruleId: 'naming-table-prefix',
+            tableId: table.id,
+            message: `${table.name} (${tablePrefix.value}*)`,
+          });
+        }
+      }
+    }
+
+    // Rule 17: naming-table-suffix — Table name missing required suffix
+    const tableSuffix = namingRules.tableSuffix;
+    if (tableSuffix && tableSuffix.value) {
+      for (const table of schema.tables) {
+        if (!table.name.endsWith(tableSuffix.value)) {
+          issues.push({
+            id: nextId(),
+            severity: 'warning',
+            ruleId: 'naming-table-suffix',
+            tableId: table.id,
+            message: `${table.name} (*${tableSuffix.value})`,
+          });
+        }
+      }
+    }
+
+    // Rule 18: naming-column-prefix — Column name missing required prefix
+    const columnPrefix = namingRules.columnPrefix;
+    if (columnPrefix && columnPrefix.value) {
+      for (const table of schema.tables) {
+        for (const col of table.columns) {
+          if (!col.name.startsWith(columnPrefix.value)) {
+            issues.push({
+              id: nextId(),
+              severity: 'warning',
+              ruleId: 'naming-column-prefix',
+              tableId: table.id,
+              columnId: col.id,
+              message: `${table.name}.${col.name} (${columnPrefix.value}*)`,
+            });
+          }
+        }
+      }
+    }
+
+    // Rule 19: naming-column-suffix — Column name missing required suffix
+    const columnSuffix = namingRules.columnSuffix;
+    if (columnSuffix && columnSuffix.value) {
+      for (const table of schema.tables) {
+        for (const col of table.columns) {
+          if (!col.name.endsWith(columnSuffix.value)) {
+            issues.push({
+              id: nextId(),
+              severity: 'warning',
+              ruleId: 'naming-column-suffix',
+              tableId: table.id,
+              columnId: col.id,
+              message: `${table.name}.${col.name} (*${columnSuffix.value})`,
+            });
+          }
+        }
+      }
+    }
+
+    // Rule 20: naming-dictionary — Name contains words not in dictionary
+    const dictCheck = namingRules.dictionaryCheck;
+    if (dictCheck && dictionaryWords && dictionaryWords.size > 0) {
+      const target = dictCheck.value as 'table' | 'column' | 'both';
+      if (target === 'table' || target === 'both') {
+        for (const table of schema.tables) {
+          const words = splitNameToWords(table.name);
+          const unknown = words.filter(w => !dictionaryWords.has(w));
+          if (unknown.length > 0) {
+            issues.push({
+              id: nextId(),
+              severity: 'info',
+              ruleId: 'naming-dictionary',
+              tableId: table.id,
+              message: `${table.name}: ${unknown.join(', ')}`,
+            });
+          }
+        }
+      }
+      if (target === 'column' || target === 'both') {
+        for (const table of schema.tables) {
+          for (const col of table.columns) {
+            const words = splitNameToWords(col.name);
+            const unknown = words.filter(w => !dictionaryWords.has(w));
+            if (unknown.length > 0) {
+              issues.push({
+                id: nextId(),
+                severity: 'info',
+                ruleId: 'naming-dictionary',
+                tableId: table.id,
+                columnId: col.id,
+                message: `${table.name}.${col.name}: ${unknown.join(', ')}`,
+              });
+            }
+          }
         }
       }
     }

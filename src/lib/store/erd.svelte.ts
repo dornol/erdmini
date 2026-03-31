@@ -1,4 +1,5 @@
 import type { Column, ColumnDomain, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
+import type { NamingRuleType } from '$lib/types/naming-rules';
 import { now } from '$lib/utils/common';
 import { normalizeSchema } from '$lib/utils/schema-normalize';
 import { canvasState } from '$lib/store/canvas.svelte';
@@ -43,6 +44,9 @@ class ERDStore {
   hoveredFkInfo = $state<{ sourceTableId: string; sourceColumnIds: string[]; refTableId: string; refColumnIds: string[] }[]>([]);
   hoveredUkInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
   hoveredIdxInfo = $state<{ tableId: string; columnIds: string[] } | null>(null);
+  /** Highlighted column from lint panel click — auto-clears after timeout */
+  highlightedColumn = $state<{ tableId: string; columnId: string } | null>(null);
+  private _highlightTimer: ReturnType<typeof setTimeout> | undefined;
   lastAddedTableId = $state<string | null>(null);
   // Undo/Redo
   private _undoStack: HistoryEntry[] = [];
@@ -225,6 +229,23 @@ class ERDStore {
     this.schema.groupColors = { ...this.schema.groupColors };
     this.schema.updatedAt = now();
     this._emitOp({ kind: 'update-group-color', group, color });
+  }
+
+  flashColumn(tableId: string, columnId: string) {
+    clearTimeout(this._highlightTimer);
+    this.highlightedColumn = { tableId, columnId };
+    this._highlightTimer = setTimeout(() => { this.highlightedColumn = null; }, 3000);
+  }
+
+  setNamingOverride(ruleType: NamingRuleType, value: string | undefined) {
+    if (!this.schema.namingRules) this.schema.namingRules = {};
+    if (value === undefined) {
+      delete this.schema.namingRules[ruleType];
+    } else {
+      this.schema.namingRules[ruleType] = value;
+    }
+    this.schema.namingRules = { ...this.schema.namingRules };
+    this.schema.updatedAt = now();
   }
 
   renameGroup(oldName: string, newName: string) {
