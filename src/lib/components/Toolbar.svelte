@@ -264,6 +264,12 @@
       </a>
     {/if}
 
+    {#if isServerMode && authStore.isLoggedIn}
+      <a class="btn-secondary btn-dict" href="/dictionary" target="_blank">
+        {m.dict_title()}
+      </a>
+    {/if}
+
     <UserMenu
       open={activeDropdown === 'userMenu'}
       ontoggle={() => toggleDropdown('userMenu')}
@@ -484,6 +490,12 @@
   .toolbar :global(.btn-secondary:hover) {
     background: #334155;
     color: white;
+  }
+
+  .toolbar :global(.btn-dict) {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
   }
 
   .toolbar :global(.btn-icon) {

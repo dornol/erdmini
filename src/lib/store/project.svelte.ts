@@ -43,17 +43,13 @@ class ProjectStore {
     const existingIndex = await this.provider.loadIndex();
     if (existingIndex) {
       this.index = existingIndex;
-      // Empty index + user now has create permission → make a default project
-      if (this.index.projects.length === 0 && (!authStore.user || authStore.user.canCreateProject)) {
-        await this.createDefaultProject();
-        return;
-      }
       if (this.index.activeProjectId) {
         await this.loadProjectSchema(this.index.activeProjectId);
       }
       return;
     }
 
+    // Migrate legacy localStorage schema (local mode)
     const legacyRaw = await this.provider.loadLegacySchema();
     if (legacyRaw) {
       const id = generateId();
@@ -75,15 +71,9 @@ class ProjectStore {
       return;
     }
 
-    // In server mode, skip auto-creating default project if user lacks permission
-    const user = authStore.user;
-    if (user && !user.canCreateProject) {
-      this.index = { version: '1', activeProjectId: '', projects: [] };
-      erdStore.loadSchema(defaultSchema());
-      return;
-    }
-
-    await this.createDefaultProject();
+    // No existing data — show welcome screen (no auto-create)
+    this.index = { version: '1', activeProjectId: '', projects: [] };
+    erdStore.loadSchema(defaultSchema());
   }
 
   private async createDefaultProject() {
@@ -98,8 +88,9 @@ class ProjectStore {
     };
     this.index = { version: '1', activeProjectId: id, projects: [meta] };
     const schema = defaultSchema();
-    await this.provider.saveSchema(id, schema);
+    // Save index first to establish owner permission, then save schema
     await this.saveIndex();
+    await this.provider.saveSchema(id, schema);
     erdStore.loadSchema(schema);
   }
 
@@ -215,8 +206,9 @@ class ProjectStore {
       this.index.projects = [...this.index.projects, meta];
       this.index.activeProjectId = id;
       const schema = defaultSchema();
-      await this.provider.saveSchema(id, schema);
+      // Save index first to establish owner permission, then save schema
       await this.saveIndex();
+      await this.provider.saveSchema(id, schema);
       erdStore.clearHistory();
       erdStore.loadSchema(schema);
       await snapshotStore.init(this.provider, id);

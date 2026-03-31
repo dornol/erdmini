@@ -25,6 +25,9 @@
   import { authStore } from '$lib/store/auth.svelte';
   import { snapshotStore } from '$lib/store/snapshot.svelte';
   import { browser } from '$app/environment';
+  import { page } from '$app/state';
+
+  const siteSettings = $derived((page.data as any)?.siteSettings as { site_name: string; logo_url: string } | null);
   import { scale, fade } from 'svelte/transition';
   import * as m from '$lib/paraglide/messages';
   import { restoreCanvasSettings, persistColumnDisplayMode, persistLineType, persistShowGrid, persistShowRelationLines, persistSchemaView } from '$lib/utils/canvas-persistence';
@@ -75,7 +78,9 @@
   onMount(async () => {
     const provider = await getStorageProvider();
     await projectStore.init(provider);
-    await snapshotStore.init(provider, projectStore.index.activeProjectId);
+    if (projectStore.index.activeProjectId) {
+      await snapshotStore.init(provider, projectStore.index.activeProjectId);
+    }
 
     // Load shared schema from URL hash immediately after init (most reliable timing)
     await loadShareFromHash();
@@ -181,22 +186,35 @@
     {:else}
       <!-- Normal Mode -->
       <StorageBanner storageFull={projectStore.storageFull} />
-      {@const noProject = projectStore.index.projects.length === 0 && !!authStore.user && !authStore.user.canCreateProject}
+      {@const noProject = projectStore.index.projects.length === 0}
+      {@const canCreate = !authStore.user || authStore.user.canCreateProject}
       <Toolbar minimal={noProject} />
       {#if noProject}
-        <!-- No-project placeholder for users without create permission -->
         <div class="no-project-screen">
           <div class="no-project-card">
             <div class="no-project-icon">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-              </svg>
+              {#if siteSettings?.logo_url}
+                <img src={siteSettings.logo_url} alt="" class="welcome-logo" />
+              {:else}
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <path d="M9 3v18"/><path d="M3 9h6"/><path d="M3 15h6"/>
+                  <circle cx="16" cy="12" r="2"/><path d="M16 8v1"/><path d="M16 15v1"/>
+                  <path d="M12.5 10l.9-.5"/><path d="M18.6 13.5l.9.5"/>
+                  <path d="M12.5 14l.9.5"/><path d="M18.6 10.5l.9-.5"/>
+                </svg>
+              {/if}
             </div>
-            <div class="no-project-text">
-              <h2 class="no-project-title">{m.no_project_title()}</h2>
+            <h2 class="no-project-title">{siteSettings?.site_name || 'erdmini'}</h2>
+            {#if canCreate}
+              <p class="no-project-desc">{m.welcome_desc()}</p>
+              <button class="no-project-btn" onclick={async () => {
+                await projectStore.createProject('My Project');
+              }}>{m.project_new()}</button>
+            {:else}
               <p class="no-project-desc">{m.no_project_desc()}</p>
               <p class="no-project-hint">{m.no_project_shared_hint()}</p>
-            </div>
+            {/if}
           </div>
         </div>
       {:else}
@@ -347,36 +365,59 @@
 
   .no-project-card {
     display: flex;
-    align-items: flex-start;
-    gap: 20px;
-    max-width: 480px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    max-width: 400px;
     padding: 48px 32px;
   }
 
   .no-project-icon {
     color: var(--app-text-faint, #94a3b8);
-    flex-shrink: 0;
-    margin-top: 2px;
+    margin-bottom: 8px;
+  }
+
+  .welcome-logo {
+    max-width: 64px;
+    max-height: 64px;
+    object-fit: contain;
   }
 
   .no-project-title {
-    font-size: 1.1rem;
-    font-weight: 600;
+    font-size: 1.4rem;
+    font-weight: 700;
     color: var(--app-text, #1e293b);
-    margin: 0 0 8px;
+    margin: 0 0 4px;
   }
 
   .no-project-desc {
     font-size: 0.85rem;
     color: var(--app-text-secondary, #475569);
     line-height: 1.6;
-    margin: 0 0 12px;
+    margin: 0 0 20px;
   }
 
   .no-project-hint {
     font-size: 0.78rem;
     color: var(--app-text-muted, #64748b);
     margin: 0;
+  }
+
+  :global(.no-project-btn) {
+    padding: 10px 28px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  :global(.no-project-btn:hover) {
+    background: #2563eb;
   }
 
   /* Fullscreen Presentation Mode */

@@ -12,6 +12,7 @@
   import AdminGroupsTab from './_components/AdminGroupsTab.svelte';
   import AdminBrandingTab from './_components/AdminBrandingTab.svelte';
   import AdminEmbedTab from './_components/AdminEmbedTab.svelte';
+  import AdminDictionaryTab from './_components/AdminDictionaryTab.svelte';
   import type { UserInfo } from './_components/AdminUsersTab.svelte';
   import type { ApiKeyInfo } from './_components/AdminApiKeysTab.svelte';
 
@@ -22,7 +23,7 @@
   let groups = $state<any[]>([]);
   let embedCount = $state(0);
   let projectCount = $state(0);
-  let activeTab = $state<'users' | 'groups' | 'oidc' | 'ldap' | 'api-keys' | 'embeds' | 'projects' | 'branding' | 'backup' | 'audit-log'>('users');
+  let activeTab = $state<'users' | 'groups' | 'oidc' | 'ldap' | 'api-keys' | 'embeds' | 'dictionary' | 'projects' | 'branding' | 'backup' | 'audit-log'>('users');
 
   let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
 
@@ -93,6 +94,9 @@
     <button class="tab" class:active={activeTab === 'embeds'} onclick={() => (activeTab = 'embeds')}>
       {m.admin_tab_embeds()} ({embedCount})
     </button>
+    <button class="tab" class:active={activeTab === 'dictionary'} onclick={() => (activeTab = 'dictionary')}>
+      {m.admin_tab_dictionary()}
+    </button>
     <button class="tab" class:active={activeTab === 'projects'} onclick={() => (activeTab = 'projects')}>
       {m.admin_tab_projects()} ({projectCount})
     </button>
@@ -119,6 +123,8 @@
     <AdminApiKeysTab {apiKeys} {users} onreload={loadApiKeys} />
   {:else if activeTab === 'embeds'}
     <AdminEmbedTab />
+  {:else if activeTab === 'dictionary'}
+    <AdminDictionaryTab />
   {:else if activeTab === 'projects'}
     <AdminProjectsTab {users} />
   {:else if activeTab === 'branding'}
