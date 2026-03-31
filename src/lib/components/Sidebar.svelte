@@ -37,7 +37,7 @@
   );
 
   $effect(() => {
-    localStorage.setItem('erdmini_collapsed_groups', JSON.stringify([...collapsedGroups]));
+    try { localStorage.setItem('erdmini_collapsed_groups', JSON.stringify([...collapsedGroups])); } catch { /* quota */ }
   });
   let sidebarWidth = $state(
     typeof localStorage !== 'undefined'
@@ -69,7 +69,7 @@
       resizing = false;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
-      localStorage.setItem('erdmini_sidebar_width', String(sidebarWidth));
+      try { localStorage.setItem('erdmini_sidebar_width', String(sidebarWidth)); } catch { /* quota */ }
     }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);

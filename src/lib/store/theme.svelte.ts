@@ -19,16 +19,12 @@ class ThemeStore {
 
   set(id: ThemeId) {
     this.current = id;
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, id);
-    }
+    try { localStorage.setItem(STORAGE_KEY, id); } catch { /* quota */ }
   }
 
   toggleDark() {
     this.darkMode = !this.darkMode;
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(DARK_KEY, String(this.darkMode));
-    }
+    try { localStorage.setItem(DARK_KEY, String(this.darkMode)); } catch { /* quota */ }
   }
 }
 

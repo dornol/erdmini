@@ -46,7 +46,7 @@
     const trimmed = q.trim();
     if (!trimmed) return;
     history = [trimmed, ...history.filter((h) => h !== trimmed)].slice(0, MAX_HISTORY);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch { /* quota */ }
   }
 
   function applySchema(database: Database) {
