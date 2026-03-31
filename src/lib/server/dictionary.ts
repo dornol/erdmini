@@ -79,11 +79,25 @@ export function createWord(
   data: { word: string; meaning: string; description?: string; category?: string; status?: WordStatus },
   userId: string,
 ): WordRow {
-  const id = generateId();
+  const word = data.word.trim();
+  const meaning = data.meaning.trim();
+  const description = data.description?.trim() || null;
+  const category = data.category?.trim() || null;
   const status = data.status ?? 'approved';
+
+  // If a rejected word exists with the same name, re-activate it as pending/approved
+  const existing = db.prepare('SELECT id, status FROM word_dictionary WHERE word = ? COLLATE NOCASE').get(word) as { id: string; status: string } | undefined;
+  if (existing && existing.status === 'rejected') {
+    db.prepare(
+      "UPDATE word_dictionary SET meaning = ?, description = ?, category = ?, status = ?, created_by = ?, updated_at = datetime('now') WHERE id = ?",
+    ).run(meaning, description, category, status, userId, existing.id);
+    return db.prepare('SELECT * FROM word_dictionary WHERE id = ?').get(existing.id) as WordRow;
+  }
+
+  const id = generateId();
   db.prepare(
     'INSERT INTO word_dictionary (id, word, meaning, description, category, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, data.word.trim(), data.meaning.trim(), data.description?.trim() || null, data.category?.trim() || null, status, userId);
+  ).run(id, word, meaning, description, category, status, userId);
 
   return db.prepare('SELECT * FROM word_dictionary WHERE id = ?').get(id) as WordRow;
 }

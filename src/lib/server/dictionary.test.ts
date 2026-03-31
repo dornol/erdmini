@@ -127,6 +127,9 @@ describe('dictionary', () => {
   describe('createWord', () => {
     it('inserts word and returns created row', () => {
       const mockRow = { id: 'abc', word: 'seq', meaning: '일련번호', description: null, category: null, status: 'approved', created_by: 'u1', created_at: '', updated_at: '' };
+      // First get: check for existing rejected word (none found)
+      mockGet.mockReturnValueOnce(undefined);
+      // Second get: SELECT * after INSERT
       mockGet.mockReturnValueOnce(mockRow);
 
       const result = createWord(db, { word: 'seq', meaning: '일련번호' }, 'u1');
@@ -144,6 +147,7 @@ describe('dictionary', () => {
     });
 
     it('creates word with pending status', () => {
+      mockGet.mockReturnValueOnce(undefined); // no existing rejected
       mockGet.mockReturnValueOnce({});
 
       createWord(db, { word: 'test', meaning: 'test', status: 'pending' }, 'u1');
@@ -152,7 +156,20 @@ describe('dictionary', () => {
       );
     });
 
+    it('re-activates a rejected word as pending', () => {
+      // Existing rejected word found
+      mockGet.mockReturnValueOnce({ id: 'old-id', status: 'rejected' });
+      // After update, return the updated row
+      mockGet.mockReturnValueOnce({ id: 'old-id', word: 'test', meaning: 'new', status: 'pending' });
+
+      const result = createWord(db, { word: 'test', meaning: 'new', status: 'pending' }, 'u2');
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE word_dictionary SET meaning'));
+      expect(mockRun).toHaveBeenCalledWith('new', null, null, 'pending', 'u2', 'old-id');
+      expect(result.id).toBe('old-id');
+    });
+
     it('trims whitespace from inputs', () => {
+      mockGet.mockReturnValueOnce(undefined);
       mockGet.mockReturnValueOnce({});
 
       createWord(db, { word: '  seq  ', meaning: '  일련번호  ', description: '  desc  ', category: '  cat  ' }, 'u1');
@@ -168,6 +185,7 @@ describe('dictionary', () => {
     });
 
     it('stores empty description and category as null', () => {
+      mockGet.mockReturnValueOnce(undefined);
       mockGet.mockReturnValueOnce({});
 
       createWord(db, { word: 'x', meaning: 'y', description: '', category: '' }, 'u1');

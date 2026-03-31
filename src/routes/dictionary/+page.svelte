@@ -30,6 +30,7 @@
   let total = $state(0);
   let pendingCount = $state(0);
   let pendingWords = $state<WordRow[]>([]);
+  let myPending = $state<WordRow[]>([]);
   let categories = $state<string[]>([]);
   let loading = $state(true);
   let error = $state('');
@@ -80,6 +81,7 @@
     words = data.words;
     total = data.total;
     pendingCount = data.pendingCount ?? 0;
+    myPending = data.myPending ?? [];
   }
 
   async function loadPendingWords() {
@@ -186,6 +188,7 @@
     showSuggestForm = false;
     success = m.dict_suggest_success();
     setTimeout(() => (success = ''), 4000);
+    await loadWords();
   }
 
   // Approve / Reject (admin)
@@ -335,6 +338,21 @@
       <input placeholder={m.dict_category()} bind:value={suggestForm.category} />
       <button class="btn btn-primary" onclick={suggestWord}>{m.dict_suggest()}</button>
       <button class="btn" onclick={() => (showSuggestForm = false)}>{m.action_cancel()}</button>
+    </div>
+  {/if}
+
+  {#if !isAdmin && myPending.length > 0}
+    <div class="my-pending-section">
+      <h3>{m.dict_pending()} <span class="pending-badge">{myPending.length}</span></h3>
+      <div class="my-pending-list">
+        {#each myPending as w}
+          <div class="my-pending-row">
+            <span class="word-cell">{w.word}</span>
+            <span>{w.meaning}</span>
+            <span class="pending-status">{m.dict_pending()}</span>
+          </div>
+        {/each}
+      </div>
     </div>
   {/if}
 
@@ -760,6 +778,49 @@
 
   .msg-error { color: #f87171; font-size: 13px; margin-bottom: 10px; }
   .msg-success { color: #4ade80; font-size: 13px; margin-bottom: 10px; }
+
+  .my-pending-section {
+    background: #1a2332;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .my-pending-section h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .my-pending-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .my-pending-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    background: #0f172a;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .pending-status {
+    margin-left: auto;
+    font-size: 11px;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
 
   .pending-section {
     background: #1a1a2e;

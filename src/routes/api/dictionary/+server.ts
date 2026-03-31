@@ -16,15 +16,19 @@ export const GET: RequestHandler = ({ locals, url }) => {
   const page = parseInt(url.searchParams.get('page') || '1', 10);
   const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 200);
 
-  // Non-admin can only see approved words
-  const effectiveStatus = locals.user.role === 'admin' && status ? status : 'approved';
+  const isAdmin = locals.user.role === 'admin';
 
+  // Admin can filter by any status; non-admin always sees approved
+  const effectiveStatus = isAdmin && status ? status : 'approved';
   const result = listWords(db, { search, category, status: effectiveStatus, page, limit });
 
-  // Include pending count for admin
-  const pendingCount = locals.user.role === 'admin' ? countPendingWords(db) : 0;
+  // Admin: pending count. Non-admin: own pending suggestions.
+  const pendingCount = isAdmin ? countPendingWords(db) : 0;
+  const myPending = !isAdmin
+    ? (listWords(db, { status: 'pending', limit: 100 }).words.filter(w => w.created_by === locals.user!.id))
+    : [];
 
-  return json({ ...result, pendingCount });
+  return json({ ...result, pendingCount, myPending });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
