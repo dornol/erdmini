@@ -6,6 +6,20 @@ import { createLogger } from './logger.js';
 
 const log = createLogger('collab');
 
+// Allowed operation kinds (must match CollabOperation in src/lib/types/collab.ts)
+const ALLOWED_OP_KINDS = new Set([
+  'add-table', 'delete-table', 'delete-tables', 'update-table-name', 'update-table-comment',
+  'update-table-color', 'update-table-group', 'move-table', 'move-tables',
+  'add-column', 'update-column', 'delete-column', 'move-column',
+  'add-fk', 'update-fk', 'delete-fk', 'add-uk', 'delete-uk', 'add-index', 'delete-index',
+  'add-domain', 'update-domain', 'delete-domain',
+  'duplicate-table', 'update-group-color', 'rename-group', 'apply-layout',
+  'add-memo', 'delete-memo', 'delete-memos', 'move-memo', 'move-memos', 'update-memo',
+  'attach-memo', 'detach-memo',
+  'add-schema', 'delete-schema', 'rename-schema', 'reorder-schemas', 'update-table-schema',
+  'load-schema',
+]);
+
 const PEER_COLORS = [
   '#ef4444', '#f59e0b', '#10b981', '#3b82f6',
   '#8b5cf6', '#ec4899', '#14b8a6', '#f97316',
@@ -155,6 +169,10 @@ function handleMessage(peerId, raw, db, userId, userRole) {
         }
         if (!msg.op.kind || typeof msg.op.kind !== 'string') {
           roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation: op.kind must be a non-empty string' });
+          return;
+        }
+        if (!ALLOWED_OP_KINDS.has(msg.op.kind)) {
+          roomManager.sendTo(peerId, { type: 'error', message: `Invalid operation kind: ${msg.op.kind}` });
           return;
         }
         const opStr = JSON.stringify(msg.op);

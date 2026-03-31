@@ -9,6 +9,8 @@ export class CollabClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 1000;
   private maxReconnectDelay = 30000;
+  private maxReconnectAttempts = 20; // ~6 min total with exponential backoff
+  private reconnectAttempts = 0;
   private intentionalClose = false;
   private hasConnectedBefore = false;
   /** Tracks which projectId this connection was opened for */
@@ -37,6 +39,7 @@ export class CollabClient {
     this.projectId = projectId;
     this.connectingForProject = projectId;
     this.reconnectDelay = 1000;
+    this.reconnectAttempts = 0;
     this.hasConnectedBefore = false;
     this.createConnection();
   }
@@ -105,6 +108,20 @@ export class CollabClient {
           return;
         }
 
+        // Successful join — reset reconnect counter
+        if (msg.type === 'joined') {
+          this.reconnectAttempts = 0;
+        }
+
+        // Server rejected access — stop reconnecting
+        if (msg.type === 'error' && (
+          msg.message === 'No access to project' ||
+          msg.message === 'Unauthorized' ||
+          msg.message === 'Invalid session'
+        )) {
+          this.intentionalClose = true;
+        }
+
         for (const handler of this.handlers) {
           handler(msg);
         }
@@ -131,6 +148,13 @@ export class CollabClient {
 
   private scheduleReconnect() {
     if (this.reconnectTimer) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      for (const handler of this.handlers) {
+        handler({ type: 'error', message: 'Max reconnection attempts reached' });
+      }
+      return;
+    }
+    this.reconnectAttempts++;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       if (this.projectId && !this.intentionalClose) {

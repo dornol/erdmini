@@ -40,6 +40,9 @@ export function updateMemoOp(schema: ERDSchema, id: string, patch: Partial<Omit<
 export function attachMemoOp(schema: ERDSchema, memoId: string, tableId: string): void {
   const memo = schema.memos.find((m) => m.id === memoId);
   if (!memo) return;
+  // Don't attach to non-existent table (race condition in collab)
+  const table = schema.tables.find((t) => t.id === tableId);
+  if (!table) return;
   memo.attachedTableId = tableId;
   schema.updatedAt = now();
 }

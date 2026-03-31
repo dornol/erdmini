@@ -261,6 +261,15 @@ describe('attachMemoOp', () => {
 
     expect(schema.updatedAt).not.toBe(before);
   });
+
+  it('no-op when target table does not exist (collab race condition)', () => {
+    const schema = makeSchema([], [makeMemo('m1')]);
+    const before = schema.updatedAt;
+    attachMemoOp(schema, 'm1', 'deleted-table');
+
+    expect(schema.memos[0].attachedTableId).toBeUndefined();
+    expect(schema.updatedAt).toBe(before);
+  });
 });
 
 describe('detachMemoOp', () => {
