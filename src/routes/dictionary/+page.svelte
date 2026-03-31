@@ -413,7 +413,7 @@
           <th style="width:28%">{m.dict_meaning()}</th>
           <th style="width:30%">{m.dict_description()}</th>
           <th style="width:14%">{m.dict_category()}</th>
-          {#if isAdmin}<th style="width:12%"></th>{/if}
+          {#if isAdmin || showAddRow}<th style="width:12%"></th>{/if}
         </tr>
       </thead>
       <tbody>
@@ -424,10 +424,10 @@
             <td><input class="inline-input" placeholder="일련번호" bind:value={addForm.meaning} onkeydown={handleAddKeydown} /></td>
             <td><input class="inline-input" bind:value={addForm.description} onkeydown={handleAddKeydown} /></td>
             <td><input class="inline-input" bind:value={addForm.category} onkeydown={handleAddKeydown} /></td>
-            {#if isAdmin}<td><div class="btn-row">
-              <button class="btn-sm btn-save" onclick={submitAdd}>{m.dict_save()}</button>
+            <td><div class="btn-row">
+              <button class="btn-sm btn-save" onclick={submitAdd}>{isAdmin ? m.dict_save() : m.dict_suggest()}</button>
               <button class="btn-sm" onclick={() => (showAddRow = false)}>✕</button>
-            </div></td>{/if}
+            </div></td>
           </tr>
         {/if}
 
@@ -460,7 +460,7 @@
         {/each}
 
         {#if words.length === 0 && !showAddRow}
-          <tr><td colspan={isAdmin ? 5 : 4} class="empty-state">{m.dict_no_words()}</td></tr>
+          <tr><td colspan={(isAdmin || showAddRow) ? 5 : 4} class="empty-state">{m.dict_no_words()}</td></tr>
         {/if}
       </tbody>
     </table>
