@@ -113,7 +113,7 @@
 {#if selectedTable}
   <aside class="editor" class:readonly={permissionStore.isReadOnly}>
     {#if permissionStore.isReadOnly}
-      <div class="readonly-notice">Read Only</div>
+      <div class="readonly-notice">{m.label_read_only()}</div>
     {/if}
 
     <TableEditorHeader
@@ -155,7 +155,7 @@
     <!-- Foreign Keys -->
     <div class="section fk-section thin-scrollbar">
       <div class="section-header">
-        <span class="field-label">Foreign Keys</span>
+        <span class="field-label">{m.label_foreign_keys()}</span>
         <button class="add-col-btn" onclick={() => { editingFkId = undefined; showFkModal = true; }} disabled={permissionStore.isReadOnly}>{m.fk_add()}</button>
       </div>
 

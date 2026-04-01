@@ -43,7 +43,7 @@
       class="hist-btn"
       disabled={!erdStore.canUndo}
       onclick={() => erdStore.undo()}
-      title="Undo (Ctrl+Z)"
+      title={m.shortcut_undo({ mod: navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl' })}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="1 4 1 10 7 10"></polyline>
@@ -54,7 +54,7 @@
       class="hist-btn"
       disabled={!erdStore.canRedo}
       onclick={() => erdStore.redo()}
-      title="Redo (Ctrl+Shift+Z)"
+      title={m.shortcut_redo({ mod: navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl' })}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="23 4 23 10 17 10"></polyline>

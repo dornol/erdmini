@@ -50,7 +50,7 @@
         } else if (resBody.error === 'auto_registration_disabled') {
           error = m.auth_error_auto_registration();
         } else {
-          error = resBody.error || 'Login failed';
+          error = resBody.error || m.login_failed();
         }
         return;
       }
@@ -59,7 +59,7 @@
       authStore.set(user);
       window.location.href = '/';
     } catch {
-      error = 'Network error';
+      error = m.login_network_error();
     } finally {
       loading = false;
     }
@@ -107,7 +107,7 @@
 
     <form onsubmit={handleLogin}>
       <div class="field">
-        <label for="username">Username</label>
+        <label for="username">{m.login_username()}</label>
         <input
           id="username"
           type="text"
@@ -119,7 +119,7 @@
       </div>
 
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password">{m.login_password()}</label>
         <input
           id="password"
           type="password"
@@ -135,13 +135,13 @@
       {/if}
 
       <button type="submit" class="btn-login" disabled={loading}>
-        {loading ? 'Signing in...' : 'Sign in'}
+        {loading ? m.login_signing_in() : m.login_sign_in()}
       </button>
     </form>
 
     {#if (oidcProviders.length > 0 || ldapProviders.length > 0) && !selectedLdap}
       <div class="divider">
-        <span>or</span>
+        <span>{m.login_or()}</span>
       </div>
 
       <div class="oidc-buttons">

@@ -209,7 +209,7 @@
           {/if}
           {#if isDecimal}
             <div class="field-row">
-              <label for="ce-scale" class="field-label">S</label>
+              <label for="ce-scale" class="field-label">{m.label_scale()}</label>
               <input
                 id="ce-scale"
                 class="field-input"
@@ -275,7 +275,7 @@
                 class="preset-btn"
                 onclick={() => { presetOpen = !presetOpen; presetIdx = presetOpen ? 0 : -1; }}
                 onkeydown={onPresetKeyDown}
-                title="Presets"
+                title={m.label_presets()}
               >▼</button>
               {#if presetOpen}
                 <div class="preset-dropdown">
@@ -295,7 +295,7 @@
         <!-- ENUM values (only when type is ENUM) -->
         {#if col.type === 'ENUM'}
           <div class="field-row">
-            <label for="ce-enum" class="field-label">ENUM</label>
+            <label for="ce-enum" class="field-label">{m.label_enum()}</label>
             <input
               id="ce-enum"
               class="field-input"
@@ -305,7 +305,7 @@
                 const values = raw.split(',').map((v) => v.trim()).filter(Boolean);
                 onChange('enumValues', values.length > 0 ? values : undefined);
               }}
-              placeholder="val1, val2, val3"
+              placeholder={m.label_enum_placeholder()}
             />
           </div>
         {/if}
@@ -338,7 +338,7 @@
         {#if hasDomains}
           <div class="field-row">
             <!-- svelte-ignore a11y_label_has_associated_control -->
-            <label class="field-label">Domain</label>
+            <label class="field-label">{m.label_domain()}</label>
             {#if col.domainId}
               {@const linkedDomain = erdStore.schema.domains.find((d) => d.id === col.domainId)}
               <div class="domain-badge">

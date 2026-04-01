@@ -274,13 +274,13 @@
           class="tab"
           class:active={activeTab === 'export'}
           onclick={() => (activeTab = 'export')}
-        >Export DDL</button>
+        >{m.ddl_tab_export()}</button>
         {#if !exportOnly}
           <button
             class="tab"
             class:active={activeTab === 'import'}
             onclick={() => (activeTab = 'import')}
-          >Import DDL</button>
+          >{m.ddl_tab_import()}</button>
         {/if}
       </div>
       <button class="close-btn" onclick={onclose}>✕</button>
@@ -329,18 +329,18 @@
             <div class="opt-row">
               <span class="opt-label">{m.ddl_options_indent()}</span>
               <select class="opt-select" bind:value={ddlOptions.indent}>
-                <option value="2spaces">2 spaces</option>
-                <option value="4spaces">4 spaces</option>
-                <option value="tab">Tab</option>
+                <option value="2spaces">{m.ddl_indent_2spaces()}</option>
+                <option value="4spaces">{m.ddl_indent_4spaces()}</option>
+                <option value="tab">{m.ddl_indent_tab()}</option>
               </select>
             </div>
             <div class="opt-row">
               <span class="opt-label">{m.ddl_options_quote()}</span>
               <select class="opt-select" bind:value={ddlOptions.quoteStyle}>
-                <option value="backtick">`backtick`</option>
-                <option value="double">"double"</option>
-                <option value="bracket">[bracket]</option>
-                <option value="none">none</option>
+                <option value="backtick">{m.ddl_quote_backtick()}</option>
+                <option value="double">{m.ddl_quote_double()}</option>
+                <option value="bracket">{m.ddl_quote_bracket()}</option>
+                <option value="none">{m.ddl_quote_none()}</option>
               </select>
             </div>
             <label class="opt-check">

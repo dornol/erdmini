@@ -1,5 +1,6 @@
 <script lang="ts">
   import { collabStore } from '$lib/store/collab.svelte';
+  import * as m from '$lib/paraglide/messages';
 
   let showPeerList = $state(false);
   let wrapEl: HTMLDivElement;
@@ -23,7 +24,7 @@
     collabStore.connected ? '#22c55e' : collabStore.reconnecting ? '#eab308' : '#6b7280'
   );
   let statusText = $derived(
-    collabStore.connected ? 'Live' : collabStore.reconnecting ? 'Reconnecting' : 'Offline'
+    collabStore.connected ? m.collab_live() : collabStore.reconnecting ? m.collab_reconnecting() : m.collab_offline()
   );
 </script>
 
@@ -51,10 +52,10 @@
 
   {#if showPeerList}
     <div class="peer-popup">
-      <div class="peer-popup-header">Collaborators</div>
+      <div class="peer-popup-header">{m.collab_collaborators()}</div>
       <div class="peer-item self">
         <span class="peer-dot" style="background:#22c55e"></span>
-        <span class="peer-name">You</span>
+        <span class="peer-name">{m.collab_you()}</span>
       </div>
       {#each collabStore.peers as peer (peer.peerId)}
         <div class="peer-item">
@@ -63,7 +64,7 @@
         </div>
       {/each}
       {#if collabStore.peers.length === 0}
-        <div class="peer-empty">No other collaborators</div>
+        <div class="peer-empty">{m.collab_no_peers()}</div>
       {/if}
     </div>
   {/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import * as m from '$lib/paraglide/messages';
 
   interface Props {
     options: { value: string; label: string }[];
@@ -164,7 +165,7 @@
         class="ss-search"
         bind:this={searchInputEl}
         bind:value={search}
-        placeholder="Search…"
+        placeholder={m.search_placeholder()}
         autocomplete="off"
         spellcheck="false"
       />
@@ -184,7 +185,7 @@
             {opt.label}
           </div>
         {:else}
-          <div class="ss-empty">No results</div>
+          <div class="ss-empty">{m.search_no_results()}</div>
         {/each}
       </div>
     </div>

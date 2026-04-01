@@ -65,7 +65,7 @@
   <span class="editor-title">{m.editor_title()}</span>
   <button
     class="id-badge"
-    title="Copy table ID"
+    title={m.label_copy_table_id()}
     onclick={() => {
       navigator.clipboard.writeText(table.id);
     }}
@@ -73,7 +73,7 @@
   <button
     class="lock-btn"
     class:locked={table.locked}
-    title={table.locked ? 'Unlock position' : 'Lock position'}
+    title={table.locked ? m.label_unlock_position() : m.label_lock_position()}
     onclick={() => {
       const t = erdStore.schema.tables.find((tt) => tt.id === table.id);
       if (t) {

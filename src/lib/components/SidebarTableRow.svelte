@@ -73,7 +73,7 @@
         <span class="item-color-dot" style="background:{getColorDot(table)}"></span>
       {/if}
       <span class="item-name">{table.name}</span>
-      {#if table.locked}<span class="item-lock" title="Locked">🔒</span>{/if}
+      {#if table.locked}<span class="item-lock" title={m.label_locked()}>🔒</span>{/if}
       <span class="badge badge-cols">{table.columns.length}</span>
     </div>
     {#if table.comment}

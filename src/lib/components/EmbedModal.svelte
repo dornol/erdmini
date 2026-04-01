@@ -2,6 +2,7 @@
   import * as m from '$lib/paraglide/messages';
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { toastStore } from '$lib/store/toast.svelte';
 
   interface Props {
     onclose: () => void;
@@ -42,7 +43,9 @@
       if (res.ok) {
         tokens = await res.json();
       }
-    } catch { /* ignore */ }
+    } catch {
+      toastStore.error(m.login_network_error());
+    }
     loading = false;
   }
 
@@ -64,6 +67,8 @@
       password = '';
       expiresOption = 'never';
       await loadTokens();
+    } else {
+      toastStore.error(m.login_network_error());
     }
   }
 
@@ -75,11 +80,14 @@
     });
     if (!ok) return;
 
-    await fetch(`/api/embed/${projectId}`, {
+    const res = await fetch(`/api/embed/${projectId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tokenId }),
     });
+    if (!res.ok) {
+      toastStore.error(m.login_network_error());
+    }
     await loadTokens();
   }
 
@@ -161,7 +169,7 @@
 
       <!-- Token list -->
       {#if loading}
-        <p class="muted">{m.embed_no_tokens()}</p>
+        <p class="muted">{m.embed_loading()}</p>
       {:else if tokens.length === 0}
         <p class="muted">{m.embed_no_tokens()}</p>
       {:else}

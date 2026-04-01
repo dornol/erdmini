@@ -48,7 +48,7 @@
         onclose();
       }, 1200);
     } catch {
-      cpError = 'Network error';
+      cpError = m.login_network_error();
     } finally {
       cpLoading = false;
     }

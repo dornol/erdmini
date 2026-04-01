@@ -73,6 +73,8 @@
 <!-- Header -->
 <div
   class="table-header"
+  role="button"
+  tabindex="-1"
   ondblclick={onheaderdblclick}
   style={headerColorOverride ? `background:${headerColorOverride.headerBg}; --erd-header-text:${headerColorOverride.headerText}` : ''}
 >
@@ -90,7 +92,7 @@
     />
   {:else}
     <span class="table-name">{table.name}</span>
-    {#if table.locked}<span class="lock-icon" title="Locked">🔒</span>{/if}
+    {#if table.locked}<span class="lock-icon" title={m.label_locked()}>🔒</span>{/if}
   {/if}
   {#if schemas.length > 0}
     <div class="schema-selector">

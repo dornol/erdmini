@@ -86,10 +86,10 @@
     });
     if (!res.ok) {
       const data = await res.json();
-      error = data.error || 'Failed to share';
+      error = data.error || m.share_failed();
       return;
     }
-    success = 'Shared successfully';
+    success = m.share_success();
     searchQuery = ''; searchResults = [];
     await loadPermissions();
     setTimeout(() => (success = ''), 2000);
@@ -104,10 +104,10 @@
     });
     if (!res.ok) {
       const data = await res.json();
-      error = data.error || 'Failed to share with group';
+      error = data.error || m.share_group_failed();
       return;
     }
-    success = 'Group shared successfully';
+    success = m.share_group_success();
     groupSearchQuery = ''; groupSearchResults = [];
     await loadPermissions();
     setTimeout(() => (success = ''), 2000);
@@ -168,7 +168,7 @@
 <div class="overlay" role="presentation" onclick={handleOverlayClick}>
   <div class="modal" role="dialog">
     <div class="modal-header">
-      <h2>Share Project</h2>
+      <h2>{m.share_title()}</h2>
       <button class="close-btn" onclick={onclose}>✕</button>
     </div>
 
@@ -178,14 +178,14 @@
           <input
             class="search-input"
             type="text"
-            placeholder="Search users by name or email..."
+            placeholder={m.share_search_placeholder()}
             bind:value={searchQuery}
             oninput={handleSearch}
           />
           <select class="perm-select" bind:value={newPermission}>
-            <option value="owner">Owner</option>
-            <option value="editor">Editor</option>
-            <option value="viewer">Viewer</option>
+            <option value="owner">{m.role_owner()}</option>
+            <option value="editor">{m.role_editor()}</option>
+            <option value="viewer">{m.role_viewer()}</option>
           </select>
         </div>
         {#if searchResults.length > 0}
@@ -194,7 +194,7 @@
               <button class="search-result-item" onclick={() => addShare(user.id)}>
                 <span class="result-name">{user.displayName}</span>
                 <span class="result-detail">{user.username ?? ''} {user.email ? `· ${user.email}` : ''}</span>
-                <span class="result-add">+ Add</span>
+                <span class="result-add">{m.share_add()}</span>
               </button>
             {/each}
           </div>
@@ -207,7 +207,7 @@
 
     <div class="permissions-list">
       {#if loading}
-        <div class="loading">Loading...</div>
+        <div class="loading">{m.share_loading()}</div>
       {:else}
         {#each permissions as perm}
           <div class="perm-row">
@@ -216,18 +216,18 @@
               <span class="perm-detail">{perm.username ?? ''} {perm.email ? `· ${perm.email}` : ''}</span>
             </div>
             {#if perm.permission === 'owner' && ownerCount <= 1}
-              <span class="perm-badge owner">Owner</span>
+              <span class="perm-badge owner">{m.role_owner()}</span>
             {:else if isOwner}
               <select
                 class="perm-select-sm"
                 value={perm.permission}
                 onchange={(e) => updatePermission(perm.userId, (e.target as HTMLSelectElement).value as ProjectPermissionLevel)}
               >
-                <option value="owner">Owner</option>
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
+                <option value="owner">{m.role_owner()}</option>
+                <option value="editor">{m.role_editor()}</option>
+                <option value="viewer">{m.role_viewer()}</option>
               </select>
-              <button class="remove-btn" onclick={() => removeShare(perm.userId)} title="Remove">✕</button>
+              <button class="remove-btn" onclick={() => removeShare(perm.userId)} title={m.share_remove()}>✕</button>
             {:else}
               <span class="perm-badge">{perm.permission}</span>
             {/if}
@@ -249,8 +249,8 @@
               oninput={handleGroupSearch}
             />
             <select class="perm-select" bind:value={newGroupPermission}>
-              <option value="editor">Editor</option>
-              <option value="viewer">Viewer</option>
+              <option value="editor">{m.role_editor()}</option>
+              <option value="viewer">{m.role_viewer()}</option>
             </select>
           </div>
           {#if groupSearchResults.length > 0}
@@ -259,7 +259,7 @@
                 <button class="search-result-item" onclick={() => addGroupShare(group.id)}>
                   <span class="result-name">{group.name}</span>
                   <span class="result-detail">{m.admin_groups_member_count({ count: group.member_count })}</span>
-                  <span class="result-add">+ Add</span>
+                  <span class="result-add">{m.share_add()}</span>
                 </button>
               {/each}
             </div>
@@ -278,10 +278,10 @@
                 value={gp.permission}
                 onchange={(e) => updateGroupPermission(gp.groupId, (e.target as HTMLSelectElement).value as ProjectPermissionLevel)}
               >
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
+                <option value="editor">{m.role_editor()}</option>
+                <option value="viewer">{m.role_viewer()}</option>
               </select>
-              <button class="remove-btn" onclick={() => removeGroupShare(gp.groupId)} title="Remove">✕</button>
+              <button class="remove-btn" onclick={() => removeGroupShare(gp.groupId)} title={m.share_remove()}>✕</button>
             {:else}
               <span class="perm-badge">{gp.permission}</span>
             {/if}
@@ -289,7 +289,7 @@
         {/each}
 
         {#if permissions.length === 0 && groupPermissions.length === 0}
-          <div class="empty">No permissions found</div>
+          <div class="empty">{m.share_no_permissions()}</div>
         {/if}
       {/if}
     </div>

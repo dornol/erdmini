@@ -34,11 +34,11 @@
   let isMemoDragTarget = $derived(memoDragState.isDragging && memoDragState.hoverTableId === table.id);
   let attachedMemos = $derived(erdStore.schema.memos.filter((mm) => mm.attachedTableId === table.id));
   let isColumnHovered = $state(false);
-  let isNew = $state(erdStore.lastAddedTableId === table.id);
+  let isNew = $derived(erdStore.lastAddedTableId === table.id);
 
   $effect(() => {
     if (isNew) {
-      const timer = setTimeout(() => { isNew = false; erdStore.lastAddedTableId = null; }, 600);
+      const timer = setTimeout(() => { erdStore.lastAddedTableId = null; }, 600);
       return () => clearTimeout(timer);
     }
   });

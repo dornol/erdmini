@@ -3,6 +3,7 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { authStore } from '$lib/store/auth.svelte';
+  import { toastStore } from '$lib/store/toast.svelte';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -73,11 +74,16 @@
   async function openSharedProject(proj: SharedProject) {
     try {
       const res = await fetch(`/api/storage/schemas/${proj.projectId}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        toastStore.error(m.login_network_error());
+        return;
+      }
       const schema = await res.json();
       await projectStore.loadSharedProject(proj.projectId, proj.projectName, schema);
       onclose();
-    } catch { /* ignore */ }
+    } catch {
+      toastStore.error(m.login_network_error());
+    }
   }
 
   function formatDate(iso: string): string {
@@ -111,7 +117,7 @@
     aria-expanded={open}
     aria-haspopup="menu"
   >
-    <span class="project-name">{projectStore.activeProject?.name ?? 'Project'}</span>
+    <span class="project-name">{projectStore.activeProject?.name ?? m.project_default_name()}</span>
     <span class="project-chevron">▾</span>
   </button>
   {#if open}
@@ -142,7 +148,7 @@
               onclick={async () => { await projectStore.switchProject(proj.id); onclose(); }}
             >
               <span class="project-item-label">{proj.name}</span>
-              <span class="project-item-meta">{formatDate(proj.updatedAt)} · {getProjectTableCount(proj.id)} tables · <span class="id-copy-btn" role="button" tabindex="-1" title="Copy project ID" onclick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(proj.id); }} onkeydown={() => {}}>{proj.id}</span></span>
+              <span class="project-item-meta">{formatDate(proj.updatedAt)} · {m.shared_tables_count({ count: getProjectTableCount(proj.id) })} · <span class="id-copy-btn" role="button" tabindex="-1" title={m.label_copy_table_id()} onclick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(proj.id); }} onkeydown={() => {}}>{proj.id}</span></span>
             </button>
             <div class="project-item-actions">
               <button
@@ -171,13 +177,13 @@
       {#if authStore.isLoggedIn}
         <div class="project-divider"></div>
         <div class="project-shared-header">
-          <span>Shared with me</span>
-          <button class="project-action-btn" title="Refresh" onclick={loadSharedProjects}>↻</button>
+          <span>{m.shared_with_me()}</span>
+          <button class="project-action-btn" title={m.shared_refresh()} onclick={loadSharedProjects}>↻</button>
         </div>
         {#if sharedLoading}
-          <div class="project-shared-loading">Loading...</div>
+          <div class="project-shared-loading">{m.share_loading()}</div>
         {:else if sharedProjects.length === 0}
-          <div class="project-shared-empty">No shared projects</div>
+          <div class="project-shared-empty">{m.shared_no_projects()}</div>
         {:else}
           {#each sharedProjects as sp}
             <button
@@ -205,7 +211,7 @@
           <button
             class="project-new-confirm"
             onclick={handleNewProject}
-            title="Create"
+            title={m.project_create_btn()}
           >✓</button>
         </div>
       {:else}
@@ -214,7 +220,7 @@
           role="menuitem"
           onclick={() => (showNewProjectInput = true)}
           disabled={authStore.user != null && !authStore.user.canCreateProject}
-          title={authStore.user != null && !authStore.user.canCreateProject ? 'No permission to create projects' : ''}
+          title={authStore.user != null && !authStore.user.canCreateProject ? m.project_no_permission() : ''}
         >
           {m.project_new()}
         </button>

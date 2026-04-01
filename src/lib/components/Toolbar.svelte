@@ -161,7 +161,7 @@
         <CollabIndicator />
       {/if}
       {#if permissionStore.isReadOnly}
-        <span class="readonly-badge">Read Only</span>
+        <span class="readonly-badge">{m.label_read_only()}</span>
       {/if}
       <button class="btn-primary" onclick={addTable} disabled={permissionStore.isReadOnly}>
         {m.toolbar_add_table()}
