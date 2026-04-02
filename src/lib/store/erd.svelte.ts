@@ -5,7 +5,7 @@ import { normalizeSchema } from '$lib/utils/schema-normalize';
 import { canvasState } from '$lib/store/canvas.svelte';
 
 // Ops
-import { createTable, createTableFromTemplate, pasteTables, deleteTableOp, deleteTablesOp, duplicateTableOp, moveTableOp, moveTablesOp, cleanupOrphanedGroupColors } from '$lib/store/ops/table-ops';
+import { createTable, pasteTables, deleteTableOp, deleteTablesOp, duplicateTableOp, moveTableOp, moveTablesOp, cleanupOrphanedGroupColors } from '$lib/store/ops/table-ops';
 import { addColumnOp, updateColumnOp, deleteColumnOp, moveColumnUpOp, moveColumnDownOp, moveColumnToIndexOp, duplicateColumnOp } from '$lib/store/ops/column-ops';
 import { addForeignKeyOp, updateForeignKeyOp, updateFkLabelOp, deleteForeignKeyOp, addUniqueKeyOp, deleteUniqueKeyOp, addIndexOp, deleteIndexOp } from '$lib/store/ops/fk-ops';
 import { createMemo, deleteMemoOp, deleteMemosOp, updateMemoOp, attachMemoOp, detachMemoOp } from '$lib/store/ops/memo-ops';
@@ -150,15 +150,6 @@ class ERDStore {
     const { table, id } = createTable(this.schema, { x: worldX - 100, y: worldY - 60 }, activeSchema);
     this.selectedTableId = id;
     this.lastAddedTableId = id;
-    this._emitOp({ kind: 'add-table', table });
-  }
-
-  addTableFromTemplate(templateColumns: Omit<Column, 'id'>[], tableName: string, viewportWidth = 800, viewportHeight = 600) {
-    const { x: worldX, y: worldY } = canvasState.viewportCenterToWorld(viewportWidth, viewportHeight);
-    const activeSchema = canvasState.activeSchema !== '(all)' ? canvasState.activeSchema : undefined;
-    const { table, id } = createTableFromTemplate(this.schema, templateColumns, tableName, { x: worldX - 100, y: worldY - 60 }, activeSchema);
-    this.selectedTableId = id;
-    this.selectedTableIds = new Set([id]);
     this._emitOp({ kind: 'add-table', table });
   }
 

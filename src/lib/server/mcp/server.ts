@@ -20,7 +20,6 @@ import { registerSnapshotTools } from './tools/snapshot-tools';
 import { registerImportTools } from './tools/import-tools';
 import { registerExportTools } from './tools/export-tools';
 import { registerAnalysisTools } from './tools/analysis-tools';
-import { registerTemplateTools } from './tools/template-tools';
 import { registerBulkTools } from './tools/bulk-tools';
 import { registerDbObjectTools } from './tools/db-object-tools';
 
@@ -104,7 +103,7 @@ export function createMcpServer(
   registerImportTools(server, ctx);
   registerExportTools(server, ctx);
   registerAnalysisTools(server, ctx);
-  registerTemplateTools(server, ctx);
+
   registerBulkTools(server, ctx);
   registerDbObjectTools(server, ctx);
 

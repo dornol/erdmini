@@ -4,7 +4,6 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { lintSchema } from '$lib/utils/schema-lint';
   import { namingRuleStore } from '$lib/store/naming-rules.svelte';
-  import { TABLE_TEMPLATES } from '$lib/utils/table-templates';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -72,26 +71,6 @@
       <button class="dropdown-item" role="menuitem" onclick={() => { onaction('sql-playground'); onclose(); }}>
         {m.sql_playground_title()}
       </button>
-      {#if !permissionStore.isReadOnly}
-        <div class="dropdown-sep"></div>
-        <div class="dropdown-submenu">
-          <button class="dropdown-item submenu-trigger" role="menuitem">
-            {m.template_title()} ▸
-          </button>
-          <div class="submenu-content">
-            {#each TABLE_TEMPLATES as tmpl}
-              <button
-                class="dropdown-item"
-                role="menuitem"
-                onclick={() => {
-                  erdStore.addTableFromTemplate(tmpl.columns, tmpl.tableName);
-                  onclose();
-                }}
-              >{tmpl.tableName}</button>
-            {/each}
-          </div>
-        </div>
-      {/if}
       {#if authStore.isLoggedIn && (permissionStore.current === 'owner' || (authStore.user?.canCreateEmbed && permissionStore.current === 'editor'))}
         <div class="dropdown-sep"></div>
         <button class="dropdown-item" role="menuitem" onclick={() => { onaction('embed'); onclose(); }}>
@@ -102,29 +81,3 @@
   {/if}
 </div>
 
-<style>
-  .dropdown-submenu {
-    position: relative;
-  }
-  .submenu-trigger {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-  }
-  .submenu-content {
-    display: none;
-    position: absolute;
-    left: 100%;
-    top: 0;
-    min-width: 140px;
-    background: #1e293b;
-    border: 1px solid #475569;
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    padding: 0;
-    z-index: 1001;
-  }
-  .dropdown-submenu:hover .submenu-content {
-    display: block;
-  }
-</style>
