@@ -11,6 +11,40 @@
   let renameCategoryValue = $state('');
   let searchQuery = $state('');
 
+  // Category drag reorder
+  let dragCat = $state<string | null>(null);
+  let dragOverCat = $state<string | null>(null);
+
+  function onCatDragStart(e: DragEvent, cat: string) {
+    dragCat = cat;
+    e.dataTransfer!.effectAllowed = 'move';
+  }
+
+  function onCatDragOver(e: DragEvent, cat: string) {
+    if (!dragCat || dragCat === cat) return;
+    e.preventDefault();
+    dragOverCat = cat;
+  }
+
+  function onCatDrop(e: DragEvent, cat: string) {
+    e.preventDefault();
+    if (!dragCat || dragCat === cat) return;
+    const cats = [...(erdStore.schema.dbObjectCategories ?? [])];
+    const fromIdx = cats.indexOf(dragCat);
+    const toIdx = cats.indexOf(cat);
+    if (fromIdx < 0 || toIdx < 0) return;
+    cats.splice(fromIdx, 1);
+    cats.splice(toIdx, 0, dragCat);
+    erdStore.reorderDbObjectCategories(cats);
+    dragCat = null;
+    dragOverCat = null;
+  }
+
+  function onCatDragEnd() {
+    dragCat = null;
+    dragOverCat = null;
+  }
+
   let categories = $derived(erdStore.schema.dbObjectCategories ?? []);
   let allObjects = $derived(erdStore.schema.dbObjects ?? []);
 
@@ -99,8 +133,16 @@
   <!-- Categories -->
   {#each categories as cat (cat)}
     {@const objs = filteredObjects(cat)}
-    <div class="category-group">
-      <div class="category-header">
+    <div class="category-group" class:drag-over={dragOverCat === cat}>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="category-header"
+        draggable={!permissionStore.isReadOnly && renamingCategory !== cat}
+        ondragstart={(e) => onCatDragStart(e, cat)}
+        ondragover={(e) => onCatDragOver(e, cat)}
+        ondrop={(e) => onCatDrop(e, cat)}
+        ondragend={onCatDragEnd}
+      >
         <button class="category-toggle" onclick={() => toggleCategory(cat)}>
           <span class="chevron" class:collapsed={collapsedCategories.has(cat)}>▾</span>
           {#if renamingCategory === cat}
@@ -223,6 +265,10 @@
 
   .category-group {
     margin-bottom: 2px;
+  }
+
+  .category-group.drag-over {
+    border-top: 2px solid #3b82f6;
   }
 
   .category-header {

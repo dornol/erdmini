@@ -303,6 +303,12 @@ export function applyRemoteOperation(op: CollabOperation) {
         }
         break;
       }
+      case 'reorder-db-object-categories': {
+        if (erdStore.schema.dbObjectCategories) {
+          erdStore.schema.dbObjectCategories = [...op.categories];
+        }
+        break;
+      }
       case 'load-schema': {
         erdStore.loadSchema(op.schema);
         break;

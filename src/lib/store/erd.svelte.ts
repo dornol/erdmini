@@ -11,7 +11,7 @@ import { addForeignKeyOp, updateForeignKeyOp, updateFkLabelOp, deleteForeignKeyO
 import { createMemo, deleteMemoOp, deleteMemosOp, updateMemoOp, attachMemoOp, detachMemoOp } from '$lib/store/ops/memo-ops';
 import { addDomainOp, updateDomainOp, deleteDomainOp } from '$lib/store/ops/domain-ops';
 import { addSchemaOp, renameSchemaOp, reorderSchemasOp, deleteSchemaOp, updateTableSchemaOp } from '$lib/store/ops/schema-ns-ops';
-import { addDbObjectOp, updateDbObjectOp, deleteDbObjectOp, addDbObjectCategoryOp, renameDbObjectCategoryOp, deleteDbObjectCategoryOp } from '$lib/store/ops/db-object-ops';
+import { addDbObjectOp, updateDbObjectOp, deleteDbObjectOp, addDbObjectCategoryOp, renameDbObjectCategoryOp, deleteDbObjectCategoryOp, reorderDbObjectCategoriesOp } from '$lib/store/ops/db-object-ops';
 
 // Re-export for backward compatibility
 export { canvasState } from '$lib/store/canvas.svelte';
@@ -594,6 +594,11 @@ class ERDStore {
 
       this._emitOp({ kind: 'delete-db-object-category', category });
     }
+  }
+
+  reorderDbObjectCategories(categories: string[]) {
+    reorderDbObjectCategoriesOp(this.schema, categories);
+    this._emitOp({ kind: 'reorder-db-object-categories', categories });
   }
 }
 

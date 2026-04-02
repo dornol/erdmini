@@ -81,3 +81,8 @@ export function deleteDbObjectCategoryOp(schema: ERDSchema, category: string): b
   schema.updatedAt = now();
   return true;
 }
+
+export function reorderDbObjectCategoriesOp(schema: ERDSchema, categories: string[]): void {
+  schema.dbObjectCategories = categories;
+  schema.updatedAt = now();
+}
