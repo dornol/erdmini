@@ -334,6 +334,7 @@ interface PreprocessedData {
   mssqlComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null;
   mssqlAlterFKs: MSSQLAlterFK[];
   mssqlAlterUQs: MSSQLAlterUQ[];
+  mssqlDt2Precisions: Map<string, Map<string, number>>;
   preprocessedComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null;
   preprocessedIdentity: Map<string, Set<string>> | null;
 }
@@ -352,6 +353,7 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     mssqlComments: null,
     mssqlAlterFKs: [],
     mssqlAlterUQs: [],
+    mssqlDt2Precisions: new Map(),
     preprocessedComments: null,
     preprocessedIdentity: null,
   };
@@ -364,6 +366,7 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     preprocessed.mssqlComments = { tableComments: result.tableComments, colComments: result.colComments };
     preprocessed.mssqlAlterFKs = result.alterFKs;
     preprocessed.mssqlAlterUQs = result.alterUQs;
+    preprocessed.mssqlDt2Precisions = result.dt2Precisions;
     stmts = [];
     for (const stmtSql of result.statements) {
       const quoted = quoteReservedColumnNames(stmtSql, dialect);
@@ -966,6 +969,18 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   applyMssqlAlterFKs(tables, preprocessed.mssqlAlterFKs);
   applyMssqlAlterUQs(tables, preprocessed.mssqlAlterUQs);
   applyIndexStatements(tables, parsedIndexes);
+
+  // Apply MSSQL datetime2(N) precision to column length
+  for (const [tableName, colMap] of preprocessed.mssqlDt2Precisions) {
+    const table = tables.find((t) => t.name === tableName);
+    if (!table) continue;
+    for (const [colName, precision] of colMap) {
+      const col = table.columns.find((c) => c.name.toLowerCase() === colName);
+      if (col && (col.type === 'DATETIME' || col.type === 'TIMESTAMP')) {
+        col.length = precision;
+      }
+    }
+  }
 
   // Apply MSSQL sp_addextendedproperty comments
   applyPreprocessedComments(tables, preprocessed.mssqlComments, null);

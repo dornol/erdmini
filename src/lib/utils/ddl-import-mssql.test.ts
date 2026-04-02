@@ -308,6 +308,12 @@ GO
     expect(colNames).toContain('Event_Type');
     // Manager_Seq gets parsed as FK source + also as a regular column
     expect(colNames.length).toBeGreaterThanOrEqual(7);
+    // datetime2(3) precision preserved as length
+    const createDt = t.columns.find(c => c.name === 'Create_Datetime');
+    expect(createDt?.type).toBe('DATETIME');
+    expect(createDt?.length).toBe(3);
+    const reportDt = t.columns.find(c => c.name === 'Report_Datetime');
+    expect(reportDt?.length).toBe(3);
   });
 
   it('parses multiple reserved word columns across tables', async () => {

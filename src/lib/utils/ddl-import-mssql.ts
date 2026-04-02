@@ -22,6 +22,8 @@ export interface MSSQLPreprocessResult {
   colComments: Map<string, Map<string, string>>;
   alterFKs: MSSQLAlterFK[];
   alterUQs: MSSQLAlterUQ[];
+  /** datetime2(N) precision: Map<tableName, Map<columnName, precision>> */
+  dt2Precisions: Map<string, Map<string, number>>;
 }
 
 /** Unwrap MSSQL default parens: DEFAULT ((0)) → DEFAULT 0, DEFAULT (getdate()) → DEFAULT getdate() */
@@ -216,6 +218,32 @@ export function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
   const alterUQs: MSSQLAlterUQ[] = [];
   const statements: string[] = [];
   const seenStmts = new Set<string>();
+  const dt2Precisions = new Map<string, Map<string, number>>();
+
+  // Extract datetime2(N) precision before cleanup destroys it
+  // Scan each CREATE TABLE block for datetime2(N) columns
+  const createTableRegex = /\bcreate\s+table\s+(?:(?:\[?\w+\]?\.)*)\[?(\w+)\]?\s*\(/gi;
+  let ctMatch;
+  while ((ctMatch = createTableRegex.exec(sql)) !== null) {
+    const tableName = ctMatch[1];
+    // Find the body between the opening ( and matching closing )
+    const startIdx = ctMatch.index + ctMatch[0].length;
+    let depth = 1;
+    let endIdx = startIdx;
+    for (let i = startIdx; i < sql.length && depth > 0; i++) {
+      if (sql[i] === '(') depth++;
+      else if (sql[i] === ')') depth--;
+      endIdx = i;
+    }
+    const body = sql.slice(startIdx, endIdx);
+    const colRegex = /\[?(\w+)\]?\s+datetime2\s*\(\s*(\d+)\s*\)/gi;
+    for (const colMatch of body.matchAll(colRegex)) {
+      const colName = colMatch[1];
+      const precision = Number(colMatch[2]);
+      if (!dt2Precisions.has(tableName)) dt2Precisions.set(tableName, new Map());
+      dt2Precisions.get(tableName)!.set(colName.toLowerCase(), precision);
+    }
+  }
 
   // Split by 'go' batch separator (case-insensitive, standalone line), then by semicolons
   const goBatches = sql.split(/^\s*go\s*$/gim);
@@ -405,7 +433,7 @@ export function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
     }
   }
 
-  return { statements, tableComments, colComments, alterFKs, alterUQs };
+  return { statements, tableComments, colComments, alterFKs, alterUQs, dt2Precisions };
 }
 
 export function cleanMSSQLStatement(sql: string): string {
