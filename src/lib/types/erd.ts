@@ -113,11 +113,23 @@ export interface Memo {
   schema?: string;
 }
 
+export interface DbObject {
+  id: string;
+  category: string;
+  name: string;
+  sql: string;
+  comment?: string;
+  schema?: string;
+  includeInDdl?: boolean;
+}
+
 export interface ERDSchema {
   version: string;
   tables: Table[];
   domains: ColumnDomain[];
   memos: Memo[];
+  dbObjects?: DbObject[];
+  dbObjectCategories?: string[];
   groupColors?: Record<string, string>;
   schemas?: string[];
   namingRules?: import('./naming-rules').ProjectNamingOverrides;

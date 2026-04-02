@@ -40,8 +40,9 @@ export interface KeyboardContext {
 
 export async function handleKeydown(e: KeyboardEvent, ctx: KeyboardContext) {
   const key = e.key.toLowerCase();
-  const tag = (e.target as HTMLElement)?.tagName;
-  const isEditing = tag === 'INPUT' || tag === 'TEXTAREA';
+  const target = e.target as HTMLElement;
+  const tag = target?.tagName;
+  const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || !!target?.closest?.('.cm-editor');
 
   // F key: toggle fullscreen (when not editing)
   if (e.code === 'KeyF' && !isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {

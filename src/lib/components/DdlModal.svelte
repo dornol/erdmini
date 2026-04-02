@@ -365,6 +365,38 @@
             </label>
           </div>
         {/if}
+        {#if (erdStore.schema.dbObjects ?? []).length > 0}
+          <div class="dbo-export-section">
+            <div class="dbo-export-header">
+              <span class="opt-label">{m.sidebar_tab_objects()}</span>
+              <button class="dbo-toggle-all" onclick={() => {
+                const objs = erdStore.schema.dbObjects ?? [];
+                const allChecked = objs.every(o => o.includeInDdl);
+                for (const o of objs) erdStore.updateDbObject(o.id, { includeInDdl: !allChecked });
+              }}>
+                {(erdStore.schema.dbObjects ?? []).every(o => o.includeInDdl) ? m.table_color_none() : m.sidebar_tab_objects()}
+              </button>
+            </div>
+            <div class="dbo-export-list thin-scrollbar">
+              {#each erdStore.schema.dbObjectCategories ?? [] as cat}
+                {@const catObjs = (erdStore.schema.dbObjects ?? []).filter(o => o.category === cat)}
+                {#if catObjs.length > 0}
+                  <div class="dbo-cat-name">{cat}</div>
+                  {#each catObjs as obj (obj.id)}
+                    <label class="dbo-item">
+                      <input
+                        type="checkbox"
+                        checked={obj.includeInDdl ?? false}
+                        onchange={(e) => erdStore.updateDbObject(obj.id, { includeInDdl: (e.target as HTMLInputElement).checked })}
+                      />
+                      <span class="dbo-item-name">{obj.name}</span>
+                    </label>
+                  {/each}
+                {/if}
+              {/each}
+            </div>
+          </div>
+        {/if}
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>
       {:else}
         <div class="import-controls">
@@ -696,5 +728,68 @@
   .opt-check input {
     margin: 0;
     accent-color: #3b82f6;
+  }
+
+  .dbo-export-section {
+    background: var(--app-badge-bg, #f1f5f9);
+    border: 1px solid var(--app-border, #e2e8f0);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+
+  .dbo-export-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .dbo-toggle-all {
+    background: none;
+    border: none;
+    color: #3b82f6;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .dbo-toggle-all:hover {
+    text-decoration: underline;
+  }
+
+  .dbo-export-list {
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .dbo-cat-name {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--app-text-muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 4px 0 2px;
+  }
+
+  .dbo-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--app-text, #334155);
+    cursor: pointer;
+    padding: 2px 0 2px 8px;
+  }
+
+  .dbo-item input {
+    margin: 0;
+    accent-color: #3b82f6;
+  }
+
+  .dbo-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>

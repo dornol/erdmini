@@ -868,5 +868,21 @@
   "project_no_permission": "프로젝트 생성 권한 없음",
   "embed_loading": "로딩 중...",
   "shortcut_undo": "실행 취소 ({mod}+Z)",
-  "shortcut_redo": "다시 실행 ({mod}+Shift+Z)"
+  "shortcut_redo": "다시 실행 ({mod}+Shift+Z)",
+  "sidebar_tab_tables": "테이블",
+  "sidebar_tab_objects": "오브젝트",
+  "db_object_add": "항목 추가",
+  "db_object_delete": "항목 삭제",
+  "db_object_delete_confirm": "\"{name}\" 항목을 삭제하시겠습니까?",
+  "db_object_name": "이름",
+  "db_object_comment": "설명",
+  "db_object_sql": "SQL",
+  "db_object_include_ddl": "DDL에 포함",
+  "db_object_no_items": "항목 없음",
+  "db_object_category_add": "카테고리 추가",
+  "db_object_category_delete": "카테고리 삭제",
+  "db_object_category_delete_confirm": "\"{name}\" 카테고리와 모든 항목을 삭제하시겠습니까?",
+  "db_object_category_rename": "카테고리 이름 변경",
+  "db_object_category_placeholder": "카테고리명...",
+  "db_object_default_categories": "Procedure,Function,View,Trigger"
 }

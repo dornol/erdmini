@@ -6,6 +6,7 @@
   import { generateDummyData } from '$lib/utils/dummy-data';
   import * as m from '$lib/paraglide/messages';
   import type { Database } from 'sql.js';
+  import SqlEditor from './SqlEditor.svelte';
 
   interface Props {
     onclose: () => void;
@@ -28,7 +29,6 @@
   let rowsPerTable = $state(10);
   let showHistory = $state(false);
   let history = $state<string[]>(loadHistory());
-  let textareaEl: HTMLTextAreaElement | undefined = $state();
 
   const HISTORY_KEY = 'erdmini_sql_history';
   const MAX_HISTORY = 20;
@@ -192,7 +192,6 @@
   function selectHistory(h: string) {
     query = h;
     showHistory = false;
-    textareaEl?.focus();
   }
 </script>
 
@@ -231,20 +230,12 @@
 
       <!-- Editor -->
       <div class="sp-editor">
-        <textarea
-          bind:this={textareaEl}
-          bind:value={query}
-          rows="6"
-          placeholder={m.sql_playground_query_placeholder()}
-          spellcheck="false"
-          class="sp-textarea"
-          onkeydown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              executeQuery();
-            }
-          }}
-        ></textarea>
+        <SqlEditor
+          value={query}
+          onchange={(v) => { query = v; }}
+          height="150px"
+          extraKeys={[{ key: 'Mod-Enter', run: () => { executeQuery(); return true; } }]}
+        />
       </div>
 
       <!-- Action bar -->

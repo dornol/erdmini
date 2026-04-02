@@ -140,8 +140,9 @@ export function columnSql(col: Column, dialect: Dialect, opts: DDLExportOptions,
     parts.push(kw('AUTO_INCREMENT', up));
   }
 
-  // SQLite: PRIMARY KEY AUTOINCREMENT inline (skipped from table-level PK)
-  if (col.autoIncrement && dialect === 'sqlite' && col.primaryKey) {
+  // SQLite: PRIMARY KEY AUTOINCREMENT inline — only valid for integer types
+  if (col.autoIncrement && dialect === 'sqlite' && col.primaryKey
+    && (col.type === 'INT' || col.type === 'BIGINT' || col.type === 'SMALLINT')) {
     parts.push(kw('PRIMARY KEY AUTOINCREMENT', up));
   }
 
@@ -388,6 +389,25 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
     }
     if (fkStatements.length > 0) {
       sections.push(...fkStatements);
+    }
+  }
+
+  // DB Objects (only those with includeInDdl flag)
+  const dbObjects = (schema.dbObjects ?? []).filter((o) => o.includeInDdl && o.sql.trim());
+  if (dbObjects.length > 0) {
+    const categories = schema.dbObjectCategories ?? [];
+    const sorted = [...dbObjects].sort((a, b) => {
+      const ai = categories.indexOf(a.category);
+      const bi = categories.indexOf(b.category);
+      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+    });
+    let lastCategory = '';
+    for (const obj of sorted) {
+      if (obj.category !== lastCategory) {
+        sections.push(`-- ${obj.category}`);
+        lastCategory = obj.category;
+      }
+      sections.push(obj.sql.trim());
     }
   }
 

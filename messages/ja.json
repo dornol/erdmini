@@ -868,5 +868,21 @@
   "project_no_permission": "プロジェクト作成権限なし",
   "embed_loading": "読み込み中...",
   "shortcut_undo": "元に戻す ({mod}+Z)",
-  "shortcut_redo": "やり直し ({mod}+Shift+Z)"
+  "shortcut_redo": "やり直し ({mod}+Shift+Z)",
+  "sidebar_tab_tables": "テーブル",
+  "sidebar_tab_objects": "オブジェクト",
+  "db_object_add": "項目追加",
+  "db_object_delete": "項目削除",
+  "db_object_delete_confirm": "「{name}」を削除しますか？",
+  "db_object_name": "名前",
+  "db_object_comment": "説明",
+  "db_object_sql": "SQL",
+  "db_object_include_ddl": "DDLに含める",
+  "db_object_no_items": "項目なし",
+  "db_object_category_add": "カテゴリ追加",
+  "db_object_category_delete": "カテゴリ削除",
+  "db_object_category_delete_confirm": "カテゴリ「{name}」とすべての項目を削除しますか？",
+  "db_object_category_rename": "カテゴリ名変更",
+  "db_object_category_placeholder": "カテゴリ名...",
+  "db_object_default_categories": "Procedure,Function,View,Trigger"
 }

@@ -1,4 +1,4 @@
-import type { Column, ERDSchema, ForeignKey, Table, UniqueKey, TableIndex, ColumnDomain, Memo } from './erd';
+import type { Column, DbObject, ERDSchema, ForeignKey, Table, UniqueKey, TableIndex, ColumnDomain, Memo } from './erd';
 
 // ── Peer info ──
 export interface PeerInfo {
@@ -56,6 +56,12 @@ export type CollabOperation =
   | { kind: 'rename-schema'; oldName: string; newName: string }
   | { kind: 'reorder-schemas'; schemas: string[] }
   | { kind: 'update-table-schema'; tableId: string; schema: string }
+  | { kind: 'add-db-object'; object: DbObject }
+  | { kind: 'update-db-object'; objectId: string; updates: Partial<Pick<DbObject, 'name' | 'sql' | 'comment' | 'category' | 'schema' | 'includeInDdl'>> }
+  | { kind: 'delete-db-object'; objectId: string }
+  | { kind: 'add-db-object-category'; category: string }
+  | { kind: 'rename-db-object-category'; oldName: string; newName: string }
+  | { kind: 'delete-db-object-category'; category: string }
   | { kind: 'load-schema'; schema: ERDSchema };
 
 // ── Client → Server messages ──

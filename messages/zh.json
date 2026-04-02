@@ -868,5 +868,21 @@
   "project_no_permission": "没有创建项目的权限",
   "embed_loading": "加载中...",
   "shortcut_undo": "撤销 ({mod}+Z)",
-  "shortcut_redo": "重做 ({mod}+Shift+Z)"
+  "shortcut_redo": "重做 ({mod}+Shift+Z)",
+  "sidebar_tab_tables": "表",
+  "sidebar_tab_objects": "对象",
+  "db_object_add": "添加项目",
+  "db_object_delete": "删除项目",
+  "db_object_delete_confirm": "删除\"{name}\"？",
+  "db_object_name": "名称",
+  "db_object_comment": "描述",
+  "db_object_sql": "SQL",
+  "db_object_include_ddl": "包含在DDL中",
+  "db_object_no_items": "无项目",
+  "db_object_category_add": "添加分类",
+  "db_object_category_delete": "删除分类",
+  "db_object_category_delete_confirm": "删除分类\"{name}\"及其所有项目？",
+  "db_object_category_rename": "重命名分类",
+  "db_object_category_placeholder": "分类名...",
+  "db_object_default_categories": "Procedure,Function,View,Trigger"
 }

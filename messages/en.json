@@ -868,5 +868,21 @@
   "project_no_permission": "No permission to create projects",
   "embed_loading": "Loading...",
   "shortcut_undo": "Undo ({mod}+Z)",
-  "shortcut_redo": "Redo ({mod}+Shift+Z)"
+  "shortcut_redo": "Redo ({mod}+Shift+Z)",
+  "sidebar_tab_tables": "Tables",
+  "sidebar_tab_objects": "Objects",
+  "db_object_add": "Add item",
+  "db_object_delete": "Delete item",
+  "db_object_delete_confirm": "Delete \"{name}\"?",
+  "db_object_name": "Name",
+  "db_object_comment": "Description",
+  "db_object_sql": "SQL",
+  "db_object_include_ddl": "Include in DDL",
+  "db_object_no_items": "No items",
+  "db_object_category_add": "Add category",
+  "db_object_category_delete": "Delete category",
+  "db_object_category_delete_confirm": "Delete category \"{name}\" and all its items?",
+  "db_object_category_rename": "Rename category",
+  "db_object_category_placeholder": "Category name...",
+  "db_object_default_categories": "Procedure,Function,View,Trigger"
 }

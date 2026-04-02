@@ -255,6 +255,54 @@ export function applyRemoteOperation(op: CollabOperation) {
         erdStore.updateTableSchema(op.tableId, op.schema || undefined);
         break;
       }
+      case 'add-db-object': {
+        if (!erdStore.schema.dbObjects) erdStore.schema.dbObjects = [];
+        if (!erdStore.schema.dbObjectCategories) erdStore.schema.dbObjectCategories = [];
+        erdStore.schema.dbObjects.push({ ...op.object });
+        if (!erdStore.schema.dbObjectCategories.includes(op.object.category)) {
+          erdStore.schema.dbObjectCategories.push(op.object.category);
+        }
+        break;
+      }
+      case 'update-db-object': {
+        const obj = erdStore.schema.dbObjects?.find((o) => o.id === op.objectId);
+        if (obj) Object.assign(obj, op.updates);
+        break;
+      }
+      case 'delete-db-object': {
+        if (erdStore.schema.dbObjects) {
+          erdStore.schema.dbObjects = erdStore.schema.dbObjects.filter((o) => o.id !== op.objectId);
+        }
+        break;
+      }
+      case 'add-db-object-category': {
+        if (!erdStore.schema.dbObjectCategories) erdStore.schema.dbObjectCategories = [];
+        if (!erdStore.schema.dbObjectCategories.includes(op.category)) {
+          erdStore.schema.dbObjectCategories.push(op.category);
+        }
+        break;
+      }
+      case 'rename-db-object-category': {
+        if (erdStore.schema.dbObjectCategories) {
+          const idx = erdStore.schema.dbObjectCategories.indexOf(op.oldName);
+          if (idx >= 0) erdStore.schema.dbObjectCategories[idx] = op.newName;
+        }
+        if (erdStore.schema.dbObjects) {
+          for (const o of erdStore.schema.dbObjects) {
+            if (o.category === op.oldName) o.category = op.newName;
+          }
+        }
+        break;
+      }
+      case 'delete-db-object-category': {
+        if (erdStore.schema.dbObjectCategories) {
+          erdStore.schema.dbObjectCategories = erdStore.schema.dbObjectCategories.filter((c) => c !== op.category);
+        }
+        if (erdStore.schema.dbObjects) {
+          erdStore.schema.dbObjects = erdStore.schema.dbObjects.filter((o) => o.category !== op.category);
+        }
+        break;
+      }
       case 'load-schema': {
         erdStore.loadSchema(op.schema);
         break;

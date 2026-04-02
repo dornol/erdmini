@@ -6,6 +6,7 @@
   import TableCard from '$lib/components/TableCard.svelte';
   import MemoCard from '$lib/components/MemoCard.svelte';
   import TableEditor from '$lib/components/TableEditor.svelte';
+  import DbObjectEditor from '$lib/components/DbObjectEditor.svelte';
   import FkModal from '$lib/components/FkModal.svelte';
   import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
@@ -244,6 +245,9 @@
         <SchemaTabBar />
         <div class="main">
           <Sidebar collapsed={sidebarCollapsed} ontoggle={toggleSidebar} onbulkedit={() => (showBulkEditModal = true)} />
+          {#if erdStore.selectedDbObjectId}
+            <DbObjectEditor />
+          {/if}
           <Canvas onfullscreen={fullscreen.enter}>
             {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
             {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}

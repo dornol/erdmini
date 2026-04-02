@@ -11,6 +11,7 @@ import { addForeignKeyOp, updateForeignKeyOp, updateFkLabelOp, deleteForeignKeyO
 import { createMemo, deleteMemoOp, deleteMemosOp, updateMemoOp, attachMemoOp, detachMemoOp } from '$lib/store/ops/memo-ops';
 import { addDomainOp, updateDomainOp, deleteDomainOp } from '$lib/store/ops/domain-ops';
 import { addSchemaOp, renameSchemaOp, reorderSchemasOp, deleteSchemaOp, updateTableSchemaOp } from '$lib/store/ops/schema-ns-ops';
+import { addDbObjectOp, updateDbObjectOp, deleteDbObjectOp, addDbObjectCategoryOp, renameDbObjectCategoryOp, deleteDbObjectCategoryOp } from '$lib/store/ops/db-object-ops';
 
 // Re-export for backward compatibility
 export { canvasState } from '$lib/store/canvas.svelte';
@@ -540,6 +541,7 @@ class ERDStore {
     this.selectedTableIds = new Set();
     this.selectedMemoId = null;
     this.selectedMemoIds = new Set();
+    this.selectedDbObjectId = null;
     this.editingColumnInfo = null;
     this.editingMemoId = null;
     this.hoveredColumnInfo = null;
@@ -547,6 +549,60 @@ class ERDStore {
     this.hoveredUkInfo = null;
     this.hoveredIdxInfo = null;
     this._emitOp({ kind: 'load-schema', schema });
+  }
+
+  // ── DB Objects ──
+  selectedDbObjectId = $state<string | null>(null);
+
+  get selectedDbObject() {
+    if (!this.selectedDbObjectId || !this.schema.dbObjects) return null;
+    return this.schema.dbObjects.find((o) => o.id === this.selectedDbObjectId) ?? null;
+  }
+
+  addDbObject(category: string, name?: string) {
+    const obj = addDbObjectOp(this.schema, category, name);
+
+    this._emitOp({ kind: 'add-db-object', object: { ...obj } });
+    return obj;
+  }
+
+  updateDbObject(objectId: string, updates: Partial<Pick<import('$lib/types/erd').DbObject, 'name' | 'sql' | 'comment' | 'category' | 'schema' | 'includeInDdl'>>) {
+    if (updateDbObjectOp(this.schema, objectId, updates)) {
+
+      this._emitOp({ kind: 'update-db-object', objectId, updates });
+    }
+  }
+
+  deleteDbObject(objectId: string) {
+    if (deleteDbObjectOp(this.schema, objectId)) {
+      if (this.selectedDbObjectId === objectId) this.selectedDbObjectId = null;
+
+      this._emitOp({ kind: 'delete-db-object', objectId });
+    }
+  }
+
+  addDbObjectCategory(category: string) {
+    if (addDbObjectCategoryOp(this.schema, category)) {
+
+      this._emitOp({ kind: 'add-db-object-category', category });
+    }
+  }
+
+  renameDbObjectCategory(oldName: string, newName: string) {
+    if (renameDbObjectCategoryOp(this.schema, oldName, newName)) {
+
+      this._emitOp({ kind: 'rename-db-object-category', oldName, newName });
+    }
+  }
+
+  deleteDbObjectCategory(category: string) {
+    if (deleteDbObjectCategoryOp(this.schema, category)) {
+      if (this.selectedDbObjectId && !this.schema.dbObjects?.find((o) => o.id === this.selectedDbObjectId)) {
+        this.selectedDbObjectId = null;
+      }
+
+      this._emitOp({ kind: 'delete-db-object-category', category });
+    }
   }
 }
 

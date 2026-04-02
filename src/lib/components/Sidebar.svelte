@@ -16,6 +16,7 @@
   import SidebarGroupActions from './sidebar/SidebarGroupActions.svelte';
   import { buildVirtualRows, type VirtualRow, type GroupData } from '$lib/utils/sidebar-rows';
   import { filterTables, getTableMeta as getTableMetaFn } from '$lib/utils/sidebar-search';
+  import DbObjectsSidebar from './DbObjectsSidebar.svelte';
 
   let {
     collapsed = false,
@@ -26,6 +27,8 @@
     ontoggle?: () => void;
     onbulkedit?: () => void;
   } = $props();
+
+  let activeTab = $state<'tables' | 'objects'>('tables');
 
   let searchQuery = $state('');
   let sortBy = $state<'creation' | 'name'>('creation');
@@ -348,9 +351,15 @@
   <aside class="sidebar" class:resizing style="width:{sidebarWidth}px">
     <div class="sidebar-header">
       <div class="header-top-row">
-        <span>{m.sidebar_title()}</span>
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab" class:active={activeTab === 'tables'} onclick={() => (activeTab = 'tables')}>
+            {m.sidebar_tab_tables()} <span class="count">{erdStore.schema.tables.length}</span>
+          </button>
+          <button class="sidebar-tab" class:active={activeTab === 'objects'} onclick={() => (activeTab = 'objects')}>
+            {m.sidebar_tab_objects()} <span class="count">{erdStore.schema.dbObjects?.length ?? 0}</span>
+          </button>
+        </div>
         <div class="header-right">
-          <span class="count">{erdStore.schema.tables.length}</span>
           <button class="collapse-btn" onclick={ontoggle} title={m.sidebar_collapse()}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -377,6 +386,7 @@
       {/if}
     </div>
 
+    {#if activeTab === 'tables'}
     <SidebarToolbar
       {searchQuery}
       {sortBy}
@@ -497,6 +507,9 @@
           {/each}
         </div>
       </div>
+    {/if}
+    {:else}
+      <DbObjectsSidebar />
     {/if}
 
     {#if richTooltip}
@@ -629,6 +642,43 @@
     letter-spacing: 0.05em;
     border-bottom: 1px solid var(--app-border, #e2e8f0);
     gap: 6px;
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    gap: 0;
+  }
+
+  .sidebar-tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: none;
+    border: none;
+    color: var(--app-text-muted, #64748b);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .sidebar-tab:hover {
+    color: var(--app-text, #334155);
+  }
+
+  .sidebar-tab.active {
+    color: var(--app-accent, #3b82f6);
+    border-bottom-color: var(--app-accent, #3b82f6);
+  }
+
+  .sidebar-tab .count {
+    font-weight: 400;
+    font-size: 10px;
+    opacity: 0.7;
   }
 
   .header-top-row {
