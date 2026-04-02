@@ -8,15 +8,16 @@ import type { Column, ERDSchema, Dialect } from '$lib/types/erd';
 // ─── Helpers ──────────────────────────────────────────────────────────
 
 function makeCol(overrides: Partial<Column> & { type: Column['type'] }): Column {
+  const { type, ...rest } = overrides;
   return {
     id: 'c1',
     name: 'col',
-    type: 'VARCHAR',
+    type,
     nullable: true,
     primaryKey: false,
     unique: false,
     autoIncrement: false,
-    ...overrides,
+    ...rest,
   };
 }
 
