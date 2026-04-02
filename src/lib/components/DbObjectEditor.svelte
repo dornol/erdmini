@@ -92,17 +92,31 @@
         </label>
       </div>
 
-      <!-- Comment -->
-      <div class="field-row">
-        <label class="field-label" for="dbo-comment">{m.db_object_comment()}</label>
-        <input
-          id="dbo-comment"
-          class="field-input"
-          value={obj.comment ?? ''}
-          oninput={(e) => updateField('comment', (e.target as HTMLInputElement).value || undefined)}
-          disabled={permissionStore.isReadOnly}
-          placeholder={m.none_placeholder()}
-        />
+      <!-- Comment + DDL (one row, half-half) -->
+      <div class="name-category-row">
+        <label class="inline-field name-field" for="dbo-comment">
+          <span class="field-label">{m.db_object_comment()}</span>
+          <input
+            id="dbo-comment"
+            class="field-input"
+            value={obj.comment ?? ''}
+            oninput={(e) => updateField('comment', (e.target as HTMLInputElement).value || undefined)}
+            disabled={permissionStore.isReadOnly}
+            placeholder={m.none_placeholder()}
+          />
+        </label>
+        <div class="inline-field category-field">
+          <span class="field-label">{m.db_object_include_ddl()}</span>
+          <label class="ddl-toggle">
+            <input
+              type="checkbox"
+              checked={obj.includeInDdl ?? false}
+              onchange={(e) => updateField('includeInDdl', (e.target as HTMLInputElement).checked)}
+              disabled={permissionStore.isReadOnly}
+            />
+            DDL Export
+          </label>
+        </div>
       </div>
 
       <!-- SQL Editor -->
@@ -220,6 +234,23 @@
 
   .category-field {
     flex: 1 1 50%;
+  }
+
+  .ddl-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--app-text, #334155);
+    cursor: pointer;
+    padding: 5px 8px;
+    border: 1px solid var(--app-input-border, #e2e8f0);
+    border-radius: 5px;
+    background: var(--app-card-bg, white);
+  }
+
+  .ddl-toggle input {
+    accent-color: #3b82f6;
   }
 
   .field-row {

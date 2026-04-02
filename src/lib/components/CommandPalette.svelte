@@ -193,14 +193,14 @@
   }
 
   .cmd-palette {
-    background: #1e293b;
-    border: 1px solid #475569;
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 12px;
     width: 520px;
     max-height: 420px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--app-popup-shadow, 0 8px 30px rgba(0,0,0,0.18));
     overflow: hidden;
     align-self: flex-start;
   }
@@ -210,11 +210,11 @@
     align-items: center;
     gap: 8px;
     padding: 12px 14px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
 
   .cmd-search-icon {
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     flex-shrink: 0;
   }
 
@@ -223,13 +223,13 @@
     background: transparent;
     border: none;
     outline: none;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 15px;
     caret-color: #60a5fa;
   }
 
   .cmd-input::placeholder {
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
   }
 
   .cmd-results {
@@ -242,7 +242,7 @@
     padding: 6px 14px 4px;
     font-size: 10px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -257,20 +257,20 @@
   }
 
   .cmd-item.highlighted {
-    background: #334155;
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .cmd-item-column {
-    background: rgba(15, 23, 42, 0.4);
+    background: var(--app-panel-bg, #f8fafc);
     padding-left: 24px;
   }
 
   .cmd-item-column.highlighted {
-    background: #2d3a4e;
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .cmd-item-icon {
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     flex-shrink: 0;
   }
 
@@ -280,7 +280,7 @@
 
   .cmd-item-label {
     font-size: 13px;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -289,14 +289,14 @@
   }
 
   .cmd-table-prefix {
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
   }
 
   .cmd-type-badge {
     font-size: 10px;
-    color: #94a3b8;
-    background: #0f172a;
-    border: 1px solid #334155;
+    color: var(--app-text-muted, #94a3b8);
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 3px;
     padding: 1px 6px;
     flex-shrink: 0;
@@ -306,14 +306,14 @@
     padding: 24px 14px;
     text-align: center;
     font-size: 13px;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
   }
 
   .cmd-hint {
     padding: 8px 14px;
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--app-border, #e2e8f0);
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     text-align: center;
     letter-spacing: 0.02em;
   }

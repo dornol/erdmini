@@ -218,8 +218,8 @@
 
 <style>
   .modal-panel {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 12px;
     width: 520px;
     max-width: 95vw;
@@ -232,29 +232,29 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
   .modal-header h2 {
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 16px;
     margin: 0;
   }
   .close-btn {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 20px;
     cursor: pointer;
     padding: 0 4px;
   }
-  .close-btn:hover { color: #f1f5f9; }
+  .close-btn:hover { color: var(--app-text, #1e293b); }
 
   .modal-body {
     padding: 16px 20px;
     overflow-y: auto;
   }
   .create-section h3 {
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     font-size: 14px;
     margin: 0 0 12px;
   }
@@ -263,17 +263,17 @@
   }
   .form-label {
     display: block;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 12px;
     margin-bottom: 4px;
   }
   .form-input, .form-select {
     width: 100%;
     padding: 7px 10px;
-    background: #0f172a;
-    border: 1px solid #475569;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 13px;
     outline: none;
     box-sizing: border-box;
@@ -296,12 +296,12 @@
 
   .divider {
     height: 1px;
-    background: #334155;
+    background: var(--app-border, #e2e8f0);
     margin: 16px 0;
   }
 
   .muted {
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     font-size: 13px;
     text-align: center;
     padding: 16px 0;
@@ -313,8 +313,8 @@
     gap: 10px;
   }
   .token-card {
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 8px;
     padding: 10px 12px;
   }
@@ -328,7 +328,7 @@
   .token-value {
     color: #60a5fa;
     font-size: 12px;
-    background: #1e293b;
+    background: var(--app-badge-bg, #f1f5f9);
     padding: 2px 6px;
     border-radius: 4px;
   }
@@ -338,25 +338,25 @@
     border-radius: 3px;
   }
   .password-badge {
-    background: #334155;
+    background: var(--app-badge-bg, #f1f5f9);
     color: #fbbf24;
   }
   .expires-badge {
-    background: #334155;
-    color: #94a3b8;
+    background: var(--app-badge-bg, #f1f5f9);
+    color: var(--app-text-muted, #94a3b8);
   }
   .token-date {
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     font-size: 11px;
     margin-left: auto;
   }
   .embed-url-display {
     width: 100%;
     padding: 5px 8px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 4px;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 11px;
     font-family: monospace;
     margin-bottom: 8px;
@@ -366,7 +366,7 @@
   }
   .embed-url-display:focus {
     border-color: #3b82f6;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
   }
   .token-actions {
     display: flex;
@@ -374,14 +374,14 @@
   }
   .btn-copy {
     padding: 4px 10px;
-    background: #334155;
-    color: #e2e8f0;
-    border: 1px solid #475569;
+    background: var(--app-badge-bg, #f1f5f9);
+    color: var(--app-text, #1e293b);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 5px;
     cursor: pointer;
     font-size: 11px;
   }
-  .btn-copy:hover { background: #475569; }
+  .btn-copy:hover { background: var(--app-hover-bg, #f1f5f9); }
   .btn-delete {
     padding: 4px 10px;
     background: transparent;

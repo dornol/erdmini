@@ -305,8 +305,8 @@
 
 <style>
   .sp-panel {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 12px;
     width: 900px;
     max-width: 95vw;
@@ -320,10 +320,10 @@
     align-items: center;
     justify-content: space-between;
     padding: 14px 20px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
   .sp-header h2 {
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 16px;
     font-weight: 600;
     margin: 0;
@@ -331,17 +331,17 @@
   .close-btn {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 20px;
     cursor: pointer;
     padding: 0 4px;
   }
-  .close-btn:hover { color: #f1f5f9; }
+  .close-btn:hover { color: var(--app-text, #1e293b); }
 
   .sp-loading, .sp-error-banner {
     padding: 32px 20px;
     text-align: center;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 14px;
   }
   .sp-error-banner { color: #f87171; }
@@ -351,8 +351,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 16px;
-    border-bottom: 1px solid #1e293b;
-    background: #0f172a;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
+    background: var(--app-panel-bg, #f8fafc);
     gap: 8px;
     flex-wrap: wrap;
   }
@@ -365,13 +365,13 @@
   }
   .sp-badge-ok { background: #065f46; color: #6ee7b7; }
   .sp-badge-err { background: #7f1d1d; color: #fca5a5; }
-  .sp-rows-label { color: #94a3b8; font-size: 12px; }
+  .sp-rows-label { color: var(--app-text-muted, #94a3b8); font-size: 12px; }
   .sp-rows-input {
     width: 52px;
-    background: #1e293b;
-    border: 1px solid #475569;
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 4px;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     font-size: 12px;
     padding: 2px 4px;
     text-align: center;
@@ -380,24 +380,6 @@
   .sp-editor {
     padding: 12px 16px 0;
   }
-  .sp-textarea {
-    width: 100%;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 6px;
-    color: #e2e8f0;
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-    font-size: 13px;
-    padding: 10px 12px;
-    resize: vertical;
-    line-height: 1.5;
-    box-sizing: border-box;
-  }
-  .sp-textarea:focus {
-    outline: none;
-    border-color: #3b82f6;
-  }
-  .sp-textarea::placeholder { color: #475569; }
 
   .sp-actionbar {
     display: flex;
@@ -407,7 +389,7 @@
     gap: 8px;
   }
   .sp-action-left { display: flex; gap: 6px; align-items: center; }
-  .sp-time { color: #94a3b8; font-size: 12px; }
+  .sp-time { color: var(--app-text-muted, #94a3b8); font-size: 12px; }
 
   .sp-btn {
     padding: 5px 12px;
@@ -425,10 +407,11 @@
   }
   .sp-btn-primary:hover:not(:disabled) { background: #2563eb; }
   .sp-btn-secondary {
-    background: #334155;
-    color: #e2e8f0;
+    background: var(--app-badge-bg, #f1f5f9);
+    color: var(--app-text, #1e293b);
+    border: 1px solid var(--app-border, #e2e8f0);
   }
-  .sp-btn-secondary:hover:not(:disabled) { background: #475569; }
+  .sp-btn-secondary:hover:not(:disabled) { background: var(--app-hover-bg, #e2e8f0); }
   .sp-hint {
     font-size: 10px;
     opacity: 0.7;
@@ -441,17 +424,18 @@
     top: 100%;
     left: 0;
     margin-top: 4px;
-    background: #1e293b;
-    border: 1px solid #475569;
+    background: var(--app-popup-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
     width: 320px;
     max-height: 200px;
     overflow-y: auto;
     z-index: 10;
+    box-shadow: var(--app-popup-shadow, 0 8px 24px rgba(0,0,0,0.15));
   }
   .sp-history-empty {
     padding: 12px;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     font-size: 12px;
     text-align: center;
   }
@@ -462,7 +446,7 @@
     padding: 6px 12px;
     border: none;
     background: none;
-    color: #cbd5e1;
+    color: var(--app-text-secondary, #475569);
     font-size: 12px;
     font-family: 'SF Mono', monospace;
     cursor: pointer;
@@ -470,7 +454,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .sp-history-item:hover { background: #334155; }
+  .sp-history-item:hover { background: var(--app-hover-bg, #f1f5f9); }
 
   .sp-results {
     flex: 1;
@@ -479,7 +463,7 @@
     min-height: 60px;
   }
   .sp-result-msg {
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 13px;
     padding: 8px 0;
   }
@@ -492,7 +476,7 @@
 
   .sp-table-wrap {
     overflow: auto;
-    border: 1px solid #334155;
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
     margin-top: 4px;
     max-height: 340px;
@@ -503,25 +487,25 @@
     font-size: 12px;
   }
   .sp-table th {
-    background: #0f172a;
-    color: #94a3b8;
+    background: var(--app-panel-bg, #f8fafc);
+    color: var(--app-text-muted, #94a3b8);
     font-weight: 600;
     text-align: left;
     padding: 6px 10px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
     position: sticky;
     top: 0;
     z-index: 1;
   }
   .sp-table td {
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     padding: 5px 10px;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid var(--app-border-light, #f1f5f9);
     white-space: nowrap;
     max-width: 300px;
     overflow: hidden;
     text-overflow: ellipsis;
     font-family: 'SF Mono', monospace;
   }
-  .sp-table tr:hover td { background: #1e293b; }
+  .sp-table tr:hover td { background: var(--app-hover-bg, #f1f5f9); }
 </style>

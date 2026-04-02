@@ -92,13 +92,13 @@
 
 <style>
   .cp-modal {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 12px;
     padding: 24px;
     min-width: 340px;
     max-width: 400px;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
   }
 
   .cp-modal h3 {
@@ -115,17 +115,17 @@
   .cp-modal label span {
     display: block;
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     margin-bottom: 4px;
   }
 
   .cp-modal input {
     width: 100%;
     padding: 8px 10px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     font-size: 13px;
     outline: none;
     box-sizing: border-box;
@@ -156,8 +156,8 @@
 
   .cp-btn-cancel {
     background: transparent;
-    border: 1px solid #475569;
-    color: #94a3b8;
+    border: 1px solid var(--app-input-border, #e2e8f0);
+    color: var(--app-text-muted, #94a3b8);
     padding: 6px 14px;
     border-radius: 6px;
     font-size: 13px;
@@ -165,7 +165,7 @@
   }
 
   .cp-btn-cancel:hover {
-    background: #334155;
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .cp-btn-submit {

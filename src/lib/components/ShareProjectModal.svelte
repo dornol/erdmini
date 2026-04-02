@@ -289,8 +289,8 @@
 
 <style>
   .modal {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 12px;
     width: 480px;
     max-width: 90vw;
@@ -305,20 +305,20 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
 
   .modal-header h2 {
     font-size: 16px;
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     margin: 0;
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 16px;
     cursor: pointer;
     padding: 4px 8px;
@@ -326,13 +326,13 @@
   }
 
   .close-btn:hover {
-    color: #f1f5f9;
-    background: #334155;
+    color: var(--app-text, #1e293b);
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .search-section {
     padding: 16px 20px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
 
   .search-row {
@@ -343,10 +343,10 @@
   .search-input {
     flex: 1;
     padding: 8px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 13px;
   }
 
@@ -357,16 +357,16 @@
 
   .perm-select {
     padding: 8px 10px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 13px;
   }
 
   .search-results {
     margin-top: 8px;
-    border: 1px solid #334155;
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
     overflow: hidden;
     max-height: 160px;
@@ -379,10 +379,10 @@
     gap: 8px;
     width: 100%;
     padding: 8px 12px;
-    background: #0f172a;
+    background: var(--app-input-bg, white);
     border: none;
-    border-bottom: 1px solid #1e293b;
-    color: #f1f5f9;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
+    color: var(--app-text, #1e293b);
     cursor: pointer;
     text-align: left;
     font-size: 13px;
@@ -393,7 +393,7 @@
   }
 
   .search-result-item:hover {
-    background: #1e293b;
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .result-name {
@@ -401,7 +401,7 @@
   }
 
   .result-detail {
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     font-size: 12px;
     flex: 1;
   }
@@ -424,7 +424,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px 0;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
 
   .perm-row:last-child {
@@ -441,12 +441,12 @@
   .perm-name {
     font-size: 13px;
     font-weight: 500;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
   }
 
   .perm-detail {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
   }
 
   .perm-badge {
@@ -454,8 +454,8 @@
     border-radius: 4px;
     font-size: 11px;
     font-weight: 600;
-    background: #334155;
-    color: #94a3b8;
+    background: var(--app-badge-bg, #f1f5f9);
+    color: var(--app-text-muted, #94a3b8);
   }
 
   .perm-badge.owner {
@@ -465,10 +465,10 @@
 
   .perm-select-sm {
     padding: 4px 8px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 4px;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 12px;
   }
 
@@ -488,7 +488,7 @@
 
   .loading, .empty {
     text-align: center;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     font-size: 13px;
     padding: 20px;
   }
@@ -508,9 +508,9 @@
   .group-section-divider {
     font-size: 12px;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     padding: 12px 0 6px;
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--app-border, #e2e8f0);
     margin-top: 8px;
     text-transform: uppercase;
     letter-spacing: 0.05em;

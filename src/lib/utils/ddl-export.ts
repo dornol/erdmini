@@ -8,6 +8,7 @@ export interface DDLExportOptions {
   includeForeignKeys: boolean;
   includeDomains: boolean;
   upperCaseKeywords: boolean;
+  dbObjectIds?: string[];
 }
 
 export function getDefaultQuoteStyle(dialect: Dialect): DDLExportOptions['quoteStyle'] {
@@ -392,8 +393,11 @@ export function exportDDL(schema: ERDSchema, dialect: Dialect, options?: Partial
     }
   }
 
-  // DB Objects (only those with includeInDdl flag)
-  const dbObjects = (schema.dbObjects ?? []).filter((o) => o.includeInDdl && o.sql.trim());
+  // DB Objects — use explicit IDs if provided, otherwise fall back to includeInDdl flag
+  const dbObjectIdSet = opts.dbObjectIds ? new Set(opts.dbObjectIds) : null;
+  const dbObjects = (schema.dbObjects ?? []).filter((o) =>
+    o.sql.trim() && (dbObjectIdSet ? dbObjectIdSet.has(o.id) : o.includeInDdl)
+  );
   if (dbObjects.length > 0) {
     const categories = schema.dbObjectCategories ?? [];
     const sorted = [...dbObjects].sort((a, b) => {

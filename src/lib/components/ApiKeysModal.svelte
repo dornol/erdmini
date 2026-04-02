@@ -409,8 +409,8 @@
 
 <style>
   .modal {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 12px;
     width: 720px;
     max-width: 90vw;
@@ -425,20 +425,20 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--app-border, #e2e8f0);
   }
 
   .modal-header h2 {
     font-size: 16px;
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     margin: 0;
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     font-size: 16px;
     cursor: pointer;
     padding: 4px 8px;
@@ -446,8 +446,8 @@
   }
 
   .close-btn:hover {
-    background: #334155;
-    color: #f1f5f9;
+    background: var(--app-hover-bg, #f1f5f9);
+    color: var(--app-text, #1e293b);
   }
 
   .modal-body {
@@ -457,7 +457,7 @@
   }
 
   .key-reveal {
-    background: #1a2332;
+    background: var(--app-panel-bg, #f8fafc);
     border: 1px solid #f59e0b;
     border-radius: 8px;
     padding: 12px;
@@ -481,7 +481,7 @@
   .key-value {
     font-family: monospace;
     font-size: 11px;
-    background: #0f172a;
+    background: var(--app-input-bg, white);
     padding: 6px 10px;
     border-radius: 4px;
     color: #4ade80;
@@ -499,8 +499,8 @@
     justify-content: space-between;
     gap: 12px;
     padding: 10px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
     margin-bottom: 6px;
   }
@@ -516,17 +516,17 @@
   .key-name {
     font-size: 13px;
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
   }
 
   .key-detail {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
   }
 
   .key-scopes {
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
   }
 
   .expired {
@@ -536,13 +536,13 @@
   .loading, .empty {
     text-align: center;
     padding: 16px;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     font-size: 13px;
   }
 
   .create-section {
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-panel-bg, #f8fafc);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 8px;
     padding: 16px;
   }
@@ -550,7 +550,7 @@
   .create-section h3 {
     font-size: 14px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     margin: 0 0 10px;
   }
 
@@ -563,10 +563,10 @@
 
   .form-input {
     padding: 7px 10px;
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 13px;
     flex: 1;
     min-width: 120px;
@@ -579,10 +579,10 @@
 
   .form-select {
     padding: 7px 10px;
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text, #1e293b);
     font-size: 13px;
     flex: 1;
     min-width: 100px;
@@ -603,7 +603,7 @@
     align-items: center;
     gap: 6px;
     font-size: 13px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary, #475569);
     white-space: nowrap;
   }
 
@@ -618,7 +618,7 @@
     align-items: center;
     gap: 6px;
     font-size: 13px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary, #475569);
     cursor: pointer;
   }
 
@@ -657,8 +657,8 @@
 
   .btn-sm {
     padding: 4px 10px;
-    background: #334155;
-    color: #cbd5e1;
+    background: var(--app-badge-bg, #f1f5f9);
+    color: var(--app-text-secondary, #475569);
     border: none;
     border-radius: 4px;
     font-size: 12px;
@@ -666,7 +666,7 @@
   }
 
   .btn-sm:hover {
-    background: #475569;
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .btn-copy {
@@ -711,8 +711,8 @@
   }
 
   .key-edit-section {
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-panel-bg, #f8fafc);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-top: none;
     border-radius: 0 0 6px 6px;
     padding: 12px;
@@ -729,14 +729,14 @@
   /* MCP snippet section */
   .snippet-section {
     margin-top: 12px;
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--app-border, #e2e8f0);
     padding-top: 12px;
   }
 
   .snippet-title {
     font-size: 13px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     margin: 0 0 8px 0;
   }
 
@@ -750,17 +750,17 @@
   .snippet-tab {
     padding: 4px 10px;
     font-size: 11px;
-    border: 1px solid #475569;
+    border: 1px solid var(--app-input-border, #e2e8f0);
     border-radius: 4px;
     background: transparent;
-    color: #94a3b8;
+    color: var(--app-text-muted, #94a3b8);
     cursor: pointer;
     transition: all 0.15s;
   }
 
   .snippet-tab:hover {
-    background: #1e293b;
-    color: #e2e8f0;
+    background: var(--app-hover-bg, #f1f5f9);
+    color: var(--app-text, #1e293b);
   }
 
   .snippet-tab.active {
@@ -771,7 +771,7 @@
 
   .snippet-hint {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-faint, #64748b);
     margin-bottom: 6px;
     font-family: monospace;
   }
@@ -781,12 +781,12 @@
   }
 
   .snippet-code {
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
     padding: 10px 12px;
     font-size: 12px;
-    color: #e2e8f0;
+    color: var(--app-text, #1e293b);
     overflow-x: auto;
     white-space: pre;
     margin: 0;

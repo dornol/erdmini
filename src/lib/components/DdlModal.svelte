@@ -52,6 +52,11 @@
 
   let ddlOptions = $state<DDLExportOptions>(loadDdlOptions());
 
+  // Local DB object export selection — initialized from objects' includeInDdl, not persisted back
+  let dboExportIds = $state<Set<string>>(new Set(
+    (erdStore.schema.dbObjects ?? []).filter(o => o.includeInDdl).map(o => o.id)
+  ));
+
   // Save DDL options when changed
   $effect(() => {
     saveDdlOptions(ddlOptions);
@@ -62,7 +67,7 @@
     if (exportFormat === 'plantuml') return exportPlantUML(erdStore.schema);
     if (exportFormat === 'prisma') return exportPrisma(erdStore.schema);
     if (exportFormat === 'dbml') return exportDBML(erdStore.schema);
-    return exportDDL(erdStore.schema, exportDialect, { ...ddlOptions, quoteStyle: ddlOptions.quoteStyle === 'none' ? 'none' : ddlOptions.quoteStyle || getDefaultQuoteStyle(exportDialect) });
+    return exportDDL(erdStore.schema, exportDialect, { ...ddlOptions, quoteStyle: ddlOptions.quoteStyle === 'none' ? 'none' : ddlOptions.quoteStyle || getDefaultQuoteStyle(exportDialect), dbObjectIds: dboExportIds.size > 0 ? [...dboExportIds] : undefined });
   });
   let copyLabel = $state<'copy' | 'copied'>('copy');
 
@@ -363,19 +368,22 @@
               <input type="checkbox" bind:checked={ddlOptions.includeDomains} />
               {m.ddl_options_domains()}
             </label>
-          </div>
-        {/if}
-        {#if (erdStore.schema.dbObjects ?? []).length > 0}
-          <div class="dbo-export-section">
+          {#if (erdStore.schema.dbObjects ?? []).length > 0}
+            <div class="dbo-export-section">
             <div class="dbo-export-header">
               <span class="opt-label">{m.sidebar_tab_objects()}</span>
-              <button class="dbo-toggle-all" onclick={() => {
-                const objs = erdStore.schema.dbObjects ?? [];
-                const allChecked = objs.every(o => o.includeInDdl);
-                for (const o of objs) erdStore.updateDbObject(o.id, { includeInDdl: !allChecked });
-              }}>
-                {(erdStore.schema.dbObjects ?? []).every(o => o.includeInDdl) ? m.table_color_none() : m.sidebar_tab_objects()}
-              </button>
+              <label class="dbo-toggle-all">
+                <input
+                  type="checkbox"
+                  checked={(erdStore.schema.dbObjects ?? []).length > 0 && (erdStore.schema.dbObjects ?? []).every(o => dboExportIds.has(o.id))}
+                  onchange={() => {
+                    const objs = erdStore.schema.dbObjects ?? [];
+                    const allChecked = objs.every(o => dboExportIds.has(o.id));
+                    dboExportIds = new Set(allChecked ? [] : objs.map(o => o.id));
+                  }}
+                />
+                {m.db_object_include_ddl()}
+              </label>
             </div>
             <div class="dbo-export-list thin-scrollbar">
               {#each erdStore.schema.dbObjectCategories ?? [] as cat}
@@ -386,8 +394,12 @@
                     <label class="dbo-item">
                       <input
                         type="checkbox"
-                        checked={obj.includeInDdl ?? false}
-                        onchange={(e) => erdStore.updateDbObject(obj.id, { includeInDdl: (e.target as HTMLInputElement).checked })}
+                        checked={dboExportIds.has(obj.id)}
+                        onchange={(e) => {
+                          const next = new Set(dboExportIds);
+                          if ((e.target as HTMLInputElement).checked) next.add(obj.id); else next.delete(obj.id);
+                          dboExportIds = next;
+                        }}
                       />
                       <span class="dbo-item-name">{obj.name}</span>
                     </label>
@@ -395,6 +407,8 @@
                 {/if}
               {/each}
             </div>
+            </div>
+          {/if}
           </div>
         {/if}
         <textarea class="code-area" readonly value={exportText} spellcheck="false"></textarea>
@@ -464,7 +478,7 @@
     background: var(--app-popup-bg, white);
     border-radius: 10px;
     box-shadow: var(--app-popup-shadow, 0 20px 60px rgba(0,0,0,0.3));
-    width: 680px;
+    width: 900px;
     max-width: 95vw;
     max-height: 85vh;
     display: flex;
@@ -731,11 +745,10 @@
   }
 
   .dbo-export-section {
-    background: var(--app-badge-bg, #f1f5f9);
-    border: 1px solid var(--app-border, #e2e8f0);
-    border-radius: 6px;
-    padding: 8px 10px;
-    margin-bottom: 8px;
+    width: 100%;
+    border-top: 1px solid var(--app-border, #e2e8f0);
+    padding-top: 8px;
+    margin-top: 4px;
   }
 
   .dbo-export-header {
@@ -746,16 +759,17 @@
   }
 
   .dbo-toggle-all {
-    background: none;
-    border: none;
-    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font-size: 11px;
+    color: var(--app-text-secondary, #475569);
     cursor: pointer;
-    padding: 0;
   }
 
-  .dbo-toggle-all:hover {
-    text-decoration: underline;
+  .dbo-toggle-all input {
+    accent-color: #3b82f6;
+    margin: 0;
   }
 
   .dbo-export-list {

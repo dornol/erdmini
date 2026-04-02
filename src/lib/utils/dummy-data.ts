@@ -68,7 +68,7 @@ export function generateDummyValue(
 	rowIndex: number,
 	parentIds?: (string | number)[],
 ): string | number | null {
-	if (col.autoIncrement) return null; // skip — DB auto-generates
+	if (col.autoIncrement && (col.type === 'INT' || col.type === 'BIGINT' || col.type === 'SMALLINT')) return null; // skip — DB auto-generates (only integer types for SQLite compatibility)
 
 	// FK column with parent IDs
 	if (parentIds && parentIds.length > 0) {
@@ -166,7 +166,7 @@ export function generateDummyData(schema: ERDSchema, rowsPerTable: number = 10):
 
 	for (const table of sorted) {
 		// Determine which columns to include (skip autoIncrement)
-		const insertCols = table.columns.filter((c) => !c.autoIncrement);
+		const insertCols = table.columns.filter((c) => !(c.autoIncrement && (c.type === 'INT' || c.type === 'BIGINT' || c.type === 'SMALLINT')));
 		if (insertCols.length === 0) {
 			// All columns are autoIncrement — use DEFAULT VALUES
 			lines.push('');

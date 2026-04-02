@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
+  import { themeStore } from '$lib/store/theme.svelte';
 
   interface Props {
     value: string;
@@ -13,7 +14,7 @@
   let { value, onchange, readonly = false, height = '300px', extraKeys = [] }: Props = $props();
 
   let containerEl: HTMLDivElement;
-  let editorView: any = null;
+  let editorView = $state<any>(null);
   let suppressUpdate = false;
 
   // Build schema map from current ERD for SQL autocompletion
@@ -25,20 +26,16 @@
     return map;
   }
 
-  onMount(async () => {
-    const [cm, langSql, themeMod, cmView, cmCommands] = await Promise.all([
-      import('codemirror'),
-      import('@codemirror/lang-sql'),
-      import('@codemirror/theme-one-dark'),
-      import('@codemirror/view'),
-      import('@codemirror/commands'),
-    ]);
+  // Cached module references (loaded once)
+  let cmModules: { EditorView: any; basicSetup: any; sql: any; oneDark: any; keymap: any; indentWithTab: any } | null = null;
 
-    const { EditorView, basicSetup } = cm;
-    const { sql } = langSql;
-    const { oneDark } = themeMod;
-    const { keymap } = cmView;
-    const { indentWithTab } = cmCommands;
+  function createEditor(dark: boolean) {
+    if (!cmModules || !containerEl) return;
+    const { EditorView, basicSetup, sql, oneDark, keymap, indentWithTab } = cmModules;
+
+    // Preserve current content if rebuilding
+    const currentDoc = editorView ? editorView.state.doc.toString() : value;
+    editorView?.destroy();
 
     const extensions: any[] = [
       keymap.of([
@@ -47,7 +44,7 @@
       ]),
       basicSetup,
       sql({ schema: buildSchemaMap() }),
-      oneDark,
+      ...(dark ? [oneDark] : []),
       EditorView.theme({
         '&': { height, fontSize: '13px' },
         '.cm-scroller': { overflow: 'auto' },
@@ -70,14 +67,43 @@
     }
 
     editorView = new EditorView({
-      doc: value,
+      doc: currentDoc,
       extensions,
       parent: containerEl,
     });
+  }
+
+  onMount(async () => {
+    const [cm, langSql, themeMod, cmView, cmCmds] = await Promise.all([
+      import('codemirror'),
+      import('@codemirror/lang-sql'),
+      import('@codemirror/theme-one-dark'),
+      import('@codemirror/view'),
+      import('@codemirror/commands'),
+    ]);
+    cmModules = {
+      EditorView: cm.EditorView,
+      basicSetup: cm.basicSetup,
+      sql: langSql.sql,
+      oneDark: themeMod.oneDark,
+      keymap: cmView.keymap,
+      indentWithTab: cmCmds.indentWithTab,
+    };
+    createEditor(themeStore.darkMode);
   });
 
   onDestroy(() => {
     editorView?.destroy();
+  });
+
+  // Rebuild editor when theme changes
+  let prevDark = themeStore.darkMode;
+  $effect(() => {
+    const dark = themeStore.darkMode;
+    if (cmModules && dark !== prevDark) {
+      prevDark = dark;
+      createEditor(dark);
+    }
   });
 
   // Sync external value changes into the editor
@@ -101,16 +127,7 @@
     overflow: hidden;
   }
 
-  .sql-editor :global(.cm-editor) {
-    background: #1e293b;
-  }
-
   .sql-editor :global(.cm-editor.cm-focused) {
     outline: none;
-  }
-
-  .sql-editor :global(.cm-gutters) {
-    background: #1e293b;
-    border-right: 1px solid #334155;
   }
 </style>
