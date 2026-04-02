@@ -218,6 +218,12 @@
 
   <div class="toolbar-right">
     {#if !minimal}
+      <ShortcutsDropdown
+        open={activeDropdown === 'shortcuts'}
+        ontoggle={() => toggleDropdown('shortcuts')}
+        onclose={closeDropdown}
+      />
+
       <button
         class="btn-dark-toggle"
         onclick={() => themeStore.toggleDark()}
@@ -241,12 +247,6 @@
           </svg>
         {/if}
       </button>
-
-      <ShortcutsDropdown
-        open={activeDropdown === 'shortcuts'}
-        ontoggle={() => toggleDropdown('shortcuts')}
-        onclose={closeDropdown}
-      />
 
       <LanguageDropdown
         open={activeDropdown === 'settings'}

@@ -1,4 +1,4 @@
-import type { Column, ColumnDomain, ColumnType, ERDSchema, ForeignKey, Memo, ReferentialAction, Table, UniqueKey, TableIndex } from '$lib/types/erd';
+import type { Column, ColumnDomain, ColumnType, DbObject, ERDSchema, ForeignKey, Memo, ReferentialAction, Table, UniqueKey, TableIndex } from '$lib/types/erd';
 import { DOMAIN_FIELDS } from '$lib/types/erd';
 import { propagateWithHierarchy } from '$lib/utils/domain-hierarchy';
 import { generateId } from '$lib/utils/common';
@@ -852,4 +852,68 @@ export function renameSchema(
   const newSchemas = schemas.map(s => s === oldName ? newName : s);
 
   return { ...schema, tables, memos, schemas: newSchemas, updatedAt: now() };
+}
+
+// ── DB Object operations ──
+
+export function addDbObject(
+  schema: ERDSchema,
+  category: string,
+  options?: { name?: string; sql?: string; comment?: string; schema?: string; includeInDdl?: boolean },
+): { schema: ERDSchema; objectId: string } {
+  const id = generateId();
+  const dbObjects = [...(schema.dbObjects ?? [])];
+  const categories = [...(schema.dbObjectCategories ?? [])];
+
+  if (!categories.includes(category)) categories.push(category);
+
+  const obj: DbObject = {
+    id,
+    category,
+    name: options?.name ?? `new_${category.toLowerCase()}`,
+    sql: options?.sql ?? '',
+    ...(options?.comment ? { comment: options.comment } : {}),
+    ...(options?.schema ? { schema: options.schema } : {}),
+    ...(options?.includeInDdl ? { includeInDdl: options.includeInDdl } : {}),
+  };
+  dbObjects.push(obj);
+
+  return { schema: { ...schema, dbObjects, dbObjectCategories: categories, updatedAt: now() }, objectId: id };
+}
+
+export function updateDbObject(
+  schema: ERDSchema,
+  objectId: string,
+  patch: Partial<Pick<DbObject, 'name' | 'sql' | 'comment' | 'category' | 'schema' | 'includeInDdl'>>,
+): ERDSchema {
+  const dbObjects = (schema.dbObjects ?? []).map(o =>
+    o.id === objectId ? { ...o, ...patch } : o,
+  );
+  return { ...schema, dbObjects, updatedAt: now() };
+}
+
+export function deleteDbObject(schema: ERDSchema, objectId: string): ERDSchema {
+  const dbObjects = (schema.dbObjects ?? []).filter(o => o.id !== objectId);
+  return { ...schema, dbObjects, updatedAt: now() };
+}
+
+export function addDbObjectCategory(schema: ERDSchema, category: string): ERDSchema {
+  const categories = [...(schema.dbObjectCategories ?? [])];
+  if (categories.includes(category)) return schema;
+  categories.push(category);
+  return { ...schema, dbObjectCategories: categories, updatedAt: now() };
+}
+
+export function deleteDbObjectCategory(schema: ERDSchema, category: string): ERDSchema {
+  const categories = (schema.dbObjectCategories ?? []).filter(c => c !== category);
+  const dbObjects = (schema.dbObjects ?? []).filter(o => o.category !== category);
+  return { ...schema, dbObjects, dbObjectCategories: categories, updatedAt: now() };
+}
+
+export function renameDbObjectCategory(schema: ERDSchema, oldName: string, newName: string): ERDSchema {
+  const categories = (schema.dbObjectCategories ?? []).map(c => c === oldName ? newName : c);
+  const dbObjects = (schema.dbObjects ?? []).map(o =>
+    o.category === oldName ? { ...o, category: newName } : o,
+  );
+  return { ...schema, dbObjects, dbObjectCategories: categories, updatedAt: now() };
 }
