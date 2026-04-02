@@ -16,9 +16,10 @@
 
   function filteredObjects(category: string) {
     const objs = allObjects.filter((o) => o.category === category);
-    if (!searchQuery.trim()) return objs;
+    const sorted = objs.sort((a, b) => a.name.localeCompare(b.name));
+    if (!searchQuery.trim()) return sorted;
     const q = searchQuery.toLowerCase();
-    return objs.filter((o) => o.name.toLowerCase().includes(q) || o.comment?.toLowerCase().includes(q));
+    return sorted.filter((o) => o.name.toLowerCase().includes(q) || o.comment?.toLowerCase().includes(q));
   }
 
   function toggleCategory(cat: string) {
