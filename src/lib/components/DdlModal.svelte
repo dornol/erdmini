@@ -77,20 +77,27 @@
   let importDialect = $state<Dialect>('mysql');
   let importText = $state('');
   let importDialectAutoDetected = $state(false);
+  let importDialectManual = $state(false);
 
-  // Auto-detect dialect when import text changes
+  // Auto-detect dialect when import text changes (skip if user manually selected)
   $effect(() => {
-    if (importFormat === 'ddl' && importText.length > 10) {
-      const detected = detectDialect(importText);
-      if (detected) {
-        importDialect = detected;
-        importDialectAutoDetected = true;
+    const text = importText;
+    const fmt = importFormat;
+    untrack(() => {
+      if (text.length === 0) { importDialectManual = false; importDialectAutoDetected = false; return; }
+      if (importDialectManual) return;
+      if (fmt === 'ddl' && text.length > 10) {
+        const detected = detectDialect(text);
+        if (detected) {
+          importDialect = detected;
+          importDialectAutoDetected = true;
+        } else {
+          importDialectAutoDetected = false;
+        }
       } else {
         importDialectAutoDetected = false;
       }
-    } else {
-      importDialectAutoDetected = false;
-    }
+    });
   });
 
   let importErrors = $state<string[]>([]);
@@ -440,14 +447,16 @@
           {#if importFormat === 'ddl'}
             <div class="dialect-select-wrap">
               <SearchableSelect
-                options={DIALECT_OPTIONS}
+                options={DIALECT_OPTIONS.map(o => ({
+                  value: o.value,
+                  label: importDialectAutoDetected && o.value === importDialect
+                    ? `${o.label} (auto)`
+                    : o.label,
+                }))}
                 value={importDialect}
-                onchange={(v) => { importDialect = v as Dialect; importDialectAutoDetected = false; }}
+                onchange={(v) => { importDialect = v as Dialect; importDialectAutoDetected = false; importDialectManual = true; }}
                 size="md"
               />
-              {#if importDialectAutoDetected}
-                <span class="auto-detect-badge">auto</span>
-              {/if}
             </div>
           {/if}
           <button class="btn-secondary" onclick={openFile}>{m.action_open_file()}</button>
@@ -605,22 +614,8 @@
   }
 
   .dialect-select-wrap {
-    width: 140px;
+    width: 160px;
     flex-shrink: 0;
-    position: relative;
-  }
-
-  .auto-detect-badge {
-    position: absolute;
-    top: -6px;
-    right: -4px;
-    font-size: 9px;
-    font-weight: 600;
-    color: #16a34a;
-    background: var(--app-card-bg, white);
-    padding: 0 3px;
-    border-radius: 3px;
-    pointer-events: none;
   }
 
   .spacer {

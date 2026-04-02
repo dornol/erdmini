@@ -110,7 +110,7 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   if (col.type === 'TEXT') return `${kw('NVARCHAR', upper)}(MAX)`;
   if (col.type === 'VARCHAR') return `${kw('NVARCHAR', upper)}${len || '(255)'}`;
   if (col.type === 'CHAR') return `${kw('NCHAR', upper)}${len || '(255)'}`;
-  if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return kw('DATETIME2', upper);
+  if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return col.length ? `${kw('DATETIME2', upper)}(${col.length})` : kw('DATETIME2', upper);
   if (col.type === 'DECIMAL') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
   if (col.type === 'DOUBLE') return kw('FLOAT', upper);
   if (col.type === 'JSON') return `${kw('NVARCHAR', upper)}(MAX)`;
