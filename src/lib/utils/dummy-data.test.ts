@@ -369,7 +369,7 @@ describe('generateDummyValue', () => {
 
 	it('unknown type falls back to name_N', () => {
 		// Force an unusual type via cast
-		const col = makeColumn({ id: 'c', name: 'data', type: 'BLOB' as any });
+		const col = makeColumn({ id: 'c', name: 'data', type: 'XMLTYPE' as any });
 		expect(generateDummyValue(col, 0)).toBe('data_1');
 	});
 });

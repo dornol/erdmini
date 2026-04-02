@@ -578,7 +578,7 @@ describe('generateMigrationSQL', () => {
         }],
       })];
       const sql = generateMigrationSQL(diff, 'postgresql', opts, [currTable]);
-      expect(sql).toContain('ALTER COLUMN price TYPE DECIMAL(12,4)');
+      expect(sql).toContain('ALTER COLUMN price TYPE NUMERIC(12,4)');
     });
 
     it('MySQL: MODIFY with DECIMAL precision', () => {
@@ -1424,7 +1424,7 @@ describe('generateMigrationSQL', () => {
       // Test PostgreSQL
       const sqlPG = generateMigrationSQL(diff, 'postgresql', opts, [productsTable]);
       expect(sqlPG).toContain('DROP CONSTRAINT');
-      expect(sqlPG).toContain('ALTER COLUMN price TYPE DECIMAL(12,2)');
+      expect(sqlPG).toContain('ALTER COLUMN price TYPE NUMERIC(12,2)');
       expect(sqlPG).toContain('ALTER COLUMN price SET NOT NULL');
 
       // Self-referencing FK in categories

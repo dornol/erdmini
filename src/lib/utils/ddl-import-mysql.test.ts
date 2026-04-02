@@ -90,11 +90,11 @@ describe('importDDL — MySQL', () => {
     const result = await importDDL(sql, 'mysql');
     expect(result.errors).toHaveLength(0);
     const cols = result.tables[0].columns;
-    expect(cols.find(c => c.name === 'a')!.type).toBe('SMALLINT');
-    expect(cols.find(c => c.name === 'b')!.type).toBe('INT');
+    expect(cols.find(c => c.name === 'a')!.type).toBe('TINYINT');
+    expect(cols.find(c => c.name === 'b')!.type).toBe('MEDIUMINT');
     expect(cols.find(c => c.name === 'c')!.type).toBe('TEXT');
     expect(cols.find(c => c.name === 'd')!.type).toBe('TEXT');
-    expect(cols.find(c => c.name === 'e')!.type).toBe('TEXT');
+    expect(cols.find(c => c.name === 'e')!.type).toBe('BLOB');
   });
 
   // --- Primary Key ---

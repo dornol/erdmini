@@ -29,14 +29,13 @@ function normalizeTypeInternal(raw: string): { type: ColumnType; warning?: { ori
   if (base === 'BIGSERIAL') return { type: 'BIGINT' };
   if (base === 'SMALLSERIAL') return { type: 'SMALLINT' };
   if (base === 'INTEGER') return { type: 'INT' };
-  if (base === 'TINYINT' || base === 'MEDIUMINT') return { type: base === 'TINYINT' ? 'SMALLINT' : 'INT' };
   if (base === 'TINYTEXT' || base === 'MEDIUMTEXT' || base === 'LONGTEXT') return { type: 'TEXT' };
-  if (base === 'TINYBLOB' || base === 'BLOB' || base === 'MEDIUMBLOB' || base === 'LONGBLOB') return { type: 'TEXT' };
-  if (base === 'BOOL' || base === 'BIT') return { type: 'BOOLEAN' };
+  if (base === 'TINYBLOB' || base === 'MEDIUMBLOB' || base === 'LONGBLOB') return { type: 'BLOB' };
+  if (base === 'BOOL') return { type: 'BOOLEAN' };
   if (base === 'DATETIME') return { type: 'DATETIME' };
   if (base === 'TIMESTAMP' || base === 'TIMESTAMPTZ' || base === 'DATETIME2') return { type: 'TIMESTAMP' };
-  if (base === 'NUMERIC' || base === 'REAL' || base === 'MONEY' || base === 'DOUBLE PRECISION') return { type: 'DECIMAL' };
-  if (base === 'VARBINARY' || base === 'IMAGE') return { type: 'TEXT' };
+  if (base === 'MONEY' || base === 'DOUBLE PRECISION') return { type: 'DECIMAL' };
+  if (base === 'IMAGE') return { type: 'BLOB' };
   if (base === 'CHARACTER VARYING' || base === 'NVARCHAR' || base === 'NVARCHAR2') return { type: 'VARCHAR' };
   if (base === 'VARCHAR2') return { type: 'VARCHAR' };
   if (base === 'CHARACTER' || base === 'NCHAR') return { type: 'CHAR' };
@@ -44,7 +43,7 @@ function normalizeTypeInternal(raw: string): { type: ColumnType; warning?: { ori
   if (base === 'NVARCHAR(MAX)') return { type: 'TEXT' };
   if (base === 'NUMBER') return { type: 'DECIMAL' };
   if (base === 'CLOB' || base === 'NCLOB' || base === 'LONG') return { type: 'TEXT' };
-  if (base === 'RAW') return { type: 'TEXT' };
+  if (base === 'RAW') return { type: 'VARBINARY' };
   if (base === 'BINARY_DOUBLE') return { type: 'DOUBLE' };
   if (base === 'BINARY_FLOAT') return { type: 'FLOAT' };
   if (base === 'ENUM') return { type: 'ENUM' };

@@ -902,7 +902,7 @@ model Payment {
     const result = importPrisma(schema);
     const ddl = exportDDL(toSchema(result.tables), 'postgresql');
     expect(ddl).toContain('UUID');
-    expect(ddl).toContain('DECIMAL(10,2)');
+    expect(ddl).toContain('NUMERIC(10,2)');
     expect(ddl).toContain('TIMESTAMP');
     expect(ddl).toContain('TEXT');
   });

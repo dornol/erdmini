@@ -48,10 +48,10 @@ describe('importDDL — SQLite', () => {
     const cols = result.tables[0].columns;
     expect(cols[0].type).toBe('INT');
     expect(cols[1].type).toBe('TEXT');
-    expect(cols[2].type).toBe('DECIMAL');
+    expect(cols[2].type).toBe('REAL');
   });
 
-  it('maps BLOB → TEXT', async () => {
+  it('maps BLOB → BLOB', async () => {
     const sql = `
       CREATE TABLE files (
         id INTEGER PRIMARY KEY,
@@ -59,10 +59,10 @@ describe('importDDL — SQLite', () => {
       );
     `;
     const result = await importDDL(sql, 'sqlite');
-    expect(result.tables[0].columns.find(c => c.name === 'data')!.type).toBe('TEXT');
+    expect(result.tables[0].columns.find(c => c.name === 'data')!.type).toBe('BLOB');
   });
 
-  it('maps BOOLEAN → BOOLEAN, NUMERIC → DECIMAL', async () => {
+  it('maps BOOLEAN → BOOLEAN, NUMERIC → NUMERIC', async () => {
     const sql = `
       CREATE TABLE test (
         active BOOLEAN,
@@ -72,7 +72,7 @@ describe('importDDL — SQLite', () => {
     const result = await importDDL(sql, 'sqlite');
     const cols = result.tables[0].columns;
     expect(cols.find(c => c.name === 'active')!.type).toBe('BOOLEAN');
-    expect(cols.find(c => c.name === 'amount')!.type).toBe('DECIMAL');
+    expect(cols.find(c => c.name === 'amount')!.type).toBe('NUMERIC');
   });
 
   // --- FK ---

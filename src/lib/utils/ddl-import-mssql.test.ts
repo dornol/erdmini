@@ -129,7 +129,7 @@ GO
     const result = await importDDL(sql, 'mssql');
     const cols = result.tables[0].columns;
     expect(cols.find(c => c.name === 'a')!.type).toBe('VARCHAR');
-    expect(cols.find(c => c.name === 'b')!.type).toBe('BOOLEAN');
+    expect(cols.find(c => c.name === 'b')!.type).toBe('BIT');
   });
 
   // --- sp_addextendedproperty comments ---

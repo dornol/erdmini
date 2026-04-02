@@ -196,7 +196,7 @@ describe('Edge: type normalization with whitespace', () => {
   });
 
   it('normalizes Oracle RAW without parens', () => {
-    expect(normalizeType('RAW')).toBe('TEXT');
+    expect(normalizeType('RAW')).toBe('VARBINARY');
   });
 
   it('normalizes NVARCHAR(MAX) to TEXT', () => {

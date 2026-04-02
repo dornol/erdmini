@@ -18,16 +18,16 @@ describe('normalizeType', () => {
     expect(normalizeType('INTEGER')).toBe('INT');
   });
 
-  it('maps TINYINT → SMALLINT', () => {
-    expect(normalizeType('TINYINT')).toBe('SMALLINT');
+  it('maps TINYINT → TINYINT', () => {
+    expect(normalizeType('TINYINT')).toBe('TINYINT');
   });
 
-  it('maps MEDIUMINT → INT', () => {
-    expect(normalizeType('MEDIUMINT')).toBe('INT');
+  it('maps MEDIUMINT → MEDIUMINT', () => {
+    expect(normalizeType('MEDIUMINT')).toBe('MEDIUMINT');
   });
 
-  it('maps BIT → BOOLEAN', () => {
-    expect(normalizeType('BIT')).toBe('BOOLEAN');
+  it('maps BIT → BIT', () => {
+    expect(normalizeType('BIT')).toBe('BIT');
   });
 
   it('maps BOOL → BOOLEAN', () => {
@@ -46,12 +46,12 @@ describe('normalizeType', () => {
     expect(normalizeType('TIMESTAMPTZ')).toBe('TIMESTAMP');
   });
 
-  it('maps NUMERIC → DECIMAL', () => {
-    expect(normalizeType('NUMERIC')).toBe('DECIMAL');
+  it('maps NUMERIC → NUMERIC', () => {
+    expect(normalizeType('NUMERIC')).toBe('NUMERIC');
   });
 
-  it('maps REAL → DECIMAL', () => {
-    expect(normalizeType('REAL')).toBe('DECIMAL');
+  it('maps REAL → REAL', () => {
+    expect(normalizeType('REAL')).toBe('REAL');
   });
 
   it('maps MONEY → DECIMAL', () => {
@@ -90,16 +90,16 @@ describe('normalizeType', () => {
     expect(normalizeType('LONGTEXT')).toBe('TEXT');
   });
 
-  it('maps BLOB → TEXT', () => {
-    expect(normalizeType('BLOB')).toBe('TEXT');
+  it('maps BLOB → BLOB', () => {
+    expect(normalizeType('BLOB')).toBe('BLOB');
   });
 
-  it('maps VARBINARY → TEXT', () => {
-    expect(normalizeType('VARBINARY')).toBe('TEXT');
+  it('maps VARBINARY → VARBINARY', () => {
+    expect(normalizeType('VARBINARY')).toBe('VARBINARY');
   });
 
-  it('maps IMAGE → TEXT', () => {
-    expect(normalizeType('IMAGE')).toBe('TEXT');
+  it('maps IMAGE → BLOB', () => {
+    expect(normalizeType('IMAGE')).toBe('BLOB');
   });
 
   it('maps NVARCHAR(MAX) → TEXT (via MAX check)', () => {
@@ -165,8 +165,8 @@ describe('normalizeType', () => {
     expect(normalizeType('LONG')).toBe('TEXT');
   });
 
-  it('maps RAW → TEXT', () => {
-    expect(normalizeType('RAW')).toBe('TEXT');
+  it('maps RAW → VARBINARY', () => {
+    expect(normalizeType('RAW')).toBe('VARBINARY');
   });
 
   it('maps DOUBLE PRECISION → DECIMAL', () => {
@@ -187,11 +187,11 @@ describe('normalizeType', () => {
 // ─────────────────────────────────────────────
 describe('importDDL — warnings', () => {
   it('generates warning for unknown type with table/column context', async () => {
-    // TIME is a valid SQL type the parser accepts, but normalizeType maps it to VARCHAR (unknown)
-    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, val TIME);`;
+    // YEAR is an unknown SQL type that normalizeType maps to VARCHAR
+    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, val YEAR);`;
     const result = await importDDL(sql, 'mysql');
     expect(result.warnings.length).toBeGreaterThan(0);
-    expect(result.warnings[0]).toContain('TIME');
+    expect(result.warnings[0]).toContain('YEAR');
     expect(result.warnings[0]).toContain('VARCHAR');
     expect(result.warnings[0]).toContain('t1.val');
   });
@@ -203,10 +203,10 @@ describe('importDDL — warnings', () => {
   });
 
   it('generates multiple warnings for multiple unknown types', async () => {
-    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, a TIME, b YEAR);`;
+    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, a YEAR, b YEAR);`;
     const result = await importDDL(sql, 'mysql');
     expect(result.warnings).toHaveLength(2);
-    expect(result.warnings[0]).toContain('TIME');
+    expect(result.warnings[0]).toContain('YEAR');
     expect(result.warnings[1]).toContain('YEAR');
   });
 });

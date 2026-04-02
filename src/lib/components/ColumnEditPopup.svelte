@@ -28,10 +28,11 @@
   }
 
   let hasLength = $derived(
-    col?.type === 'VARCHAR' || col?.type === 'CHAR' || col?.type === 'DECIMAL',
+    col?.type === 'VARCHAR' || col?.type === 'CHAR' || col?.type === 'DECIMAL' || col?.type === 'NUMERIC'
+    || col?.type === 'TIME' || col?.type === 'BINARY' || col?.type === 'VARBINARY',
   );
 
-  let isDecimal = $derived(col?.type === 'DECIMAL');
+  let isDecimal = $derived(col?.type === 'DECIMAL' || col?.type === 'NUMERIC');
 
   let hasDomains = $derived(erdStore.schema.domains.length > 0);
 

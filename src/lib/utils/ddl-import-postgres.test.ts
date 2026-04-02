@@ -93,7 +93,7 @@ describe('importDDL — PostgreSQL', () => {
     `;
     const result = await importDDL(sql, 'postgresql');
     const amountCol = result.tables[0].columns.find(c => c.name === 'amount')!;
-    expect(amountCol.type).toBe('DECIMAL');
+    expect(amountCol.type).toBe('NUMERIC');
     expect(amountCol.length).toBe(12);
     expect(amountCol.scale).toBe(4);
   });

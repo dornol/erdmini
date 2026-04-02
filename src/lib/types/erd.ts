@@ -1,17 +1,19 @@
 export type ColumnType =
-  | 'INT' | 'BIGINT' | 'SMALLINT'
+  | 'INT' | 'BIGINT' | 'SMALLINT' | 'TINYINT' | 'MEDIUMINT'
   | 'VARCHAR' | 'CHAR' | 'TEXT'
-  | 'BOOLEAN'
-  | 'DATE' | 'DATETIME' | 'TIMESTAMP'
-  | 'DECIMAL' | 'FLOAT' | 'DOUBLE'
+  | 'BOOLEAN' | 'BIT'
+  | 'DATE' | 'TIME' | 'DATETIME' | 'TIMESTAMP'
+  | 'DECIMAL' | 'NUMERIC' | 'FLOAT' | 'DOUBLE' | 'REAL'
+  | 'BINARY' | 'VARBINARY' | 'BLOB'
   | 'JSON' | 'UUID' | 'ENUM';
 
 export const COLUMN_TYPES: ColumnType[] = [
-  'INT', 'BIGINT', 'SMALLINT',
+  'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
   'VARCHAR', 'CHAR', 'TEXT',
-  'BOOLEAN',
-  'DATE', 'DATETIME', 'TIMESTAMP',
-  'DECIMAL', 'FLOAT', 'DOUBLE',
+  'BOOLEAN', 'BIT',
+  'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+  'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
+  'BINARY', 'VARBINARY', 'BLOB',
   'JSON', 'UUID', 'ENUM',
 ];
 

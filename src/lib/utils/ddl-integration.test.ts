@@ -647,7 +647,7 @@ CREATE TABLE [AspNetUserTokens] (
 		const users = findTable(tables, 'AspNetUsers');
 		expect(users.columns.length).toBe(15);
 		expect(findCol(users, 'Id').type).toBe('VARCHAR'); // nvarchar → VARCHAR
-		expect(findCol(users, 'EmailConfirmed').type).toBe('BOOLEAN'); // bit → BOOLEAN
+		expect(findCol(users, 'EmailConfirmed').type).toBe('BIT'); // bit → BIT
 		expect(findCol(users, 'AccessFailedCount').type).toBe('INT');
 	});
 

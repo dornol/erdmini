@@ -57,8 +57,14 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.autoIncrement && (col.type === 'BIGINT' || col.type === 'INT')) return kw(col.type, upper);
     if (col.type === 'ENUM') return `${kw('ENUM', upper)}${enumList || "('value')"}`;
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
-    if (col.type === 'DECIMAL') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
+    if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'UUID') return `${kw('CHAR', upper)}(36)`;
+    if (col.type === 'REAL') return kw('FLOAT', upper);
+    if (col.type === 'BIT') return kw('TINYINT', upper) + '(1)';
+    if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
+    if (col.type === 'BINARY') return `${kw('BINARY', upper)}${len || '(255)'}`;
+    if (col.type === 'VARBINARY') return `${kw('VARBINARY', upper)}${len || '(255)'}`;
+    if (col.type === 'BLOB') return kw('LONGBLOB', upper);
     return kw(col.type, upper);
   }
 
@@ -67,54 +73,74 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'ENUM') return col.enumValues?.length && tableName ? `${tableName}_${col.name}_enum` : `${kw('VARCHAR', upper)}(255)`;
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
-    if (col.type === 'DECIMAL') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
+    if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('NUMERIC', upper)}${decimalLen || '(10,2)'}`;
+    if (col.type === 'REAL') return kw('REAL', upper);
+    if (col.type === 'TINYINT' || col.type === 'MEDIUMINT') return kw('INTEGER', upper);
+    if (col.type === 'BIT') return kw('BOOLEAN', upper);
+    if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
+    if (col.type === 'BINARY' || col.type === 'VARBINARY') return kw('BYTEA', upper);
+    if (col.type === 'BLOB') return kw('BYTEA', upper);
     return kw(col.type, upper);
   }
 
   if (dialect === 'sqlite') {
-    if (col.type === 'INT' || col.type === 'BIGINT' || col.type === 'SMALLINT' || col.type === 'BOOLEAN') return kw('INTEGER', upper);
-    if (col.type === 'DECIMAL' || col.type === 'FLOAT' || col.type === 'DOUBLE') return kw('REAL', upper);
+    if (col.type === 'INT' || col.type === 'BIGINT' || col.type === 'SMALLINT' || col.type === 'TINYINT' || col.type === 'MEDIUMINT' || col.type === 'BOOLEAN' || col.type === 'BIT') return kw('INTEGER', upper);
+    if (col.type === 'DECIMAL' || col.type === 'NUMERIC' || col.type === 'FLOAT' || col.type === 'DOUBLE' || col.type === 'REAL') return kw('REAL', upper);
+    if (col.type === 'BINARY' || col.type === 'VARBINARY' || col.type === 'BLOB') return kw('BLOB', upper);
     return kw('TEXT', upper);
   }
 
   if (dialect === 'oracle') {
-    if (col.type === 'INT') return `${kw('NUMBER', upper)}(10)`;
+    if (col.type === 'INT' || col.type === 'MEDIUMINT') return `${kw('NUMBER', upper)}(10)`;
     if (col.type === 'BIGINT') return `${kw('NUMBER', upper)}(19)`;
     if (col.type === 'SMALLINT') return `${kw('NUMBER', upper)}(5)`;
-    if (col.type === 'BOOLEAN') return `${kw('NUMBER', upper)}(1)`;
+    if (col.type === 'TINYINT') return `${kw('NUMBER', upper)}(3)`;
+    if (col.type === 'BOOLEAN' || col.type === 'BIT') return `${kw('NUMBER', upper)}(1)`;
     if (col.type === 'VARCHAR') return `${kw('VARCHAR2', upper)}${len || '(255)'}`;
     if (col.type === 'CHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
     if (col.type === 'TEXT' || col.type === 'JSON') return kw('CLOB', upper);
     if (col.type === 'DATE') return kw('DATE', upper);
+    if (col.type === 'TIME') return kw('TIMESTAMP', upper);
     if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return kw('TIMESTAMP', upper);
-    if (col.type === 'DECIMAL') return `${kw('NUMBER', upper)}${decimalLen || '(10,2)'}`;
-    if (col.type === 'FLOAT') return kw('FLOAT', upper);
+    if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('NUMBER', upper)}${decimalLen || '(10,2)'}`;
+    if (col.type === 'FLOAT' || col.type === 'REAL') return kw('FLOAT', upper);
     if (col.type === 'DOUBLE') return kw('BINARY_DOUBLE', upper);
     if (col.type === 'UUID') return `${kw('VARCHAR2', upper)}(36)`;
     if (col.type === 'ENUM') return `${kw('VARCHAR2', upper)}(255)`;
+    if (col.type === 'BINARY' || col.type === 'VARBINARY') return `${kw('RAW', upper)}${len || '(255)'}`;
+    if (col.type === 'BLOB') return kw('BLOB', upper);
     return kw(col.type, upper);
   }
 
   if (dialect === 'h2') {
     if (col.type === 'TEXT' || col.type === 'JSON') return kw('CLOB', upper);
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
-    if (col.type === 'DECIMAL') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
+    if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'ENUM') return `${kw('ENUM', upper)}${enumList || "('value')"}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
+    if (col.type === 'BLOB') return kw('BLOB', upper);
+    if (col.type === 'BINARY' || col.type === 'VARBINARY') return `${kw(col.type, upper)}${len || '(255)'}`;
     return kw(col.type, upper);
   }
 
   // MSSQL
   if (col.type === 'ENUM') return `${kw('NVARCHAR', upper)}(255)`;
   if (col.type === 'BOOLEAN') return kw('BIT', upper);
+  if (col.type === 'BIT') return kw('BIT', upper);
   if (col.type === 'TEXT') return `${kw('NVARCHAR', upper)}(MAX)`;
   if (col.type === 'VARCHAR') return `${kw('NVARCHAR', upper)}${len || '(255)'}`;
   if (col.type === 'CHAR') return `${kw('NCHAR', upper)}${len || '(255)'}`;
+  if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
   if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return col.length ? `${kw('DATETIME2', upper)}(${col.length})` : kw('DATETIME2', upper);
-  if (col.type === 'DECIMAL') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
-  if (col.type === 'DOUBLE') return kw('FLOAT', upper);
+  if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
+  if (col.type === 'DOUBLE' || col.type === 'REAL') return kw('FLOAT', upper);
+  if (col.type === 'TINYINT') return kw('TINYINT', upper);
+  if (col.type === 'MEDIUMINT') return kw('INT', upper);
   if (col.type === 'JSON') return `${kw('NVARCHAR', upper)}(MAX)`;
   if (col.type === 'UUID') return kw('UNIQUEIDENTIFIER', upper);
+  if (col.type === 'BINARY') return `${kw('BINARY', upper)}${len || '(255)'}`;
+  if (col.type === 'VARBINARY') return `${kw('VARBINARY', upper)}${len || '(255)'}`;
+  if (col.type === 'BLOB') return `${kw('VARBINARY', upper)}(MAX)`;
   return kw(col.type, upper);
 }
 

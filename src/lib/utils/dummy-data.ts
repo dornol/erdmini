@@ -83,6 +83,8 @@ export function generateDummyValue(
 		case 'INT':
 		case 'BIGINT':
 		case 'SMALLINT':
+		case 'TINYINT':
+		case 'MEDIUMINT':
 			return n;
 
 		case 'VARCHAR':
@@ -91,12 +93,18 @@ export function generateDummyValue(
 			return `${col.name}_${n}`;
 
 		case 'BOOLEAN':
+		case 'BIT':
 			return n % 2 === 0 ? 1 : 0;
 
 		case 'DATE': {
 			const d = new Date(2025, 0, 1);
 			d.setDate(d.getDate() + (n % 30));
 			return d.toISOString().slice(0, 10);
+		}
+
+		case 'TIME': {
+			const pad = (v: number) => String(v).padStart(2, '0');
+			return `${pad(n % 24)}:${pad((n * 7) % 60)}:${pad((n * 13) % 60)}`;
 		}
 
 		case 'DATETIME':
@@ -108,8 +116,10 @@ export function generateDummyValue(
 		}
 
 		case 'DECIMAL':
+		case 'NUMERIC':
 		case 'FLOAT':
 		case 'DOUBLE':
+		case 'REAL':
 			return Number((n * 10 + (n * 3.14) % 10).toFixed(2));
 
 		case 'ENUM':
@@ -123,6 +133,11 @@ export function generateDummyValue(
 
 		case 'JSON':
 			return '{}';
+
+		case 'BINARY':
+		case 'VARBINARY':
+		case 'BLOB':
+			return `X'${hex8(n)}${hex4(n)}'`;
 
 		default:
 			return `${col.name}_${n}`;
