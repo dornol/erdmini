@@ -2,6 +2,7 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
+  import ModalBackdrop from './ModalBackdrop.svelte';
 
   interface Props {
     tableId: string;
@@ -42,14 +43,6 @@
     onclose();
   }
 
-  function onBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onclose();
-  }
-
-  function onKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onclose();
-  }
-
   const title = $derived(
     mode === 'unique-key'
       ? m.uq_modal_title({ name: selectedTable?.name ?? '' })
@@ -61,18 +54,8 @@
   const ariaLabel = $derived(mode === 'unique-key' ? m.uq_section() : m.idx_section());
 </script>
 
-<svelte:window onkeydown={onKeyDown} />
-
-<div
-  class="backdrop"
-  role="dialog"
-  aria-modal="true"
-  aria-label={ariaLabel}
-  tabindex="-1"
-  onclick={onBackdropClick}
-  onkeydown={(e) => { if (e.key === 'Escape') onclose(); }}
->
-  <div class="modal">
+<ModalBackdrop {onclose}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label={ariaLabel}>
     <div class="modal-header">
       <span class="modal-title">{title}</span>
       <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>&#x2715;</button>
@@ -138,19 +121,9 @@
       </button>
     </div>
   </div>
-</div>
+</ModalBackdrop>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
   .modal {
     background: white;
     border-radius: 10px;

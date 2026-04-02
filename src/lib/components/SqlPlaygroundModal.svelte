@@ -5,6 +5,7 @@
   import { exportDDL } from '$lib/utils/ddl-export';
   import { generateDummyData } from '$lib/utils/dummy-data';
   import * as m from '$lib/paraglide/messages';
+  import ModalBackdrop from './ModalBackdrop.svelte';
   import type { Database } from 'sql.js';
   import SqlEditor from './SqlEditor.svelte';
 
@@ -179,10 +180,6 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      onclose();
-      return;
-    }
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       executeQuery();
@@ -196,9 +193,8 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="sp-backdrop" onmousedown={(e) => { if (e.target === e.currentTarget) onclose(); }} onkeydown={handleKeydown}>
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="sp-panel" onmousedown={(e) => e.stopPropagation()}>
+<ModalBackdrop {onclose} priority>
+  <div class="sp-panel" onkeydown={handleKeydown}>
     <!-- Header -->
     <div class="sp-header">
       <h2>{m.sql_playground_title()}</h2>
@@ -305,18 +301,9 @@
       </div>
     {/if}
   </div>
-</div>
+</ModalBackdrop>
 
 <style>
-  .sp-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
   .sp-panel {
     background: #1e293b;
     border: 1px solid #334155;

@@ -3,6 +3,7 @@
   import { projectStore } from '$lib/store/project.svelte';
   import { SNIPPET_TABS, getSnippet, getSnippetHint } from '$lib/utils/mcp-snippets';
   import type { ApiKeyScopeRow } from '$lib/types/auth';
+  import ModalBackdrop from './ModalBackdrop.svelte';
 
   interface Props {
     onclose: () => void;
@@ -199,14 +200,6 @@
     editScopes = editScopes.filter((_, i) => i !== idx);
   }
 
-  function handleOverlayClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onclose();
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onclose();
-  }
-
   function scopeProjectNames(scopes: ApiKeyScopeRow[]): string {
     if (!scopes || scopes.length === 0) return m.api_keys_all_projects();
     const projects = projectStore.index.projects;
@@ -217,10 +210,7 @@
   }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<div class="overlay" role="presentation" onclick={handleOverlayClick}>
+<ModalBackdrop {onclose}>
   <div class="modal" role="dialog">
     <div class="modal-header">
       <h2>{m.api_keys_title()}</h2>
@@ -415,19 +405,9 @@
       </div>
     </div>
   </div>
-</div>
+</ModalBackdrop>
 
 <style>
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
   .modal {
     background: #1e293b;
     border: 1px solid #334155;

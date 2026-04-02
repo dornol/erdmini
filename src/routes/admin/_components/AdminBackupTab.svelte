@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   type BackupStats = {
     dbSizeBytes: number;
@@ -51,7 +52,8 @@
     const file = input.files?.[0];
     if (!file) return;
 
-    if (!confirm(m.admin_restore_confirm())) {
+    const ok = await dialogStore.confirm(m.admin_restore_confirm(), { variant: 'danger' });
+    if (!ok) {
       input.value = '';
       return;
     }

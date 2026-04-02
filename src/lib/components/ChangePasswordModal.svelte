@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as m from '$lib/paraglide/messages';
+  import ModalBackdrop from './ModalBackdrop.svelte';
 
   interface Props {
     onclose: () => void;
@@ -55,8 +56,7 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="cp-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onclose(); }}>
+<ModalBackdrop {onclose} priority>
   <div class="cp-modal">
     <h3>{m.auth_change_password()}</h3>
     <form onsubmit={async (e) => { e.preventDefault(); await submitChangePassword(); }}>
@@ -88,19 +88,9 @@
       </div>
     </form>
   </div>
-</div>
+</ModalBackdrop>
 
 <style>
-  .cp-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-
   .cp-modal {
     background: #1e293b;
     border: 1px solid #334155;

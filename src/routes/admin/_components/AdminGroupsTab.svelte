@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   interface GroupInfo {
     id: string;
@@ -66,7 +67,7 @@
     const msg = group.source !== 'manual'
       ? m.admin_groups_delete_synced_warn({ name: group.name })
       : m.admin_groups_delete_confirm({ name: group.name });
-    if (!confirm(msg)) return;
+    const ok = await dialogStore.confirm(msg, { variant: 'danger' }); if (!ok) return;
     error = '';
     const res = await fetch(`/api/admin/groups/${group.id}`, { method: 'DELETE' });
     if (!res.ok) {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   interface DictShareToken {
     id: string;
@@ -68,7 +69,7 @@
   }
 
   async function deleteToken(id: string) {
-    if (!confirm(m.dict_share_delete_confirm())) return;
+    const ok = await dialogStore.confirm(m.dict_share_delete_confirm(), { variant: 'danger' }); if (!ok) return;
     message = null;
     const res = await fetch('/api/admin/dictionary-tokens', {
       method: 'DELETE',

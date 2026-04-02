@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { LdapProviderRow } from '$lib/types/auth';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   interface Props {
     providers: LdapProviderRow[];
@@ -113,7 +114,7 @@
   }
 
   async function deleteProvider(id: string) {
-    if (!confirm(m.admin_ldap_delete_confirm())) return;
+    const ok = await dialogStore.confirm(m.admin_ldap_delete_confirm(), { variant: 'danger' }); if (!ok) return;
     await fetch(`/api/admin/ldap-providers/${id}`, { method: 'DELETE' });
     await onreload();
   }

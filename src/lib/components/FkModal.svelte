@@ -4,6 +4,7 @@
   import type { ReferentialAction } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
+  import ModalBackdrop from './ModalBackdrop.svelte';
 
   interface Props {
     tableId: string;
@@ -89,27 +90,10 @@
     onclose();
   }
 
-  function onBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onclose();
-  }
-
-  function onKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') onclose();
-  }
 </script>
 
-<svelte:window onkeydown={onKeyDown} />
-
-<div
-  class="backdrop"
-  role="dialog"
-  aria-modal="true"
-  aria-label={m.fk_add()}
-  tabindex="-1"
-  onclick={onBackdropClick}
-  onkeydown={(e) => { if (e.key === 'Escape') onclose(); }}
->
-  <div class="modal">
+<ModalBackdrop {onclose}>
+  <div class="modal" role="dialog" aria-modal="true" aria-label={m.fk_add()}>
     <div class="modal-header">
       <span class="modal-title">{isEditMode ? m.fk_edit_title({ name: selectedTable?.name ?? '' }) : m.fk_modal_title({ name: selectedTable?.name ?? '' })}</span>
       <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
@@ -216,19 +200,9 @@
       </button>
     </div>
   </div>
-</div>
+</ModalBackdrop>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-
   .modal {
     background: white;
     border-radius: 10px;

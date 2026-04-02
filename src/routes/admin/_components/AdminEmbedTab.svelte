@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   interface EmbedTokenInfo {
     id: string;
@@ -39,7 +40,7 @@
   }
 
   async function deleteToken(id: string, projectName: string) {
-    if (!confirm(m.admin_embed_delete_confirm({ name: projectName }))) return;
+    const ok = await dialogStore.confirm(m.admin_embed_delete_confirm({ name: projectName }), { variant: 'danger' }); if (!ok) return;
     message = null;
     const res = await fetch('/api/admin/embed-tokens', {
       method: 'DELETE',

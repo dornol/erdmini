@@ -3,6 +3,7 @@
   import { projectStore } from '$lib/store/project.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { toastStore } from '$lib/store/toast.svelte';
+  import ModalBackdrop from './ModalBackdrop.svelte';
 
   interface Props {
     onclose: () => void;
@@ -132,10 +133,8 @@
   ] as const;
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-backdrop" onclick={onclose} onkeydown={(e) => e.key === 'Escape' && onclose()}>
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="modal-panel" onclick={(e) => e.stopPropagation()}>
+<ModalBackdrop {onclose} priority>
+  <div class="modal-panel">
     <div class="modal-header">
       <h2>{m.embed_title()}</h2>
       <button class="close-btn" onclick={onclose}>&times;</button>
@@ -215,18 +214,9 @@
       {/if}
     </div>
   </div>
-</div>
+</ModalBackdrop>
 
 <style>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
   .modal-panel {
     background: #1e293b;
     border: 1px solid #334155;

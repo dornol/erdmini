@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   type AuditLogRow = {
     id: number;
@@ -59,7 +60,7 @@
   async function purgeAuditLogs() {
     if (!auditStats) return;
     const days = auditStats.retentionDays;
-    if (!confirm(m.admin_audit_purge_confirm({ days: String(days) }))) return;
+    const ok = await dialogStore.confirm(m.admin_audit_purge_confirm({ days: String(days) }), { variant: 'danger' }); if (!ok) return;
     const res = await fetch(`/api/admin/audit-logs?days=${days}`, { method: 'DELETE' });
     if (res.ok) {
       const data = await res.json();

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { OIDCProviderRow } from '$lib/types/auth';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   interface Props {
     providers: OIDCProviderRow[];
@@ -81,7 +82,7 @@
   }
 
   async function deleteProvider(id: string) {
-    if (!confirm(m.admin_oidc_delete_confirm())) return;
+    const ok = await dialogStore.confirm(m.admin_oidc_delete_confirm(), { variant: 'danger' }); if (!ok) return;
     await fetch(`/api/admin/oidc-providers/${id}`, { method: 'DELETE' });
     await onreload();
   }

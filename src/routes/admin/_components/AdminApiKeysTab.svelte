@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import { SNIPPET_TABS, getSnippet, getSnippetHint } from '$lib/utils/mcp-snippets';
 
   export type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null; scopes: ApiKeyScopeRow[] };
@@ -150,7 +151,7 @@
   }
 
   async function deleteApiKey(id: string, name: string) {
-    if (!confirm(m.admin_api_keys_delete_confirm({ name }))) return;
+    const ok = await dialogStore.confirm(m.admin_api_keys_delete_confirm({ name }), { variant: 'danger' }); if (!ok) return;
     apiKeyError = '';
     const res = await fetch(`/api/admin/api-keys/${id}`, { method: 'DELETE' });
     if (!res.ok) {

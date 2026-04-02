@@ -1,6 +1,7 @@
 <script lang="ts">
   import { authStore } from '$lib/store/auth.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   export type UserInfo = {
     id: string;
@@ -88,7 +89,7 @@
   }
 
   async function deleteUser(id: string, username: string | null) {
-    if (!confirm(m.admin_users_delete_confirm({ name: username ?? id }))) return;
+    const ok = await dialogStore.confirm(m.admin_users_delete_confirm({ name: username ?? id }), { variant: 'danger' }); if (!ok) return;
     userError = '';
     const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
     if (!res.ok) {
@@ -116,7 +117,7 @@
   }
 
   async function rejectUser(id: string, username: string | null) {
-    if (!confirm(m.admin_users_reject_confirm({ name: username ?? id }))) return;
+    const ok = await dialogStore.confirm(m.admin_users_reject_confirm({ name: username ?? id }), { variant: 'danger' }); if (!ok) return;
     userError = '';
     const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
     if (!res.ok) {

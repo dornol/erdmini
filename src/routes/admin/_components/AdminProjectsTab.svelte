@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { UserInfo } from './AdminUsersTab.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { dialogStore } from '$lib/store/dialog.svelte';
 
   type ProjectInfo = {
     id: string;
@@ -58,7 +59,7 @@
   async function transferOwnership(projectId: string, projectName: string) {
     if (!transferUserId) return;
     const targetUser = users.find(u => u.id === transferUserId);
-    if (!confirm(m.admin_projects_transfer_confirm({ name: projectName, user: targetUser?.display_name ?? transferUserId }))) return;
+    const ok = await dialogStore.confirm(m.admin_projects_transfer_confirm({ name: projectName, user: targetUser?.display_name ?? transferUserId }), { variant: 'danger' }); if (!ok) return;
     projectError = '';
     const res = await fetch(`/api/admin/projects/${projectId}`, {
       method: 'PATCH',
