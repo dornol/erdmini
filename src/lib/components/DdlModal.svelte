@@ -19,6 +19,7 @@
   import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
+  import { detectDialect } from '$lib/utils/detect-dialect';
 
   let {
     mode = 'export',
@@ -75,6 +76,23 @@
   let importFormat = $state<ImportFormat>('ddl');
   let importDialect = $state<Dialect>('mysql');
   let importText = $state('');
+  let importDialectAutoDetected = $state(false);
+
+  // Auto-detect dialect when import text changes
+  $effect(() => {
+    if (importFormat === 'ddl' && importText.length > 10) {
+      const detected = detectDialect(importText);
+      if (detected) {
+        importDialect = detected;
+        importDialectAutoDetected = true;
+      } else {
+        importDialectAutoDetected = false;
+      }
+    } else {
+      importDialectAutoDetected = false;
+    }
+  });
+
   let importErrors = $state<string[]>([]);
   let importWarnings = $state<string[]>([]);
   let importSuccess = $state<string | null>(null);
@@ -424,9 +442,12 @@
               <SearchableSelect
                 options={DIALECT_OPTIONS}
                 value={importDialect}
-                onchange={(v) => (importDialect = v as Dialect)}
+                onchange={(v) => { importDialect = v as Dialect; importDialectAutoDetected = false; }}
                 size="md"
               />
+              {#if importDialectAutoDetected}
+                <span class="auto-detect-badge">auto</span>
+              {/if}
             </div>
           {/if}
           <button class="btn-secondary" onclick={openFile}>{m.action_open_file()}</button>
@@ -586,6 +607,20 @@
   .dialect-select-wrap {
     width: 140px;
     flex-shrink: 0;
+    position: relative;
+  }
+
+  .auto-detect-badge {
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    font-size: 9px;
+    font-weight: 600;
+    color: #16a34a;
+    background: var(--app-card-bg, white);
+    padding: 0 3px;
+    border-radius: 3px;
+    pointer-events: none;
   }
 
   .spacer {
