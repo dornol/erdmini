@@ -128,16 +128,7 @@
           {#if !hasMultipleGroups || !collapsedGroups.has(groupKey)}
             {#each domains as domain (domain.id)}
               {@const usageCount = domainUsageMap.get(domain.id) ?? 0}
-              {#if editingId === domain.id}
-                <DomainEditForm
-                  bind:this={editFormRef}
-                  {editingId}
-                  {addingNew}
-                  {existingGroups}
-                  tableColspan={tableColspan}
-                  onreset={onFormReset}
-                />
-              {:else}
+              {#if editingId !== domain.id}
                 <!-- Display row -->
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <tr class="display-row" class:unused={usageCount === 0} onclick={() => onRowClick(domain)}>
@@ -228,20 +219,20 @@
         {/each}
       {/if}
 
-      <!-- Add new row -->
-      {#if addingNew}
-        <DomainEditForm
-          bind:this={editFormRef}
-          {editingId}
-          {addingNew}
-          {existingGroups}
-          tableColspan={tableColspan}
-          onreset={onFormReset}
-        />
-      {/if}
     </tbody>
   </table>
 </div>
+
+{#if editingId || addingNew}
+  <DomainEditForm
+    bind:this={editFormRef}
+    {editingId}
+    {addingNew}
+    {existingGroups}
+    tableColspan={tableColspan}
+    onreset={onFormReset}
+  />
+{/if}
 
 <style>
   /* ── Domain table ── */
@@ -303,12 +294,6 @@
 
   .domain-table tbody tr.display-row.unused:hover {
     opacity: 0.85;
-  }
-
-  .domain-table tbody :global(tr.editing-row) {
-    background: #eff6ff;
-    outline: 2px solid #3b82f6;
-    outline-offset: -1px;
   }
 
   .domain-table td {

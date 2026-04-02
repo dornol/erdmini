@@ -219,7 +219,6 @@
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="modal" onclick={handleTableClick} onkeydown={() => {}}>
-    <div class="sheet-handle"><span></span></div>
     <div class="modal-header">
       <span class="modal-title">{m.domain_modal_title()}</span>
       <div class="header-controls">
@@ -301,20 +300,6 @@
     display: flex;
     flex-direction: column;
     animation: slideUp 0.25s ease-out;
-  }
-
-  .sheet-handle {
-    text-align: center;
-    padding: 8px 0 0;
-    flex-shrink: 0;
-  }
-
-  .sheet-handle span {
-    display: inline-block;
-    width: 36px;
-    height: 4px;
-    background: #cbd5e1;
-    border-radius: 2px;
   }
 
   @keyframes slideUp {
