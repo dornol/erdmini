@@ -1,4 +1,5 @@
 import type { ColumnType, ERDSchema } from '$lib/types/erd';
+import { DIALECT_COLUMN_TYPES } from '$lib/types/erd';
 import type { EffectiveNamingRules, NamingConvention } from '$lib/types/naming-rules';
 import { validateHierarchy } from '$lib/utils/domain-hierarchy';
 
@@ -506,6 +507,25 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
         ruleId: 'domain-circular-hierarchy',
         message: domainNames.join(' → '),
       });
+    }
+  }
+
+  // Rule: dialect-type-mismatch — Column type not native to selected DBMS
+  if (schema.dialect) {
+    const dialectTypes = new Set<string>(DIALECT_COLUMN_TYPES[schema.dialect]);
+    for (const table of schema.tables) {
+      for (const col of table.columns) {
+        if (!dialectTypes.has(col.type)) {
+          issues.push({
+            id: nextId(),
+            severity: 'warning',
+            ruleId: 'dialect-type-mismatch',
+            tableId: table.id,
+            columnId: col.id,
+            message: `${table.name}.${col.name}: ${col.type} is not native to ${schema.dialect.toUpperCase()}`,
+          });
+        }
+      }
     }
   }
 

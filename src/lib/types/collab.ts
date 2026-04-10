@@ -63,6 +63,7 @@ export type CollabOperation =
   | { kind: 'rename-db-object-category'; oldName: string; newName: string }
   | { kind: 'delete-db-object-category'; category: string }
   | { kind: 'reorder-db-object-categories'; categories: string[] }
+  | { kind: 'set-dialect'; dialect: import('./erd').Dialect | undefined }
   | { kind: 'load-schema'; schema: ERDSchema };
 
 // ── Client → Server messages ──

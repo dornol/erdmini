@@ -26,6 +26,7 @@
     'fk-column-count-mismatch': () => m.lint_fk_column_count_mismatch(),
     'fk-references-non-unique': () => m.lint_fk_references_non_unique(),
     'domain-circular-hierarchy': () => m.lint_domain_circular_hierarchy(),
+    'dialect-type-mismatch': () => m.lint_dialect_type_mismatch(),
     'naming-table-case': () => m.lint_naming_table_case(),
     'naming-column-case': () => m.lint_naming_column_case(),
     'naming-table-prefix': () => m.lint_naming_table_prefix(),

@@ -25,7 +25,7 @@
 
   // Migration SQL state
   let showMigrationSql = $state(false);
-  let migrationDialect = $state<Dialect>('postgresql');
+  let migrationDialect = $state<Dialect>(erdStore.schema.dialect ?? 'postgresql');
   let migrationSql = $state('');
   let copied = $state(false);
 

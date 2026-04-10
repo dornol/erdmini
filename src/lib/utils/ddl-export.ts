@@ -56,6 +56,9 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   if (dialect === 'mysql' || dialect === 'mariadb') {
     if (col.autoIncrement && (col.type === 'BIGINT' || col.type === 'INT')) return kw(col.type, upper);
     if (col.type === 'ENUM') return `${kw('ENUM', upper)}${enumList || "('value')"}`;
+    if (col.type === 'NVARCHAR') return `${kw('VARCHAR', upper)}${len || '(255)'}`;
+    if (col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
+    if (col.type === 'NTEXT') return kw('TEXT', upper);
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'UUID') return `${kw('CHAR', upper)}(36)`;
@@ -71,6 +74,9 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   if (dialect === 'postgresql') {
     if (col.autoIncrement) return kw(col.type === 'BIGINT' ? 'BIGSERIAL' : col.type === 'SMALLINT' ? 'SMALLSERIAL' : 'SERIAL', upper);
     if (col.type === 'ENUM') return col.enumValues?.length && tableName ? `${tableName}_${col.name}_enum` : `${kw('VARCHAR', upper)}(255)`;
+    if (col.type === 'NVARCHAR') return `${kw('VARCHAR', upper)}${len || '(255)'}`;
+    if (col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
+    if (col.type === 'NTEXT') return kw('TEXT', upper);
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('NUMERIC', upper)}${decimalLen || '(10,2)'}`;
@@ -96,9 +102,9 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'SMALLINT') return `${kw('NUMBER', upper)}(5)`;
     if (col.type === 'TINYINT') return `${kw('NUMBER', upper)}(3)`;
     if (col.type === 'BOOLEAN' || col.type === 'BIT') return `${kw('NUMBER', upper)}(1)`;
-    if (col.type === 'VARCHAR') return `${kw('VARCHAR2', upper)}${len || '(255)'}`;
-    if (col.type === 'CHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
-    if (col.type === 'TEXT' || col.type === 'JSON') return kw('CLOB', upper);
+    if (col.type === 'VARCHAR' || col.type === 'NVARCHAR') return `${kw('VARCHAR2', upper)}${len || '(255)'}`;
+    if (col.type === 'CHAR' || col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
+    if (col.type === 'TEXT' || col.type === 'NTEXT' || col.type === 'JSON') return kw('CLOB', upper);
     if (col.type === 'DATE') return kw('DATE', upper);
     if (col.type === 'TIME') return kw('TIMESTAMP', upper);
     if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return kw('TIMESTAMP', upper);
@@ -113,7 +119,9 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   }
 
   if (dialect === 'h2') {
-    if (col.type === 'TEXT' || col.type === 'JSON') return kw('CLOB', upper);
+    if (col.type === 'TEXT' || col.type === 'NTEXT' || col.type === 'JSON') return kw('CLOB', upper);
+    if (col.type === 'NVARCHAR') return `${kw('VARCHAR', upper)}${len || '(255)'}`;
+    if (col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'ENUM') return `${kw('ENUM', upper)}${enumList || "('value')"}`;
@@ -128,8 +136,11 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   if (col.type === 'BOOLEAN') return kw('BIT', upper);
   if (col.type === 'BIT') return kw('BIT', upper);
   if (col.type === 'TEXT') return `${kw('NVARCHAR', upper)}(MAX)`;
+  if (col.type === 'NTEXT') return `${kw('NVARCHAR', upper)}(MAX)`;
   if (col.type === 'VARCHAR') return `${kw('NVARCHAR', upper)}${len || '(255)'}`;
+  if (col.type === 'NVARCHAR') return `${kw('NVARCHAR', upper)}${len || '(255)'}`;
   if (col.type === 'CHAR') return `${kw('NCHAR', upper)}${len || '(255)'}`;
+  if (col.type === 'NCHAR') return `${kw('NCHAR', upper)}${len || '(255)'}`;
   if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
   if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return col.length ? `${kw('DATETIME2', upper)}(${col.length})` : kw('DATETIME2', upper);
   if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;

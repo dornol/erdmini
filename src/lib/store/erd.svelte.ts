@@ -1,4 +1,4 @@
-import type { Column, ColumnDomain, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
+import type { Column, ColumnDomain, Dialect, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import type { NamingRuleType } from '$lib/types/naming-rules';
 import { now } from '$lib/utils/common';
 import { normalizeSchema } from '$lib/utils/schema-normalize';
@@ -519,6 +519,14 @@ class ERDStore {
   updateTableSchema(tableId: string, schema: string | undefined) {
     updateTableSchemaOp(this.schema, tableId, schema);
     this._emitOp({ kind: 'update-table-schema', tableId, schema: schema ?? '' });
+  }
+
+  // ── Dialect ──
+
+  setDialect(dialect: Dialect | undefined) {
+    this.schema.dialect = dialect;
+    this.schema.updatedAt = now();
+    this._emitOp({ kind: 'set-dialect', dialect });
   }
 
   // ── Schema Loading ──

@@ -2,6 +2,8 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { projectStore } from '$lib/store/project.svelte';
   import { themeStore } from '$lib/store/theme.svelte';
+  import type { Dialect } from '$lib/types/erd';
+  import { DIALECT_OPTIONS } from '$lib/utils/ddl-options';
   import { schemaToShareString, buildShareUrl } from '$lib/utils/url-share';
   import { copyToClipboard as clipCopy } from '$lib/utils/clipboard';
   import { dialogStore } from '$lib/store/dialog.svelte';
@@ -153,6 +155,24 @@
       ontoggle={() => toggleDropdown('project')}
       onclose={closeDropdown}
     />
+
+    <div class="dbms-selector">
+      <select
+        class="dbms-select"
+        value={erdStore.schema.dialect ?? ''}
+        onchange={(e) => {
+          const val = (e.target as HTMLSelectElement).value;
+          erdStore.setDialect(val ? val as Dialect : undefined);
+        }}
+        disabled={permissionStore.isReadOnly}
+        title="Target DBMS"
+      >
+        <option value="">DBMS</option>
+        {#each DIALECT_OPTIONS as opt}
+          <option value={opt.value}>{opt.label}</option>
+        {/each}
+      </select>
+    </div>
 
     <span class="separator"></span>
 
@@ -451,6 +471,38 @@
     background: #475569;
     flex-shrink: 0;
     margin: 0 2px;
+  }
+
+  .dbms-selector {
+    flex-shrink: 0;
+  }
+
+  .dbms-select {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .dbms-select:hover {
+    border-color: #64748b;
+    color: #e2e8f0;
+  }
+
+  .dbms-select:focus {
+    border-color: #3b82f6;
+  }
+
+  .dbms-select option {
+    background: #1e293b;
+    color: #e2e8f0;
   }
 
   .btn-dark-toggle {

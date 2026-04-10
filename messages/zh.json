@@ -387,6 +387,7 @@
   "domain_hierarchy": "层级",
   "domain_cycle_error": "检测到循环引用",
   "lint_domain_circular_hierarchy": "域循环层级引用",
+  "lint_dialect_type_mismatch": "列类型与DBMS不兼容",
   "lint_naming_table_case": "表名大小写规则违反",
   "lint_naming_column_case": "列名大小写规则违反",
   "lint_naming_table_prefix": "表名缺少必需前缀",

@@ -199,8 +199,8 @@ describe('Edge: type normalization with whitespace', () => {
     expect(normalizeType('RAW')).toBe('VARBINARY');
   });
 
-  it('normalizes NVARCHAR(MAX) to TEXT', () => {
-    expect(normalizeType('NVARCHAR(MAX)')).toBe('TEXT');
+  it('normalizes NVARCHAR(MAX) to NTEXT', () => {
+    expect(normalizeType('NVARCHAR(MAX)')).toBe('NTEXT');
   });
 
   it('normalizes BINARY_DOUBLE to DOUBLE', () => {
@@ -506,7 +506,7 @@ describe('Edge: type warning for unknown types', () => {
     // normalizeType (public) returns the type string only
     expect(normalizeType('GEOMETRY')).toBe('VARCHAR');
     expect(normalizeType('MONEY')).toBe('DECIMAL');
-    expect(normalizeType('NVARCHAR')).toBe('VARCHAR');
+    expect(normalizeType('NVARCHAR')).toBe('NVARCHAR');
   });
 });
 
@@ -650,11 +650,17 @@ describe('Edge: reserved word column names', () => {
     `;
     const result = await importDDL(sql, 'mssql');
     expect(result.tables).toHaveLength(1);
-    const cols = result.tables[0].columns.map(c => c.name);
-    expect(cols).toContain('Session');
-    expect(cols).toContain('End');
-    expect(cols).toContain('Left');
-    expect(cols).toContain('JSON');
+    const cols = result.tables[0].columns;
+    const colNames = cols.map(c => c.name);
+    expect(colNames).toContain('Session');
+    expect(colNames).toContain('End');
+    expect(colNames).toContain('Left');
+    expect(colNames).toContain('JSON');
+    // Verify NVARCHAR types are preserved
+    expect(cols.find(c => c.name === 'Session')!.type).toBe('NVARCHAR');
+    expect(cols.find(c => c.name === 'End')!.type).toBe('NVARCHAR');
+    expect(cols.find(c => c.name === 'Left')!.type).toBe('INT');
+    expect(cols.find(c => c.name === 'JSON')!.type).toBe('NVARCHAR');
   });
 
   it('MSSQL — mixed bracket and bare reserved words', async () => {
@@ -681,6 +687,14 @@ describe('Edge: reserved word column names', () => {
     expect(cols).toContain('Desc');
     expect(cols).toContain('Read');
     expect(cols).toHaveLength(6);
+    // Verify NVARCHAR types are preserved
+    const keyCol = t.columns.find(c => c.name === 'Key')!;
+    expect(keyCol.type).toBe('NVARCHAR');
+    expect(keyCol.length).toBe(200);
+    const descCol = t.columns.find(c => c.name === 'Desc')!;
+    expect(descCol.type).toBe('NVARCHAR');
+    expect(descCol.length).toBe(500);
+    expect(t.columns.find(c => c.name === 'Read')!.type).toBe('BIT');
   });
 
   it('MySQL — KEY index definition not confused with Key column', async () => {

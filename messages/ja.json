@@ -387,6 +387,7 @@
   "domain_hierarchy": "階層",
   "domain_cycle_error": "循環参照が検出されました",
   "lint_domain_circular_hierarchy": "ドメイン循環階層参照",
+  "lint_dialect_type_mismatch": "DBMS非互換カラムタイプ",
   "lint_naming_table_case": "テーブル名のケース規則違反",
   "lint_naming_column_case": "カラム名のケース規則違反",
   "lint_naming_table_prefix": "テーブル名の接頭辞不足",

@@ -255,6 +255,10 @@ export function applyRemoteOperation(op: CollabOperation) {
         erdStore.updateTableSchema(op.tableId, op.schema || undefined);
         break;
       }
+      case 'set-dialect': {
+        erdStore.setDialect(op.dialect);
+        break;
+      }
       case 'add-db-object': {
         if (!erdStore.schema.dbObjects) erdStore.schema.dbObjects = [];
         if (!erdStore.schema.dbObjectCategories) erdStore.schema.dbObjectCategories = [];

@@ -2,7 +2,7 @@
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
-  import { COLUMN_TYPES } from '$lib/types/erd';
+  import { COLUMN_TYPES, getColumnTypesForDialect } from '$lib/types/erd';
   import type { ColumnDomain, ColumnType } from '$lib/types/erd';
   import { computeImpact } from '$lib/utils/domain-analysis';
   import { getDescendantIds } from '$lib/utils/domain-hierarchy';
@@ -202,7 +202,7 @@
     <label class="edit-field">
       <span class="edit-label">{m.column_type()}</span>
       <SearchableSelect
-        options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
+        options={(() => { const types = getColumnTypesForDialect(erdStore.schema.dialect); return (formType && !types.includes(formType) ? [formType, ...types] : types).map((t) => ({ value: t, label: t })); })()}
         value={formType}
         onchange={(v) => (formType = v as ColumnType)}
         size="sm"

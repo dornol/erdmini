@@ -117,7 +117,7 @@ GO
   });
 
   // --- Type mapping ---
-  it('maps MSSQL types: NVARCHAR→VARCHAR, BIT→BOOLEAN, DATETIME2→DATETIME', async () => {
+  it('maps MSSQL types: NVARCHAR preserved, BIT preserved, DATETIME2→TIMESTAMP', async () => {
     const sql = `
       CREATE TABLE [dbo].[test] (
         [a] NVARCHAR(100),
@@ -128,7 +128,7 @@ GO
     `;
     const result = await importDDL(sql, 'mssql');
     const cols = result.tables[0].columns;
-    expect(cols.find(c => c.name === 'a')!.type).toBe('VARCHAR');
+    expect(cols.find(c => c.name === 'a')!.type).toBe('NVARCHAR');
     expect(cols.find(c => c.name === 'b')!.type).toBe('BIT');
   });
 
@@ -308,12 +308,21 @@ GO
     expect(colNames).toContain('Event_Type');
     // Manager_Seq gets parsed as FK source + also as a regular column
     expect(colNames.length).toBeGreaterThanOrEqual(7);
+    // NVARCHAR types are preserved (not converted to VARCHAR)
+    const ipCol = t.columns.find(c => c.name === 'IP')!;
+    expect(ipCol.type).toBe('NVARCHAR');
+    expect(ipCol.length).toBe(40);
+    const explainCol = t.columns.find(c => c.name === 'Explain')!;
+    expect(explainCol.type).toBe('NVARCHAR');
+    expect(explainCol.length).toBe(1000);
     // datetime2(3) precision preserved as length
     const createDt = t.columns.find(c => c.name === 'Create_Datetime');
     expect(createDt?.type).toBe('DATETIME');
     expect(createDt?.length).toBe(3);
     const reportDt = t.columns.find(c => c.name === 'Report_Datetime');
     expect(reportDt?.length).toBe(3);
+    // tinyint preserved
+    expect(t.columns.find(c => c.name === 'Event_Type')!.type).toBe('TINYINT');
   });
 
   it('parses multiple reserved word columns across tables', async () => {
@@ -329,9 +338,16 @@ GO
     `;
     const result = await importDDL(sql, 'mssql');
     expect(result.tables).toHaveLength(1);
-    const colNames = result.tables[0].columns.map(c => c.name);
+    const cols = result.tables[0].columns;
+    const colNames = cols.map(c => c.name);
     expect(colNames).toContain('Key');
     expect(colNames).toContain('Value');
     expect(colNames).toContain('Desc');
+    // Verify NVARCHAR types preserved with correct lengths
+    expect(cols.find(c => c.name === 'Key')!.type).toBe('NVARCHAR');
+    expect(cols.find(c => c.name === 'Key')!.length).toBe(200);
+    expect(cols.find(c => c.name === 'Value')!.type).toBe('NVARCHAR');
+    expect(cols.find(c => c.name === 'Desc')!.type).toBe('NVARCHAR');
+    expect(cols.find(c => c.name === 'Desc')!.length).toBe(500);
   });
 });

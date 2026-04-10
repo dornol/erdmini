@@ -88,8 +88,11 @@ export function generateDummyValue(
 			return n;
 
 		case 'VARCHAR':
+		case 'NVARCHAR':
 		case 'CHAR':
+		case 'NCHAR':
 		case 'TEXT':
+		case 'NTEXT':
 			return `${col.name}_${n}`;
 
 		case 'BOOLEAN':

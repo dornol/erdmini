@@ -62,12 +62,12 @@ describe('normalizeType', () => {
     expect(normalizeType('CHARACTER VARYING')).toBe('VARCHAR');
   });
 
-  it('maps NVARCHAR → VARCHAR', () => {
-    expect(normalizeType('NVARCHAR')).toBe('VARCHAR');
+  it('preserves NVARCHAR', () => {
+    expect(normalizeType('NVARCHAR')).toBe('NVARCHAR');
   });
 
-  it('maps NCHAR → CHAR', () => {
-    expect(normalizeType('NCHAR')).toBe('CHAR');
+  it('preserves NCHAR', () => {
+    expect(normalizeType('NCHAR')).toBe('NCHAR');
   });
 
   it('maps CHARACTER → CHAR', () => {
@@ -102,8 +102,8 @@ describe('normalizeType', () => {
     expect(normalizeType('IMAGE')).toBe('BLOB');
   });
 
-  it('maps NVARCHAR(MAX) → TEXT (via MAX check)', () => {
-    expect(normalizeType('NVARCHAR(MAX)')).toBe('TEXT');
+  it('maps NVARCHAR(MAX) → NTEXT', () => {
+    expect(normalizeType('NVARCHAR(MAX)')).toBe('NTEXT');
   });
 
   it('keeps known types as-is: INT, VARCHAR, BOOLEAN, etc.', () => {
@@ -124,11 +124,11 @@ describe('normalizeType', () => {
 
   it('is case-insensitive', () => {
     expect(normalizeType('serial')).toBe('INT');
-    expect(normalizeType('Nvarchar')).toBe('VARCHAR');
+    expect(normalizeType('Nvarchar')).toBe('NVARCHAR');
   });
 
   it('strips length from base for normalization', () => {
-    expect(normalizeType('NVARCHAR(50)')).toBe('VARCHAR');
+    expect(normalizeType('NVARCHAR(50)')).toBe('NVARCHAR');
     expect(normalizeType('DECIMAL(10,2)')).toBe('DECIMAL');
   });
 

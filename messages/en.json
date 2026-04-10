@@ -403,6 +403,7 @@
   "domain_hierarchy": "Hierarchy",
   "domain_cycle_error": "Circular reference detected",
   "lint_domain_circular_hierarchy": "Domain circular hierarchy reference",
+  "lint_dialect_type_mismatch": "Column type incompatible with DBMS",
   "lint_naming_table_case": "Table name violates case convention",
   "lint_naming_column_case": "Column name violates case convention",
   "lint_naming_table_prefix": "Table name missing required prefix",

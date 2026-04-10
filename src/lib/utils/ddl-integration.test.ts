@@ -646,9 +646,24 @@ CREATE TABLE [AspNetUserTokens] (
 		const { tables } = await importDDL(ASPNET_IDENTITY, 'mssql');
 		const users = findTable(tables, 'AspNetUsers');
 		expect(users.columns.length).toBe(15);
-		expect(findCol(users, 'Id').type).toBe('VARCHAR'); // nvarchar → VARCHAR
-		expect(findCol(users, 'EmailConfirmed').type).toBe('BIT'); // bit → BIT
+		// NVARCHAR preserved (not converted to VARCHAR)
+		expect(findCol(users, 'Id').type).toBe('NVARCHAR');
+		expect(findCol(users, 'UserName').type).toBe('NVARCHAR');
+		expect(findCol(users, 'Email').type).toBe('NVARCHAR');
+		// nvarchar(max) → NVARCHAR (preprocessor converts max→4000)
+		expect(findCol(users, 'PasswordHash').type).toBe('NVARCHAR');
+		expect(findCol(users, 'SecurityStamp').type).toBe('NVARCHAR');
+		// BIT preserved
+		expect(findCol(users, 'EmailConfirmed').type).toBe('BIT');
+		expect(findCol(users, 'PhoneNumberConfirmed').type).toBe('BIT');
+		expect(findCol(users, 'TwoFactorEnabled').type).toBe('BIT');
+		expect(findCol(users, 'LockoutEnabled').type).toBe('BIT');
+		// INT preserved
 		expect(findCol(users, 'AccessFailedCount').type).toBe('INT');
+		// Length preserved for nvarchar(256)
+		expect(findCol(users, 'UserName').length).toBe(256);
+		expect(findCol(users, 'Email').length).toBe(256);
+		expect(findCol(users, 'Id').length).toBe(450);
 	});
 
 	it('AspNetRoleClaims — IDENTITY auto-increment + FK', async () => {
@@ -675,12 +690,14 @@ CREATE TABLE [AspNetUserTokens] (
 		expect(pkNames(tokens).length).toBe(3);
 	});
 
-	it('nvarchar(max) → VARCHAR (MSSQL preprocessor converts max to fixed length)', async () => {
+	it('nvarchar(max) → NVARCHAR (MSSQL preprocessor converts max to fixed length)', async () => {
 		const { tables } = await importDDL(ASPNET_IDENTITY, 'mssql');
 		const users = findTable(tables, 'AspNetUsers');
 		// cleanMSSQLSyntax converts nvarchar(max) → nvarchar(4000) for parser compatibility
-		expect(findCol(users, 'PasswordHash').type).toBe('VARCHAR');
-		expect(findCol(users, 'SecurityStamp').type).toBe('VARCHAR');
+		expect(findCol(users, 'PasswordHash').type).toBe('NVARCHAR');
+		expect(findCol(users, 'SecurityStamp').type).toBe('NVARCHAR');
+		expect(findCol(users, 'ConcurrencyStamp').type).toBe('NVARCHAR');
+		expect(findCol(users, 'PhoneNumber').type).toBe('NVARCHAR');
 	});
 });
 

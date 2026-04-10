@@ -48,7 +48,7 @@
 
   // Export state
   let exportFormat = $state<ExportFormat>('ddl');
-  let exportDialect = $state<Dialect>('mysql');
+  let exportDialect = $state<Dialect>(erdStore.schema.dialect ?? 'mysql');
   let showDdlOptions = $state(false);
 
   let ddlOptions = $state<DDLExportOptions>(loadDdlOptions());
@@ -74,7 +74,7 @@
 
   // Import state
   let importFormat = $state<ImportFormat>('ddl');
-  let importDialect = $state<Dialect>('mysql');
+  let importDialect = $state<Dialect>(erdStore.schema.dialect ?? 'mysql');
   let importText = $state('');
   let importDialectAutoDetected = $state(false);
   let importDialectManual = $state(false);
@@ -265,6 +265,10 @@
           }
         }
 
+        // Auto-set dialect from import if not yet set
+        if (!erdStore.schema.dialect && importFormat === 'ddl') {
+          erdStore.setDialect(importDialect);
+        }
         erdStore.schema.updatedAt = now();
         // Auto-layout imported tables using hierarchical layout (FK-aware)
         const layoutType = result.tables.some((t) => t.foreignKeys.length > 0) ? 'hierarchical' : 'grid';

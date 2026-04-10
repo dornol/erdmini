@@ -1,6 +1,7 @@
 export type ColumnType =
   | 'INT' | 'BIGINT' | 'SMALLINT' | 'TINYINT' | 'MEDIUMINT'
   | 'VARCHAR' | 'CHAR' | 'TEXT'
+  | 'NVARCHAR' | 'NCHAR' | 'NTEXT'
   | 'BOOLEAN' | 'BIT'
   | 'DATE' | 'TIME' | 'DATETIME' | 'TIMESTAMP'
   | 'DECIMAL' | 'NUMERIC' | 'FLOAT' | 'DOUBLE' | 'REAL'
@@ -10,6 +11,7 @@ export type ColumnType =
 export const COLUMN_TYPES: ColumnType[] = [
   'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
   'VARCHAR', 'CHAR', 'TEXT',
+  'NVARCHAR', 'NCHAR', 'NTEXT',
   'BOOLEAN', 'BIT',
   'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
   'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
@@ -127,6 +129,7 @@ export interface DbObject {
 
 export interface ERDSchema {
   version: string;
+  dialect?: Dialect;
   tables: Table[];
   domains: ColumnDomain[];
   memos: Memo[];
@@ -144,6 +147,80 @@ export const DOMAIN_FIELDS: (keyof Column)[] = [
 ];
 
 export type Dialect = 'mysql' | 'postgresql' | 'mariadb' | 'mssql' | 'sqlite' | 'oracle' | 'h2';
+
+/** Per-dialect column types — types native or commonly used in each DBMS */
+export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
+  mysql: [
+    'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'BOOLEAN',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
+    'BINARY', 'VARBINARY', 'BLOB',
+    'JSON', 'ENUM',
+  ],
+  mariadb: [
+    'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'BOOLEAN',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
+    'BINARY', 'VARBINARY', 'BLOB',
+    'JSON', 'ENUM',
+  ],
+  postgresql: [
+    'INT', 'BIGINT', 'SMALLINT',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'BOOLEAN',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
+    'BINARY', 'VARBINARY', 'BLOB',
+    'JSON', 'UUID', 'ENUM',
+  ],
+  mssql: [
+    'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'NVARCHAR', 'NCHAR', 'NTEXT',
+    'BIT',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'REAL',
+    'BINARY', 'VARBINARY', 'BLOB',
+    'JSON', 'UUID',
+  ],
+  sqlite: [
+    'INT', 'BIGINT', 'SMALLINT',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'BOOLEAN',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
+    'BLOB',
+    'JSON',
+  ],
+  oracle: [
+    'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'BOOLEAN',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
+    'BINARY', 'VARBINARY', 'BLOB',
+    'UUID', 'ENUM',
+  ],
+  h2: [
+    'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
+    'VARCHAR', 'CHAR', 'TEXT',
+    'BOOLEAN',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
+    'BINARY', 'VARBINARY', 'BLOB',
+    'JSON', 'UUID', 'ENUM',
+  ],
+};
+
+/** Get column types for a dialect. If no dialect, returns all types. */
+export function getColumnTypesForDialect(dialect?: Dialect): ColumnType[] {
+  if (!dialect) return COLUMN_TYPES;
+  return DIALECT_COLUMN_TYPES[dialect];
+}
 
 export interface ProjectMeta {
   id: string;

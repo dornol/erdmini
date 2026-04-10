@@ -5,10 +5,11 @@ export function addColumnOp(schema: ERDSchema, tableId: string): Column | undefi
   const table = schema.tables.find((t) => t.id === tableId);
   if (!table) return;
   const n = table.columns.length + 1;
+  const defaultType = schema.dialect === 'mssql' ? 'NVARCHAR' as const : 'VARCHAR' as const;
   const newColumn: Column = {
     id: generateId(),
     name: `column_${n}`,
-    type: 'VARCHAR',
+    type: defaultType,
     length: 255,
     nullable: false,
     primaryKey: false,

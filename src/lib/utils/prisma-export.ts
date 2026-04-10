@@ -29,6 +29,12 @@ function mapColumnType(col: Column): PrismaTypeInfo {
       return { prismaType: 'String' };
     case 'CHAR':
       return { prismaType: 'String', nativeHint: `@db.Char(${col.length || 255})` };
+    case 'NVARCHAR':
+      if (col.length && col.length !== 255) return { prismaType: 'String', nativeHint: `@db.NVarChar(${col.length})` };
+      return { prismaType: 'String', nativeHint: '@db.NVarChar(255)' };
+    case 'NCHAR':
+      return { prismaType: 'String', nativeHint: `@db.NChar(${col.length || 255})` };
+    case 'NTEXT': return { prismaType: 'String', nativeHint: '@db.NText' };
     case 'TEXT': return { prismaType: 'String', nativeHint: '@db.Text' };
     case 'BOOLEAN': return { prismaType: 'Boolean' };
     case 'DATE': return { prismaType: 'DateTime', nativeHint: '@db.Date' };
@@ -82,7 +88,7 @@ function defaultValueToPrisma(col: Column): string | undefined {
   }
 
   // String defaults — quote them
-  if (['VARCHAR', 'CHAR', 'TEXT', 'UUID'].includes(col.type)) {
+  if (['VARCHAR', 'NVARCHAR', 'CHAR', 'NCHAR', 'TEXT', 'NTEXT', 'UUID'].includes(col.type)) {
     const unquoted = dv.replace(/^['"]|['"]$/g, '');
     return `@default("${unquoted.replace(/"/g, '\\"')}")`;
   }

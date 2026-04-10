@@ -403,6 +403,7 @@
   "domain_hierarchy": "계층",
   "domain_cycle_error": "순환 참조가 감지되었습니다",
   "lint_domain_circular_hierarchy": "도메인 순환 계층 참조",
+  "lint_dialect_type_mismatch": "DBMS 비호환 컬럼 타입",
   "lint_naming_table_case": "테이블명 케이스 규칙 위반",
   "lint_naming_column_case": "컬럼명 케이스 규칙 위반",
   "lint_naming_table_prefix": "테이블명 접두사 누락",

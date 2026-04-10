@@ -139,7 +139,7 @@ export function addColumn(
   const newColumn: Column = {
     id: columnId,
     name: column?.name || `column_${table.columns.length + 1}`,
-    type: column?.type || 'VARCHAR',
+    type: column?.type || (schema.dialect === 'mssql' ? 'NVARCHAR' : 'VARCHAR'),
     length: column?.length,
     scale: column?.scale,
     nullable: column?.nullable ?? true,

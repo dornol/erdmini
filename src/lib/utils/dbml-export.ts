@@ -20,8 +20,11 @@ function toDbmlType(col: Column): string {
     case 'BIGINT': return 'bigint';
     case 'SMALLINT': return 'smallint';
     case 'VARCHAR': return col.length ? `varchar(${col.length})` : 'varchar';
+    case 'NVARCHAR': return col.length ? `nvarchar(${col.length})` : 'nvarchar';
     case 'CHAR': return col.length ? `char(${col.length})` : 'char';
+    case 'NCHAR': return col.length ? `nchar(${col.length})` : 'nchar';
     case 'TEXT': return 'text';
+    case 'NTEXT': return 'ntext';
     case 'BOOLEAN': return 'boolean';
     case 'DATE': return 'date';
     case 'DATETIME': return 'datetime';

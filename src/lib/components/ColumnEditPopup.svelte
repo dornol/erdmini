@@ -1,7 +1,7 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
-  import { COLUMN_TYPES, DOMAIN_FIELDS } from '$lib/types/erd';
+  import { COLUMN_TYPES, DOMAIN_FIELDS, getColumnTypesForDialect } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
@@ -29,12 +29,21 @@
 
   let hasLength = $derived(
     col?.type === 'VARCHAR' || col?.type === 'CHAR' || col?.type === 'DECIMAL' || col?.type === 'NUMERIC'
+    || col?.type === 'NVARCHAR' || col?.type === 'NCHAR'
     || col?.type === 'TIME' || col?.type === 'BINARY' || col?.type === 'VARBINARY',
   );
 
   let isDecimal = $derived(col?.type === 'DECIMAL' || col?.type === 'NUMERIC');
 
   let hasDomains = $derived(erdStore.schema.domains.length > 0);
+  let columnTypes = $derived.by(() => {
+    const types = getColumnTypesForDialect(erdStore.schema.dialect);
+    // Always include the current column's type even if not in dialect list
+    if (col && !types.includes(col.type)) {
+      return [col.type, ...types];
+    }
+    return types;
+  });
 
   const DEFAULT_VALUE_PRESETS: Record<string, string[]> = {
     INT: ['0', '1', 'NULL'],
@@ -43,8 +52,11 @@
     TINYINT: ['0', '1', 'NULL'],
     MEDIUMINT: ['0', '1', 'NULL'],
     VARCHAR: ["''", 'NULL'],
+    NVARCHAR: ["''", 'NULL'],
     CHAR: ["''", 'NULL'],
+    NCHAR: ["''", 'NULL'],
     TEXT: ["''", 'NULL'],
+    NTEXT: ["''", 'NULL'],
     BOOLEAN: ['TRUE', 'FALSE', 'NULL'],
     BIT: ['TRUE', 'FALSE', 'NULL'],
     DATE: ['CURRENT_TIMESTAMP', 'NOW()', 'NULL'],
@@ -188,7 +200,7 @@
           <div class="field-row">
             <label for="ce-type" class="field-label">{m.column_type()}</label>
             <SearchableSelect
-              options={COLUMN_TYPES.map((t) => ({ value: t, label: t }))}
+              options={columnTypes.map((t) => ({ value: t, label: t }))}
               value={col.type}
               onchange={(v) => onChange('type', v)}
               size="md"

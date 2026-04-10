@@ -20,8 +20,11 @@ export function normalizeType(raw: string): ColumnType {
 function normalizeTypeInternal(raw: string): { type: ColumnType; warning?: { original: string; normalized: string } } {
   const upper = raw.toUpperCase().trim();
 
-  // MSSQL (MAX) types → TEXT
-  if (upper.includes('(MAX)')) return { type: 'TEXT' };
+  // MSSQL (MAX) types
+  if (upper.includes('(MAX)')) {
+    if (upper.startsWith('NVARCHAR') || upper.startsWith('NCHAR')) return { type: 'NTEXT' };
+    return { type: 'TEXT' };
+  }
 
   const base = upper.replace(/\s*\([^)]*\)/, '').trim();
 
@@ -36,11 +39,13 @@ function normalizeTypeInternal(raw: string): { type: ColumnType; warning?: { ori
   if (base === 'TIMESTAMP' || base === 'TIMESTAMPTZ' || base === 'DATETIME2') return { type: 'TIMESTAMP' };
   if (base === 'MONEY' || base === 'DOUBLE PRECISION') return { type: 'DECIMAL' };
   if (base === 'IMAGE') return { type: 'BLOB' };
-  if (base === 'CHARACTER VARYING' || base === 'NVARCHAR' || base === 'NVARCHAR2') return { type: 'VARCHAR' };
+  if (base === 'CHARACTER VARYING' || base === 'NVARCHAR2') return { type: 'VARCHAR' };
   if (base === 'VARCHAR2') return { type: 'VARCHAR' };
-  if (base === 'CHARACTER' || base === 'NCHAR') return { type: 'CHAR' };
+  if (base === 'NVARCHAR') return { type: 'NVARCHAR' };
+  if (base === 'NCHAR') return { type: 'NCHAR' };
+  if (base === 'NTEXT') return { type: 'NTEXT' };
+  if (base === 'CHARACTER') return { type: 'CHAR' };
   if (base === 'UNIQUEIDENTIFIER') return { type: 'UUID' };
-  if (base === 'NVARCHAR(MAX)') return { type: 'TEXT' };
   if (base === 'NUMBER') return { type: 'DECIMAL' };
   if (base === 'CLOB' || base === 'NCLOB' || base === 'LONG') return { type: 'TEXT' };
   if (base === 'RAW') return { type: 'VARBINARY' };
