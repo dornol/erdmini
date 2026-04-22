@@ -273,6 +273,7 @@ class ERDStore {
   applyLayout(positions: Map<string, { x: number; y: number }>) {
     const moves: { tableId: string; x: number; y: number }[] = [];
     for (const table of this.schema.tables) {
+      if (table.locked) continue;
       const pos = positions.get(table.id);
       if (pos) {
         table.position = { x: Math.round(pos.x), y: Math.round(pos.y) };

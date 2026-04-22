@@ -43,9 +43,12 @@
   let currentViewLabel = $derived(VIEW_MODES.find(v => v.mode === canvasState.columnDisplayMode)?.short() ?? '');
   let currentLineLabel = $derived(LINE_TYPES.find(l => l.type === canvasState.lineType)?.label() ?? '');
 
-  // Auto-arrange
+  // Auto-arrange. Locked tables are excluded from layout input (their positions
+  // stay put) and erdStore.applyLayout also skips them defensively.
   function applyLayout(type: LayoutType, options?: LayoutOptions) {
-    const positions = computeLayout(erdStore.schema.tables, type, options);
+    const movable = erdStore.schema.tables.filter((t) => !t.locked);
+    if (movable.length === 0) return;
+    const positions = computeLayout(movable, type, options);
     erdStore.applyLayout(positions);
     toastStore.success(m.toast_layout_applied());
   }
