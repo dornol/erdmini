@@ -30,7 +30,8 @@
   let hasLength = $derived(
     col?.type === 'VARCHAR' || col?.type === 'CHAR' || col?.type === 'DECIMAL' || col?.type === 'NUMERIC'
     || col?.type === 'NVARCHAR' || col?.type === 'NCHAR'
-    || col?.type === 'TIME' || col?.type === 'BINARY' || col?.type === 'VARBINARY',
+    || col?.type === 'TIME' || col?.type === 'DATETIMEOFFSET'
+    || col?.type === 'BINARY' || col?.type === 'VARBINARY',
   );
 
   let isDecimal = $derived(col?.type === 'DECIMAL' || col?.type === 'NUMERIC');
@@ -62,10 +63,16 @@
     DATE: ['CURRENT_TIMESTAMP', 'NOW()', 'NULL'],
     DATETIME: ['CURRENT_TIMESTAMP', 'NOW()', 'NULL'],
     TIMESTAMP: ['CURRENT_TIMESTAMP', 'NOW()', 'NULL'],
+    DATETIMEOFFSET: ['SYSDATETIMEOFFSET()', 'CURRENT_TIMESTAMP', 'NULL'],
+    YEAR: ['2025', 'NULL'],
+    INTERVAL: ["'1 day'", "'1 hour'", 'NULL'],
     DECIMAL: ['0', '0.0', 'NULL'],
     FLOAT: ['0', '0.0', 'NULL'],
     DOUBLE: ['0', '0.0', 'NULL'],
     NUMERIC: ['0', '0.0', 'NULL'],
+    MONEY: ['0', '0.00', 'NULL'],
+    JSON: ["'{}'", "'[]'", 'NULL'],
+    JSONB: ["'{}'", "'[]'", 'NULL'],
     UUID: ['UUID()', 'GEN_RANDOM_UUID()', 'NULL'],
   };
 

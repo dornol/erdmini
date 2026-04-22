@@ -54,6 +54,7 @@
     { type: 'grid', label: () => m.layout_grid() },
     { type: 'hierarchical', label: () => m.layout_hierarchical() },
     { type: 'radial', label: () => m.layout_radial() },
+    { type: 'radial-tree', label: () => m.layout_radial_tree() },
   ];
 
   function tablesHaveGroups(): boolean {
@@ -371,9 +372,9 @@
       {#if fullscreenMode}
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
           <polyline points="5,1 5,5 1,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="11,5 15,5 15,1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="11,15 11,11 15,11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-          <polyline points="1,11 1,15 5,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="11,1 11,5 15,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="15,11 11,11 11,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="1,11 5,11 5,15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       {:else}
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

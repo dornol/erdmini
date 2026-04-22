@@ -65,6 +65,11 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'REAL') return kw('FLOAT', upper);
     if (col.type === 'BIT') return kw('TINYINT', upper) + '(1)';
     if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
+    if (col.type === 'YEAR') return kw('YEAR', upper);
+    if (col.type === 'DATETIMEOFFSET') return kw('TIMESTAMP', upper);
+    if (col.type === 'INTERVAL') return `${kw('VARCHAR', upper)}(64)`;
+    if (col.type === 'MONEY') return `${kw('DECIMAL', upper)}(19,4)`;
+    if (col.type === 'JSONB') return kw('JSON', upper);
     if (col.type === 'BINARY') return `${kw('BINARY', upper)}${len || '(255)'}`;
     if (col.type === 'VARBINARY') return `${kw('VARBINARY', upper)}${len || '(255)'}`;
     if (col.type === 'BLOB') return kw('LONGBLOB', upper);
@@ -79,6 +84,11 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'NTEXT') return kw('TEXT', upper);
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
+    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)} ${kw('WITH TIME ZONE', upper)}`;
+    if (col.type === 'YEAR') return kw('SMALLINT', upper);
+    if (col.type === 'INTERVAL') return kw('INTERVAL', upper);
+    if (col.type === 'MONEY') return kw('MONEY', upper);
+    if (col.type === 'JSONB') return kw('JSONB', upper);
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('NUMERIC', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'REAL') return kw('REAL', upper);
     if (col.type === 'TINYINT' || col.type === 'MEDIUMINT') return kw('INTEGER', upper);
@@ -90,8 +100,8 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   }
 
   if (dialect === 'sqlite') {
-    if (col.type === 'INT' || col.type === 'BIGINT' || col.type === 'SMALLINT' || col.type === 'TINYINT' || col.type === 'MEDIUMINT' || col.type === 'BOOLEAN' || col.type === 'BIT') return kw('INTEGER', upper);
-    if (col.type === 'DECIMAL' || col.type === 'NUMERIC' || col.type === 'FLOAT' || col.type === 'DOUBLE' || col.type === 'REAL') return kw('REAL', upper);
+    if (col.type === 'INT' || col.type === 'BIGINT' || col.type === 'SMALLINT' || col.type === 'TINYINT' || col.type === 'MEDIUMINT' || col.type === 'BOOLEAN' || col.type === 'BIT' || col.type === 'YEAR') return kw('INTEGER', upper);
+    if (col.type === 'DECIMAL' || col.type === 'NUMERIC' || col.type === 'FLOAT' || col.type === 'DOUBLE' || col.type === 'REAL' || col.type === 'MONEY') return kw('REAL', upper);
     if (col.type === 'BINARY' || col.type === 'VARBINARY' || col.type === 'BLOB') return kw('BLOB', upper);
     return kw('TEXT', upper);
   }
@@ -99,15 +109,18 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   if (dialect === 'oracle') {
     if (col.type === 'INT' || col.type === 'MEDIUMINT') return `${kw('NUMBER', upper)}(10)`;
     if (col.type === 'BIGINT') return `${kw('NUMBER', upper)}(19)`;
-    if (col.type === 'SMALLINT') return `${kw('NUMBER', upper)}(5)`;
+    if (col.type === 'SMALLINT' || col.type === 'YEAR') return `${kw('NUMBER', upper)}(5)`;
     if (col.type === 'TINYINT') return `${kw('NUMBER', upper)}(3)`;
     if (col.type === 'BOOLEAN' || col.type === 'BIT') return `${kw('NUMBER', upper)}(1)`;
     if (col.type === 'VARCHAR' || col.type === 'NVARCHAR') return `${kw('VARCHAR2', upper)}${len || '(255)'}`;
     if (col.type === 'CHAR' || col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
-    if (col.type === 'TEXT' || col.type === 'NTEXT' || col.type === 'JSON') return kw('CLOB', upper);
+    if (col.type === 'TEXT' || col.type === 'NTEXT' || col.type === 'JSON' || col.type === 'JSONB') return kw('CLOB', upper);
     if (col.type === 'DATE') return kw('DATE', upper);
     if (col.type === 'TIME') return kw('TIMESTAMP', upper);
     if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return kw('TIMESTAMP', upper);
+    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)} ${kw('WITH TIME ZONE', upper)}`;
+    if (col.type === 'INTERVAL') return `${kw('INTERVAL DAY TO SECOND', upper)}`;
+    if (col.type === 'MONEY') return `${kw('NUMBER', upper)}(19,4)`;
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('NUMBER', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'FLOAT' || col.type === 'REAL') return kw('FLOAT', upper);
     if (col.type === 'DOUBLE') return kw('BINARY_DOUBLE', upper);
@@ -119,13 +132,18 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   }
 
   if (dialect === 'h2') {
-    if (col.type === 'TEXT' || col.type === 'NTEXT' || col.type === 'JSON') return kw('CLOB', upper);
+    if (col.type === 'TEXT' || col.type === 'NTEXT') return kw('CLOB', upper);
     if (col.type === 'NVARCHAR') return `${kw('VARCHAR', upper)}${len || '(255)'}`;
     if (col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'ENUM') return `${kw('ENUM', upper)}${enumList || "('value')"}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
+    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)} ${kw('WITH TIME ZONE', upper)}`;
+    if (col.type === 'YEAR') return kw('SMALLINT', upper);
+    if (col.type === 'INTERVAL') return kw('INTERVAL DAY TO SECOND', upper);
+    if (col.type === 'MONEY') return `${kw('DECIMAL', upper)}(19,4)`;
+    if (col.type === 'JSON' || col.type === 'JSONB') return kw('JSON', upper);
     if (col.type === 'BLOB') return kw('BLOB', upper);
     if (col.type === 'BINARY' || col.type === 'VARBINARY') return `${kw(col.type, upper)}${len || '(255)'}`;
     return kw(col.type, upper);
@@ -143,11 +161,16 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   if (col.type === 'NCHAR') return `${kw('NCHAR', upper)}${len || '(255)'}`;
   if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
   if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return col.length ? `${kw('DATETIME2', upper)}(${col.length})` : kw('DATETIME2', upper);
+  if (col.type === 'DATETIMEOFFSET') return col.length ? `${kw('DATETIMEOFFSET', upper)}(${col.length})` : kw('DATETIMEOFFSET', upper);
+  if (col.type === 'YEAR') return kw('SMALLINT', upper);
+  if (col.type === 'INTERVAL') return `${kw('NVARCHAR', upper)}(64)`;
+  if (col.type === 'MONEY') return kw('MONEY', upper);
   if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
   if (col.type === 'DOUBLE' || col.type === 'REAL') return kw('FLOAT', upper);
   if (col.type === 'TINYINT') return kw('TINYINT', upper);
   if (col.type === 'MEDIUMINT') return kw('INT', upper);
   if (col.type === 'JSON') return `${kw('NVARCHAR', upper)}(MAX)`;
+  if (col.type === 'JSONB') return `${kw('NVARCHAR', upper)}(MAX)`;
   if (col.type === 'UUID') return kw('UNIQUEIDENTIFIER', upper);
   if (col.type === 'BINARY') return `${kw('BINARY', upper)}${len || '(255)'}`;
   if (col.type === 'VARBINARY') return `${kw('VARBINARY', upper)}${len || '(255)'}`;

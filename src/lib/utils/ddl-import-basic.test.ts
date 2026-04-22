@@ -54,8 +54,12 @@ describe('normalizeType', () => {
     expect(normalizeType('REAL')).toBe('REAL');
   });
 
-  it('maps MONEY → DECIMAL', () => {
-    expect(normalizeType('MONEY')).toBe('DECIMAL');
+  it('preserves MONEY → MONEY', () => {
+    expect(normalizeType('MONEY')).toBe('MONEY');
+  });
+
+  it('maps SMALLMONEY → MONEY', () => {
+    expect(normalizeType('SMALLMONEY')).toBe('MONEY');
   });
 
   it('maps CHARACTER VARYING → VARCHAR', () => {
@@ -169,8 +173,8 @@ describe('normalizeType', () => {
     expect(normalizeType('RAW')).toBe('VARBINARY');
   });
 
-  it('maps DOUBLE PRECISION → DECIMAL', () => {
-    expect(normalizeType('DOUBLE PRECISION')).toBe('DECIMAL');
+  it('maps DOUBLE PRECISION → DOUBLE', () => {
+    expect(normalizeType('DOUBLE PRECISION')).toBe('DOUBLE');
   });
 
   it('maps SMALLSERIAL → SMALLINT', () => {
@@ -187,11 +191,11 @@ describe('normalizeType', () => {
 // ─────────────────────────────────────────────
 describe('importDDL — warnings', () => {
   it('generates warning for unknown type with table/column context', async () => {
-    // YEAR is an unknown SQL type that normalizeType maps to VARCHAR
-    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, val YEAR);`;
+    // GEOMETRY is an unknown SQL type that normalizeType maps to VARCHAR
+    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, val GEOMETRY);`;
     const result = await importDDL(sql, 'mysql');
     expect(result.warnings.length).toBeGreaterThan(0);
-    expect(result.warnings[0]).toContain('YEAR');
+    expect(result.warnings[0]).toContain('GEOMETRY');
     expect(result.warnings[0]).toContain('VARCHAR');
     expect(result.warnings[0]).toContain('t1.val');
   });
@@ -203,11 +207,11 @@ describe('importDDL — warnings', () => {
   });
 
   it('generates multiple warnings for multiple unknown types', async () => {
-    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, a YEAR, b YEAR);`;
+    const sql = `CREATE TABLE t1 (id INT PRIMARY KEY, a GEOMETRY, b POINT);`;
     const result = await importDDL(sql, 'mysql');
     expect(result.warnings).toHaveLength(2);
-    expect(result.warnings[0]).toContain('YEAR');
-    expect(result.warnings[1]).toContain('YEAR');
+    expect(result.warnings[0]).toContain('GEOMETRY');
+    expect(result.warnings[1]).toContain('POINT');
   });
 });
 

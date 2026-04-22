@@ -36,6 +36,11 @@ function mapColumnType(col: Column): PrismaTypeInfo {
       return { prismaType: 'String', nativeHint: `@db.NChar(${col.length || 255})` };
     case 'NTEXT': return { prismaType: 'String', nativeHint: '@db.NText' };
     case 'TEXT': return { prismaType: 'String', nativeHint: '@db.Text' };
+    case 'JSONB': return { prismaType: 'Json', nativeHint: '@db.JsonB' };
+    case 'MONEY': return { prismaType: 'Decimal', nativeHint: '@db.Money' };
+    case 'DATETIMEOFFSET': return { prismaType: 'DateTime', nativeHint: '@db.DateTimeOffset' };
+    case 'YEAR': return { prismaType: 'Int', nativeHint: '@db.Year' };
+    case 'INTERVAL': return { prismaType: 'String' };
     case 'BOOLEAN': return { prismaType: 'Boolean' };
     case 'DATE': return { prismaType: 'DateTime', nativeHint: '@db.Date' };
     case 'DATETIME': return { prismaType: 'DateTime' };

@@ -890,7 +890,7 @@ describe('exportDDL — Oracle', () => {
 });
 
 describe('exportDDL — H2', () => {
-  it('maps TEXT/JSON to CLOB', () => {
+  it('maps TEXT to CLOB and JSON to native JSON', () => {
     const schema = makeSchema([
       makeTable({
         name: 'test',
@@ -901,8 +901,8 @@ describe('exportDDL — H2', () => {
       }),
     ]);
     const ddl = exportDDL(schema, 'h2');
-    const clobCount = (ddl.match(/\bCLOB\b/g) ?? []).length;
-    expect(clobCount).toBe(2);
+    expect(ddl).toContain('CLOB');
+    expect(ddl).toContain('JSON');
   });
 
   it('passes through BOOLEAN, UUID, INT natively', () => {

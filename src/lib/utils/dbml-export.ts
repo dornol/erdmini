@@ -25,6 +25,11 @@ function toDbmlType(col: Column): string {
     case 'NCHAR': return col.length ? `nchar(${col.length})` : 'nchar';
     case 'TEXT': return 'text';
     case 'NTEXT': return 'ntext';
+    case 'JSONB': return 'jsonb';
+    case 'MONEY': return 'money';
+    case 'DATETIMEOFFSET': return col.length ? `datetimeoffset(${col.length})` : 'datetimeoffset';
+    case 'YEAR': return 'year';
+    case 'INTERVAL': return 'interval';
     case 'BOOLEAN': return 'boolean';
     case 'DATE': return 'date';
     case 'DATETIME': return 'datetime';

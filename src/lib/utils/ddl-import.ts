@@ -37,7 +37,12 @@ function normalizeTypeInternal(raw: string): { type: ColumnType; warning?: { ori
   if (base === 'BOOL') return { type: 'BOOLEAN' };
   if (base === 'DATETIME') return { type: 'DATETIME' };
   if (base === 'TIMESTAMP' || base === 'TIMESTAMPTZ' || base === 'DATETIME2') return { type: 'TIMESTAMP' };
-  if (base === 'MONEY' || base === 'DOUBLE PRECISION') return { type: 'DECIMAL' };
+  if (base === 'DATETIMEOFFSET') return { type: 'DATETIMEOFFSET' };
+  if (base === 'YEAR') return { type: 'YEAR' };
+  if (base === 'INTERVAL' || base.startsWith('INTERVAL ')) return { type: 'INTERVAL' };
+  if (base === 'MONEY' || base === 'SMALLMONEY') return { type: 'MONEY' };
+  if (base === 'DOUBLE PRECISION') return { type: 'DOUBLE' };
+  if (base === 'JSONB') return { type: 'JSONB' };
   if (base === 'IMAGE') return { type: 'BLOB' };
   if (base === 'CHARACTER VARYING' || base === 'NVARCHAR2') return { type: 'VARCHAR' };
   if (base === 'VARCHAR2') return { type: 'VARCHAR' };
@@ -339,6 +344,8 @@ interface PreprocessedData {
   mssqlAlterFKs: MSSQLAlterFK[];
   mssqlAlterUQs: MSSQLAlterUQ[];
   mssqlDt2Precisions: Map<string, Map<string, number>>;
+  mssqlDatetimeoffsetCols: Map<string, Map<string, number | undefined>>;
+  mssqlMoneyCols: Map<string, Set<string>>;
   preprocessedComments: { tableComments: Map<string, string>; colComments: Map<string, Map<string, string>> } | null;
   preprocessedIdentity: Map<string, Set<string>> | null;
 }
@@ -358,6 +365,8 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     mssqlAlterFKs: [],
     mssqlAlterUQs: [],
     mssqlDt2Precisions: new Map(),
+    mssqlDatetimeoffsetCols: new Map(),
+    mssqlMoneyCols: new Map(),
     preprocessedComments: null,
     preprocessedIdentity: null,
   };
@@ -371,6 +380,8 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     preprocessed.mssqlAlterFKs = result.alterFKs;
     preprocessed.mssqlAlterUQs = result.alterUQs;
     preprocessed.mssqlDt2Precisions = result.dt2Precisions;
+    preprocessed.mssqlDatetimeoffsetCols = result.datetimeoffsetCols;
+    preprocessed.mssqlMoneyCols = result.moneyCols;
     stmts = [];
     for (const stmtSql of result.statements) {
       const quoted = quoteReservedColumnNames(stmtSql, dialect);
@@ -982,6 +993,34 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
       const col = table.columns.find((c) => c.name.toLowerCase() === colName);
       if (col && (col.type === 'DATETIME' || col.type === 'TIMESTAMP')) {
         col.length = precision;
+      }
+    }
+  }
+
+  // Apply MSSQL DATETIMEOFFSET — restore original type (preprocessor mapped to DATETIME)
+  for (const [tableName, colMap] of preprocessed.mssqlDatetimeoffsetCols) {
+    const table = tables.find((t) => t.name === tableName);
+    if (!table) continue;
+    for (const [colName, precision] of colMap) {
+      const col = table.columns.find((c) => c.name.toLowerCase() === colName);
+      if (col) {
+        col.type = 'DATETIMEOFFSET';
+        if (precision !== undefined) col.length = precision;
+        else col.length = undefined;
+      }
+    }
+  }
+
+  // Apply MSSQL MONEY/SMALLMONEY — restore original type (preprocessor mapped to DECIMAL)
+  for (const [tableName, colSet] of preprocessed.mssqlMoneyCols) {
+    const table = tables.find((t) => t.name === tableName);
+    if (!table) continue;
+    for (const colName of colSet) {
+      const col = table.columns.find((c) => c.name.toLowerCase() === colName);
+      if (col) {
+        col.type = 'MONEY';
+        col.length = undefined;
+        col.scale = undefined;
       }
     }
   }

@@ -41,7 +41,7 @@ describe('importDDL — Oracle', () => {
     expect(cols.find(c => c.name === 'd')!.type).toBe('TEXT');
   });
 
-  it('maps BINARY_DOUBLE→DOUBLE, BINARY_FLOAT→FLOAT', async () => {
+  it('maps DOUBLE PRECISION→DOUBLE, FLOAT→FLOAT', async () => {
     const sql = `
       CREATE TABLE test (
         a DOUBLE PRECISION,
@@ -50,7 +50,7 @@ describe('importDDL — Oracle', () => {
     `;
     const result = await importDDL(sql, 'oracle');
     const cols = result.tables[0].columns;
-    expect(cols.find(c => c.name === 'a')!.type).toBe('DECIMAL');
+    expect(cols.find(c => c.name === 'a')!.type).toBe('DOUBLE');
     expect(cols.find(c => c.name === 'b')!.type).toBe('FLOAT');
   });
 

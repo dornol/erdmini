@@ -5,16 +5,18 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { toastStore } from '$lib/store/toast.svelte';
   import type { Dialect } from '$lib/types/erd';
-  import { exportDDL, getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
+  import { getDefaultQuoteStyle, type DDLExportOptions } from '$lib/utils/ddl-export';
   import { DIALECT_OPTIONS, loadDdlOptions, saveDdlOptions } from '$lib/utils/ddl-options';
   import { copyToClipboard as clipCopy } from '$lib/utils/clipboard';
-  import { exportMermaid, exportPlantUML } from '$lib/utils/diagram-export';
   import { downloadBlob } from '$lib/utils/blob-download';
-  import { exportPrisma } from '$lib/utils/prisma-export';
-  import { exportDBML } from '$lib/utils/dbml-export';
-  import { importDDL, type DDLImportMessages } from '$lib/utils/ddl-import';
-  import { importPrisma } from '$lib/utils/prisma-import';
-  import { importDBML } from '$lib/utils/dbml-import';
+  import {
+    EXPORT_FORMATS,
+    IMPORT_FORMATS,
+    getExportFormat,
+    getImportFormat,
+    resolveFileExt,
+    type ImportMessageBag,
+  } from '$lib/utils/format-registry';
   import { computeLayout } from '$lib/utils/auto-layout';
   import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
@@ -35,19 +37,8 @@
 
   let activeTab = $state<'import' | 'export'>(untrack(() => exportOnly ? 'export' : mode));
 
-  type ExportFormat = 'ddl' | 'mermaid' | 'plantuml' | 'prisma' | 'dbml';
-  type ImportFormat = 'ddl' | 'prisma' | 'dbml';
-
-  const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
-    { value: 'ddl', label: 'DDL' },
-    { value: 'mermaid', label: 'Mermaid' },
-    { value: 'plantuml', label: 'PlantUML' },
-    { value: 'prisma', label: 'Prisma' },
-    { value: 'dbml', label: 'DBML' },
-  ];
-
   // Export state
-  let exportFormat = $state<ExportFormat>('ddl');
+  let exportFormatId = $state<string>('ddl');
   let exportDialect = $state<Dialect>(erdStore.schema.dialect ?? 'mysql');
   let showDdlOptions = $state(false);
 
@@ -63,18 +54,26 @@
     saveDdlOptions(ddlOptions);
   });
 
+  let currentExportFormat = $derived(getExportFormat(exportFormatId) ?? EXPORT_FORMATS[0]);
+
   let exportText = $derived.by(() => {
-    if (exportFormat === 'mermaid') return exportMermaid(erdStore.schema);
-    if (exportFormat === 'plantuml') return exportPlantUML(erdStore.schema);
-    if (exportFormat === 'prisma') return exportPrisma(erdStore.schema);
-    if (exportFormat === 'dbml') return exportDBML(erdStore.schema);
-    return exportDDL(erdStore.schema, exportDialect, { ...ddlOptions, quoteStyle: ddlOptions.quoteStyle === 'none' ? 'none' : ddlOptions.quoteStyle || getDefaultQuoteStyle(exportDialect), dbObjectIds: dboExportIds.size > 0 ? [...dboExportIds] : undefined });
+    const spec = currentExportFormat;
+    const effectiveDdlOptions: DDLExportOptions = {
+      ...ddlOptions,
+      quoteStyle: ddlOptions.quoteStyle === 'none' ? 'none' : (ddlOptions.quoteStyle || getDefaultQuoteStyle(exportDialect)),
+    };
+    return spec.export(erdStore.schema, {
+      dialect: spec.supportsDialect ? exportDialect : undefined,
+      ddlOptions: effectiveDdlOptions,
+      dbObjectIds: spec.supportsDdlOptions && dboExportIds.size > 0 ? [...dboExportIds] : undefined,
+    });
   });
   let copyLabel = $state<'copy' | 'copied'>('copy');
 
   // Import state
-  let importFormat = $state<ImportFormat>('ddl');
+  let importFormatId = $state<string>('ddl');
   let importDialect = $state<Dialect>(erdStore.schema.dialect ?? 'mysql');
+  let currentImportFormat = $derived(getImportFormat(importFormatId) ?? IMPORT_FORMATS[0]);
   let importText = $state('');
   let importDialectAutoDetected = $state(false);
   let importDialectManual = $state(false);
@@ -82,7 +81,7 @@
   // Auto-detect dialect when import text changes (skip if user manually selected)
   $effect(() => {
     const text = importText;
-    const fmt = importFormat;
+    const fmt = importFormatId;
     untrack(() => {
       if (text.length === 0) { importDialectManual = false; importDialectAutoDetected = false; return; }
       if (importDialectManual) return;
@@ -113,15 +112,15 @@
 
   function downloadFile() {
     const projName = sanitizeFilename(projectName ?? projectStore.activeProject?.name ?? 'schema');
-    const extMap: Record<string, string> = { mermaid: '.mmd', plantuml: '.puml', prisma: '.prisma', dbml: '.dbml' };
-    const ext = extMap[exportFormat] ?? `_${exportDialect}.sql`;
-    downloadBlob(exportText, `erdmini_${projName}${ext}`, 'text/plain');
+    const spec = currentExportFormat;
+    const ext = resolveFileExt(spec, spec.supportsDialect ? exportDialect : undefined);
+    downloadBlob(exportText, `erdmini_${projName}${ext}`, spec.mime);
   }
 
   function openFile() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = importFormat === 'prisma' ? '.prisma,.txt' : importFormat === 'dbml' ? '.dbml,.txt' : '.sql,.txt';
+    input.accept = currentImportFormat.acceptFiles;
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
@@ -134,6 +133,12 @@
     input.click();
   }
 
+  function buildImportSuccessMessage(formatId: string, count: number): string {
+    if (formatId === 'prisma') return m.prisma_import_success({ count });
+    if (formatId === 'dbml') return m.dbml_import_success({ count });
+    return m.ddl_import_success({ count });
+  }
+
   async function doImport() {
     importErrors = [];
     importWarnings = [];
@@ -141,28 +146,24 @@
     importing = true;
 
     try {
-      let result;
-      if (importFormat === 'dbml') {
-        result = importDBML(importText, {
-          noTables: () => m.dbml_import_no_tables(),
-          noPkWarning: (p) => m.dbml_no_pk_warning(p),
-          fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
-        });
-      } else if (importFormat === 'prisma') {
-        result = importPrisma(importText, {
-          noModels: () => m.prisma_import_no_models(),
-          implicitM2m: (p) => m.prisma_import_implicit_m2m(p),
-          noPkWarning: (p) => m.prisma_no_pk_warning(p),
-          fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
-        });
-      } else {
-        const importMessages: DDLImportMessages = {
-          noCreateTable: () => m.ddl_import_no_create_table(),
-          tableParseError: (p) => m.ddl_import_table_parse_error(p),
-          fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
-        };
-        result = await importDDL(importText, importDialect, importMessages);
-      }
+      const spec = currentImportFormat;
+      const messages: ImportMessageBag = {
+        fkResolveFailed: (p) => m.ddl_import_fk_resolve_failed(p),
+        noCreateTable: () => m.ddl_import_no_create_table(),
+        tableParseError: (p) => m.ddl_import_table_parse_error(p),
+        noModels: () => m.prisma_import_no_models(),
+        implicitM2m: (p) => m.prisma_import_implicit_m2m(p),
+        noPkWarning: (p) => {
+          if (p.model != null) return m.prisma_no_pk_warning({ model: p.model });
+          if (p.table != null) return m.dbml_no_pk_warning({ table: p.table });
+          return '';
+        },
+        noTables: () => m.dbml_import_no_tables(),
+      };
+      const result = await spec.import(importText, {
+        dialect: spec.supportsDialect ? importDialect : undefined,
+        messages,
+      });
       if (result.errors.length > 0) {
         importErrors = result.errors;
       }
@@ -265,8 +266,8 @@
           }
         }
 
-        // Auto-set dialect from import if not yet set
-        if (!erdStore.schema.dialect && importFormat === 'ddl') {
+        // Auto-set dialect from import if not yet set (DDL only — other formats don't have dialect)
+        if (!erdStore.schema.dialect && currentImportFormat.supportsDialect) {
           erdStore.setDialect(importDialect);
         }
         erdStore.schema.updatedAt = now();
@@ -274,11 +275,7 @@
         const layoutType = result.tables.some((t) => t.foreignKeys.length > 0) ? 'hierarchical' : 'grid';
         const positions = computeLayout(erdStore.schema.tables, layoutType);
         erdStore.applyLayout(positions);
-        importSuccess = importFormat === 'prisma'
-          ? m.prisma_import_success({ count: result.tables.length })
-          : importFormat === 'dbml'
-            ? m.dbml_import_success({ count: result.tables.length })
-            : m.ddl_import_success({ count: result.tables.length });
+        importSuccess = buildImportSuccessMessage(currentImportFormat.id, result.tables.length);
         toastStore.success(importSuccess);
       }
     } catch (e) {
@@ -324,15 +321,15 @@
       {#if activeTab === 'export'}
         <div class="export-controls">
           <div class="format-tabs">
-            {#each FORMAT_OPTIONS as opt}
+            {#each EXPORT_FORMATS as spec}
               <button
                 class="format-tab"
-                class:active={exportFormat === opt.value}
-                onclick={() => exportFormat = opt.value}
-              >{opt.label}</button>
+                class:active={exportFormatId === spec.id}
+                onclick={() => exportFormatId = spec.id}
+              >{spec.label}</button>
             {/each}
           </div>
-          {#if exportFormat === 'ddl'}
+          {#if currentExportFormat.supportsDialect}
             <div class="dialect-select-wrap">
               <SearchableSelect
                 options={DIALECT_OPTIONS}
@@ -343,7 +340,7 @@
             </div>
           {/if}
           <div class="spacer"></div>
-          {#if exportFormat === 'ddl'}
+          {#if currentExportFormat.supportsDdlOptions}
             <button class="btn-secondary btn-options" class:options-active={showDdlOptions} onclick={() => (showDdlOptions = !showDdlOptions)} aria-label="DDL options">
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                 <path d="M6.5 1h3l.4 2.3a5.5 5.5 0 011.3.7l2.2-.9 1.5 2.6-1.8 1.4a5.6 5.6 0 010 1.8l1.8 1.4-1.5 2.6-2.2-.9a5.5 5.5 0 01-1.3.7L9.5 15h-3l-.4-2.3a5.5 5.5 0 01-1.3-.7l-2.2.9-1.5-2.6 1.8-1.4a5.6 5.6 0 010-1.8L1.1 5.7l1.5-2.6 2.2.9a5.5 5.5 0 011.3-.7z" stroke="currentColor" stroke-width="1.3"/>
@@ -355,10 +352,10 @@
             {copyLabel === 'copy' ? m.ddl_copy() : m.ddl_copied()}
           </button>
           <button class="btn-secondary" onclick={downloadFile}>
-            {exportFormat === 'mermaid' ? '.mmd' : exportFormat === 'plantuml' ? '.puml' : exportFormat === 'prisma' ? m.prisma_download() : exportFormat === 'dbml' ? m.dbml_download() : m.ddl_download()}
+            {#if currentExportFormat.id === 'prisma'}{m.prisma_download()}{:else if currentExportFormat.id === 'dbml'}{m.dbml_download()}{:else if currentExportFormat.id === 'drizzle'}{m.drizzle_download()}{:else if currentExportFormat.id === 'ddl'}{m.ddl_download()}{:else}{resolveFileExt(currentExportFormat)}{/if}
           </button>
         </div>
-        {#if exportFormat === 'ddl' && showDdlOptions}
+        {#if currentExportFormat.supportsDdlOptions && showDdlOptions}
           <div class="ddl-options">
             <div class="opt-row">
               <span class="opt-label">{m.ddl_options_indent()}</span>
@@ -444,11 +441,15 @@
       {:else}
         <div class="import-controls">
           <div class="format-tabs">
-            <button class="format-tab" class:active={importFormat === 'ddl'} onclick={() => importFormat = 'ddl'}>DDL</button>
-            <button class="format-tab" class:active={importFormat === 'prisma'} onclick={() => importFormat = 'prisma'}>Prisma</button>
-            <button class="format-tab" class:active={importFormat === 'dbml'} onclick={() => importFormat = 'dbml'}>DBML</button>
+            {#each IMPORT_FORMATS as spec}
+              <button
+                class="format-tab"
+                class:active={importFormatId === spec.id}
+                onclick={() => importFormatId = spec.id}
+              >{spec.label}</button>
+            {/each}
           </div>
-          {#if importFormat === 'ddl'}
+          {#if currentImportFormat.supportsDialect}
             <div class="dialect-select-wrap">
               <SearchableSelect
                 options={DIALECT_OPTIONS.map(o => ({
@@ -472,7 +473,7 @@
         <textarea
           class="code-area"
           bind:value={importText}
-          placeholder={importFormat === 'prisma' ? m.prisma_paste_placeholder() : importFormat === 'dbml' ? m.dbml_paste_placeholder() : m.ddl_paste_placeholder()}
+          placeholder={currentImportFormat.id === 'prisma' ? m.prisma_paste_placeholder() : currentImportFormat.id === 'dbml' ? m.dbml_paste_placeholder() : m.ddl_paste_placeholder()}
           spellcheck="false"
         ></textarea>
         {#if importSuccess}

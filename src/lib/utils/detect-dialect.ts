@@ -8,7 +8,7 @@ export function detectDialect(sql: string): Dialect | null {
   const upper = sql.toUpperCase();
 
   // MSSQL signals
-  if (/\bIDENTITY\s*\(\s*\d/.test(upper) || /\bNVARCHAR\b/.test(upper) || /\[dbo\]/.test(sql) || /\bsp_addextendedproperty\b/i.test(sql)) {
+  if (/\bIDENTITY\s*\(\s*\d/.test(upper) || /\bNVARCHAR\b/.test(upper) || /\bDATETIMEOFFSET\b/.test(upper) || /\[dbo\]/.test(sql) || /\bsp_addextendedproperty\b/i.test(sql)) {
     return 'mssql';
   }
 
@@ -18,7 +18,7 @@ export function detectDialect(sql: string): Dialect | null {
   }
 
   // PostgreSQL signals
-  if (/\b(BIGSERIAL|SMALLSERIAL|SERIAL)\b/.test(upper) || /\bTEXT\b/.test(upper) && /\bBOOLEAN\b/.test(upper) || /\bCREATE\s+TYPE\b/.test(upper)) {
+  if (/\bJSONB\b/.test(upper) || /\b(BIGSERIAL|SMALLSERIAL|SERIAL)\b/.test(upper) || /\bTEXT\b/.test(upper) && /\bBOOLEAN\b/.test(upper) || /\bCREATE\s+TYPE\b/.test(upper)) {
     return 'postgresql';
   }
 

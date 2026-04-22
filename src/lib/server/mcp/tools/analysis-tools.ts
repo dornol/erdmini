@@ -25,10 +25,10 @@ export const registerAnalysisTools: RegisterFn = (server, ctx) => {
 
   server.tool(
     'auto_layout',
-    'Automatically arrange all tables on the canvas. Algorithms: grid (rows/cols), hierarchical (FK-based tree with barycenter), radial (force-directed). Set groupByGroup=true to cluster by group.',
+    'Automatically arrange all tables on the canvas. Algorithms: grid (rows/cols), hierarchical (FK-based tree with barycenter), radial (force-directed), radial-tree (BFS concentric rings from highest-degree hub with angular subdivision — IntelliJ-style). Set groupByGroup=true to cluster by group.',
     {
       projectId: z.string().max(256).describe('Project ID'),
-      type: z.enum(['grid', 'hierarchical', 'radial']).describe('Layout algorithm'),
+      type: z.enum(['grid', 'hierarchical', 'radial', 'radial-tree']).describe('Layout algorithm'),
       groupByGroup: z.boolean().optional().describe('Layout groups separately (default: false)'),
     },
     async ({ projectId, type, groupByGroup }) => {

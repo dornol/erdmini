@@ -3,20 +3,20 @@ export type ColumnType =
   | 'VARCHAR' | 'CHAR' | 'TEXT'
   | 'NVARCHAR' | 'NCHAR' | 'NTEXT'
   | 'BOOLEAN' | 'BIT'
-  | 'DATE' | 'TIME' | 'DATETIME' | 'TIMESTAMP'
-  | 'DECIMAL' | 'NUMERIC' | 'FLOAT' | 'DOUBLE' | 'REAL'
+  | 'DATE' | 'TIME' | 'DATETIME' | 'TIMESTAMP' | 'DATETIMEOFFSET' | 'YEAR' | 'INTERVAL'
+  | 'DECIMAL' | 'NUMERIC' | 'FLOAT' | 'DOUBLE' | 'REAL' | 'MONEY'
   | 'BINARY' | 'VARBINARY' | 'BLOB'
-  | 'JSON' | 'UUID' | 'ENUM';
+  | 'JSON' | 'JSONB' | 'UUID' | 'ENUM';
 
 export const COLUMN_TYPES: ColumnType[] = [
   'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
   'VARCHAR', 'CHAR', 'TEXT',
   'NVARCHAR', 'NCHAR', 'NTEXT',
   'BOOLEAN', 'BIT',
-  'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
-  'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
+  'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'DATETIMEOFFSET', 'YEAR', 'INTERVAL',
+  'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL', 'MONEY',
   'BINARY', 'VARBINARY', 'BLOB',
-  'JSON', 'UUID', 'ENUM',
+  'JSON', 'JSONB', 'UUID', 'ENUM',
 ];
 
 export interface Column {
@@ -154,7 +154,7 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
     'VARCHAR', 'CHAR', 'TEXT',
     'BOOLEAN',
-    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'YEAR',
     'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
     'BINARY', 'VARBINARY', 'BLOB',
     'JSON', 'ENUM',
@@ -163,7 +163,7 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
     'VARCHAR', 'CHAR', 'TEXT',
     'BOOLEAN',
-    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'YEAR',
     'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
     'BINARY', 'VARBINARY', 'BLOB',
     'JSON', 'ENUM',
@@ -172,18 +172,18 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
     'INT', 'BIGINT', 'SMALLINT',
     'VARCHAR', 'CHAR', 'TEXT',
     'BOOLEAN',
-    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
-    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'INTERVAL',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL', 'MONEY',
     'BINARY', 'VARBINARY', 'BLOB',
-    'JSON', 'UUID', 'ENUM',
+    'JSON', 'JSONB', 'UUID', 'ENUM',
   ],
   mssql: [
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
     'VARCHAR', 'CHAR', 'TEXT',
     'NVARCHAR', 'NCHAR', 'NTEXT',
     'BIT',
-    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
-    'DECIMAL', 'NUMERIC', 'FLOAT', 'REAL',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'DATETIMEOFFSET',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'REAL', 'MONEY',
     'BINARY', 'VARBINARY', 'BLOB',
     'JSON', 'UUID',
   ],
@@ -200,7 +200,7 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
     'VARCHAR', 'CHAR', 'TEXT',
     'BOOLEAN',
-    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'INTERVAL',
     'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
     'BINARY', 'VARBINARY', 'BLOB',
     'UUID', 'ENUM',
@@ -209,7 +209,7 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
     'VARCHAR', 'CHAR', 'TEXT',
     'BOOLEAN',
-    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP',
+    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'INTERVAL',
     'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
     'BINARY', 'VARBINARY', 'BLOB',
     'JSON', 'UUID', 'ENUM',

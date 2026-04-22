@@ -24,6 +24,10 @@ export interface MSSQLPreprocessResult {
   alterUQs: MSSQLAlterUQ[];
   /** datetime2(N) precision: Map<tableName, Map<columnName, precision>> */
   dt2Precisions: Map<string, Map<string, number>>;
+  /** Columns originally declared as DATETIMEOFFSET, with optional precision */
+  datetimeoffsetCols: Map<string, Map<string, number | undefined>>;
+  /** Columns originally declared as MONEY or SMALLMONEY */
+  moneyCols: Map<string, Set<string>>;
 }
 
 /** Unwrap MSSQL default parens: DEFAULT ((0)) → DEFAULT 0, DEFAULT (getdate()) → DEFAULT getdate() */
@@ -219,9 +223,11 @@ export function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
   const statements: string[] = [];
   const seenStmts = new Set<string>();
   const dt2Precisions = new Map<string, Map<string, number>>();
+  const datetimeoffsetCols = new Map<string, Map<string, number | undefined>>();
+  const moneyCols = new Map<string, Set<string>>();
 
-  // Extract datetime2(N) precision before cleanup destroys it
-  // Scan each CREATE TABLE block for datetime2(N) columns
+  // Extract datetime2(N), DATETIMEOFFSET, MONEY/SMALLMONEY before cleanup destroys them
+  // Scan each CREATE TABLE block
   const createTableRegex = /\bcreate\s+table\s+(?:(?:\[?\w+\]?\.)*)\[?(\w+)\]?\s*\(/gi;
   let ctMatch;
   while ((ctMatch = createTableRegex.exec(sql)) !== null) {
@@ -236,12 +242,31 @@ export function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
       endIdx = i;
     }
     const body = sql.slice(startIdx, endIdx);
-    const colRegex = /\[?(\w+)\]?\s+datetime2\s*\(\s*(\d+)\s*\)/gi;
-    for (const colMatch of body.matchAll(colRegex)) {
+
+    // datetime2(N)
+    const dt2Regex = /\[?(\w+)\]?\s+datetime2\s*\(\s*(\d+)\s*\)/gi;
+    for (const colMatch of body.matchAll(dt2Regex)) {
       const colName = colMatch[1];
       const precision = Number(colMatch[2]);
       if (!dt2Precisions.has(tableName)) dt2Precisions.set(tableName, new Map());
       dt2Precisions.get(tableName)!.set(colName.toLowerCase(), precision);
+    }
+
+    // datetimeoffset / datetimeoffset(N)
+    const dtoRegex = /\[?(\w+)\]?\s+datetimeoffset(?:\s*\(\s*(\d+)\s*\))?/gi;
+    for (const colMatch of body.matchAll(dtoRegex)) {
+      const colName = colMatch[1];
+      const precision = colMatch[2] ? Number(colMatch[2]) : undefined;
+      if (!datetimeoffsetCols.has(tableName)) datetimeoffsetCols.set(tableName, new Map());
+      datetimeoffsetCols.get(tableName)!.set(colName.toLowerCase(), precision);
+    }
+
+    // money / smallmoney (must not match within identifier — \b ensures word boundary)
+    const moneyRegex = /\[?(\w+)\]?\s+(?:smallmoney|money)\b/gi;
+    for (const colMatch of body.matchAll(moneyRegex)) {
+      const colName = colMatch[1];
+      if (!moneyCols.has(tableName)) moneyCols.set(tableName, new Set());
+      moneyCols.get(tableName)!.add(colName.toLowerCase());
     }
   }
 
@@ -433,7 +458,7 @@ export function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
     }
   }
 
-  return { statements, tableComments, colComments, alterFKs, alterUQs, dt2Precisions };
+  return { statements, tableComments, colComments, alterFKs, alterUQs, dt2Precisions, datetimeoffsetCols, moneyCols };
 }
 
 export function cleanMSSQLStatement(sql: string): string {

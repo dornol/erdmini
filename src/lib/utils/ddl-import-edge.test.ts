@@ -505,7 +505,7 @@ describe('Edge: type warning for unknown types', () => {
   it('normalizeType falls back to VARCHAR for unrecognized types', () => {
     // normalizeType (public) returns the type string only
     expect(normalizeType('GEOMETRY')).toBe('VARCHAR');
-    expect(normalizeType('MONEY')).toBe('DECIMAL');
+    expect(normalizeType('MONEY')).toBe('MONEY');
     expect(normalizeType('NVARCHAR')).toBe('NVARCHAR');
   });
 });

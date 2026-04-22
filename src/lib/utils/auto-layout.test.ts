@@ -2,6 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { computeLayout } from './auto-layout';
 import { makeColumn, makeTable, resetIdCounter } from './test-helpers';
 import type { Table } from '$lib/types/erd';
+import { TABLE_W, HEADER_H, COMMENT_H, ROW_H, BOTTOM_PAD } from '$lib/constants/layout';
+
+function tableHeight(t: Table): number {
+  const commentH = t.comment ? COMMENT_H : 0;
+  return HEADER_H + commentH + t.columns.length * ROW_H + BOTTOM_PAD;
+}
 
 beforeEach(() => resetIdCounter());
 
@@ -360,6 +366,223 @@ describe('radial — group clustering', () => {
   });
 });
 
+// ─── Radial-Tree tests ─────────────────────────────────────────────
+
+describe('computeLayout — radial-tree', () => {
+  it('returns empty map for empty array', () => {
+    const result = computeLayout([], 'radial-tree');
+    expect(result.size).toBe(0);
+  });
+
+  it('assigns finite positions to all tables', () => {
+    const tables = simpleTables(5);
+    const result = computeLayout(tables, 'radial-tree');
+    expect(result.size).toBe(5);
+    for (const pos of result.values()) {
+      expect(Number.isFinite(pos.x)).toBe(true);
+      expect(Number.isFinite(pos.y)).toBe(true);
+    }
+  });
+
+  it('single table is positioned at origin+margin', () => {
+    const tables = simpleTables(1);
+    const result = computeLayout(tables, 'radial-tree');
+    expect(result.size).toBe(1);
+  });
+
+  it('star graph: hub is at center, leaves orbit around it', () => {
+    // Build a hub with 6 leaves pointing to it
+    const hub = makeTable({
+      id: 'hub', name: 'hub',
+      columns: [makeColumn({ id: 'hub_id', name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+    });
+    const leaves = Array.from({ length: 6 }, (_, i) =>
+      makeTable({
+        id: `leaf${i}`, name: `leaf${i}`,
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ id: `leaf${i}_hid`, name: 'hub_id', type: 'INT', nullable: false }),
+        ],
+        foreignKeys: [{
+          id: `fk${i}`, columnIds: [`leaf${i}_hid`], referencedTableId: 'hub',
+          referencedColumnIds: ['hub_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
+        }],
+      }),
+    );
+    const tables = [hub, ...leaves];
+    const result = computeLayout(tables, 'radial-tree');
+
+    const posHub = result.get('hub')!;
+    const leafPositions = leaves.map((l) => result.get(l.id)!);
+
+    // Centroid of leaves should be roughly equal to hub position (hub at center)
+    const avgX = leafPositions.reduce((s, p) => s + p.x, 0) / leafPositions.length;
+    const avgY = leafPositions.reduce((s, p) => s + p.y, 0) / leafPositions.length;
+    // Hub should be near the centroid (within ~20px — accounts for table size rounding)
+    expect(Math.abs(posHub.x - avgX)).toBeLessThan(30);
+    expect(Math.abs(posHub.y - avgY)).toBeLessThan(30);
+
+    // All leaves should orbit the hub at a roughly similar distance. Exact "same ring"
+    // isn't guaranteed because we use axis-aligned (W≠H) collision — tables at angles
+    // where the hub is short in Y can pack closer than east/west. Enforce a soft bound.
+    const distances = leafPositions.map((p) =>
+      Math.sqrt((p.x - posHub.x) ** 2 + (p.y - posHub.y) ** 2),
+    );
+    const minDist = Math.min(...distances);
+    const maxDist = Math.max(...distances);
+    expect(maxDist / minDist).toBeLessThan(2.5);
+  });
+
+  it('disconnected components are arranged non-overlapping', () => {
+    // Two independent 2-table groups with no FKs between them
+    const a1 = makeTable({ id: 'a1', name: 'a1', columns: [makeColumn({ id: 'a1_id', name: 'id', type: 'INT', primaryKey: true, nullable: false })] });
+    const a2 = makeTable({
+      id: 'a2', name: 'a2',
+      columns: [
+        makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+        makeColumn({ id: 'a2_pid', name: 'a1_id', type: 'INT', nullable: false }),
+      ],
+      foreignKeys: [{ id: 'fka', columnIds: ['a2_pid'], referencedTableId: 'a1', referencedColumnIds: ['a1_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT' }],
+    });
+    const b1 = makeTable({ id: 'b1', name: 'b1', columns: [makeColumn({ id: 'b1_id', name: 'id', type: 'INT', primaryKey: true, nullable: false })] });
+    const b2 = makeTable({
+      id: 'b2', name: 'b2',
+      columns: [
+        makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+        makeColumn({ id: 'b2_pid', name: 'b1_id', type: 'INT', nullable: false }),
+      ],
+      foreignKeys: [{ id: 'fkb', columnIds: ['b2_pid'], referencedTableId: 'b1', referencedColumnIds: ['b1_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT' }],
+    });
+    const result = computeLayout([a1, a2, b1, b2], 'radial-tree');
+    expect(result.size).toBe(4);
+
+    // Intra-component pairs should be closer than cross-component pairs
+    const pA1 = result.get('a1')!, pA2 = result.get('a2')!;
+    const pB1 = result.get('b1')!, pB2 = result.get('b2')!;
+    const d = (p: { x: number; y: number }, q: { x: number; y: number }) =>
+      Math.sqrt((p.x - q.x) ** 2 + (p.y - q.y) ** 2);
+    const intra = Math.max(d(pA1, pA2), d(pB1, pB2));
+    const inter = Math.min(d(pA1, pB1), d(pA2, pB2));
+    expect(intra).toBeLessThan(inter);
+  });
+
+  it('cyclic FK — no infinite loop', () => {
+    const a = makeTable({
+      id: 'rtCycA', name: 'rtc_a',
+      columns: [makeColumn({ id: 'rtA_id', name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+                makeColumn({ id: 'rtA_bid', name: 'b_id', type: 'INT', nullable: false })],
+      foreignKeys: [{ id: 'rtfk_a2b', columnIds: ['rtA_bid'], referencedTableId: 'rtCycB', referencedColumnIds: ['rtB_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT' }],
+    });
+    const b = makeTable({
+      id: 'rtCycB', name: 'rtc_b',
+      columns: [makeColumn({ id: 'rtB_id', name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+                makeColumn({ id: 'rtB_aid', name: 'a_id', type: 'INT', nullable: false })],
+      foreignKeys: [{ id: 'rtfk_b2a', columnIds: ['rtB_aid'], referencedTableId: 'rtCycA', referencedColumnIds: ['rtA_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT' }],
+    });
+    const result = computeLayout([a, b], 'radial-tree');
+    expect(result.size).toBe(2);
+  });
+
+  it('group clustering works with radial-tree', () => {
+    const tables = groupedTables();
+    const result = computeLayout(tables, 'radial-tree', { groupByGroup: true });
+    expect(result.size).toBe(4);
+  });
+
+  it('tables do not overlap in star graph with tall hub', () => {
+    // Hub with many columns → tall table, potentially overlapping with leaves at N/S
+    const tallHub = makeTable({
+      id: 'tallhub', name: 'tallhub',
+      columns: Array.from({ length: 15 }, (_, i) =>
+        makeColumn({ id: `h${i}`, name: `c${i}`, type: 'VARCHAR', primaryKey: i === 0, nullable: i !== 0 }),
+      ),
+    });
+    const leaves = Array.from({ length: 8 }, (_, i) =>
+      makeTable({
+        id: `tl${i}`, name: `tl${i}`,
+        columns: [
+          makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ id: `tl${i}_h`, name: 'h_id', type: 'INT', nullable: false }),
+        ],
+        foreignKeys: [{
+          id: `tfk${i}`, columnIds: [`tl${i}_h`], referencedTableId: 'tallhub',
+          referencedColumnIds: ['h0'], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
+        }],
+      }),
+    );
+    const tables = [tallHub, ...leaves];
+    const result = computeLayout(tables, 'radial-tree');
+
+    // Check all pairs for axis-aligned rectangle overlap
+    const rects = tables.map((t) => {
+      const p = result.get(t.id)!;
+      return { id: t.id, x: p.x, y: p.y, w: TABLE_W, h: tableHeight(t) };
+    });
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i], b = rects[j];
+        const overlapX = a.x < b.x + b.w && b.x < a.x + a.w;
+        const overlapY = a.y < b.y + b.h && b.y < a.y + a.h;
+        expect(overlapX && overlapY, `${a.id} overlaps ${b.id}`).toBe(false);
+      }
+    }
+  });
+
+  it('tables do not overlap in deep tree with varied heights', () => {
+    // Build a 3-level tree with tall and short tables mixed
+    const root = makeTable({
+      id: 'r', name: 'r',
+      columns: [makeColumn({ id: 'r_id', name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+    });
+    const mids: Table[] = [];
+    const leafs: Table[] = [];
+    for (let i = 0; i < 4; i++) {
+      const colCount = 3 + i * 4; // 3, 7, 11, 15
+      mids.push(makeTable({
+        id: `m${i}`, name: `m${i}`,
+        columns: [
+          ...Array.from({ length: colCount }, (_, j) =>
+            makeColumn({ id: `m${i}c${j}`, name: `c${j}`, type: 'VARCHAR', primaryKey: j === 0, nullable: j !== 0 }),
+          ),
+          makeColumn({ id: `m${i}_rid`, name: 'r_id', type: 'INT', nullable: false }),
+        ],
+        foreignKeys: [{
+          id: `fm${i}`, columnIds: [`m${i}_rid`], referencedTableId: 'r',
+          referencedColumnIds: ['r_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
+        }],
+      }));
+      for (let j = 0; j < 3; j++) {
+        leafs.push(makeTable({
+          id: `l${i}_${j}`, name: `l${i}_${j}`,
+          columns: [
+            makeColumn({ id: `l${i}_${j}_id`, name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+            makeColumn({ id: `l${i}_${j}_m`, name: 'm_id', type: 'INT', nullable: false }),
+          ],
+          foreignKeys: [{
+            id: `fl${i}_${j}`, columnIds: [`l${i}_${j}_m`], referencedTableId: `m${i}`,
+            referencedColumnIds: [`m${i}c0`], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
+          }],
+        }));
+      }
+    }
+    const tables = [root, ...mids, ...leafs];
+    const result = computeLayout(tables, 'radial-tree');
+
+    const rects = tables.map((t) => {
+      const p = result.get(t.id)!;
+      return { id: t.id, x: p.x, y: p.y, w: TABLE_W, h: tableHeight(t) };
+    });
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i], b = rects[j];
+        const overlapX = a.x < b.x + b.w && b.x < a.x + a.w;
+        const overlapY = a.y < b.y + b.h && b.y < a.y + a.h;
+        expect(overlapX && overlapY, `${a.id} overlaps ${b.id}`).toBe(false);
+      }
+    }
+  });
+});
+
 // ─── Edge cases ─────────────────────────────────────────────────────
 
 describe('edge cases', () => {
@@ -369,7 +592,7 @@ describe('edge cases', () => {
       makeTable({ name: 'b', group: 'only', columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })] }),
       makeTable({ name: 'c', group: 'only', columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })] }),
     ];
-    for (const type of ['grid', 'hierarchical', 'radial'] as const) {
+    for (const type of ['grid', 'hierarchical', 'radial', 'radial-tree'] as const) {
       const result = computeLayout(tables, type, { groupByGroup: true });
       expect(result.size).toBe(3);
     }
@@ -394,7 +617,7 @@ describe('edge cases', () => {
         referencedColumnIds: ['cyA_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
       }],
     });
-    for (const type of ['grid', 'hierarchical', 'radial'] as const) {
+    for (const type of ['grid', 'hierarchical', 'radial', 'radial-tree'] as const) {
       const result = computeLayout([a, b], type);
       expect(result.size).toBe(2);
     }

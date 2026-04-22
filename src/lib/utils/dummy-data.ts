@@ -87,6 +87,9 @@ export function generateDummyValue(
 		case 'MEDIUMINT':
 			return n;
 
+		case 'YEAR':
+			return 2000 + (n % 100); // 2000-2099
+
 		case 'VARCHAR':
 		case 'NVARCHAR':
 		case 'CHAR':
@@ -118,11 +121,22 @@ export function generateDummyValue(
 			return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 		}
 
+		case 'DATETIMEOFFSET': {
+			const d = new Date(2025, 0, 1, n % 24, (n * 7) % 60, (n * 13) % 60);
+			d.setDate(d.getDate() + (n % 30));
+			const pad = (v: number) => String(v).padStart(2, '0');
+			return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} +00:00`;
+		}
+
+		case 'INTERVAL':
+			return `${n} days`;
+
 		case 'DECIMAL':
 		case 'NUMERIC':
 		case 'FLOAT':
 		case 'DOUBLE':
 		case 'REAL':
+		case 'MONEY':
 			return Number((n * 10 + (n * 3.14) % 10).toFixed(2));
 
 		case 'ENUM':
@@ -135,6 +149,7 @@ export function generateDummyValue(
 			return `${hex8(n)}${hex4(n)}-${hex4(n + 1)}-4${hex3(n)}-a${hex3(n + 2)}-${hex12(n)}`;
 
 		case 'JSON':
+		case 'JSONB':
 			return '{}';
 
 		case 'BINARY':
