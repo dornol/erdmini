@@ -4,6 +4,7 @@ import { TABLE_COLORS } from '$lib/constants/table-colors';
 import type { TableColorId } from '$lib/constants/table-colors';
 import type { ThemeId } from '$lib/store/theme.svelte';
 import { routeFKLines, computeOrthogonalLine, computeRoundedOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput, type FKLineRoute } from '$lib/utils/fk-routing';
+import { isFkUnique } from '$lib/utils/fk-cardinality';
 import type { LineType } from '$lib/store/erd.svelte';
 
 const PAD = 40;
@@ -259,6 +260,8 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
       const refTable = schema.tables.find((t) => t.id === fk.referencedTableId);
       if (!refTable) continue;
 
+      const fkIsUnique = isFkUnique(fk, table);
+
       for (let i = 0; i < fk.columnIds.length; i++) {
         const srcColIdx = getColIndex(table, fk.columnIds[i]);
         const refColIdx = getColIndex(refTable, fk.referencedColumnIds[i]);
@@ -280,7 +283,6 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
         const y2 = colY(refTable, refColIdx) - offsetY;
 
         const srcCol = table.columns[srcColIdx];
-        const isUnique = srcCol?.unique ?? false;
         const isNullable = srcCol?.nullable ?? false;
 
         inputs.push({
@@ -290,7 +292,7 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
           x1, y1, x2, y2,
           fromRight, toLeft,
         });
-        metas.push({ fromRight, toLeft, isUnique, isNullable, x1, y1, x2, y2, fkLabel: fk.label ?? '' });
+        metas.push({ fromRight, toLeft, isUnique: fkIsUnique, isNullable, x1, y1, x2, y2, fkLabel: fk.label ?? '' });
       }
     }
   }
@@ -368,8 +370,6 @@ function renderLines(schema: ERDSchema, theme: ThemeColors, offsetX: number, off
       const baseX = x1 + cDir * 4;
       parts.push(`<path d="M ${tipX} ${y1} L ${baseX} ${y1} M ${tipX} ${y1} L ${baseX} ${y1 - 7} M ${tipX} ${y1} L ${baseX} ${y1 + 7}" stroke="${color}" stroke-width="2" fill="none"/>`);
     }
-    const childCircleCx = x1 + cDir * 18;
-    parts.push(`<circle cx="${childCircleCx}" cy="${y1}" r="5" stroke="${color}" stroke-width="2" fill="${bg}"/>`);
   }
 
   return parts.join('\n');

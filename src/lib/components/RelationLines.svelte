@@ -8,6 +8,7 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { routeFKLines, computeOrthogonalLine, computeRoundedOrthogonalLine, computeSelfRefLoop, type AABB, type FKLineInput } from '$lib/utils/fk-routing';
   import { getFilteredColumns as getFilteredCols } from '$lib/utils/column-filter';
+  import { isFkUnique } from '$lib/utils/fk-cardinality';
   import * as m from '$lib/paraglide/messages';
 
   let { visibleTables, oneditfk }: { visibleTables?: Table[]; oneditfk?: (tableId: string, fkId: string) => void } = $props();
@@ -47,7 +48,6 @@
     parentParticipation: string | null;  // null = circle
     parentCircleCx: number;
     childMarker: string;
-    childCircleCx: number;
   }
 
   function getFilteredColumns(table: Table) {
@@ -98,6 +98,8 @@
         if (!refTable) continue;
         const refW = canvasState.getTableW(refTable.id);
 
+        const fkIsUnique = isFkUnique(fk, table);
+
         for (let i = 0; i < fk.columnIds.length; i++) {
           const srcColIdx = getColIndex(table, fk.columnIds[i]);
           const refColIdx = getColIndex(refTable, fk.referencedColumnIds[i]);
@@ -127,7 +129,6 @@
           const y2 = colY(refTable, refColIdx);
 
           const srcCol = table.columns[srcColIdx];
-          const isUnique = srcCol?.unique ?? false;
           const isNullable = srcCol?.nullable ?? false;
 
           inputs.push({
@@ -138,7 +139,7 @@
             fromRight, toLeft,
             _tableId: table.id,
             _fk: fk,
-            _isUnique: isUnique,
+            _isUnique: fkIsUnique,
             _isNullable: isNullable,
           });
         }
@@ -213,14 +214,13 @@
         const spread = 8;
         childMarker = `M ${baseX} ${y1 - spread} L ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
       }
-      const childCircleCx = x1 + cDir * 20;
 
       result.push({
         fk, tableId, x1, y1, x2, y2, fromRight, toLeft, isUnique, isNullable,
         path: route.path, labelX: route.labelX, labelY: route.labelY, labelText,
         fkLabel: fk.label ?? '',
         parentTick, parentParticipation, parentCircleCx,
-        childMarker, childCircleCx,
+        childMarker,
       });
     }
 
@@ -395,7 +395,6 @@
         <circle cx={line.parentCircleCx} cy={line.y2} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
       {/if}
       <path d={line.childMarker} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx={line.childCircleCx} cy={line.y1} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
     {/if}
   {/each}
 
@@ -449,7 +448,6 @@
         <circle cx={line.parentCircleCx} cy={line.y2} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
       {/if}
       <path d={line.childMarker} stroke={color} stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx={line.childCircleCx} cy={line.y1} r={4.5} stroke={color} stroke-width="1.6" fill={lineColors.bg} />
     {/if}
   {/each}
 

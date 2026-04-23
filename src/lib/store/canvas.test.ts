@@ -63,8 +63,7 @@ describe('FK marker geometry', () => {
       const spread = 8;
       childMarker = `M ${baseX} ${y1 - spread} L ${tipX} ${y1} L ${baseX} ${y1 + spread}`;
     }
-    const childCircleCx = x1 + cDir * 20;
-    return { childMarker, childCircleCx };
+    return { childMarker };
   }
 
   it('parent tick is vertical line at correct offset (toLeft)', () => {
@@ -103,15 +102,5 @@ describe('FK marker geometry', () => {
     const { childMarker } = computeChildMarkers(200, 100, false, false);
     // Mirror: base and tip flip
     expect(childMarker).toBe('M 186 92 L 195 100 L 186 108');
-  });
-
-  it('child circle position is beyond marker', () => {
-    const { childCircleCx } = computeChildMarkers(200, 100, true, false);
-    expect(childCircleCx).toBe(220);
-  });
-
-  it('child circle flips when fromRight=false', () => {
-    const { childCircleCx } = computeChildMarkers(200, 100, false, false);
-    expect(childCircleCx).toBe(180);
   });
 });
