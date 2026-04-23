@@ -21,7 +21,7 @@ export async function exportCanvasImage(projectName: string): Promise<void> {
   void worldEl.getBoundingClientRect(); // force layout
 
   const worldRect = worldEl.getBoundingClientRect();
-  const cards = Array.from(worldEl.querySelectorAll<HTMLElement>('.table-card'));
+  const cards = Array.from(worldEl.querySelectorAll<HTMLElement>('.table-card, .memo-card'));
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const card of cards) {
