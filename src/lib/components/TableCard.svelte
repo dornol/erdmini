@@ -399,7 +399,9 @@
 
   /* ── Column list ── */
   .column-list {
-    padding: 4px 0;
+    /* No top padding: first .column-row must start exactly at HEADER_H + commentH,
+       matching the colY() formula in RelationLines.svelte. Bottom padding = BOTTOM_PAD. */
+    padding: 0 0 8px 0;
   }
 
   .col-filter-hint {

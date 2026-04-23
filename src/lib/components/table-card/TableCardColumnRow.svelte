@@ -151,6 +151,8 @@
     position: relative;        /* tooltip anchor */
     display: flex;
     align-items: center;
+    box-sizing: border-box;
+    height: 26px;              /* must match ROW_H in $lib/constants/layout.ts */
     padding: 3px 8px;
     gap: 4px;
     font-size: 12px;

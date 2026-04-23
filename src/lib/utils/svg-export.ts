@@ -177,8 +177,6 @@ function renderTable(t: Table, theme: ThemeColors, offsetX: number, offsetY: num
     curY += COMMENT_H;
   }
 
-  curY += 4; // column-list top padding
-
   const fkSourceIds = new Set(t.foreignKeys.flatMap((fk) => fk.columnIds));
   const uniqueKeyColIds = new Set((t.uniqueKeys ?? []).flatMap((uk) => uk.columnIds));
 
