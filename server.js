@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { handler } from './build/handler.js';
 import Database from 'better-sqlite3';
 import { initCollabServer } from './collab-server.js';
-import { createLogger } from './logger.js';
+import { createLogger, isBenignSocketError } from './logger.js';
 
 const log = createLogger('server');
 const collabLog = createLogger('collab');
@@ -31,7 +31,7 @@ try {
 
 // Prevent unhandled socket errors from crashing the server
 process.on('uncaughtException', (err) => {
-  if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+  if (isBenignSocketError(err)) {
     log.warn('Connection reset', { error: err.message });
   } else {
     log.error('Uncaught exception', { error: err.message, stack: err.stack });

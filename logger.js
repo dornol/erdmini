@@ -3,20 +3,19 @@
 
 const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 
-function getLogLevel() {
-	const env = (process.env.LOG_LEVEL || 'info').toLowerCase();
-	return LEVELS[env] ?? LEVELS.info;
-}
+const minLevel = LEVELS[(process.env.LOG_LEVEL || 'info').toLowerCase()] ?? LEVELS.info;
+const jsonFormat = (process.env.LOG_FORMAT || '').toLowerCase() === 'json';
 
-function isJsonFormat() {
-	return (process.env.LOG_FORMAT || '').toLowerCase() === 'json';
+/** True for client-disconnect-induced socket errors (refresh, navigate, hangup). */
+export function isBenignSocketError(err) {
+	return err?.code === 'ECONNRESET' || err?.code === 'EPIPE';
 }
 
 function emit(level, module, message, detail) {
 	try {
-		if (LEVELS[level] < getLogLevel()) return;
+		if (LEVELS[level] < minLevel) return;
 
-		if (isJsonFormat()) {
+		if (jsonFormat) {
 			const entry = {
 				timestamp: new Date().toISOString(),
 				level,

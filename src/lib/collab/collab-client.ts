@@ -58,8 +58,7 @@ export class CollabClient {
   /**
    * Detach event listeners from the current WebSocket before closing it.
    * Prevents the async onclose callback of an old WS from clobbering a
-   * freshly-created `this.ws` (race during quick disconnect→connect cycles
-   * such as language-change-induced component remounts).
+   * freshly-created `this.ws` during quick disconnect→connect cycles.
    */
   private detachAndClose() {
     if (!this.ws) return;

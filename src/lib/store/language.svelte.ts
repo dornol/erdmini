@@ -11,14 +11,9 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   ja: '日本語',
 };
 
-/**
- * Trust Paraglide's configured strategy chain (localStorage →
- * preferredLanguage → baseLocale) as the single source of truth.
- * The previous custom resolution layered cookie/browser detection on
- * top, which clobbered the user's saved choice on refresh — text would
- * stay in the persisted locale (read directly via Paraglide's
- * getLocale) while this store reported a different value to the UI.
- */
+// Paraglide's strategy chain (localStorage → preferredLanguage →
+// baseLocale) is the single source of truth — m.x() reads it via
+// getLocale(), so this store mirrors it instead of resolving its own.
 class LanguageStore {
   current: Locale = $state(getLocale() as Locale);
 

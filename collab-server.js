@@ -2,7 +2,7 @@
 // Works independently of SvelteKit's module system
 import { WebSocketServer } from 'ws';
 import { randomBytes } from 'node:crypto';
-import { createLogger } from './logger.js';
+import { createLogger, isBenignSocketError } from './logger.js';
 
 const log = createLogger('collab');
 
@@ -342,8 +342,7 @@ export function createCollabHandler(db) {
   function handleUpgrade(request, socket, head) {
     // Always add error handler to prevent unhandled crash
     socket.on('error', (err) => {
-      // ECONNRESET / EPIPE during upgrade = client closed (refresh/navigate) — benign
-      if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+      if (isBenignSocketError(err)) {
         log.debug('Socket closed during upgrade', { code: err.code });
         return;
       }
@@ -404,7 +403,7 @@ export function initCollabServer(server, db) {
     // Add error handler for ALL upgrade sockets (including non-collab)
     if (!socket.listenerCount('error')) {
       socket.on('error', (err) => {
-        if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+        if (isBenignSocketError(err)) {
           log.debug('Socket closed', { code: err.code });
           return;
         }
