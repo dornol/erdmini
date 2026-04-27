@@ -478,26 +478,34 @@
   }
 
   .dbms-select {
-    background: transparent;
-    color: #94a3b8;
+    background: transparent
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+      no-repeat right 8px center;
+    color: #e2e8f0;
     border: 1px solid #475569;
-    border-radius: 4px;
-    padding: 2px 4px;
-    font-size: 11px;
+    border-radius: 6px;
+    padding: 5px 24px 5px 10px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     outline: none;
     -webkit-appearance: none;
     appearance: none;
+    transition: background-color 0.15s, border-color 0.15s;
   }
 
   .dbms-select:hover {
-    border-color: #64748b;
-    color: #e2e8f0;
+    background-color: #334155;
+    border-color: #60a5fa;
   }
 
   .dbms-select:focus {
-    border-color: #3b82f6;
+    border-color: #60a5fa;
+  }
+
+  .dbms-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .dbms-select option {
