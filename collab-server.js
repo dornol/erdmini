@@ -342,6 +342,11 @@ export function createCollabHandler(db) {
   function handleUpgrade(request, socket, head) {
     // Always add error handler to prevent unhandled crash
     socket.on('error', (err) => {
+      // ECONNRESET / EPIPE during upgrade = client closed (refresh/navigate) — benign
+      if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+        log.debug('Socket closed during upgrade', { code: err.code });
+        return;
+      }
       log.warn('Socket error during upgrade', { error: err.message });
     });
 
@@ -399,6 +404,10 @@ export function initCollabServer(server, db) {
     // Add error handler for ALL upgrade sockets (including non-collab)
     if (!socket.listenerCount('error')) {
       socket.on('error', (err) => {
+        if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+          log.debug('Socket closed', { code: err.code });
+          return;
+        }
         log.warn('Socket error', { error: err.message });
       });
     }

@@ -6,12 +6,13 @@ import { collabStore } from '$lib/store/collab.svelte';
 import { handleServerMessage, sendPresence, sendOperation } from '$lib/collab/operation-bridge';
 
 /**
- * Deferred cleanup so that a quick unmount→remount cycle (e.g. the
- * `{#key languageStore.current}` wrapping +page.svelte) does not actually
- * tear down the collab WebSocket. If a new useCollab() runs before the
- * timer fires, the pending disconnect is cancelled.
+ * Reference counting for active mounts. Lets the collab WebSocket survive
+ * the unmount→remount triggered by `{#key languageStore.current}` in
+ * +layout.svelte (used to refresh Paraglide translations) regardless of
+ * whether Svelte runs the new mount before or after the old cleanup.
  */
-let pendingTeardown: ReturnType<typeof setTimeout> | null = null;
+let mountCount = 0;
+let teardownTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Sets up WebSocket collab lifecycle: connect/disconnect, presence, operation forwarding.
@@ -19,11 +20,13 @@ let pendingTeardown: ReturnType<typeof setTimeout> | null = null;
  * Returns a cleanup function for onDestroy.
  */
 export function useCollab(): () => void {
-  // A new mount is taking over — cancel any pending teardown from the
-  // previous mount so the live WebSocket is preserved.
-  if (pendingTeardown) {
-    clearTimeout(pendingTeardown);
-    pendingTeardown = null;
+  mountCount++;
+
+  // A new mount overlaps with a pending teardown — cancel it so the live
+  // socket and store state survive.
+  if (teardownTimer) {
+    clearTimeout(teardownTimer);
+    teardownTimer = null;
   }
 
   const unsubCollab = collabClient.onMessage(handleServerMessage);
@@ -54,11 +57,16 @@ export function useCollab(): () => void {
 
   return () => {
     unsubCollab();
-    // Defer disconnect so a same-tick remount (language switch) can cancel it.
-    pendingTeardown = setTimeout(() => {
-      pendingTeardown = null;
+    mountCount--;
+    if (mountCount > 0) return; // another instance is still active
+
+    // Defer disconnect — a same-tick remount (language switch) will
+    // bump mountCount back up before this fires.
+    teardownTimer = setTimeout(() => {
+      teardownTimer = null;
+      if (mountCount > 0) return;
       collabClient.disconnect();
       collabStore.reset();
-    }, 0);
+    }, 50);
   };
 }
