@@ -88,11 +88,11 @@
     border-radius: var(--erd-tt-radius);
     padding: 8px 10px;
     min-width: 160px;
-    max-width: 300px;
+    max-width: 320px;
     box-shadow: var(--erd-tt-shadow);
     font-size: 12px;
-    white-space: nowrap;
     pointer-events: none;
+    overflow-wrap: anywhere;
   }
 
   .ttt-section + .ttt-section {
@@ -113,6 +113,7 @@
   .ttt-item {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 4px;
     margin-bottom: 2px;
     font-size: 11px;
