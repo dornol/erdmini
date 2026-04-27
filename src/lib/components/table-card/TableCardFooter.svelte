@@ -88,11 +88,12 @@
     border-radius: var(--erd-tt-radius);
     padding: 8px 10px;
     min-width: 160px;
-    max-width: 320px;
+    width: max-content;
+    max-width: min(560px, calc(100vw - 40px));
     box-shadow: var(--erd-tt-shadow);
     font-size: 12px;
+    white-space: nowrap;
     pointer-events: none;
-    overflow-wrap: anywhere;
   }
 
   .ttt-section + .ttt-section {
@@ -113,21 +114,25 @@
   .ttt-item {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 4px;
     margin-bottom: 2px;
     font-size: 11px;
+    min-width: 0;
   }
 
   .ttt-name {
     color: var(--erd-tt-mono);
     font-family: monospace;
     font-size: 11px;
+    flex-shrink: 0;
   }
 
   .ttt-cols {
     color: var(--erd-tt-label);
     font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 
   .ttt-unique {
