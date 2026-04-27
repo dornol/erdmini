@@ -52,10 +52,23 @@ export class CollabClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
+    this.detachAndClose();
+  }
+
+  /**
+   * Detach event listeners from the current WebSocket before closing it.
+   * Prevents the async onclose callback of an old WS from clobbering a
+   * freshly-created `this.ws` (race during quick disconnect→connect cycles
+   * such as language-change-induced component remounts).
+   */
+  private detachAndClose() {
+    if (!this.ws) return;
+    this.ws.onopen = null;
+    this.ws.onmessage = null;
+    this.ws.onclose = null;
+    this.ws.onerror = null;
+    this.ws.close();
+    this.ws = null;
   }
 
   send(msg: ClientMessage) {
@@ -65,10 +78,7 @@ export class CollabClient {
   }
 
   private createConnection() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
+    this.detachAndClose();
 
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${proto}//${window.location.host}/collab`;
