@@ -195,13 +195,13 @@
 <style>
   .field-desc {
     font-size: 12px;
-    color: #64748b;
+    color: var(--app-text-muted);
     margin: 0 0 8px;
   }
 
   .rule-row {
     padding: 10px 0;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid var(--app-border-light);
   }
 
   .rule-row:last-child {
@@ -218,7 +218,7 @@
   .rule-name {
     font-size: 13px;
     font-weight: 500;
-    color: #e2e8f0;
+    color: var(--app-text);
   }
 
   .rule-config {
@@ -230,20 +230,20 @@
   }
 
   .rule-select {
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 4px;
-    color: #e2e8f0;
+    color: var(--app-text);
     font-size: 12px;
     padding: 4px 8px;
     min-width: 140px;
   }
 
   .rule-input {
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 4px;
-    color: #e2e8f0;
+    color: var(--app-text);
     font-size: 12px;
     padding: 4px 8px;
     width: 120px;
@@ -254,7 +254,7 @@
     align-items: center;
     gap: 6px;
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     cursor: pointer;
     white-space: nowrap;
   }

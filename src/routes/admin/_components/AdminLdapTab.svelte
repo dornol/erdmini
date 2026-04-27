@@ -458,33 +458,33 @@
     gap: 4px;
     font-size: 12px;
     font-weight: 500;
-    color: #94a3b8;
+    color: var(--app-text-secondary);
   }
 
   .ldap-form input:not([type="checkbox"]) {
     padding: 8px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text);
     font-size: 13px;
     width: 100%;
   }
 
   .ldap-form input:not([type="checkbox"]):focus {
     outline: none;
-    border-color: #60a5fa;
+    border-color: var(--app-accent);
   }
 
   .ldap-divider {
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--app-border);
     margin: 4px 0;
   }
 
   .ldap-section-label {
     font-size: 13px;
     font-weight: 600;
-    color: #cbd5e1;
+    color: var(--app-text);
   }
 
   .ldap-checks {
@@ -495,7 +495,7 @@
 
   .field-hint {
     font-size: 12px;
-    color: #64748b;
+    color: var(--app-text-muted);
     margin-top: -4px;
   }
 </style>

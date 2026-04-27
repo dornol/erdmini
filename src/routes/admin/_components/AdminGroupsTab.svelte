@@ -276,7 +276,8 @@
 <style>
   .member-panel {
     padding: 12px 16px;
-    background: #1e293b;
+    background: var(--app-card-bg);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
   }
 
@@ -284,7 +285,7 @@
     font-size: 13px;
     font-weight: 600;
     margin: 0 0 8px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
   }
 
   .member-search-row {
@@ -296,7 +297,7 @@
   }
 
   .search-dropdown {
-    border: 1px solid #334155;
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -310,20 +311,20 @@
     gap: 8px;
     width: 100%;
     padding: 6px 12px;
-    background: #0f172a;
+    background: var(--app-input-bg);
     border: none;
-    border-bottom: 1px solid #1e293b;
-    color: #f1f5f9;
+    border-bottom: 1px solid var(--app-border);
+    color: var(--app-text);
     cursor: pointer;
     text-align: left;
     font-size: 13px;
   }
 
   .search-item:last-child { border-bottom: none; }
-  .search-item:hover { background: #1e293b; }
+  .search-item:hover { background: var(--app-hover-bg); }
 
   .add-label {
-    color: #60a5fa;
+    color: var(--app-accent);
     font-size: 12px;
     font-weight: 500;
     margin-left: auto;
@@ -339,17 +340,17 @@
   }
 
   .source-manual {
-    background: #334155;
-    color: #94a3b8;
+    background: var(--app-badge-bg);
+    color: var(--app-text-muted);
   }
 
   .source-oidc {
-    background: #1e3a5f;
-    color: #60a5fa;
+    background: var(--app-active-bg);
+    color: var(--app-accent);
   }
 
   .source-ldap {
-    background: #1a3a2a;
-    color: #4ade80;
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--app-success);
   }
 </style>

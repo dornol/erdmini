@@ -516,7 +516,7 @@
 
   .admin-page :global(.empty-msg) {
     font-size: 14px;
-    color: #64748b;
+    color: var(--app-text-muted);
     text-align: center;
     padding: 32px 0;
   }
@@ -532,8 +532,8 @@
     justify-content: space-between;
     gap: 16px;
     padding: 14px 16px;
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
     margin-bottom: 8px;
   }
@@ -550,7 +550,7 @@
 
   .admin-page :global(.provider-detail) {
     font-size: 12px;
-    color: #64748b;
+    color: var(--app-text-muted);
   }
 
   .admin-page :global(.provider-badges) {
@@ -646,22 +646,23 @@
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
     white-space: nowrap;
   }
 
   .admin-page :global(.input-label input) {
     padding: 8px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text);
     font-size: 13px;
   }
 
   .admin-page :global(.key-edit-form) {
     padding: 12px 16px;
-    background: #1e293b;
+    background: var(--app-card-bg);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
   }
 
@@ -678,14 +679,15 @@
 
   .admin-page :global(.project-id) {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-muted);
     margin-left: 8px;
     font-family: monospace;
   }
 
   .admin-page :global(.project-detail) {
     padding: 12px 16px;
-    background: #1e293b;
+    background: var(--app-card-bg);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
   }
 
@@ -693,7 +695,7 @@
     font-size: 13px;
     font-weight: 600;
     margin: 0 0 8px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
   }
 
   .admin-page :global(.member-list) {
@@ -715,12 +717,12 @@
   }
 
   .admin-page :global(.member-username) {
-    color: #64748b;
+    color: var(--app-text-muted);
     font-size: 12px;
   }
 
   .admin-page :global(.transfer-section) {
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--app-border);
     padding-top: 12px;
   }
 
@@ -739,18 +741,18 @@
 
   .admin-page :global(.stat-label) {
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--app-text-muted);
   }
 
   .admin-page :global(.stat-value) {
     font-size: 16px;
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--app-text);
   }
 
   .admin-page :global(.restore-warning) {
     font-size: 13px;
-    color: #f59e0b;
+    color: var(--app-warning-text);
     margin: 0;
     padding: 8px 12px;
     background: rgba(245, 158, 11, 0.1);
@@ -769,16 +771,16 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--app-card-bg);
+    border: 1px solid var(--app-border);
     border-radius: 8px;
     margin-bottom: 12px;
     font-size: 13px;
-    color: #94a3b8;
+    color: var(--app-text-muted);
   }
 
   .admin-page :global(.retention-sep) {
-    color: #475569;
+    color: var(--app-text-faint);
   }
 
   .admin-page :global(.audit-filters) {
@@ -792,22 +794,22 @@
   .admin-page :global(.audit-filters select),
   .admin-page :global(.audit-filters input[type="text"]) {
     padding: 8px 12px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
-    color: #f1f5f9;
+    color: var(--app-text);
     font-size: 13px;
   }
 
   .admin-page :global(.audit-filters select:focus),
   .admin-page :global(.audit-filters input:focus) {
     outline: none;
-    border-color: #60a5fa;
+    border-color: var(--app-accent);
   }
 
   .admin-page :global(.audit-total) {
     font-size: 13px;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     margin-left: 8px;
   }
 
@@ -818,9 +820,9 @@
   .admin-page :global(.action-other) { background: #334155; color: #94a3b8; }
 
   .admin-page :global(.cat-badge) {
-    background: #1e293b;
-    color: #94a3b8;
-    border: 1px solid #334155;
+    background: var(--app-badge-bg);
+    color: var(--app-text-muted);
+    border: 1px solid var(--app-badge-border);
   }
 
   .admin-page :global(.detail-cell) {
@@ -830,15 +832,16 @@
 
   .admin-page :global(.detail-summary) {
     font-size: 12px;
-    color: #64748b;
+    color: var(--app-text-muted);
     font-family: monospace;
     cursor: pointer;
   }
 
   .admin-page :global(.detail-expanded) {
     font-size: 12px;
-    color: #cbd5e1;
-    background: #0f172a;
+    color: var(--app-text-secondary);
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     padding: 8px 12px;
     border-radius: 4px;
     max-width: 400px;

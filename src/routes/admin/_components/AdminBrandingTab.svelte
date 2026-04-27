@@ -120,7 +120,7 @@
 <style>
   .field-desc {
     font-size: 12px;
-    color: #64748b;
+    color: var(--app-text-muted);
     margin: 0 0 8px;
   }
 
@@ -137,7 +137,8 @@
   .logo-preview {
     margin-top: 10px;
     padding: 12px;
-    background: #0f172a;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
     display: inline-block;
   }
@@ -159,7 +160,7 @@
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
     cursor: pointer;
   }
 

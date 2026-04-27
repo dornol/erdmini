@@ -388,11 +388,11 @@
     align-items: center;
     gap: 6px;
     padding: 6px 10px;
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
     font-size: 13px;
-    color: #f1f5f9;
+    color: var(--app-text);
   }
 
   .user-picked-label {
@@ -405,7 +405,7 @@
   .user-picked-clear {
     background: none;
     border: none;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     font-size: 16px;
     cursor: pointer;
     padding: 0 2px;
@@ -413,7 +413,7 @@
   }
 
   .user-picked-clear:hover {
-    color: #f87171;
+    color: var(--app-danger);
   }
 
   .user-dropdown {
@@ -423,12 +423,12 @@
     right: 0;
     max-height: 200px;
     overflow-y: auto;
-    background: #1e293b;
-    border: 1px solid #475569;
+    background: var(--app-popup-bg);
+    border: 1px solid var(--app-border);
     border-radius: 6px;
     z-index: 10;
     margin-top: 2px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--app-popup-shadow);
   }
 
   .user-dropdown-item {
@@ -439,15 +439,15 @@
     padding: 7px 12px;
     background: none;
     border: none;
-    color: #cbd5e1;
+    color: var(--app-text-secondary);
     font-size: 13px;
     cursor: pointer;
     text-align: left;
   }
 
   .user-dropdown-item:hover {
-    background: #334155;
-    color: #f1f5f9;
+    background: var(--app-hover-bg);
+    color: var(--app-text);
   }
 
   .user-dropdown-main {
@@ -462,12 +462,12 @@
 
   .user-dropdown-username {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-muted);
   }
 
   .user-dropdown-email {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -476,20 +476,20 @@
   .user-dropdown-empty {
     padding: 8px 12px;
     font-size: 12px;
-    color: #64748b;
+    color: var(--app-text-muted);
   }
 
   /* MCP snippet section */
   .snippet-section {
     margin-top: 12px;
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--app-border);
     padding-top: 12px;
   }
 
   .snippet-title {
     font-size: 13px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--app-text);
     margin: 0 0 8px 0;
   }
 
@@ -503,28 +503,28 @@
   .snippet-tab {
     padding: 4px 10px;
     font-size: 11px;
-    border: 1px solid #475569;
+    border: 1px solid var(--app-border);
     border-radius: 4px;
     background: transparent;
-    color: #94a3b8;
+    color: var(--app-text-muted);
     cursor: pointer;
     transition: all 0.15s;
   }
 
   .snippet-tab:hover {
-    background: #1e293b;
-    color: #e2e8f0;
+    background: var(--app-hover-bg);
+    color: var(--app-text);
   }
 
   .snippet-tab.active {
-    background: #3b82f6;
-    border-color: #3b82f6;
+    background: var(--app-accent);
+    border-color: var(--app-accent);
     color: #fff;
   }
 
   .snippet-hint {
     font-size: 11px;
-    color: #64748b;
+    color: var(--app-text-muted);
     margin-bottom: 6px;
     font-family: monospace;
   }
@@ -534,12 +534,12 @@
   }
 
   .snippet-code {
-    background: #0f172a;
-    border: 1px solid #334155;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
     border-radius: 6px;
     padding: 10px 12px;
     font-size: 12px;
-    color: #e2e8f0;
+    color: var(--app-text);
     overflow-x: auto;
     white-space: pre;
     margin: 0;
