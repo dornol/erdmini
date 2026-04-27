@@ -4,6 +4,8 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { now } from '$lib/utils/common';
+  import { downloadBlob } from '$lib/utils/blob-download';
+  import { runRestoreFlow } from '$lib/utils/restore-flow';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -165,11 +167,26 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async () => {
-        const result = await projectStore.importAll(reader.result as string);
-        if (result.ok) {
+        const outcome = await runRestoreFlow(reader.result as string, {
+          confirm: () => dialogStore.confirm(m.backup_restore_confirm_message(), {
+            title: m.backup_restore_confirm_title(),
+            confirmText: m.backup_restore_continue(),
+            variant: 'danger',
+          }),
+          exportAll: () => projectStore.exportAll(),
+          download: (json, filename) => downloadBlob(json, filename, 'application/json'),
+          importAll: (json) => projectStore.importAll(json),
+        });
+
+        if (outcome.kind === 'cancelled') return;
+        if (outcome.kind === 'pre-export-failed') {
+          dialogStore.alert(outcome.error, { title: m.backup_restore_failed() });
+          return;
+        }
+        if (outcome.ok) {
           dialogStore.alert(m.backup_restore_success());
         } else {
-          dialogStore.alert(result.error ?? '', { title: m.backup_restore_failed() });
+          dialogStore.alert(outcome.error ?? '', { title: m.backup_restore_failed() });
         }
       };
       reader.readAsText(file);
