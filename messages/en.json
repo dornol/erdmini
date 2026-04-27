@@ -39,6 +39,7 @@
   "layout_hierarchical": "Hierarchical",
   "layout_radial": "Radial",
   "layout_radial_tree": "Radial Tree",
+  "layout_smart": "Smart (beta)",
   "layout_by_group": "By Group",
   "grid_show": "Show Grid",
   "grid_hide": "Hide Grid",

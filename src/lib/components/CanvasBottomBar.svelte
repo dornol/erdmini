@@ -44,16 +44,22 @@
   let currentLineLabel = $derived(LINE_TYPES.find(l => l.type === canvasState.lineType)?.label() ?? '');
 
   // Auto-arrange. Locked tables are excluded from layout input (their positions
-  // stay put) and erdStore.applyLayout also skips them defensively.
+  // stay put) and erdStore.applyLayout also skips them defensively. tableWidths
+  // is forwarded so Smart Layout's collision uses actual rendered widths
+  // (tables with long names don't overlap their neighbors).
   function applyLayout(type: LayoutType, options?: LayoutOptions) {
     const movable = erdStore.schema.tables.filter((t) => !t.locked);
     if (movable.length === 0) return;
-    const positions = computeLayout(movable, type, options);
+    const positions = computeLayout(movable, type, {
+      ...options,
+      tableWidths: canvasState.tableWidths,
+    });
     erdStore.applyLayout(positions);
     toastStore.success(m.toast_layout_applied());
   }
 
   const LAYOUT_TYPES: { type: LayoutType; label: () => string }[] = [
+    { type: 'smart', label: () => m.layout_smart() },
     { type: 'grid', label: () => m.layout_grid() },
     { type: 'hierarchical', label: () => m.layout_hierarchical() },
     { type: 'radial', label: () => m.layout_radial() },

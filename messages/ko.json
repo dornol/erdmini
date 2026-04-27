@@ -39,6 +39,7 @@
   "layout_hierarchical": "계층",
   "layout_radial": "방사형",
   "layout_radial_tree": "방사 트리",
+  "layout_smart": "스마트 (베타)",
   "layout_by_group": "그룹별 배치",
   "grid_show": "격자 보이기",
   "grid_hide": "격자 숨기기",

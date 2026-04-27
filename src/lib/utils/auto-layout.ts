@@ -3,7 +3,7 @@ import type { SimulationNodeDatum } from 'd3-force';
 import type { Table } from '$lib/types/erd';
 import { TABLE_W, HEADER_H, COMMENT_H, ROW_H, BOTTOM_PAD } from '$lib/constants/layout';
 
-export type LayoutType = 'grid' | 'hierarchical' | 'radial' | 'radial-tree';
+export type LayoutType = 'grid' | 'hierarchical' | 'radial' | 'radial-tree' | 'smart';
 
 const GAP_X  = 60;
 const GAP_Y  = 60;
@@ -805,10 +805,679 @@ function radialTreeLayoutFlat(tables: Table[]): Map<string, Pos> {
   return result;
 }
 
+// ─── Smart Layout ───────────────────────────────────────────────────
+// FK-aware spread layout that ignores `group` field. Produces a layout
+// where FK lines have room to breathe (no spider web at hubs) by giving
+// each FK edge a long target distance and using strong charge repulsion.
+
+interface SmartNode extends SimulationNodeDatum {
+  id: string;
+  w: number;
+  h: number;
+}
+
+/**
+ * Test if line segments AB and CD intersect (proper intersection — not just collinear touch).
+ */
+function segmentsIntersect(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx: number, dy: number,
+): boolean {
+  const ccw = (px: number, py: number, qx: number, qy: number, rx: number, ry: number) =>
+    (qx - px) * (ry - py) - (qy - py) * (rx - px);
+  const d1 = ccw(cx, cy, dx, dy, ax, ay);
+  const d2 = ccw(cx, cy, dx, dy, bx, by);
+  const d3 = ccw(ax, ay, bx, by, cx, cy);
+  const d4 = ccw(ax, ay, bx, by, dx, dy);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
+      && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/**
+ * Reduce FK-line crossings for leaf tables (degree=1) AND bias them toward outward
+ * positions ("corners" of the layout) when crossings are equal.
+ *
+ * Selection criterion (lex order, lower=better):
+ *  1. Fewer crossings of the leaf-parent line with other FK edges
+ *  2. Higher outwardness (dot product of leaf-from-parent vector with outward
+ *     direction = parent-from-centroid)
+ *  3. Closer to the original position (only if both above are tied)
+ *
+ * This gives the natural "leaves spread to corners" pattern while still
+ * prioritizing crossing-free placement.
+ */
+function reduceLeafCrossings(
+  nodes: SmartNode[],
+  edgePairs: Array<[number, number]>,
+  iterations: number = 1,
+): void {
+  // Compute degree per node from edgePairs
+  const degree = new Array<number>(nodes.length).fill(0);
+  for (const [s, t] of edgePairs) {
+    degree[s]++;
+    degree[t]++;
+  }
+
+  // Map each leaf node to its sole edge index
+  const leafEdgeIdx = new Map<number, number>();
+  for (let i = 0; i < nodes.length; i++) {
+    if (degree[i] !== 1) continue;
+    const idx = edgePairs.findIndex(([s, t]) => s === i || t === i);
+    if (idx >= 0) leafEdgeIdx.set(i, idx);
+  }
+
+  if (leafEdgeIdx.size === 0) return;
+
+  // Layout centroid (used for "outward" direction)
+  let cxSum = 0, cySum = 0;
+  for (const nd of nodes) {
+    cxSum += nd.x ?? 0;
+    cySum += nd.y ?? 0;
+  }
+  const cx = cxSum / nodes.length;
+  const cy = cySum / nodes.length;
+
+  function countCrossings(leafIdx: number, parentIdx: number, lx: number, ly: number): number {
+    const px = nodes[parentIdx].x ?? 0;
+    const py = nodes[parentIdx].y ?? 0;
+    let count = 0;
+    for (const [s, t] of edgePairs) {
+      if (s === leafIdx || t === leafIdx) continue;
+      const ax = nodes[s].x ?? 0;
+      const ay = nodes[s].y ?? 0;
+      const bx = nodes[t].x ?? 0;
+      const by = nodes[t].y ?? 0;
+      if (segmentsIntersect(lx, ly, px, py, ax, ay, bx, by)) count++;
+    }
+    return count;
+  }
+
+  function hasNodeOverlap(leafIdx: number, lx: number, ly: number): boolean {
+    const leaf = nodes[leafIdx];
+    const PAD = 30;
+    for (let i = 0; i < nodes.length; i++) {
+      if (i === leafIdx) continue;
+      const o = nodes[i];
+      const minDx = (leaf.w + o.w) / 2 + PAD;
+      const minDy = (leaf.h + o.h) / 2 + PAD;
+      const dx = Math.abs(lx - (o.x ?? 0));
+      const dy = Math.abs(ly - (o.y ?? 0));
+      if (dx < minDx && dy < minDy) return true;
+    }
+    return false;
+  }
+
+  for (let iter = 0; iter < iterations; iter++) {
+    let anyMoved = false;
+
+    for (const [leafIdx, edgeIdx] of leafEdgeIdx) {
+      const [s, t] = edgePairs[edgeIdx];
+      const parentIdx = s === leafIdx ? t : s;
+      const leaf = nodes[leafIdx];
+      const parent = nodes[parentIdx];
+      const px = parent.x ?? 0;
+      const py = parent.y ?? 0;
+
+      // Outward unit direction from layout centroid through parent.
+      // Used as "preferred direction" for the leaf relative to its parent.
+      const odx = px - cx;
+      const ody = py - cy;
+      const olen = Math.hypot(odx, ody);
+      const oux = olen > 1 ? odx / olen : 0;
+      const ouy = olen > 1 ? ody / olen : 0;
+
+      // Outwardness = dot product of (leaf - parent) with outward unit direction.
+      // Positive = leaf is on the outer side of parent. Higher = further outward.
+      const outwardness = (lx: number, ly: number) =>
+        (lx - px) * oux + (ly - py) * ouy;
+
+      const origX = leaf.x ?? 0;
+      const origY = leaf.y ?? 0;
+
+      // Initialize best with current position
+      let bestCrossings = countCrossings(leafIdx, parentIdx, origX, origY);
+      let bestOutwardness = outwardness(origX, origY);
+      let bestDist = 0;
+      let bestX = origX;
+      let bestY = origY;
+
+      // Search 24 angles × 3 radii = 72 candidate positions.
+      // Bounded radius range prevents leaves from drifting too far from main layout.
+      const radii = [TABLE_W * 2.0, TABLE_W * 2.5, TABLE_W * 3.0];
+      const ANGULAR_STEPS = 24;
+      for (const r of radii) {
+        for (let k = 0; k < ANGULAR_STEPS; k++) {
+          const angle = (k / ANGULAR_STEPS) * 2 * Math.PI;
+          const nx = px + r * Math.cos(angle);
+          const ny = py + r * Math.sin(angle);
+
+          if (hasNodeOverlap(leafIdx, nx, ny)) continue;
+
+          const crossings = countCrossings(leafIdx, parentIdx, nx, ny);
+          const out = outwardness(nx, ny);
+          const dist = Math.hypot(nx - origX, ny - origY);
+
+          // Lex order: minimize crossings, prefer slightly more outward,
+          // minimize disruption (distance from original).
+          // Threshold of 30px on outward gain prevents tiny outward improvements
+          // from kicking leaves further than necessary.
+          let better = false;
+          if (crossings < bestCrossings) {
+            better = true;
+          } else if (crossings === bestCrossings) {
+            if (out > bestOutwardness + 30) {
+              // Notably more outward → prefer
+              better = true;
+            } else if (Math.abs(out - bestOutwardness) <= 30 && dist < bestDist) {
+              // Similar outwardness, closer to original
+              better = true;
+            }
+          }
+
+          if (better) {
+            bestCrossings = crossings;
+            bestOutwardness = out;
+            bestDist = dist;
+            bestX = nx;
+            bestY = ny;
+          }
+        }
+      }
+
+      if (bestX !== origX || bestY !== origY) {
+        leaf.x = bestX;
+        leaf.y = bestY;
+        anyMoved = true;
+      }
+    }
+
+    if (!anyMoved) break;
+  }
+}
+
+/**
+ * Resolve node-node overlaps by axis-aligned separation along smaller-axis-first.
+ * Used after pushTablesOffEdges may have caused new overlaps.
+ */
+function resolveNodeOverlaps(nodes: SmartNode[], pad: number, passes: number): void {
+  for (let p = 0; p < passes; p++) {
+    let anyOverlap = false;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const ax = a.x ?? 0, ay = a.y ?? 0;
+        const bx = b.x ?? 0, by = b.y ?? 0;
+        const minDx = (a.w + b.w) / 2 + pad;
+        const minDy = (a.h + b.h) / 2 + pad;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const ovX = minDx - Math.abs(dx);
+        const ovY = minDy - Math.abs(dy);
+        if (ovX > 0 && ovY > 0) {
+          anyOverlap = true;
+          // Push along the smaller-overlap axis to disturb less
+          if (ovX < ovY) {
+            const half = ovX / 2 + 0.5;
+            const sign = dx >= 0 ? 1 : -1;
+            a.x = ax - sign * half;
+            b.x = bx + sign * half;
+          } else {
+            const half = ovY / 2 + 0.5;
+            const sign = dy >= 0 ? 1 : -1;
+            a.y = ay - sign * half;
+            b.y = by + sign * half;
+          }
+        }
+      }
+    }
+    if (!anyOverlap) break;
+  }
+}
+
+/**
+ * Push tables sitting on FK lines they don't belong to.
+ *
+ * Algorithm: for each table, scan all non-incident FK edges. If the edge segment
+ * passes through the table's expanded bounding box, project the table center onto
+ * the segment and push perpendicular until the box clears the line. Limited per-
+ * iteration push size avoids wild jumps. Node-node overlap is re-resolved after
+ * each pass.
+ *
+ * Skips projections too close to edge endpoints (t < 0.05 or > 0.95) since those
+ * are at the connected tables' own positions and shouldn't trigger pushing.
+ */
+function pushTablesOffEdges(
+  nodes: SmartNode[],
+  links: Array<{ source: number; target: number }>,
+  idToIdx: Map<string, number>,
+  iterations: number,
+): void {
+  // After d3-force ran, link.source/target are now node references, not indices.
+  // Build a clean list of [sourceIdx, targetIdx] pairs.
+  const edgePairs: Array<[number, number]> = [];
+  for (const link of links) {
+    const src = link.source;
+    const tgt = link.target;
+    const srcId = typeof src === 'object' && src !== null ? (src as SmartNode).id : nodes[src as number]?.id;
+    const tgtId = typeof tgt === 'object' && tgt !== null ? (tgt as SmartNode).id : nodes[tgt as number]?.id;
+    if (!srcId || !tgtId) continue;
+    const sIdx = idToIdx.get(srcId);
+    const tIdx = idToIdx.get(tgtId);
+    if (sIdx === undefined || tIdx === undefined || sIdx === tIdx) continue;
+    edgePairs.push([sIdx, tIdx]);
+  }
+
+  const EDGE_CLEAR_PAD = 50; // additional padding around table to keep edges away
+  const MAX_PUSH_PER_PASS = 100;
+  const COLLISION_PAD = 30;
+
+  for (let iter = 0; iter < iterations; iter++) {
+    let anyMoved = false;
+
+    for (let nodeIdx = 0; nodeIdx < nodes.length; nodeIdx++) {
+      const node = nodes[nodeIdx];
+      const halfW = node.w / 2 + EDGE_CLEAR_PAD;
+      const halfH = node.h / 2 + EDGE_CLEAR_PAD;
+
+      for (const [sIdx, tIdx] of edgePairs) {
+        if (sIdx === nodeIdx || tIdx === nodeIdx) continue;
+        const a = nodes[sIdx];
+        const b = nodes[tIdx];
+        const ax = a.x ?? 0, ay = a.y ?? 0;
+        const bx = b.x ?? 0, by = b.y ?? 0;
+        const nx = node.x ?? 0;
+        const ny = node.y ?? 0;
+
+        // Project node center onto segment ab
+        const ex = bx - ax;
+        const ey = by - ay;
+        const lenSq = ex * ex + ey * ey;
+        if (lenSq < 1) continue;
+        let t = ((nx - ax) * ex + (ny - ay) * ey) / lenSq;
+        if (t < 0.05 || t > 0.95) continue;
+
+        const projX = ax + t * ex;
+        const projY = ay + t * ey;
+        const dxN = nx - projX;
+        const dyN = ny - projY;
+
+        // Edge passes through expanded box if both axes are within half-extents
+        const absDx = Math.abs(dxN);
+        const absDy = Math.abs(dyN);
+        if (absDx >= halfW || absDy >= halfH) continue;
+
+        // Need to push. Choose perpendicular direction (away from edge).
+        // If center is exactly on the edge, pick perpendicular axis arbitrarily.
+        const dist = Math.hypot(dxN, dyN);
+        let ux: number, uy: number;
+        if (dist < 1e-6) {
+          // Edge passes exactly through center — pick edge-perpendicular direction
+          const edgeLen = Math.sqrt(lenSq);
+          ux = -ey / edgeLen;
+          uy = ex / edgeLen;
+        } else {
+          ux = dxN / dist;
+          uy = dyN / dist;
+        }
+
+        // Push amount: distance needed to exit the expanded box along (ux, uy)
+        const exitX = ux !== 0 ? halfW / Math.abs(ux) : Infinity;
+        const exitY = uy !== 0 ? halfH / Math.abs(uy) : Infinity;
+        const requiredExit = Math.min(exitX, exitY);
+        const pushAmt = Math.min(MAX_PUSH_PER_PASS, requiredExit - dist + 2);
+        if (pushAmt <= 0) continue;
+
+        node.x = nx + ux * pushAmt;
+        node.y = ny + uy * pushAmt;
+        anyMoved = true;
+        break; // re-evaluate this node's edges on next pass
+      }
+    }
+
+    // Re-resolve any new overlaps
+    resolveNodeOverlaps(nodes, COLLISION_PAD, 4);
+
+    if (!anyMoved) break;
+  }
+}
+
+/**
+ * Identify orphan tables — those with no FK out and no incoming FK.
+ * Self-references are ignored (an isolated table that only refers to itself is still an orphan).
+ */
+function findOrphans(tables: Table[]): Set<string> {
+  const tableIds = new Set(tables.map((t) => t.id));
+  const hasOutgoing = new Set<string>();
+  const hasIncoming = new Set<string>();
+  for (const t of tables) {
+    for (const fk of t.foreignKeys) {
+      if (!tableIds.has(fk.referencedTableId)) continue;
+      if (fk.referencedTableId === t.id) continue; // self-ref doesn't count
+      hasOutgoing.add(t.id);
+      hasIncoming.add(fk.referencedTableId);
+    }
+  }
+  const orphans = new Set<string>();
+  for (const t of tables) {
+    if (!hasOutgoing.has(t.id) && !hasIncoming.has(t.id)) orphans.add(t.id);
+  }
+  return orphans;
+}
+
+/**
+ * Lay out orphan tables as a compact vertical strip.
+ * Returns positions (top-left corner) in a coordinate space starting at (0, 0).
+ */
+function orphanStripLayout(orphans: Table[]): { positions: Map<string, Pos>; width: number; height: number } {
+  if (orphans.length === 0) return { positions: new Map(), width: 0, height: 0 };
+
+  // Sort by name for stable ordering
+  const sorted = [...orphans].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Choose column count: keep strip narrow (≤ 3 cols) so it visually reads as "side panel"
+  const cols = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(sorted.length / 2))));
+  const rows = Math.ceil(sorted.length / cols);
+
+  const rowH = new Array<number>(rows).fill(0);
+  sorted.forEach((t, i) => {
+    const r = Math.floor(i / cols);
+    rowH[r] = Math.max(rowH[r], tableHeight(t));
+  });
+
+  const rowY = new Array<number>(rows).fill(0);
+  for (let r = 1; r < rows; r++) rowY[r] = rowY[r - 1] + rowH[r - 1] + GAP_Y;
+
+  const positions = new Map<string, Pos>();
+  sorted.forEach((t, i) => {
+    const c = i % cols;
+    const r = Math.floor(i / cols);
+    positions.set(t.id, { x: c * (TABLE_W + GAP_X), y: rowY[r] });
+  });
+
+  const width = cols * TABLE_W + (cols - 1) * GAP_X;
+  const height = rowY[rows - 1] + rowH[rows - 1];
+  return { positions, width, height };
+}
+
+/**
+ * Compute in-degree only (FK references TO this table, self-refs excluded).
+ * High in-degree = "hub" candidate.
+ */
+function computeInDegree(tables: Table[]): Map<string, number> {
+  const tableIds = new Set(tables.map((t) => t.id));
+  const inDeg = new Map<string, number>();
+  for (const t of tables) inDeg.set(t.id, 0);
+  for (const t of tables) {
+    for (const fk of t.foreignKeys) {
+      if (fk.referencedTableId === t.id) continue;
+      if (!tableIds.has(fk.referencedTableId)) continue;
+      inDeg.set(fk.referencedTableId, (inDeg.get(fk.referencedTableId) ?? 0) + 1);
+    }
+  }
+  return inDeg;
+}
+
+/**
+ * Place hub tables at well-separated positions.
+ * - 1 hub: at origin
+ * - 2 hubs: horizontal pair
+ * - 3+ hubs: on a ring with chord-spacing ≥ HUB_SPACING
+ */
+function placeHubsSpaced(hubs: Table[]): Map<string, { x: number; y: number }> {
+  const N = hubs.length;
+  const HUB_SPACING = TABLE_W * 9; // ~1980px between hub centers
+
+  const result = new Map<string, { x: number; y: number }>();
+  if (N === 0) return result;
+  if (N === 1) {
+    result.set(hubs[0].id, { x: 0, y: 0 });
+    return result;
+  }
+  if (N === 2) {
+    result.set(hubs[0].id, { x: -HUB_SPACING / 2, y: 0 });
+    result.set(hubs[1].id, { x: HUB_SPACING / 2, y: 0 });
+    return result;
+  }
+
+  // N >= 3: place on a ring. Chord between adjacent hubs = 2R sin(π/N)
+  // Solve for R such that chord ≥ HUB_SPACING.
+  const R = Math.max(
+    HUB_SPACING / (2 * Math.sin(Math.PI / N)),
+    HUB_SPACING * 0.8,
+  );
+  hubs.forEach((h, i) => {
+    const angle = (2 * Math.PI * i) / N - Math.PI / 2; // start from top
+    result.set(h.id, {
+      x: R * Math.cos(angle),
+      y: R * Math.sin(angle),
+    });
+  });
+  return result;
+}
+
+/** Hub-aware SmartNode: extends with anchor info for hubs */
+interface AnchoredNode extends SmartNode {
+  isHub: boolean;
+  targetX: number;
+  targetY: number;
+}
+
+/**
+ * Deterministic pseudo-random in [-0.5, 0.5] based on integer index + salt.
+ * Used to seed initial node positions reproducibly so layout output is the same
+ * across runs for the same input.
+ */
+function detSeed(i: number, salt: number): number {
+  const x = Math.sin(i * 73.8513 + salt * 91.4392) * 10000;
+  return (x - Math.floor(x)) - 0.5;
+}
+
+/**
+ * FK-aware spread layout — group-independent.
+ *
+ * Strategy (v8 — Hub anchoring):
+ *  1. Orphans (no FK in/out)            → side strip on the right
+ *  2. Hubs (in-degree ≥ threshold)      → placed at well-separated fixed positions
+ *  3. Everything else                   → force-directed, with hubs pinned via forceX/Y
+ *  4. Edge avoidance post-process       → push tables off non-incident FK lines
+ *
+ * Why hub-anchoring works better than v7's leaf-fan:
+ *  - Hubs explicitly far apart (≥ TABLE_W × 6) → no clustering of multiple hubs together
+ *  - Force simulation handles all spacing/overlap via collide+charge → no manual fan math
+ *  - Bridge tables (FKs to multiple hubs) naturally settle BETWEEN their hub anchors
+ *  - Single hub case: degenerates to centered radial layout
+ *
+ * Ignores `group` field; relies only on FK graph structure.
+ */
+function smartLayoutFlat(
+  tables: Table[],
+  tableWidths?: Map<string, number>,
+): Map<string, Pos> {
+  if (tables.length === 0) return new Map();
+  if (tables.length === 1) {
+    const t = tables[0];
+    return new Map([[t.id, { x: MARGIN, y: MARGIN }]]);
+  }
+
+  // Resolve actual rendered width per table (fallback to TABLE_W if unknown)
+  const widthOf = (id: string): number => tableWidths?.get(id) ?? TABLE_W;
+
+  // 1. Orphans
+  const orphanIds = findOrphans(tables);
+  const connected = tables.filter((t) => !orphanIds.has(t.id));
+  const orphans = tables.filter((t) => orphanIds.has(t.id));
+
+  if (connected.length === 0) {
+    const sl = orphanStripLayout(orphans);
+    const result = new Map<string, Pos>();
+    for (const [id, pos] of sl.positions) {
+      result.set(id, { x: pos.x + MARGIN, y: pos.y + MARGIN });
+    }
+    return result;
+  }
+
+  // 2. Identify hubs by in-degree
+  const inDeg = computeInDegree(connected);
+  const HUB_MIN_INDEG = Math.max(3, Math.ceil(connected.length * 0.05));
+  const hubs = connected
+    .filter((t) => (inDeg.get(t.id) ?? 0) >= HUB_MIN_INDEG)
+    .sort((a, b) => (inDeg.get(b.id) ?? 0) - (inDeg.get(a.id) ?? 0));
+
+  const hubPositions = placeHubsSpaced(hubs);
+  const hubIdSet = new Set(hubs.map((h) => h.id));
+
+  // 3. Build nodes with hub anchor info AND actual rendered widths
+  const nodes: AnchoredNode[] = connected.map((t) => {
+    const isHub = hubIdSet.has(t.id);
+    const target = hubPositions.get(t.id);
+    return {
+      id: t.id,
+      w: widthOf(t.id),
+      h: tableHeight(t),
+      isHub,
+      targetX: target?.x ?? 0,
+      targetY: target?.y ?? 0,
+    };
+  });
+  const idToIdx = new Map(nodes.map((nd, i) => [nd.id, i]));
+
+  // 4. Initial seed (DETERMINISTIC — same input → same layout):
+  //  - Hubs at their assigned positions (will be pinned via forceX/Y)
+  //  - Non-hubs near a likely hub (FK target), with index-seeded offset
+  nodes.forEach((nd, i) => {
+    if (nd.isHub) {
+      nd.x = nd.targetX;
+      nd.y = nd.targetY;
+      return;
+    }
+    const t = connected.find((c) => c.id === nd.id)!;
+    const hubFkTarget = t.foreignKeys
+      .map((fk) => fk.referencedTableId)
+      .find((id) => hubIdSet.has(id));
+    if (hubFkTarget) {
+      const hp = hubPositions.get(hubFkTarget)!;
+      nd.x = hp.x + detSeed(i, 1) * TABLE_W * 2;
+      nd.y = hp.y + detSeed(i, 2) * TABLE_W * 2;
+    } else {
+      // No hub FK target → start near origin with deterministic offset
+      nd.x = detSeed(i, 1) * 800;
+      nd.y = detSeed(i, 2) * 800;
+    }
+  });
+
+  // 5. Build links (skip self-refs and broken refs)
+  const links: { source: number; target: number }[] = [];
+  for (const t of connected) {
+    for (const fk of t.foreignKeys) {
+      if (fk.referencedTableId === t.id) continue;
+      const s = idToIdx.get(t.id);
+      const tgt = idToIdx.get(fk.referencedTableId);
+      if (s === undefined || tgt === undefined) continue;
+      links.push({ source: s, target: tgt });
+    }
+  }
+
+  // 6. Force simulation with hub pinning
+  const EDGE_LEN = TABLE_W * 3.2;
+  const COLLIDE_PAD = 90; // generous pad for clear separation
+  const HUB_PIN_STRENGTH = 0.6;
+
+  forceSimulation<AnchoredNode>(nodes)
+    .force(
+      'link',
+      forceLink<AnchoredNode, { source: number; target: number }>(links)
+        .distance(EDGE_LEN)
+        .strength(0.35),
+    )
+    .force('charge', forceManyBody<AnchoredNode>().strength(-2500).distanceMax(1800))
+    .force(
+      'collide',
+      forceCollide<AnchoredNode>((d) => Math.hypot(d.w / 2, d.h / 2) + COLLIDE_PAD)
+        .strength(1)
+        .iterations(4),
+    )
+    // Pin hubs to their assigned positions
+    .force(
+      'hubX',
+      forceX<AnchoredNode>((d) => d.targetX).strength((d) => (d.isHub ? HUB_PIN_STRENGTH : 0)),
+    )
+    .force(
+      'hubY',
+      forceY<AnchoredNode>((d) => d.targetY).strength((d) => (d.isHub ? HUB_PIN_STRENGTH : 0)),
+    )
+    .stop()
+    .tick(1200);
+
+  // 7. Edge-avoidance post-process: push tables off FK lines they don't belong to.
+  // Run with more iterations to ensure full convergence on intermediate (non-leaf)
+  // nodes that might be sitting on lines.
+  pushTablesOffEdges(nodes, links, idToIdx, 80);
+
+  // 7b. Reduce leaf-line crossings + bias leaves toward outward positions.
+  // Build edgePairs (using node indices) for the crossing checker.
+  const finalEdgePairs: Array<[number, number]> = [];
+  for (const link of links) {
+    const src = link.source;
+    const tgt = link.target;
+    const sId = typeof src === 'object' && src !== null ? (src as SmartNode).id : nodes[src as number]?.id;
+    const tId = typeof tgt === 'object' && tgt !== null ? (tgt as SmartNode).id : nodes[tgt as number]?.id;
+    if (!sId || !tId) continue;
+    const sIdx = idToIdx.get(sId);
+    const tIdx = idToIdx.get(tId);
+    if (sIdx === undefined || tIdx === undefined || sIdx === tIdx) continue;
+    finalEdgePairs.push([sIdx, tIdx]);
+  }
+  reduceLeafCrossings(nodes, finalEdgePairs, 3);
+
+  // 7c. Re-run edge-avoidance: after moving leaves outward, intermediate tables
+  // might end up sitting on the new (relocated) leaf-parent edges. One more pass
+  // with reduced iterations cleans this up.
+  pushTablesOffEdges(nodes, links, idToIdx, 30);
+
+  // 8. Convert to top-left positions, find bbox
+  const connectedPositions = new Map<string, Pos>();
+  let cMinX = Infinity, cMinY = Infinity, cMaxX = -Infinity, cMaxY = -Infinity;
+  nodes.forEach((nd) => {
+    const x = (nd.x ?? 0) - nd.w / 2;
+    const y = (nd.y ?? 0) - nd.h / 2;
+    connectedPositions.set(nd.id, { x, y });
+    if (x < cMinX) cMinX = x;
+    if (y < cMinY) cMinY = y;
+    if (x + nd.w > cMaxX) cMaxX = x + nd.w;
+    if (y + nd.h > cMaxY) cMaxY = y + nd.h;
+  });
+
+  // 9. Shift to MARGIN, then orphan strip on the right
+  const result = new Map<string, Pos>();
+  const shiftX = MARGIN - cMinX;
+  const shiftY = MARGIN - cMinY;
+  for (const [id, pos] of connectedPositions) {
+    result.set(id, { x: Math.round(pos.x + shiftX), y: Math.round(pos.y + shiftY) });
+  }
+
+  if (orphans.length > 0) {
+    const connectedW = cMaxX - cMinX;
+    const orphanLayout = orphanStripLayout(orphans);
+    const orphanX = MARGIN + connectedW + GROUP_GAP * 2;
+    for (const [id, pos] of orphanLayout.positions) {
+      result.set(id, { x: Math.round(pos.x + orphanX), y: Math.round(pos.y + MARGIN) });
+    }
+  }
+
+  return result;
+}
+
 // ─── Public API ─────────────────────────────────────────────────────
 
 export interface LayoutOptions {
   groupByGroup?: boolean;
+  /**
+   * Optional per-table actual rendered widths (from canvasState.tableWidths).
+   * Used by Smart Layout for collision detection so tables with long names
+   * don't overlap their neighbors. Falls back to TABLE_W when not provided.
+   */
+  tableWidths?: Map<string, number>;
 }
 
 export function computeLayout(
@@ -835,5 +1504,8 @@ export function computeLayout(
       return grouped
         ? withGroupClustering(tables, radialTreeLayoutSingle)
         : radialTreeLayoutFlat(tables);
+    case 'smart':
+      // Smart layout: ignores groupByGroup but uses tableWidths for accurate collision
+      return smartLayoutFlat(tables, options?.tableWidths);
   }
 }
