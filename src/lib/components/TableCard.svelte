@@ -31,6 +31,7 @@
 
   let isSelected = $derived(erdStore.selectedTableIds.has(table.id));
   let isHovered = $state(false);
+  let isMemoChipHovered = $state(false);
   let isMemoDragTarget = $derived(memoDragState.isDragging && memoDragState.hoverTableId === table.id);
   let attachedMemos = $derived(erdStore.schema.memos.filter((mm) => mm.attachedTableId === table.id));
   let isColumnHovered = $state(false);
@@ -280,11 +281,13 @@
     onschemaassign={assignSchema}
     ondeleteclick={onDeleteClick}
     ondetachmemo={(memoId) => erdStore.detachMemo(memoId)}
+    onchipmouseenter={() => isMemoChipHovered = true}
+    onchipmouseleave={() => isMemoChipHovered = false}
   />
 
   <TableCardFooter
     {table}
-    {isHovered}
+    isHovered={isHovered && !isMemoChipHovered}
     {isColumnHovered}
     {isDragging}
     isFkDragging={fkDragStore.active}

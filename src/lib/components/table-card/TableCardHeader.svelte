@@ -19,6 +19,8 @@
     onschemaassign: (schema: string | undefined) => void;
     ondeleteclick: (e: MouseEvent) => void;
     ondetachmemo: (memoId: string) => void;
+    onchipmouseenter?: () => void;
+    onchipmouseleave?: () => void;
   }
 
   const MEMO_CHIP_COLORS: Record<string, { header: string; text: string }> = {
@@ -46,13 +48,20 @@
     onschemaassign,
     ondeleteclick,
     ondetachmemo,
+    onchipmouseenter,
+    onchipmouseleave,
   }: Props = $props();
 </script>
 
 <!-- Attached memo chips (rendered above the card via absolute positioning) -->
 {#if attachedMemos.length > 0}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="memo-chips" onmousedown={(e) => e.stopPropagation()}>
+  <div
+    class="memo-chips"
+    onmousedown={(e) => e.stopPropagation()}
+    onmouseenter={() => onchipmouseenter?.()}
+    onmouseleave={() => onchipmouseleave?.()}
+  >
     {#each attachedMemos as mm}
       {@const chipColor = MEMO_CHIP_COLORS[mm.color ?? 'yellow'] ?? MEMO_CHIP_COLORS.yellow}
       <button
