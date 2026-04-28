@@ -17,10 +17,9 @@ export function useAutoSave(): () => void {
   $effect(() => {
     const cur = erdStore.schema.updatedAt;
     if (cur !== prevUpdatedAt) {
-      // Why: Svelte 5 batches synchronous state changes; an effect runs
-      // once with each signal's *final* value within the batch. So flags
-      // can't be cleared in the caller's try/finally (the effect would
-      // see them already false). Capture-and-clear them all here.
+      // Capture-and-clear: Svelte 5 batches sync state changes, so callers
+      // can't clear these flags via try/finally — the effect would see the
+      // final value (false) and misclassify the change as local.
       const skip =
         erdStore._isUndoRedoing || erdStore._isRemoteOp || erdStore._isLoadingSchema;
       erdStore._isUndoRedoing = false;
@@ -35,8 +34,8 @@ export function useAutoSave(): () => void {
         }
       }
       prevUpdatedAt = cur;
+      prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
     }
-    prevSchemaSnap = JSON.stringify($state.snapshot(erdStore.schema));
     if (projectStore.safeToSave && !permissionStore.isReadOnly) {
       clearTimeout(saveTimer);
       saveTimer = setTimeout(async () => { if (projectStore.safeToSave && !permissionStore.isReadOnly) await projectStore.saveCurrentSchema(); }, 300);

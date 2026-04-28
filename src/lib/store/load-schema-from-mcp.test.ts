@@ -24,9 +24,8 @@ function freshSchema(): ERDSchema {
 
 describe('loadSchemaFromMcp — MCP changes appear in undo history', () => {
   beforeEach(() => {
-    erdStore.clearHistory();
     erdStore.loadSchema(freshSchema());
-    erdStore._isLoadingSchema = false; // reset side-effect of loadSchema
+    erdStore._isLoadingSchema = false;
     erdStore._isRemoteOp = false;
     erdStore.clearHistory();
   });

@@ -891,5 +891,7 @@
   "db_object_category_delete_confirm": "删除分类\"{name}\"及其所有项目？",
   "db_object_category_rename": "重命名分类",
   "db_object_category_placeholder": "分类名...",
-  "db_object_default_categories": "Procedure,Function,View,Trigger"
+  "db_object_default_categories": "Procedure,Function,View,Trigger",
+  "memo_aria_label": "备忘录: {content}",
+  "memo_empty": "(空)"
 }

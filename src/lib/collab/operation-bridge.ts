@@ -32,9 +32,7 @@ export function sendOperation(op: CollabOperation) {
 
 // ── Inbound: apply a remote operation to erdStore ──
 export function applyRemoteOperation(op: CollabOperation) {
-  // Set the flag and let useAutoSave's effect clear it. Don't try/finally —
-  // Svelte 5 batches sync changes and the effect would see the flag already
-  // false, polluting every peer's undo stack with remote ops.
+  // useAutoSave's effect clears this flag — see use-auto-save.svelte.ts.
   erdStore._isRemoteOp = true;
   switch (op.kind) {
     case 'add-table':
@@ -357,7 +355,6 @@ export function handleServerMessage(msg: ServerMessage) {
 }
 
 function applyFullSync(schema: ERDSchema) {
-  // Same reasoning as applyRemoteOperation: useAutoSave's effect clears the flag.
   erdStore._isRemoteOp = true;
   erdStore.loadSchema(schema);
 }

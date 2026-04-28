@@ -891,5 +891,7 @@
   "db_object_category_delete_confirm": "\"{name}\" 카테고리와 모든 항목을 삭제하시겠습니까?",
   "db_object_category_rename": "카테고리 이름 변경",
   "db_object_category_placeholder": "카테고리명...",
-  "db_object_default_categories": "Procedure,Function,View,Trigger"
+  "db_object_default_categories": "Procedure,Function,View,Trigger",
+  "memo_aria_label": "메모: {content}",
+  "memo_empty": "(비어 있음)"
 }

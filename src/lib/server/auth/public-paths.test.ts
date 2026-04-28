@@ -1,28 +1,8 @@
 import { describe, it, expect } from 'vitest';
-
-// Mirrors PUBLIC_PATHS in src/hooks.server.ts. Keep in sync if that list changes.
-const PUBLIC_PATHS = [
-  '/login',
-  '/api/auth/login',
-  '/api/auth/logout',
-  '/api/auth/oidc',
-  '/api/auth/ldap',
-  '/robots.txt',
-  '/sitemap.xml',
-  '/llms.txt',
-  '/mcp',
-  '/embed',
-  '/api/embed/view',
-  '/dictionary/share',
-  '/api/dictionary/share',
-];
-
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
-}
+import { isPublicPath } from './public-paths';
 
 describe('isPublicPath — slash-bounded matching', () => {
-  it('rejects look-alike paths that the old startsWith check would have leaked', () => {
+  it('rejects look-alike paths the old startsWith check would have leaked', () => {
     expect(isPublicPath('/login-fake')).toBe(false);
     expect(isPublicPath('/loginadmin')).toBe(false);
     expect(isPublicPath('/embedded-page')).toBe(false);
@@ -34,7 +14,7 @@ describe('isPublicPath — slash-bounded matching', () => {
     expect(isPublicPath('/dictionary/share-evil')).toBe(false);
   });
 
-  it('still admits exact matches and legitimate sub-paths', () => {
+  it('admits exact matches and legitimate sub-paths', () => {
     expect(isPublicPath('/login')).toBe(true);
     expect(isPublicPath('/mcp')).toBe(true);
     expect(isPublicPath('/robots.txt')).toBe(true);

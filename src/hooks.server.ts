@@ -1,13 +1,6 @@
 import { env } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
-
-// Public paths that don't require auth
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/oidc', '/api/auth/ldap', '/robots.txt', '/sitemap.xml', '/llms.txt', '/mcp', '/embed', '/api/embed/view', '/dictionary/share', '/api/dictionary/share'];
-
-function isPublicPath(pathname: string): boolean {
-  // Slash-bounded so "/login" never matches "/login-something".
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
-}
+import { isPublicPath } from '$lib/server/auth/public-paths';
 
 export const handle: Handle = async ({ event, resolve }) => {
   const isServerMode = env.PUBLIC_STORAGE_MODE === 'server';

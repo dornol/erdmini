@@ -64,10 +64,10 @@
   >
     {#each attachedMemos as mm}
       {@const chipColor = MEMO_CHIP_COLORS[mm.color ?? 'yellow'] ?? MEMO_CHIP_COLORS.yellow}
-      {@const memoText = mm.content || '(empty)'}
+      {@const memoText = mm.content || m.memo_empty()}
       {@const ariaLabel = permissionStore.isReadOnly
-        ? `Memo: ${memoText}`
-        : `Memo: ${memoText}. ${m.memo_detach()}`}
+        ? m.memo_aria_label({ content: memoText })
+        : `${m.memo_aria_label({ content: memoText })}. ${m.memo_detach()}`}
       <button
         class="memo-chip"
         style="background:{chipColor.header}; color:{chipColor.text}"
@@ -77,7 +77,7 @@
         onclick={() => ondetachmemo(mm.id)}
       >
         <span class="chip-pin">📌</span>
-        <span class="chip-content">{mm.content.slice(0, 20) || '(empty)'}</span>
+        <span class="chip-content">{mm.content.slice(0, 20) || m.memo_empty()}</span>
         <span class="chip-tooltip" role="tooltip">
           <span class="chip-tt-content" class:empty={!mm.content}>{memoText}</span>
           {#if !permissionStore.isReadOnly}
@@ -259,9 +259,9 @@
     line-height: 1;
   }
 
-  /* ── Chip hover tooltip (replaces native title) ── */
+  /* ── Chip hover tooltip ── */
   .chip-tooltip {
-    display: none;          /* shown via :hover / :focus-visible below */
+    display: none;
     position: absolute;
     left: calc(100% + 10px);
     top: 50%;
@@ -286,7 +286,7 @@
 
   .memo-chip:hover .chip-tooltip,
   .memo-chip:focus-visible .chip-tooltip {
-    display: block;         /* span used for HTML5 spec compliance inside <button> */
+    display: block;
   }
 
   .chip-tt-content,

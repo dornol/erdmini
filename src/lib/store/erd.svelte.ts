@@ -533,9 +533,11 @@ class ERDStore {
 
   // ── Schema Loading ──
 
-  loadSchema(schema: ERDSchema) {
+  loadSchema(schema: ERDSchema, options: { suppressHistory?: boolean } = {}) {
     normalizeSchema(schema);
-    this._isLoadingSchema = true;
+    if (options.suppressHistory !== false) {
+      this._isLoadingSchema = true;
+    }
     this.schema = schema;
     this.schema.updatedAt = now();
     this.selectedTableId = null;
@@ -553,23 +555,15 @@ class ERDStore {
   }
 
   /**
-   * Apply an MCP-driven schema change. Unlike a sync/reconnect (which
-   * shouldn't pollute history), an MCP change is a real, user-meaningful
-   * edit performed by an AI tool — we want it visible in the undo panel
-   * so the human can revert it. We capture the prev snapshot, apply the
-   * load, then push manually with a "(MCP)" marker.
-   *
-   * _isRemoteOp is set so the load-schema op isn't echoed back to peers
-   * (peers receive their own mcp-sync from the server). _isLoadingSchema
-   * (set by loadSchema) is cleared because we want history *here*, not
-   * suppression.
+   * MCP-driven schema change: human-meaningful edit by an AI tool, surfaced
+   * in undo so the user can revert it. _isRemoteOp suppresses peer echo
+   * (peers receive their own mcp-sync from the server).
    */
   loadSchemaFromMcp(newSchema: ERDSchema) {
-    const prevSnap = JSON.stringify($state.snapshot(this.schema));
-    const prevSchema = JSON.parse(prevSnap) as ERDSchema;
+    const prevSchema = $state.snapshot(this.schema) as ERDSchema;
+    const prevSnap = JSON.stringify(prevSchema);
     this._isRemoteOp = true;
-    this.loadSchema(newSchema);
-    this._isLoadingSchema = false;
+    this.loadSchema(newSchema, { suppressHistory: false });
     const { label, detail } = deriveLabel(prevSchema, newSchema);
     this.pushSnapshotRaw(prevSnap, label, detail ? `${detail} (MCP)` : '(MCP)');
   }
