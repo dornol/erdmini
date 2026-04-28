@@ -78,12 +78,12 @@
       >
         <span class="chip-pin">📌</span>
         <span class="chip-content">{mm.content.slice(0, 20) || '(empty)'}</span>
-        <div class="chip-tooltip" role="tooltip">
-          <div class="chip-tt-content" class:empty={!mm.content}>{memoText}</div>
+        <span class="chip-tooltip" role="tooltip">
+          <span class="chip-tt-content" class:empty={!mm.content}>{memoText}</span>
           {#if !permissionStore.isReadOnly}
-            <div class="chip-tt-hint">{m.memo_detach()}</div>
+            <span class="chip-tt-hint">{m.memo_detach()}</span>
           {/if}
-        </div>
+        </span>
       </button>
     {/each}
   </div>
@@ -261,7 +261,7 @@
 
   /* ── Chip hover tooltip (replaces native title) ── */
   .chip-tooltip {
-    display: none;
+    display: none;          /* shown via :hover / :focus-visible below */
     position: absolute;
     left: calc(100% + 10px);
     top: 50%;
@@ -286,6 +286,11 @@
 
   .memo-chip:hover .chip-tooltip,
   .memo-chip:focus-visible .chip-tooltip {
+    display: block;         /* span used for HTML5 spec compliance inside <button> */
+  }
+
+  .chip-tt-content,
+  .chip-tt-hint {
     display: block;
   }
 
