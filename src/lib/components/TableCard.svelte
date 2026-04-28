@@ -396,7 +396,8 @@
   }
 
   /* Hide tooltips while FK dragging — targets child component tooltips */
-  .table-card.fk-dragging :global(.col-tooltip) {
+  .table-card.fk-dragging :global(.col-tooltip),
+  .table-card.fk-dragging :global(.chip-tooltip) {
     display: none !important;
   }
 

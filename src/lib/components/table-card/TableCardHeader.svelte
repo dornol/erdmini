@@ -64,16 +64,26 @@
   >
     {#each attachedMemos as mm}
       {@const chipColor = MEMO_CHIP_COLORS[mm.color ?? 'yellow'] ?? MEMO_CHIP_COLORS.yellow}
+      {@const memoText = mm.content || '(empty)'}
+      {@const ariaLabel = permissionStore.isReadOnly
+        ? `Memo: ${memoText}`
+        : `Memo: ${memoText}. ${m.memo_detach()}`}
       <button
         class="memo-chip"
         style="background:{chipColor.header}; color:{chipColor.text}"
-        title={mm.content ? `${mm.content}\n\nClick to detach` : 'Click to detach'}
+        aria-label={ariaLabel}
         disabled={permissionStore.isReadOnly}
         onmousedown={(e) => e.stopPropagation()}
         onclick={() => ondetachmemo(mm.id)}
       >
         <span class="chip-pin">📌</span>
         <span class="chip-content">{mm.content.slice(0, 20) || '(empty)'}</span>
+        <div class="chip-tooltip" role="tooltip">
+          <div class="chip-tt-content" class:empty={!mm.content}>{memoText}</div>
+          {#if !permissionStore.isReadOnly}
+            <div class="chip-tt-hint">{m.memo_detach()}</div>
+          {/if}
+        </div>
       </button>
     {/each}
   </div>
@@ -203,6 +213,7 @@
   }
 
   .memo-chip {
+    position: relative;            /* anchor for .chip-tooltip */
     display: flex;
     align-items: center;
     gap: 4px;
@@ -214,7 +225,6 @@
     font-weight: 500;
     font-family: inherit;
     white-space: nowrap;
-    overflow: hidden;
     user-select: none;
     width: 100%;
     box-sizing: border-box;
@@ -247,6 +257,49 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 1;
+  }
+
+  /* ── Chip hover tooltip (replaces native title) ── */
+  .chip-tooltip {
+    display: none;
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 200;
+    background: var(--erd-tt-bg);
+    color: var(--erd-tt-text);
+    border: 1px solid var(--erd-tt-border);
+    border-radius: var(--erd-tt-radius);
+    padding: 8px 10px;
+    min-width: 160px;
+    max-width: min(320px, calc(100vw - 40px));
+    box-shadow: var(--erd-tt-shadow);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    pointer-events: none;
+  }
+
+  .memo-chip:hover .chip-tooltip,
+  .memo-chip:focus-visible .chip-tooltip {
+    display: block;
+  }
+
+  .chip-tt-content.empty {
+    color: var(--erd-tt-label);
+    font-style: italic;
+  }
+
+  .chip-tt-hint {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--erd-tt-border);
+    font-size: 10px;
+    color: var(--erd-tt-label);
   }
 
   .schema-badge {
