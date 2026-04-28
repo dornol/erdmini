@@ -166,14 +166,10 @@
         <Canvas onfullscreen={fullscreen.exit} fullscreenMode>
           {#if canvasState.showRelationLines}<RelationLines {visibleTables} oneditfk={handleEditFk} />{/if}
           {#each visibleMemos.filter((mm) => !mm.attachedTableId) as memo (memo.id)}
-            <div class="fullscreen-table-wrapper">
-              <MemoCard {memo} />
-            </div>
+            <MemoCard {memo} />
           {/each}
           {#each visibleTables as table (table.id)}
-            <div class="fullscreen-table-wrapper">
-              <TableCard {table} />
-            </div>
+            <TableCard {table} />
           {/each}
         </Canvas>
 
@@ -463,10 +459,6 @@
     display: flex;
     flex: 1;
     overflow: hidden;
-  }
-
-  .fullscreen-table-wrapper {
-    pointer-events: none;
   }
 
   .fullscreen-topbar {
