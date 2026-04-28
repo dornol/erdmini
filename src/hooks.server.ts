@@ -5,7 +5,8 @@ import type { Handle } from '@sveltejs/kit';
 const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/oidc', '/api/auth/ldap', '/robots.txt', '/sitemap.xml', '/llms.txt', '/mcp', '/embed', '/api/embed/view', '/dictionary/share', '/api/dictionary/share'];
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some(p => pathname.startsWith(p));
+  // Slash-bounded so "/login" never matches "/login-something".
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
