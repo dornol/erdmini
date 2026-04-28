@@ -363,9 +363,7 @@ function applyFullSync(schema: ERDSchema) {
 }
 
 function applyMcpSync(schema: ERDSchema) {
-  // MCP changes are applied WITHOUT _isRemoteOp so the $effect in +page.svelte
-  // creates a history entry, making MCP changes visible in the undo/history panel.
-  erdStore.loadSchema(schema);
+  erdStore.loadSchemaFromMcp(schema);
 }
 
 // ── Presence throttle ──

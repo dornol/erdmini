@@ -12,6 +12,7 @@ import { createMemo, deleteMemoOp, deleteMemosOp, updateMemoOp, attachMemoOp, de
 import { addDomainOp, updateDomainOp, deleteDomainOp } from '$lib/store/ops/domain-ops';
 import { addSchemaOp, renameSchemaOp, reorderSchemasOp, deleteSchemaOp, updateTableSchemaOp } from '$lib/store/ops/schema-ns-ops';
 import { addDbObjectOp, updateDbObjectOp, deleteDbObjectOp, addDbObjectCategoryOp, renameDbObjectCategoryOp, deleteDbObjectCategoryOp, reorderDbObjectCategoriesOp } from '$lib/store/ops/db-object-ops';
+import { deriveLabel } from '$lib/utils/history-labels';
 
 // Re-export for backward compatibility
 export { canvasState } from '$lib/store/canvas.svelte';
@@ -549,6 +550,28 @@ class ERDStore {
     this.hoveredUkInfo = null;
     this.hoveredIdxInfo = null;
     this._emitOp({ kind: 'load-schema', schema });
+  }
+
+  /**
+   * Apply an MCP-driven schema change. Unlike a sync/reconnect (which
+   * shouldn't pollute history), an MCP change is a real, user-meaningful
+   * edit performed by an AI tool — we want it visible in the undo panel
+   * so the human can revert it. We capture the prev snapshot, apply the
+   * load, then push manually with a "(MCP)" marker.
+   *
+   * _isRemoteOp is set so the load-schema op isn't echoed back to peers
+   * (peers receive their own mcp-sync from the server). _isLoadingSchema
+   * (set by loadSchema) is cleared because we want history *here*, not
+   * suppression.
+   */
+  loadSchemaFromMcp(newSchema: ERDSchema) {
+    const prevSnap = JSON.stringify($state.snapshot(this.schema));
+    const prevSchema = JSON.parse(prevSnap) as ERDSchema;
+    this._isRemoteOp = true;
+    this.loadSchema(newSchema);
+    this._isLoadingSchema = false;
+    const { label, detail } = deriveLabel(prevSchema, newSchema);
+    this.pushSnapshotRaw(prevSnap, label, detail ? `${detail} (MCP)` : '(MCP)');
   }
 
   // ── DB Objects ──
