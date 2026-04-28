@@ -17,13 +17,16 @@ export function useAutoSave(): () => void {
   $effect(() => {
     const cur = erdStore.schema.updatedAt;
     if (cur !== prevUpdatedAt) {
-      if (erdStore._isUndoRedoing) {
-        erdStore._isUndoRedoing = false;
-      } else if (erdStore._isRemoteOp) {
-        // Remote operations don't go into undo stack
-      } else if (erdStore._isLoadingSchema) {
-        erdStore._isLoadingSchema = false;
-      } else {
+      // Why: Svelte 5 batches synchronous state changes; an effect runs
+      // once with each signal's *final* value within the batch. So flags
+      // can't be cleared in the caller's try/finally (the effect would
+      // see them already false). Capture-and-clear them all here.
+      const skip =
+        erdStore._isUndoRedoing || erdStore._isRemoteOp || erdStore._isLoadingSchema;
+      erdStore._isUndoRedoing = false;
+      erdStore._isRemoteOp = false;
+      erdStore._isLoadingSchema = false;
+      if (!skip) {
         const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
         const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;
         const result = deriveLabel(prevSchema, curSchema);
