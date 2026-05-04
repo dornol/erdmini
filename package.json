@@ -60,11 +60,11 @@
 		"jspdf": "^4.2.1",
 		"ldapts": "^8.1.7",
 		"node-sql-parser": "^5.4.0",
-		"openid-client": "^6.8.3",
+		"openid-client": "^6.8.4",
 		"sql.js": "^1.14.1",
 		"svg2pdf.js": "^2.7.0",
 		"ws": "^8.20.0",
 		"xlsx": "^0.18.5",
-		"zod": "^4.3.6"
+		"zod": "^4.4.3"
 	}
 }
