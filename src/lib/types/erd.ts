@@ -153,7 +153,7 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
   mysql: [
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
     'VARCHAR', 'CHAR', 'TEXT',
-    'BOOLEAN',
+    'BOOLEAN', 'BIT',
     'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'YEAR',
     'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
     'BINARY', 'VARBINARY', 'BLOB',
@@ -162,7 +162,7 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
   mariadb: [
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT', 'MEDIUMINT',
     'VARCHAR', 'CHAR', 'TEXT',
-    'BOOLEAN',
+    'BOOLEAN', 'BIT',
     'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'YEAR',
     'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE',
     'BINARY', 'VARBINARY', 'BLOB',
@@ -208,7 +208,7 @@ export const DIALECT_COLUMN_TYPES: Record<Dialect, ColumnType[]> = {
   h2: [
     'INT', 'BIGINT', 'SMALLINT', 'TINYINT',
     'VARCHAR', 'CHAR', 'TEXT',
-    'BOOLEAN',
+    'BOOLEAN', 'BIT',
     'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'INTERVAL',
     'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
     'BINARY', 'VARBINARY', 'BLOB',

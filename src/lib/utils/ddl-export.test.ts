@@ -71,6 +71,18 @@ describe('exportDDL — MySQL', () => {
     expect(ddl).toContain('VARCHAR(100)');
   });
 
+  it('preserves BIT columns as BIT', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'flag', type: 'BIT', nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mysql');
+    expect(ddl).toContain('BIT');
+    expect(ddl).not.toContain('TINYINT(1)');
+  });
+
   it('generates PRIMARY KEY clause', () => {
     const ddl = exportDDL(usersOrdersSchema(), 'mysql');
     expect(ddl).toContain('PRIMARY KEY (`id`)');
@@ -173,6 +185,18 @@ describe('exportDDL — MariaDB', () => {
   it('uses AUTO_INCREMENT like MySQL', () => {
     const ddl = exportDDL(usersOrdersSchema(), 'mariadb');
     expect(ddl).toContain('AUTO_INCREMENT');
+  });
+
+  it('preserves BIT columns as BIT', () => {
+    const schema = makeSchema([
+      makeTable({
+        name: 'test',
+        columns: [makeColumn({ name: 'flag', type: 'BIT', nullable: false })],
+      }),
+    ]);
+    const ddl = exportDDL(schema, 'mariadb');
+    expect(ddl).toContain('BIT');
+    expect(ddl).not.toContain('TINYINT(1)');
   });
 
   it('generates ENGINE=InnoDB trailer', () => {

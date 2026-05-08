@@ -63,7 +63,7 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'UUID') return `${kw('CHAR', upper)}(36)`;
     if (col.type === 'REAL') return kw('FLOAT', upper);
-    if (col.type === 'BIT') return kw('TINYINT', upper) + '(1)';
+    if (col.type === 'BIT') return kw('BIT', upper);
     if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
     if (col.type === 'YEAR') return kw('YEAR', upper);
     if (col.type === 'DATETIMEOFFSET') return kw('TIMESTAMP', upper);

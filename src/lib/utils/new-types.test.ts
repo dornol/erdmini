@@ -166,12 +166,12 @@ describe('columnTypeSql per dialect', () => {
   describe('BIT', () => {
     const col = makeCol({ type: 'BIT' });
 
-    it('MySQL → TINYINT(1)', () => {
-      expect(columnTypeSql(col, 'mysql', true)).toBe('TINYINT(1)');
+    it('MySQL → BIT', () => {
+      expect(columnTypeSql(col, 'mysql', true)).toBe('BIT');
     });
 
-    it('MariaDB → TINYINT(1)', () => {
-      expect(columnTypeSql(col, 'mariadb', true)).toBe('TINYINT(1)');
+    it('MariaDB → BIT', () => {
+      expect(columnTypeSql(col, 'mariadb', true)).toBe('BIT');
     });
 
     it('PostgreSQL → BOOLEAN', () => {
@@ -576,8 +576,8 @@ describe('Full DDL export with all new types', () => {
   const schema = makeSchema(columns);
 
   const expectedTypeStrings: Record<Dialect, string[]> = {
-    mysql: ['TINYINT', 'MEDIUMINT', 'TINYINT(1)', 'TIME', 'DECIMAL(10,2)', 'FLOAT', 'BINARY(16)', 'VARBINARY(255)', 'LONGBLOB'],
-    mariadb: ['TINYINT', 'MEDIUMINT', 'TINYINT(1)', 'TIME', 'DECIMAL(10,2)', 'FLOAT', 'BINARY(16)', 'VARBINARY(255)', 'LONGBLOB'],
+    mysql: ['TINYINT', 'MEDIUMINT', 'BIT', 'TIME', 'DECIMAL(10,2)', 'FLOAT', 'BINARY(16)', 'VARBINARY(255)', 'LONGBLOB'],
+    mariadb: ['TINYINT', 'MEDIUMINT', 'BIT', 'TIME', 'DECIMAL(10,2)', 'FLOAT', 'BINARY(16)', 'VARBINARY(255)', 'LONGBLOB'],
     postgresql: ['INTEGER', 'INTEGER', 'BOOLEAN', 'TIME', 'NUMERIC(10,2)', 'REAL', 'BYTEA', 'BYTEA', 'BYTEA'],
     sqlite: ['INTEGER', 'INTEGER', 'INTEGER', 'TEXT', 'REAL', 'REAL', 'BLOB', 'BLOB', 'BLOB'],
     mssql: ['TINYINT', 'INT', 'BIT', 'TIME', 'DECIMAL(10,2)', 'FLOAT', 'BINARY(16)', 'VARBINARY(255)', 'VARBINARY(MAX)'],

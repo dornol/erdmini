@@ -487,10 +487,10 @@ describe('getColumnTypesForDialect', () => {
     expect(types).not.toContain('NTEXT');
   });
 
-  it('MySQL includes BOOLEAN but not BIT', () => {
+  it('MySQL includes BOOLEAN and BIT', () => {
     const types = getColumnTypesForDialect('mysql');
     expect(types).toContain('BOOLEAN');
-    expect(types).not.toContain('BIT');
+    expect(types).toContain('BIT');
   });
 
   it('PostgreSQL does NOT include NVARCHAR, NCHAR, NTEXT', () => {
@@ -513,6 +513,11 @@ describe('getColumnTypesForDialect', () => {
     expect(types).not.toContain('BIT');
     expect(types).not.toContain('ENUM');
     expect(types).not.toContain('UUID');
+  });
+
+  it('H2 includes BIT', () => {
+    const types = getColumnTypesForDialect('h2');
+    expect(types).toContain('BIT');
   });
 
   it('all dialects include core types: INT, VARCHAR, TEXT, DATE', () => {
@@ -611,15 +616,24 @@ describe('Schema lint: dialect-type-mismatch', () => {
     expect(mismatches[0].message).toContain('BOOLEAN');
   });
 
-  it('warns when MySQL dialect has BIT column (should use BOOLEAN)', () => {
+  it('does not warn when MySQL dialect has BIT column', () => {
     const schema = makeSchema([
       makeCol({ id: 'c1', name: 'id', type: 'INT', primaryKey: true }),
       makeCol({ id: 'c2', name: 'flag', type: 'BIT' }),
     ], 'mysql');
     const issues = lintSchema(schema);
     const mismatches = issues.filter(i => i.ruleId === 'dialect-type-mismatch');
-    expect(mismatches).toHaveLength(1);
-    expect(mismatches[0].message).toContain('BIT');
+    expect(mismatches).toHaveLength(0);
+  });
+
+  it('does not warn when H2 dialect has BIT column', () => {
+    const schema = makeSchema([
+      makeCol({ id: 'c1', name: 'id', type: 'INT', primaryKey: true }),
+      makeCol({ id: 'c2', name: 'flag', type: 'BIT' }),
+    ], 'h2');
+    const issues = lintSchema(schema);
+    const mismatches = issues.filter(i => i.ruleId === 'dialect-type-mismatch');
+    expect(mismatches).toHaveLength(0);
   });
 
   it('warns when SQLite dialect has ENUM column', () => {
