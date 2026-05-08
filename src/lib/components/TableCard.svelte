@@ -257,10 +257,12 @@
   class:fk-dragging={fkDragStore.active}
   class:memo-drop-target={isMemoDragTarget}
   class:flash-new={isNew}
+  draggable="false"
   data-table-id={table.id}
   bind:offsetWidth={cardWidth}
   style="left: {table.position.x}px; top: {table.position.y}px; cursor: {table.locked ? 'default' : isDragging ? 'grabbing' : 'grab'}; z-index: {isHovered ? 20 : isSelected ? 10 : 1}{remoteSelectColor ? `; box-shadow: 0 0 0 2px ${remoteSelectColor}40, 0 0 8px ${remoteSelectColor}30` : ''}"
   onmousedown={onMouseDown}
+  ondragstart={(e) => e.preventDefault()}
   ontouchstart={onTouchStartCard}
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}

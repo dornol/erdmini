@@ -23,6 +23,8 @@
 
   let isPanning = $state(false);
   let panStart = { x: 0, y: 0 };
+  let suppressContextMenu = $state(false);
+  let suppressContextMenuTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Rubber band (marquee) selection state
   let isMarquee = $state(false);
@@ -80,6 +82,8 @@
     // Right-click drag: pan without deselecting
     if (e.button === 2) {
       e.preventDefault();
+      suppressContextMenu = true;
+      if (suppressContextMenuTimer) clearTimeout(suppressContextMenuTimer);
       isPanning = true;
       panStart = { x: e.clientX - canvasState.x, y: e.clientY - canvasState.y };
       return;
@@ -115,6 +119,11 @@
   }
 
   function onContextMenu(e: MouseEvent) {
+    e.preventDefault();
+  }
+
+  function onWindowContextMenu(e: MouseEvent) {
+    if (!suppressContextMenu) return;
     e.preventDefault();
   }
 
@@ -174,7 +183,7 @@
     canvasState.y = e.clientY - panStart.y;
   }
 
-  function onMouseUp() {
+  function onMouseUp(e: MouseEvent) {
     if (fkDragStore.active) {
       const { sourceTableId, sourceColumnId, targetTableId, targetColumnId } = fkDragStore;
       if (targetTableId && targetColumnId) {
@@ -198,6 +207,13 @@
       return;
     }
     isPanning = false;
+    if (e.button === 2 && suppressContextMenu) {
+      if (suppressContextMenuTimer) clearTimeout(suppressContextMenuTimer);
+      suppressContextMenuTimer = setTimeout(() => {
+        suppressContextMenu = false;
+        suppressContextMenuTimer = undefined;
+      }, 500);
+    }
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -308,6 +324,7 @@
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('contextmenu', onWindowContextMenu, true);
     window.addEventListener('touchmove', onTouchMoveCb, { passive: false });
     window.addEventListener('touchend', onTouchEndCb);
     return () => {
@@ -315,8 +332,10 @@
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('contextmenu', onWindowContextMenu, true);
       window.removeEventListener('touchmove', onTouchMoveCb);
       window.removeEventListener('touchend', onTouchEndCb);
+      if (suppressContextMenuTimer) clearTimeout(suppressContextMenuTimer);
     };
   });
 

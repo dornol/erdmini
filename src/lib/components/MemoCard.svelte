@@ -219,7 +219,9 @@
   class:selected={isSelected}
   class:locked={memo.locked}
   class:editing={isEditing}
+  draggable="false"
   style="left:{memo.position.x}px; top:{memo.position.y}px; width:{memo.width}px; height:{memo.height}px; background:{colors.bg}; cursor:{memo.locked ? 'default' : isDragging ? 'grabbing' : 'default'}; z-index:{isHovered ? 20 : isSelected ? 10 : 1}"
+  ondragstart={(e) => e.preventDefault()}
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}
 >
