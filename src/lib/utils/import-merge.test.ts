@@ -40,6 +40,7 @@ describe('mergeImportedTables', () => {
     expect(result.tables[0].group).toBe('Billing');
     expect(result.tables[0].locked).toBe(true);
     expect(result.tables[0].columns.map((col) => col.name)).toEqual(['id', 'email', 'name']);
+    expect(result.tables[0].columns.map((col) => col.id)).toEqual(['old_users_id', 'old_users_email', 'new_users_name']);
   });
 
   it('remaps existing foreign keys to overwritten table columns by name', () => {
@@ -60,7 +61,7 @@ describe('mergeImportedTables', () => {
 
     expect(result.tables.find((t) => t.name === 'users')!.id).toBe('old_users');
     expect(mergedOrders.foreignKeys[0].referencedTableId).toBe('old_users');
-    expect(mergedOrders.foreignKeys[0].referencedColumnIds).toEqual(['new_users_id']);
+    expect(mergedOrders.foreignKeys[0].referencedColumnIds).toEqual(['old_users_id']);
   });
 
   it('keeps overwritten tables out of layout while adding new imported tables', () => {
@@ -90,7 +91,51 @@ describe('mergeImportedTables', () => {
     expect(mergedUsers.group).toBe('Core');
     expect(mergedUsers.color).toBe('#abc123');
     expect(orders.foreignKeys[0].referencedTableId).toBe('old_users');
-    expect(orders.foreignKeys[0].referencedColumnIds).toEqual(['new_users_id']);
+    expect(orders.foreignKeys[0].referencedColumnIds).toEqual(['old_users_id']);
+  });
+
+  it('reuses matching FK, unique key, and index ids when overwriting', () => {
+    const users = table('old_users', 'users', ['id', 'email', 'org_id']);
+    users.uniqueKeys = [{ id: 'old_uk', columnIds: ['old_users_email', 'old_users_org_id'], name: 'uq_users_email_org' }];
+    users.indexes = [{ id: 'old_idx', columnIds: ['old_users_email'], name: 'idx_users_email', unique: false }];
+    users.foreignKeys = [{
+      id: 'old_fk',
+      columnIds: ['old_users_org_id'],
+      referencedTableId: 'orgs',
+      referencedColumnIds: ['orgs_id'],
+      onDelete: 'RESTRICT',
+      onUpdate: 'RESTRICT',
+    }];
+    const orgs = table('orgs', 'orgs', ['id']);
+
+    const importedUsers = table('new_users', 'users', ['id', 'email', 'org_id']);
+    importedUsers.uniqueKeys = [{ id: 'new_uk', columnIds: ['new_users_email', 'new_users_org_id'], name: 'uq_users_email_org' }];
+    importedUsers.indexes = [{ id: 'new_idx', columnIds: ['new_users_email'], name: 'idx_users_email', unique: false }];
+    importedUsers.foreignKeys = [{
+      id: 'new_fk',
+      columnIds: ['new_users_org_id'],
+      referencedTableId: 'orgs',
+      referencedColumnIds: ['orgs_id'],
+      onDelete: 'RESTRICT',
+      onUpdate: 'RESTRICT',
+    }];
+
+    const result = mergeImportedTables([orgs, users], [importedUsers], ['users'], 'overwrite');
+    const mergedUsers = result.tables.find((t) => t.name === 'users')!;
+
+    expect(mergedUsers.uniqueKeys[0]).toMatchObject({
+      id: 'old_uk',
+      columnIds: ['old_users_email', 'old_users_org_id'],
+    });
+    expect(mergedUsers.indexes[0]).toMatchObject({
+      id: 'old_idx',
+      columnIds: ['old_users_email'],
+    });
+    expect(mergedUsers.foreignKeys[0]).toMatchObject({
+      id: 'old_fk',
+      columnIds: ['old_users_org_id'],
+      referencedColumnIds: ['orgs_id'],
+    });
   });
 
   it('relinks new imported tables to skipped existing duplicates', () => {

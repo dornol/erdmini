@@ -47,6 +47,44 @@ function diffColumn(prev: Column, curr: Column): string[] {
   return changes;
 }
 
+function columnNames(table: Table, ids: string[]): string[] {
+  return ids.map((id) => table.columns.find((c) => c.id === id)?.name ?? id);
+}
+
+function findTable(tables: Table[], id: string): Table | undefined {
+  return tables.find((t) => t.id === id);
+}
+
+function uniqueKeySignature(table: Table, uk: UniqueKey): string {
+  return `${uk.name ?? ''}|${columnNames(table, uk.columnIds).sort().join(',')}`;
+}
+
+function indexSignature(table: Table, idx: TableIndex): string {
+  return `${idx.name ?? ''}|${idx.unique ? 'unique' : 'index'}|${columnNames(table, idx.columnIds).sort().join(',')}`;
+}
+
+function foreignKeySignature(table: Table, fk: ForeignKey, tables: Table[]): string {
+  const refTable = findTable(tables, fk.referencedTableId);
+  const srcCols = columnNames(table, fk.columnIds).join(',');
+  const refTableName = refTable?.name ?? fk.referencedTableId;
+  const refCols = refTable ? columnNames(refTable, fk.referencedColumnIds).join(',') : fk.referencedColumnIds.join(',');
+  return [srcCols, refTableName, refCols, fk.onDelete, fk.onUpdate].join('|');
+}
+
+function diffBySignature<T>(
+  prevItems: T[],
+  currItems: T[],
+  prevSig: (item: T) => string,
+  currSig: (item: T) => string,
+): { added: T[]; removed: T[] } {
+  const prevBySig = new Map(prevItems.map((item) => [prevSig(item), item]));
+  const currBySig = new Map(currItems.map((item) => [currSig(item), item]));
+  return {
+    added: currItems.filter((item) => !prevBySig.has(currSig(item))),
+    removed: prevItems.filter((item) => !currBySig.has(prevSig(item))),
+  };
+}
+
 function diffTable(prevTable: Table, currTable: Table, prevTables: Table[], currTables: Table[]): TableDiff | null {
   const diff: TableDiff = {
     tableId: currTable.id,
@@ -111,38 +149,33 @@ function diffTable(prevTable: Table, currTable: Table, prevTables: Table[], curr
     }
   }
 
-  // FK diffs
-  const prevFkIds = new Set(prevTable.foreignKeys.map((f) => f.id));
-  const currFkIds = new Set(currTable.foreignKeys.map((f) => f.id));
+  // Constraint diffs use semantic signatures instead of volatile generated ids.
+  const fkDiff = diffBySignature(
+    prevTable.foreignKeys,
+    currTable.foreignKeys,
+    (fk) => foreignKeySignature(prevTable, fk, prevTables),
+    (fk) => foreignKeySignature(currTable, fk, currTables),
+  );
+  diff.addedFKs.push(...fkDiff.added);
+  diff.removedFKs.push(...fkDiff.removed);
 
-  for (const fk of currTable.foreignKeys) {
-    if (!prevFkIds.has(fk.id)) diff.addedFKs.push(fk);
-  }
-  for (const fk of prevTable.foreignKeys) {
-    if (!currFkIds.has(fk.id)) diff.removedFKs.push(fk);
-  }
+  const idxDiff = diffBySignature(
+    prevTable.indexes ?? [],
+    currTable.indexes ?? [],
+    (idx) => indexSignature(prevTable, idx),
+    (idx) => indexSignature(currTable, idx),
+  );
+  diff.addedIndexes.push(...idxDiff.added);
+  diff.removedIndexes.push(...idxDiff.removed);
 
-  // Index diffs
-  const prevIdxIds = new Set((prevTable.indexes ?? []).map((i) => i.id));
-  const currIdxIds = new Set((currTable.indexes ?? []).map((i) => i.id));
-
-  for (const idx of currTable.indexes ?? []) {
-    if (!prevIdxIds.has(idx.id)) diff.addedIndexes.push(idx);
-  }
-  for (const idx of prevTable.indexes ?? []) {
-    if (!currIdxIds.has(idx.id)) diff.removedIndexes.push(idx);
-  }
-
-  // UniqueKey diffs
-  const prevUkIds = new Set((prevTable.uniqueKeys ?? []).map((uk) => uk.id));
-  const currUkIds = new Set((currTable.uniqueKeys ?? []).map((uk) => uk.id));
-
-  for (const uk of currTable.uniqueKeys ?? []) {
-    if (!prevUkIds.has(uk.id)) diff.addedUniqueKeys.push(uk);
-  }
-  for (const uk of prevTable.uniqueKeys ?? []) {
-    if (!currUkIds.has(uk.id)) diff.removedUniqueKeys.push(uk);
-  }
+  const ukDiff = diffBySignature(
+    prevTable.uniqueKeys ?? [],
+    currTable.uniqueKeys ?? [],
+    (uk) => uniqueKeySignature(prevTable, uk),
+    (uk) => uniqueKeySignature(currTable, uk),
+  );
+  diff.addedUniqueKeys.push(...ukDiff.added);
+  diff.removedUniqueKeys.push(...ukDiff.removed);
 
   const hasChanges =
     diff.addedColumns.length > 0 ||

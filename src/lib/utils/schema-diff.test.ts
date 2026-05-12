@@ -347,6 +347,49 @@ describe('diffSchemas — FK changes', () => {
     expect(diff.modifiedTables).toHaveLength(1);
     expect(diff.modifiedTables[0].removedFKs).toHaveLength(1);
   });
+
+  it('does not report FK changes when only generated ids differ', () => {
+    const prev = makeSchema([
+      makeTable({
+        id: 'old_users',
+        name: 'users',
+        columns: [makeColumn({ id: 'old_users_id', name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      }),
+      makeTable({
+        id: 'old_orders',
+        name: 'orders',
+        columns: [
+          makeColumn({ id: 'old_orders_id', name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ id: 'old_orders_user_id', name: 'user_id', type: 'INT', nullable: false }),
+        ],
+        foreignKeys: [{
+          id: 'old_fk', columnIds: ['old_orders_user_id'], referencedTableId: 'old_users',
+          referencedColumnIds: ['old_users_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
+        }],
+      }),
+    ]);
+    const curr = makeSchema([
+      makeTable({
+        id: 'new_users',
+        name: 'users',
+        columns: [makeColumn({ id: 'new_users_id', name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      }),
+      makeTable({
+        id: 'new_orders',
+        name: 'orders',
+        columns: [
+          makeColumn({ id: 'new_orders_id', name: 'id', type: 'INT', primaryKey: true, nullable: false }),
+          makeColumn({ id: 'new_orders_user_id', name: 'user_id', type: 'INT', nullable: false }),
+        ],
+        foreignKeys: [{
+          id: 'new_fk', columnIds: ['new_orders_user_id'], referencedTableId: 'new_users',
+          referencedColumnIds: ['new_users_id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT',
+        }],
+      }),
+    ]);
+    const diff = diffSchemas(prev, curr);
+    expect(diff.modifiedTables).toHaveLength(0);
+  });
 });
 
 describe('diffSchemas — index changes', () => {
@@ -380,6 +423,23 @@ describe('diffSchemas — index changes', () => {
     const diff = diffSchemas(prev, curr);
     expect(diff.modifiedTables).toHaveLength(1);
     expect(diff.modifiedTables[0].removedIndexes).toHaveLength(1);
+  });
+
+  it('does not report index changes when only generated ids differ', () => {
+    const prev = makeSchema([makeTable({
+      id: 't1',
+      name: 'users',
+      columns: [makeColumn({ id: 'old_email', name: 'email', type: 'VARCHAR', nullable: false })],
+      indexes: [{ id: 'old_idx', columnIds: ['old_email'], unique: false, name: 'idx_email' }],
+    })]);
+    const curr = makeSchema([makeTable({
+      id: 't1',
+      name: 'users',
+      columns: [makeColumn({ id: 'new_email', name: 'email', type: 'VARCHAR', nullable: false })],
+      indexes: [{ id: 'new_idx', columnIds: ['new_email'], unique: false, name: 'idx_email' }],
+    })]);
+    const diff = diffSchemas(prev, curr);
+    expect(diff.modifiedTables).toHaveLength(0);
   });
 });
 
@@ -528,6 +588,33 @@ describe('diffSchemas — UniqueKey diff', () => {
       }),
     ]);
     const diff = diffSchemas(schema, schema);
+    expect(diff.modifiedTables).toHaveLength(0);
+  });
+
+  it('does not report unique key changes when only generated ids differ', () => {
+    const prev = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'users',
+        columns: [
+          makeColumn({ id: 'old_email', name: 'email', type: 'VARCHAR', nullable: false }),
+          makeColumn({ id: 'old_org', name: 'org_id', type: 'INT', nullable: false }),
+        ],
+        uniqueKeys: [{ id: 'old_uk', columnIds: ['old_email', 'old_org'], name: 'uq_email_org' }],
+      }),
+    ]);
+    const curr = makeSchema([
+      makeTable({
+        id: 't1',
+        name: 'users',
+        columns: [
+          makeColumn({ id: 'new_email', name: 'email', type: 'VARCHAR', nullable: false }),
+          makeColumn({ id: 'new_org', name: 'org_id', type: 'INT', nullable: false }),
+        ],
+        uniqueKeys: [{ id: 'new_uk', columnIds: ['new_email', 'new_org'], name: 'uq_email_org' }],
+      }),
+    ]);
+    const diff = diffSchemas(prev, curr);
     expect(diff.modifiedTables).toHaveLength(0);
   });
 });
