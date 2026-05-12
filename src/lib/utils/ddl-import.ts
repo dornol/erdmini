@@ -152,6 +152,61 @@ function quoteReservedColumnNames(sql: string, dialect: Dialect): string {
   return result;
 }
 
+/**
+ * Some parsers reject named column constraints even when the underlying
+ * constraint is supported, e.g. `email VARCHAR(255) CONSTRAINT uq UNIQUE`.
+ * Keep table-level constraint names intact and strip only names embedded in
+ * column definitions.
+ */
+function stripNamedColumnConstraintPrefixes(sql: string): string {
+  const headerRe = /create\s+table\s+(?:(?:if\s+not\s+exists)\s+)?(?:[\w."'`[\]]+\.)?[\w"'`[\]]+\s*\(/gi;
+  let result = '';
+  let lastEnd = 0;
+  let hm: RegExpExecArray | null;
+
+  while ((hm = headerRe.exec(sql)) !== null) {
+    const bodyStart = hm.index + hm[0].length;
+    let depth = 1, i = bodyStart;
+    while (i < sql.length && depth > 0) {
+      if (sql[i] === '(') depth++;
+      else if (sql[i] === ')') depth--;
+      if (depth > 0) i++;
+    }
+    if (depth !== 0) continue;
+    const bodyEnd = i;
+
+    result += sql.slice(lastEnd, bodyStart);
+
+    const body = sql.slice(bodyStart, bodyEnd);
+    const parts: string[] = [];
+    let d = 0, s = 0;
+    for (let j = 0; j < body.length; j++) {
+      if (body[j] === '(') d++;
+      else if (body[j] === ')') d--;
+      else if (body[j] === ',' && d === 0) {
+        parts.push(body.slice(s, j));
+        s = j + 1;
+      }
+    }
+    parts.push(body.slice(s));
+
+    const cleanedParts = parts.map((part) => {
+      const firstWord = part.match(/^\s*[\[`"]?(\w+)/)?.[1] ?? '';
+      if (/^(constraint|primary|foreign|unique|check|index|key)$/i.test(firstWord)) return part;
+      return part.replace(
+        /\bconstraint\s+(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|\w+)\s+(?=unique\b|primary\s+key\b|not\s+null\b|check\b|references\b)/gi,
+        '',
+      );
+    });
+
+    result += cleanedParts.join(',');
+    lastEnd = bodyEnd;
+    headerRe.lastIndex = bodyEnd;
+  }
+
+  return result + sql.slice(lastEnd);
+}
+
 // ─── AST helpers ─────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -384,14 +439,14 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     preprocessed.mssqlMoneyCols = result.moneyCols;
     stmts = [];
     for (const stmtSql of result.statements) {
-      const quoted = quoteReservedColumnNames(stmtSql, dialect);
+      const quoted = quoteReservedColumnNames(stripNamedColumnConstraintPrefixes(stmtSql), dialect);
       try {
         const parsed = parser.astify(quoted);
         const arr = Array.isArray(parsed) ? parsed : [parsed];
         stmts.push(...arr);
       } catch {
         try {
-          const cleaned = quoteReservedColumnNames(cleanMSSQLStatement(stmtSql), dialect);
+          const cleaned = quoteReservedColumnNames(stripNamedColumnConstraintPrefixes(cleanMSSQLStatement(stmtSql)), dialect);
           const parsed = parser.astify(cleaned);
           const arr = Array.isArray(parsed) ? parsed : [parsed];
           stmts.push(...arr);
@@ -413,7 +468,7 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
       if (!trimmed) continue;
       if (!/^\s*(create\s+table|alter\s+table)\b/i.test(trimmed)) continue;
       try {
-        const quoted = quoteReservedColumnNames(trimmed, dialect);
+        const quoted = quoteReservedColumnNames(stripNamedColumnConstraintPrefixes(trimmed), dialect);
         const parsed = parser.astify(quoted);
         const arr = Array.isArray(parsed) ? parsed : [parsed];
         stmts.push(...arr);
@@ -433,7 +488,7 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
       const trimmed = rawStmt.trim();
       if (!trimmed) continue;
       try {
-        const quoted = quoteReservedColumnNames(trimmed, dialect);
+        const quoted = quoteReservedColumnNames(stripNamedColumnConstraintPrefixes(trimmed), dialect);
         const parsed = parser.astify(quoted);
         const arr = Array.isArray(parsed) ? parsed : [parsed];
         stmts.push(...arr);
@@ -446,7 +501,7 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
     }
   } else {
     try {
-      const quoted = quoteReservedColumnNames(sql, dialect);
+      const quoted = quoteReservedColumnNames(stripNamedColumnConstraintPrefixes(sql), dialect);
       const parsed = parser.astify(quoted);
       stmts = Array.isArray(parsed) ? parsed : [parsed];
     } catch {
@@ -456,7 +511,7 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
         const trimmed = rawStmt.trim();
         if (!trimmed) continue;
         try {
-          const quoted = quoteReservedColumnNames(trimmed, dialect);
+          const quoted = quoteReservedColumnNames(stripNamedColumnConstraintPrefixes(trimmed), dialect);
           const parsed = parser.astify(quoted);
           const arr = Array.isArray(parsed) ? parsed : [parsed];
           stmts.push(...arr);
