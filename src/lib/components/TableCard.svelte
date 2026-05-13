@@ -58,9 +58,6 @@
   // Set of column IDs that are FK source columns
   let fkSourceIds = $derived(new Set(table.foreignKeys.flatMap((fk) => fk.columnIds)));
 
-  // Set of column IDs that are part of composite unique keys
-  let uniqueKeyColIds = $derived(new Set((table.uniqueKeys ?? []).flatMap((uk) => uk.columnIds)));
-
   // Filtered columns based on display mode
   let displayColumns = $derived.by(() => {
     const mode = canvasState.columnDisplayMode;
@@ -321,7 +318,6 @@
         refTableName={refTable?.name}
         refColName={refCol?.name}
         isFkSource={fkSourceIds.has(col.id)}
-        isUniqueKeyCol={uniqueKeyColIds.has(col.id)}
         {isFkHighlighted}
         {isUkHighlighted}
         {isIdxHighlighted}

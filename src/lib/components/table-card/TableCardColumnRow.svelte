@@ -12,7 +12,6 @@
     refTableName: string | undefined;
     refColName: string | undefined;
     isFkSource: boolean;
-    isUniqueKeyCol: boolean;
     isFkHighlighted: boolean;
     isUkHighlighted: boolean;
     isIdxHighlighted: boolean;
@@ -32,7 +31,6 @@
     refTableName,
     refColName,
     isFkSource,
-    isUniqueKeyCol,
     isFkHighlighted,
     isUkHighlighted,
     isIdxHighlighted,
@@ -43,6 +41,35 @@
     onmouseleave,
     onfkdragstart,
   }: Props = $props();
+
+  type UniqueMembership = {
+    name?: string;
+    columnNames: string[];
+  };
+
+  let uniqueMemberships = $derived.by((): UniqueMembership[] =>
+    (table.uniqueKeys ?? [])
+      .filter((uk) => uk.columnIds.includes(col.id))
+      .map((uk) => ({
+        name: uk.name,
+        columnNames: uk.columnIds.map((id) => table.columns.find((c) => c.id === id)?.name ?? '?'),
+      })),
+  );
+
+  let singleUniqueMemberships = $derived(uniqueMemberships.filter((uk) => uk.columnNames.length === 1));
+  let compositeUniqueMemberships = $derived(uniqueMemberships.filter((uk) => uk.columnNames.length > 1));
+  let hasSingleUnique = $derived(col.unique || singleUniqueMemberships.length > 0);
+  let hasCompositeUnique = $derived(compositeUniqueMemberships.length > 0);
+  let hasAnyUnique = $derived((hasSingleUnique || hasCompositeUnique) && !col.primaryKey);
+  let uniqueBadgeLabel = $derived(hasCompositeUnique ? 'U+' : 'U');
+  let uniqueBadgeTitle = $derived.by(() => {
+    const parts: string[] = [];
+    if (hasSingleUnique) parts.push('Single-column unique');
+    for (const uk of compositeUniqueMemberships) {
+      parts.push(`Composite unique${uk.name ? ` ${uk.name}` : ''}: (${uk.columnNames.join(', ')})`);
+    }
+    return parts.join('\n');
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -77,10 +104,10 @@
     </span>
 
     <!-- Attribute badges: UQ / AI / CK -->
-    {#if ((col.unique || isUniqueKeyCol) && !col.primaryKey) || col.autoIncrement || col.check}
+    {#if hasAnyUnique || col.autoIncrement || col.check}
       <div class="col-attrs">
-        {#if (col.unique || isUniqueKeyCol) && !col.primaryKey}
-          <span class="attr uq" title={m.tt_unique()}>U</span>
+        {#if hasAnyUnique}
+          <span class="attr uq" class:composite={hasCompositeUnique} title={uniqueBadgeTitle}>{uniqueBadgeLabel}</span>
         {/if}
         {#if col.autoIncrement}
           <span class="attr ai" title={m.tt_auto_increment()}>AI</span>
@@ -124,8 +151,15 @@
       {#if fk && refTableName && refColName}
         <span class="tt-badge fk">FK → {refTableName}.{refColName}</span>
       {/if}
-      {#if (col.unique || isUniqueKeyCol) && !col.primaryKey}
-        <span class="tt-badge uq">{m.tt_unique()}</span>
+      {#if hasSingleUnique && !col.primaryKey}
+        <span class="tt-badge uq">Single-column unique</span>
+      {/if}
+      {#if hasCompositeUnique && !col.primaryKey}
+        {#each compositeUniqueMemberships as uk}
+          <span class="tt-badge uq composite">
+            Composite unique{uk.name ? ` ${uk.name}` : ''}: ({uk.columnNames.join(', ')})
+          </span>
+        {/each}
       {/if}
       {#if col.autoIncrement}
         <span class="tt-badge ai">{m.tt_auto_increment()}</span>
@@ -247,6 +281,11 @@
     border: 1px solid var(--erd-badge-uq-border);
   }
 
+  .attr.uq.composite {
+    min-width: 18px;
+    text-align: center;
+  }
+
   .attr.ai {
     background: var(--erd-badge-ai-bg);
     color: var(--erd-badge-ai-text);
@@ -365,6 +404,7 @@
   .tt-badge.pk  { background: var(--erd-tt-badge-pk); color: var(--erd-tt-badge-text); }
   .tt-badge.fk  { background: var(--erd-tt-badge-fk); color: var(--erd-tt-badge-text); max-width: 240px; white-space: normal; word-break: break-all; }
   .tt-badge.uq  { background: var(--erd-tt-badge-uq); color: var(--erd-tt-badge-text); }
+  .tt-badge.uq.composite { max-width: 240px; white-space: normal; word-break: break-word; }
   .tt-badge.ai  { background: var(--erd-tt-badge-ai); color: var(--erd-tt-badge-text); }
 
   .tt-comment {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateMigrationSQL } from './migration-sql';
-import type { SchemaDiff, TableDiff } from './schema-diff';
-import type { Column, Table, ForeignKey, TableIndex, UniqueKey, Dialect } from '$lib/types/erd';
+import { diffSchemas, type SchemaDiff, type TableDiff } from './schema-diff';
+import type { Column, ERDSchema, Table, ForeignKey, TableIndex, UniqueKey, Dialect } from '$lib/types/erd';
 
 // ── Helpers ──
 
@@ -43,6 +43,18 @@ function emptyDiff(): SchemaDiff {
     removedTables: [],
     modifiedTables: [],
     summary: { added: 0, removed: 0, modified: 0 },
+  };
+}
+
+function schema(tables: Table[]): ERDSchema {
+  return {
+    version: '1.0.0',
+    dialect: 'mssql',
+    tables,
+    domains: [],
+    memos: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   };
 }
 
@@ -278,6 +290,179 @@ describe('generateMigrationSQL', () => {
 
   // ── ADD/DROP Unique Key ──
   describe('Unique Key operations', () => {
+    it('adds a single-column unique constraint when column unique changes to true', () => {
+      const diff = emptyDiff();
+      const currTable = table({
+        name: 'tClientDetail',
+        columns: [col({ name: 'Original_Coupon_No', type: 'INT', nullable: false, unique: true })],
+      });
+      diff.modifiedTables = [tableDiff({
+        tableId: 'tClientDetail',
+        tableName: 'tClientDetail',
+        modifiedColumns: [{
+          columnName: 'Original_Coupon_No',
+          prev: col({ name: 'Original_Coupon_No', type: 'INT', nullable: false, unique: false }),
+          curr: col({ name: 'Original_Coupon_No', type: 'INT', nullable: false, unique: true }),
+          changes: ['unique: false → true'],
+        }],
+      })];
+
+      const sql = generateMigrationSQL(diff, 'mssql', opts, [currTable]);
+
+      expect(sql).toContain('-- Add indexes / unique keys');
+      expect(sql).toContain('ALTER TABLE tClientDetail ADD CONSTRAINT uq_tClientDetail_Original_Coupon_No UNIQUE (Original_Coupon_No);');
+    });
+
+    it.each(['mysql', 'mariadb', 'postgresql', 'mssql', 'oracle', 'h2'] as const)(
+      'adds a single-column unique constraint for %s',
+      (dialect) => {
+        const diff = emptyDiff();
+        const currTable = table({
+          name: 'users',
+          columns: [col({ name: 'email', unique: true })],
+        });
+        diff.modifiedTables = [tableDiff({
+          tableName: 'users',
+          modifiedColumns: [{
+            columnName: 'email',
+            prev: col({ name: 'email', unique: false }),
+            curr: col({ name: 'email', unique: true }),
+            changes: ['unique: false → true'],
+          }],
+        })];
+
+        const sql = generateMigrationSQL(diff, dialect, opts, [currTable]);
+
+        expect(sql).toContain('ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email);');
+      },
+    );
+
+    it('uses SQLite recreate-table migration for column unique changes', () => {
+      const diff = emptyDiff();
+      const currTable = table({
+        name: 'users',
+        columns: [col({ name: 'email', unique: true })],
+      });
+      diff.modifiedTables = [tableDiff({
+        tableName: 'users',
+        modifiedColumns: [{
+          columnName: 'email',
+          prev: col({ name: 'email', unique: false }),
+          curr: col({ name: 'email', unique: true }),
+          changes: ['unique: false → true'],
+        }],
+      })];
+
+      const sql = generateMigrationSQL(diff, 'sqlite', opts, [currTable]);
+
+      expect(sql).toContain('-- Modify columns (SQLite recreate-table)');
+      expect(sql).toContain('CREATE TABLE _temp_users');
+      expect(sql).toContain('UNIQUE (email)');
+      expect(sql).not.toContain('ADD CONSTRAINT uq_users_email');
+    });
+
+    it('drops a single-column unique constraint when column unique changes to false', () => {
+      const diff = emptyDiff();
+      const currTable = table({
+        name: 'users',
+        columns: [col({ name: 'email', unique: false })],
+      });
+      diff.modifiedTables = [tableDiff({
+        tableId: 'users',
+        tableName: 'users',
+        modifiedColumns: [{
+          columnName: 'email',
+          prev: col({ name: 'email', unique: true }),
+          curr: col({ name: 'email', unique: false }),
+          changes: ['unique: true → false'],
+        }],
+      })];
+
+      const sql = generateMigrationSQL(diff, 'postgresql', opts, [currTable]);
+
+      expect(sql).toContain('-- Drop indexes / unique keys');
+      expect(sql).toContain('ALTER TABLE users DROP CONSTRAINT uq_users_email;');
+    });
+
+    it('exports column unique changes and added indexes from the same diff', () => {
+      const diff = emptyDiff();
+      const currTable = table({
+        name: 'tUser',
+        columns: [
+          col({ id: 'Login_Id', name: 'Login_Id', unique: true }),
+          col({ id: 'User_No', name: 'User_No', type: 'INT' }),
+          col({ id: 'Status', name: 'Status' }),
+        ],
+      });
+      diff.modifiedTables = [tableDiff({
+        tableId: 'tUser',
+        tableName: 'tUser',
+        modifiedColumns: [{
+          columnName: 'Login_Id',
+          prev: col({ id: 'Login_Id', name: 'Login_Id', unique: false }),
+          curr: col({ id: 'Login_Id', name: 'Login_Id', unique: true }),
+          changes: ['unique: false → true'],
+        }],
+        addedIndexes: [
+          { id: 'idx1', columnIds: ['User_No'], name: 'NCX_tUser_1', unique: false },
+          { id: 'idx2', columnIds: ['Status'], name: 'NCX_tUser_2', unique: false },
+        ],
+      })];
+
+      const sql = generateMigrationSQL(diff, 'mssql', opts, [currTable]);
+
+      expect(sql).toContain('CREATE INDEX NCX_tUser_1 ON tUser (User_No);');
+      expect(sql).toContain('CREATE INDEX NCX_tUser_2 ON tUser (Status);');
+      expect(sql).toContain('ALTER TABLE tUser ADD CONSTRAINT uq_tUser_Login_Id UNIQUE (Login_Id);');
+    });
+
+    it('exports migration SQL for real schema diff unique changes and added indexes', () => {
+      const prevUser = table({
+        id: 'existing-user-table',
+        name: 'tUser',
+        columns: [
+          col({ id: 'login-id', name: 'Login_Id', unique: false }),
+          col({ id: 'user-no', name: 'User_No', type: 'INT' }),
+          col({ id: 'status', name: 'Status' }),
+        ],
+      });
+      const currUser = table({
+        id: 'imported-user-table',
+        name: 'tUser',
+        columns: [
+          col({ id: 'login-id', name: 'Login_Id', unique: true }),
+          col({ id: 'user-no', name: 'User_No', type: 'INT' }),
+          col({ id: 'status', name: 'Status' }),
+        ],
+        indexes: [
+          { id: 'idx1', columnIds: ['user-no'], name: 'NCX_tUser_1', unique: false },
+          { id: 'idx2', columnIds: ['status'], name: 'NCX_tUser_2', unique: false },
+        ],
+      });
+      const prevClient = table({
+        id: 'existing-client-detail',
+        name: 'tClientDetail',
+        columns: [col({ id: 'original-coupon-no', name: 'Original_Coupon_No', type: 'INT', nullable: false, unique: false })],
+      });
+      const currClient = table({
+        id: 'imported-client-detail',
+        name: 'tClientDetail',
+        columns: [col({ id: 'original-coupon-no', name: 'Original_Coupon_No', type: 'INT', nullable: false, unique: true })],
+      });
+      const currTables = [currUser, currClient];
+      const diff = diffSchemas(schema([prevUser, prevClient]), schema(currTables));
+
+      expect(diff.modifiedTables).toHaveLength(2);
+
+      const sql = generateMigrationSQL(diff, 'mssql', opts, currTables);
+
+      expect(sql).not.toBe('');
+      expect(sql).toContain('ALTER TABLE tUser ADD CONSTRAINT uq_tUser_Login_Id UNIQUE (Login_Id);');
+      expect(sql).toContain('ALTER TABLE tClientDetail ADD CONSTRAINT uq_tClientDetail_Original_Coupon_No UNIQUE (Original_Coupon_No);');
+      expect(sql).toContain('CREATE INDEX NCX_tUser_1 ON tUser (User_No);');
+      expect(sql).toContain('CREATE INDEX NCX_tUser_2 ON tUser (Status);');
+    });
+
     it('adds unique key constraint', () => {
       const diff = emptyDiff();
       const currTable = table({
