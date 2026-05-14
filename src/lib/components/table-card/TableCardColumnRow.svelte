@@ -61,14 +61,8 @@
   let hasSingleUnique = $derived(col.unique || singleUniqueMemberships.length > 0);
   let hasCompositeUnique = $derived(compositeUniqueMemberships.length > 0);
   let hasAnyUnique = $derived((hasSingleUnique || hasCompositeUnique) && !col.primaryKey);
-  let uniqueBadgeLabel = $derived(hasCompositeUnique ? 'U+' : 'U');
   let uniqueBadgeTitle = $derived.by(() => {
-    const parts: string[] = [];
-    if (hasSingleUnique) parts.push('Single-column unique');
-    for (const uk of compositeUniqueMemberships) {
-      parts.push(`Composite unique${uk.name ? ` ${uk.name}` : ''}: (${uk.columnNames.join(', ')})`);
-    }
-    return parts.join('\n');
+    return m.tt_unique();
   });
 </script>
 
@@ -107,7 +101,7 @@
     {#if hasAnyUnique || col.autoIncrement || col.check}
       <div class="col-attrs">
         {#if hasAnyUnique}
-          <span class="attr uq" class:composite={hasCompositeUnique} title={uniqueBadgeTitle}>{uniqueBadgeLabel}</span>
+          <span class="attr uq" title={uniqueBadgeTitle}>U</span>
         {/if}
         {#if col.autoIncrement}
           <span class="attr ai" title={m.tt_auto_increment()}>AI</span>
@@ -151,15 +145,22 @@
       {#if fk && refTableName && refColName}
         <span class="tt-badge fk">FK → {refTableName}.{refColName}</span>
       {/if}
-      {#if hasSingleUnique && !col.primaryKey}
-        <span class="tt-badge uq">Single-column unique</span>
-      {/if}
-      {#if hasCompositeUnique && !col.primaryKey}
-        {#each compositeUniqueMemberships as uk}
-          <span class="tt-badge uq composite">
-            Composite unique{uk.name ? ` ${uk.name}` : ''}: ({uk.columnNames.join(', ')})
-          </span>
-        {/each}
+      {#if hasAnyUnique}
+        <span class="tt-badge uq" class:with-details={hasCompositeUnique}>
+          <span>{m.tt_unique()}</span>
+          {#if hasCompositeUnique}
+            {#each compositeUniqueMemberships as uk}
+              <span class="tt-unique-detail">
+                {#if uk.name}
+                  <span class="tt-unique-name">{uk.name}</span>
+                {/if}
+                {#each uk.columnNames as name}
+                  <span>- {name}</span>
+                {/each}
+              </span>
+            {/each}
+          {/if}
+        </span>
       {/if}
       {#if col.autoIncrement}
         <span class="tt-badge ai">{m.tt_auto_increment()}</span>
@@ -281,11 +282,6 @@
     border: 1px solid var(--erd-badge-uq-border);
   }
 
-  .attr.uq.composite {
-    min-width: 18px;
-    text-align: center;
-  }
-
   .attr.ai {
     background: var(--erd-badge-ai-bg);
     color: var(--erd-badge-ai-text);
@@ -404,8 +400,31 @@
   .tt-badge.pk  { background: var(--erd-tt-badge-pk); color: var(--erd-tt-badge-text); }
   .tt-badge.fk  { background: var(--erd-tt-badge-fk); color: var(--erd-tt-badge-text); max-width: 240px; white-space: normal; word-break: break-all; }
   .tt-badge.uq  { background: var(--erd-tt-badge-uq); color: var(--erd-tt-badge-text); }
-  .tt-badge.uq.composite { max-width: 240px; white-space: normal; word-break: break-word; }
   .tt-badge.ai  { background: var(--erd-tt-badge-ai); color: var(--erd-tt-badge-text); }
+
+  .tt-badge.uq.with-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    max-width: 240px;
+    white-space: normal;
+  }
+
+  .tt-unique-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .tt-unique-name {
+    font-family: monospace;
+    font-size: 10px;
+    opacity: 0.9;
+    word-break: break-word;
+  }
 
   .tt-comment {
     font-style: italic;
