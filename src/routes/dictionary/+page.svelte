@@ -5,6 +5,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import { onMount } from 'svelte';
   import { exportDictionaryXlsx, exportDictionaryTemplate, parseDictionaryXlsx } from '$lib/utils/dictionary-xlsx';
+  import { appPath } from '$lib/utils/paths';
 
   interface WordRow {
     id: string;
@@ -69,7 +70,7 @@
     if (selectedCategory !== undefined) params.set('category', selectedCategory);
     params.set('page', String(page));
     params.set('limit', String(limit));
-    const res = await fetch(`/api/dictionary?${params}`);
+    const res = await fetch(appPath(`/api/dictionary?${params}`));
     if (!res.ok) { error = 'Failed to load'; return; }
     const data = await res.json();
     words = data.words;
@@ -79,17 +80,17 @@
   }
 
   async function loadPendingWords() {
-    const res = await fetch('/api/dictionary?status=pending&limit=200');
+    const res = await fetch(appPath('/api/dictionary?status=pending&limit=200'));
     if (res.ok) { pendingWords = (await res.json()).words; }
   }
 
   async function loadCategories() {
-    const res = await fetch('/api/dictionary/categories');
+    const res = await fetch(appPath('/api/dictionary/categories'));
     if (res.ok) categories = await res.json();
   }
 
   async function loadShareTokens() {
-    const res = await fetch('/api/admin/dictionary-tokens');
+    const res = await fetch(appPath('/api/admin/dictionary-tokens'));
     if (res.ok) shareTokens = await res.json();
   }
 
@@ -100,7 +101,7 @@
 
   onMount(async () => {
     const layoutData = $pageStore.data as { isServerMode?: boolean };
-    if (!layoutData.isServerMode) { goto('/'); return; }
+    if (!layoutData.isServerMode) { goto(appPath('/')); return; }
     await Promise.all([loadWords(), loadCategories()]);
     if (isAdmin) await Promise.all([loadShareTokens(), loadPendingWords()]);
     loading = false;
@@ -113,7 +114,7 @@
   async function submitAdd() {
     error = ''; success = '';
     if (!addForm.word.trim() || !addForm.meaning.trim()) return;
-    const res = await fetch('/api/dictionary', {
+    const res = await fetch(appPath('/api/dictionary'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(addForm),
@@ -138,7 +139,7 @@
     error = '';
     const body: Record<string, unknown> = { ...editForm };
     if (alsoApprove) body.status = 'approved';
-    const res = await fetch(`/api/dictionary/${editingId}`, {
+    const res = await fetch(appPath(`/api/dictionary/${editingId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -150,12 +151,12 @@
 
   async function deleteWordById(id: string, word: string) {
     if (!confirm(m.dict_delete_confirm({ word }))) return;
-    await fetch(`/api/dictionary/${id}`, { method: 'DELETE' });
+    await fetch(appPath(`/api/dictionary/${id}`), { method: 'DELETE' });
     await reload();
   }
 
   async function approveWord(id: string) {
-    await fetch(`/api/dictionary/${id}`, {
+    await fetch(appPath(`/api/dictionary/${id}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'approved' }),
@@ -164,7 +165,7 @@
   }
 
   async function rejectWord(id: string) {
-    await fetch(`/api/dictionary/${id}`, {
+    await fetch(appPath(`/api/dictionary/${id}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'rejected' }),
@@ -174,7 +175,7 @@
 
   // Cancel own pending suggestion / dismiss rejected
   async function dismissSuggestion(id: string) {
-    await fetch(`/api/dictionary/${id}`, { method: 'DELETE' });
+    await fetch(appPath(`/api/dictionary/${id}`), { method: 'DELETE' });
     await reload();
   }
 
@@ -189,7 +190,7 @@
   }
 
   async function exportWordsJson() {
-    const res = await fetch('/api/dictionary/export');
+    const res = await fetch(appPath('/api/dictionary/export'));
     if (!res.ok) return;
     const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -198,7 +199,7 @@
   }
 
   async function exportWordsXlsx() {
-    const res = await fetch('/api/dictionary/export');
+    const res = await fetch(appPath('/api/dictionary/export'));
     if (!res.ok) return;
     exportDictionaryXlsx(await res.json());
   }
@@ -219,7 +220,7 @@
         data = parseDictionaryXlsx(await file.arrayBuffer());
         if (data.length === 0) { error = 'No valid rows found'; return; }
       }
-      const res = await fetch('/api/dictionary/import', {
+      const res = await fetch(appPath('/api/dictionary/import'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
       });
       if (!res.ok) { error = 'Import failed'; return; }
@@ -235,7 +236,7 @@
     const body: Record<string, unknown> = {};
     if (newSharePassword) body.password = newSharePassword;
     if (newShareExpires) body.expiresInDays = parseInt(newShareExpires, 10);
-    const res = await fetch('/api/admin/dictionary-tokens', {
+    const res = await fetch(appPath('/api/admin/dictionary-tokens'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     if (res.ok) { newSharePassword = ''; newShareExpires = ''; await loadShareTokens(); }
@@ -243,14 +244,14 @@
 
   async function deleteShareToken(tokenId: string) {
     if (!confirm(m.dict_share_delete_confirm())) return;
-    await fetch('/api/admin/dictionary-tokens', {
+    await fetch(appPath('/api/admin/dictionary-tokens'), {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenId }),
     });
     await loadShareTokens();
   }
 
   async function copyShareUrl(token: string) {
-    await navigator.clipboard.writeText(`${window.location.origin}/dictionary/share/${token}`);
+    await navigator.clipboard.writeText(`${window.location.origin}${appPath(`/dictionary/share/${token}`)}`);
     shareCopied = token;
     setTimeout(() => (shareCopied = null), 2000);
   }
@@ -260,7 +261,7 @@
 
 <div class="dict-page">
   <div class="dict-header">
-    <a href="/" class="back-link">&larr; {m.dict_back()}</a>
+    <a href={appPath('/')} class="back-link">&larr; {m.dict_back()}</a>
     <h1>{m.dict_title()}</h1>
   </div>
 

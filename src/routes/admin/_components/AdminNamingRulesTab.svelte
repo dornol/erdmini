@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { NAMING_CONVENTIONS, NAMING_RULE_TYPES, type NamingRuleEntry, type NamingRuleType, type SiteNamingRules } from '$lib/types/naming-rules';
   import * as m from '$lib/paraglide/messages';
+  import { appPath } from '$lib/utils/paths';
 
   let rules = $state<SiteNamingRules>({});
   let saving = $state(false);
@@ -58,7 +59,7 @@
   }
 
   onMount(async () => {
-    const res = await fetch('/api/admin/naming-rules');
+    const res = await fetch(appPath('/api/admin/naming-rules'));
     if (res.ok) rules = await res.json();
   });
 
@@ -66,7 +67,7 @@
     saving = true;
     message = null;
     try {
-      const res = await fetch('/api/admin/naming-rules', {
+      const res = await fetch(appPath('/api/admin/naming-rules'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(rules),

@@ -121,7 +121,7 @@
 
       <!-- SQL Editor -->
       <div class="sql-section">
-        <label class="field-label">{m.db_object_sql()}</label>
+        <div class="field-label">{m.db_object_sql()}</div>
         <SqlEditor
           value={obj.sql}
           onchange={handleSqlChange}
@@ -251,12 +251,6 @@
 
   .ddl-toggle input {
     accent-color: #3b82f6;
-  }
-
-  .field-row {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
   }
 
   .field-label {

@@ -115,6 +115,12 @@
     erdStore.selectedDbObjectId = erdStore.selectedDbObjectId === objectId ? null : objectId;
   }
 
+  function handleObjectKeydown(e: KeyboardEvent, objectId: string) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    selectObject(objectId);
+  }
+
 
 </script>
 
@@ -176,11 +182,15 @@
         {:else}
           {#each objs as obj (obj.id)}
             <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-              class="object-item"
-              class:active={erdStore.selectedDbObjectId === obj.id}
-              onclick={() => selectObject(obj.id)}
-            >
+              <div
+                class="object-item"
+                class:active={erdStore.selectedDbObjectId === obj.id}
+                role="button"
+                aria-pressed={erdStore.selectedDbObjectId === obj.id}
+                tabindex="0"
+                onclick={() => selectObject(obj.id)}
+                onkeydown={(e) => handleObjectKeydown(e, obj.id)}
+              >
               <span class="object-name">{obj.name}</span>
               {#if obj.includeInDdl}
                 <span class="ddl-badge" title={m.db_object_include_ddl()}>DDL</span>

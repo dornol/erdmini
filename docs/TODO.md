@@ -1,5 +1,32 @@
 # erdmini Feature Improvement List
 
+## Current Bugfix Queue
+
+### 1. MCP project permission enforcement
+- [x] Do not treat `project_index` membership as owner access.
+- [x] Use direct/group project permissions as the source of truth for MCP writes.
+- [x] Add regression tests for shared viewer/editor projects.
+
+### 2. API key scope permission validation
+- [x] Require matching project permission for each requested API key scope level.
+- [x] Reject or omit scopes that exceed the user's actual permission.
+- [x] Add regression tests for viewer users requesting editor scopes.
+
+### 3. BASE_PATH deployment support
+- [x] Replace root-relative redirects/navigation with base-aware paths.
+- [x] Replace root-relative client fetch URLs with base-aware API URLs.
+- [x] Add or update tests/build checks for non-root `BASE_PATH`.
+
+### 4. Svelte check warnings
+- [x] Fix `DbObjectEditor` label association warning.
+- [x] Remove unused `.field-row` CSS.
+- [x] Make DB object list items keyboard-accessible or use proper interactive elements.
+
+### 5. Bundle and build warnings
+- [x] Remove duplicate static/dynamic import in `DomainImportExport.svelte`.
+- [ ] Investigate large app chunks and lazy-load heavy import/export/editor modules where practical.
+- [ ] Investigate Rollup pure annotation warning in `use-auto-snapshot.svelte.ts`.
+
 ## Quick Wins (Small Scope, High Impact)
 
 ### ~~1. Keyboard Shortcut Help Panel~~ ✅

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   type AuditLogRow = {
     id: number;
@@ -39,7 +40,7 @@
     if (auditAction) params.set('action', auditAction);
     params.set('limit', '100');
     params.set('offset', reset ? '0' : String(auditLogs.length));
-    const res = await fetch(`/api/admin/audit-logs?${params}`);
+    const res = await fetch(appPath(`/api/admin/audit-logs?${params}`));
     if (res.ok) {
       const data = await res.json();
       if (reset) {
@@ -53,7 +54,7 @@
   }
 
   async function loadAuditStats() {
-    const res = await fetch('/api/admin/audit-logs?stats=1');
+    const res = await fetch(appPath('/api/admin/audit-logs?stats=1'));
     if (res.ok) auditStats = await res.json();
   }
 
@@ -61,7 +62,7 @@
     if (!auditStats) return;
     const days = auditStats.retentionDays;
     const ok = await dialogStore.confirm(m.admin_audit_purge_confirm({ days: String(days) }), { variant: 'danger' }); if (!ok) return;
-    const res = await fetch(`/api/admin/audit-logs?days=${days}`, { method: 'DELETE' });
+    const res = await fetch(appPath(`/api/admin/audit-logs?days=${days}`), { method: 'DELETE' });
     if (res.ok) {
       const data = await res.json();
       auditPurgeMsg = m.admin_audit_purge_result({ count: String(data.deleted) });

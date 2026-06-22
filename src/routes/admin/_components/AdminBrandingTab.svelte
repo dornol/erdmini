@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
+  import { appPath } from '$lib/utils/paths';
 
   interface SiteSettings {
     site_name: string;
@@ -16,7 +17,7 @@
   let message = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 
   onMount(async () => {
-    const res = await fetch('/api/admin/site-settings');
+    const res = await fetch(appPath('/api/admin/site-settings'));
     if (res.ok) settings = await res.json();
   });
 
@@ -24,7 +25,7 @@
     saving = true;
     message = null;
     try {
-      const res = await fetch('/api/admin/site-settings', {
+      const res = await fetch(appPath('/api/admin/site-settings'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),

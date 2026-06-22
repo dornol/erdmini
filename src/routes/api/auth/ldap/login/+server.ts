@@ -6,6 +6,7 @@ import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { syncUserGroups, extractCN } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
 import { RateLimiter } from '$lib/server/auth/rate-limiter';
+import { cookiePath } from '$lib/utils/paths';
 import type { LdapProviderRow } from '$lib/types/auth';
 
 const ldapLoginLimiter = new RateLimiter({ maxAttempts: 10, windowMs: 60_000, maxMapSize: 1000 });
@@ -72,7 +73,7 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
   const session = createSession(db, result.userId);
 
   cookies.set('erdmini_session', session.id, {
-    path: '/',
+    path: cookiePath(),
     httpOnly: true,
     sameSite: 'strict',
     secure: url.protocol === 'https:',

@@ -3,6 +3,7 @@
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { SNIPPET_TABS, getSnippet, getSnippetHint } from '$lib/utils/mcp-snippets';
+  import { appPath } from '$lib/utils/paths';
 
   export type ApiKeyInfo = Omit<ApiKeyRow, 'key_hash'> & { user_display_name: string; username: string | null; scopes: ApiKeyScopeRow[] };
 
@@ -102,7 +103,7 @@
     } else if (editKeyScopeMode === 'all') {
       body.scopes = [];
     }
-    const res = await fetch(`/api/admin/api-keys/${editingKeyId}`, {
+    const res = await fetch(appPath(`/api/admin/api-keys/${editingKeyId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -129,7 +130,7 @@
     if (apiKeyScopeMode === 'scoped' && newApiKeyScopes.length > 0) {
       body.scopes = newApiKeyScopes;
     }
-    const res = await fetch('/api/admin/api-keys', {
+    const res = await fetch(appPath('/api/admin/api-keys'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -153,7 +154,7 @@
   async function deleteApiKey(id: string, name: string) {
     const ok = await dialogStore.confirm(m.admin_api_keys_delete_confirm({ name }), { variant: 'danger' }); if (!ok) return;
     apiKeyError = '';
-    const res = await fetch(`/api/admin/api-keys/${id}`, { method: 'DELETE' });
+    const res = await fetch(appPath(`/api/admin/api-keys/${id}`), { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
       apiKeyError = data.error || 'Failed to delete API key';

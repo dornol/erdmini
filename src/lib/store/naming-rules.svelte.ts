@@ -1,6 +1,7 @@
 import type { SiteNamingRules, EffectiveNamingRules, NamingRuleType } from '$lib/types/naming-rules';
 import { computeEffectiveRules, NAMING_RULE_TYPES } from '$lib/types/naming-rules';
 import { erdStore } from '$lib/store/erd.svelte';
+import { appPath } from '$lib/utils/paths';
 
 class NamingRuleStore {
   /** Admin-configured site-wide rules */
@@ -28,7 +29,7 @@ class NamingRuleStore {
   /** Fetch site naming rules from server */
   async fetchSiteRules() {
     try {
-      const res = await fetch('/api/naming-rules');
+      const res = await fetch(appPath('/api/naming-rules'));
       if (res.ok) {
         this.siteRules = await res.json();
       }
@@ -42,7 +43,7 @@ class NamingRuleStore {
   async fetchDictionaryWords() {
     try {
       // Fetch all approved words (up to 10000) for naming validation
-      const res = await fetch('/api/dictionary?limit=200&status=approved');
+      const res = await fetch(appPath('/api/dictionary?limit=200&status=approved'));
       if (!res.ok) return;
       const data = await res.json();
       const words: Set<string> = new Set();
@@ -55,7 +56,7 @@ class NamingRuleStore {
       const total: number = data.total ?? 0;
       let page = 2;
       while (words.size < total) {
-        const nextRes = await fetch(`/api/dictionary?limit=200&page=${page}&status=approved`);
+        const nextRes = await fetch(appPath(`/api/dictionary?limit=200&page=${page}&status=approved`));
         if (!nextRes.ok) break;
         const nextData = await nextRes.json();
         const nextRows: { word: string }[] = nextData.words ?? [];

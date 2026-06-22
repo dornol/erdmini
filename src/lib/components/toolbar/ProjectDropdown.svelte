@@ -5,6 +5,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import { toastStore } from '$lib/store/toast.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { appPath } from '$lib/utils/paths';
 
   interface Props {
     open: boolean;
@@ -64,7 +65,7 @@
     if (!authStore.isLoggedIn) return;
     sharedLoading = true;
     try {
-      const res = await fetch('/api/storage/shared');
+      const res = await fetch(appPath('/api/storage/shared'));
       if (res.ok) sharedProjects = await res.json();
     } finally {
       sharedLoading = false;
@@ -73,7 +74,7 @@
 
   async function openSharedProject(proj: SharedProject) {
     try {
-      const res = await fetch(`/api/storage/schemas/${proj.projectId}`);
+      const res = await fetch(appPath(`/api/storage/schemas/${proj.projectId}`));
       if (!res.ok) {
         toastStore.error(m.login_network_error());
         return;

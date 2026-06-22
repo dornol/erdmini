@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface EmbedTokenInfo {
     id: string;
@@ -21,7 +22,7 @@
   onMount(loadTokens);
 
   async function loadTokens() {
-    const res = await fetch('/api/admin/embed-tokens');
+    const res = await fetch(appPath('/api/admin/embed-tokens'));
     if (res.ok) tokens = await res.json();
   }
 
@@ -42,7 +43,7 @@
   async function deleteToken(id: string, projectName: string) {
     const ok = await dialogStore.confirm(m.admin_embed_delete_confirm({ name: projectName }), { variant: 'danger' }); if (!ok) return;
     message = null;
-    const res = await fetch('/api/admin/embed-tokens', {
+    const res = await fetch(appPath('/api/admin/embed-tokens'), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tokenId: id }),

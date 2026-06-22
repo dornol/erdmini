@@ -16,6 +16,7 @@
   import AdminNamingRulesTab from './_components/AdminNamingRulesTab.svelte';
   import type { UserInfo } from './_components/AdminUsersTab.svelte';
   import type { ApiKeyInfo } from './_components/AdminApiKeysTab.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   let users = $state<UserInfo[]>([]);
   let providers = $state<OIDCProviderRow[]>([]);
@@ -33,34 +34,34 @@
   });
 
   async function loadUsers() {
-    const res = await fetch('/api/admin/users');
+    const res = await fetch(appPath('/api/admin/users'));
     if (res.ok) users = await res.json();
   }
 
   async function loadProviders() {
-    const res = await fetch('/api/admin/oidc-providers');
+    const res = await fetch(appPath('/api/admin/oidc-providers'));
     if (res.ok) providers = await res.json();
   }
 
   async function loadLdapProviders() {
-    const res = await fetch('/api/admin/ldap-providers');
+    const res = await fetch(appPath('/api/admin/ldap-providers'));
     if (res.ok) ldapProviders = await res.json();
   }
 
   async function loadApiKeys() {
-    const res = await fetch('/api/admin/api-keys');
+    const res = await fetch(appPath('/api/admin/api-keys'));
     if (res.ok) apiKeys = await res.json();
   }
 
   async function loadGroups() {
-    const res = await fetch('/api/admin/groups');
+    const res = await fetch(appPath('/api/admin/groups'));
     if (res.ok) groups = await res.json();
   }
 
   async function loadCounts() {
     const [embedRes, projectRes] = await Promise.all([
-      fetch('/api/admin/embed-tokens'),
-      fetch('/api/admin/projects'),
+      fetch(appPath('/api/admin/embed-tokens')),
+      fetch(appPath('/api/admin/projects')),
     ]);
     if (embedRes.ok) { const data = await embedRes.json(); embedCount = data.length; }
     if (projectRes.ok) { const data = await projectRes.json(); projectCount = data.length; }
@@ -69,7 +70,7 @@
 
 <div class="admin-page">
   <header class="admin-header">
-    <a href="/" class="back-link">← Back</a>
+    <a href={appPath('/')} class="back-link">← Back</a>
     <h1>Admin</h1>
   </header>
 

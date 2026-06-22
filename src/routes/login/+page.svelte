@@ -2,6 +2,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import * as m from '$lib/paraglide/messages';
   import { page } from '$app/state';
+  import { appPath } from '$lib/utils/paths';
 
   let { data } = $props();
 
@@ -31,8 +32,8 @@
 
     try {
       const url = selectedLdap
-        ? '/api/auth/ldap/login'
-        : '/api/auth/login';
+        ? appPath('/api/auth/ldap/login')
+        : appPath('/api/auth/login');
       const body = selectedLdap
         ? { providerId: selectedLdap, username, password }
         : { username, password };
@@ -57,7 +58,7 @@
 
       const { user } = await res.json();
       authStore.set(user);
-      window.location.href = '/';
+      window.location.href = appPath('/');
     } catch {
       error = m.login_network_error();
     } finally {
@@ -146,7 +147,7 @@
 
       <div class="oidc-buttons">
         {#each oidcProviders as provider}
-          <a href="/api/auth/oidc/login/{provider.id}" class="btn-oidc">
+          <a href={appPath(`/api/auth/oidc/login/${provider.id}`)} class="btn-oidc">
             {provider.display_name}
           </a>
         {/each}

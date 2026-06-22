@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface DictShareToken {
     id: string;
@@ -25,12 +26,12 @@
   });
 
   async function loadTokens() {
-    const res = await fetch('/api/admin/dictionary-tokens');
+    const res = await fetch(appPath('/api/admin/dictionary-tokens'));
     if (res.ok) tokens = await res.json();
   }
 
   async function loadWordCount() {
-    const res = await fetch('/api/dictionary?limit=0');
+    const res = await fetch(appPath('/api/dictionary?limit=0'));
     if (res.ok) {
       const data = await res.json();
       wordCount = data.total;
@@ -53,7 +54,7 @@
     if (newPassword) body.password = newPassword;
     if (newExpires) body.expiresInDays = parseInt(newExpires, 10);
 
-    const res = await fetch('/api/admin/dictionary-tokens', {
+    const res = await fetch(appPath('/api/admin/dictionary-tokens'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -71,7 +72,7 @@
   async function deleteToken(id: string) {
     const ok = await dialogStore.confirm(m.dict_share_delete_confirm(), { variant: 'danger' }); if (!ok) return;
     message = null;
-    const res = await fetch('/api/admin/dictionary-tokens', {
+    const res = await fetch(appPath('/api/admin/dictionary-tokens'), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tokenId: id }),
@@ -93,7 +94,7 @@
   <h2>{m.admin_dict_tokens_title()} ({tokens.length})</h2>
   <p class="section-desc">{m.admin_dict_tokens_desc()}</p>
   <p class="section-desc">
-    <a href="/dictionary" style="color:#60a5fa">{m.dict_title()}</a> — {m.dict_total_words({ count: wordCount })}
+    <a href={appPath('/dictionary')} style="color:#60a5fa">{m.dict_title()}</a> — {m.dict_total_words({ count: wordCount })}
   </p>
 
   {#if message}

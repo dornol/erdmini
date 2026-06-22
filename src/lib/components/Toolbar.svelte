@@ -26,6 +26,7 @@
   import CollabIndicator from './CollabIndicator.svelte';
   import { collabStore } from '$lib/store/collab.svelte';
   import { page } from '$app/state';
+  import { appPath } from '$lib/utils/paths';
 
   import ProjectDropdown from './toolbar/ProjectDropdown.svelte';
   import ImportDropdown from './toolbar/ImportDropdown.svelte';
@@ -277,7 +278,7 @@
     {/if}
 
     {#if isServerMode && authStore.isLoggedIn}
-      <a class="btn-secondary btn-dict" href="/dictionary" target="_blank">
+      <a class="btn-secondary btn-dict" href={appPath('/dictionary')} target="_blank">
         {m.dict_title()}
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style="margin-left:3px;opacity:0.6">
           <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>

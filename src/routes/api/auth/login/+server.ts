@@ -5,6 +5,7 @@ import { verifyPassword } from '$lib/server/auth/password';
 import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
 import { RateLimiter } from '$lib/server/auth/rate-limiter';
+import { cookiePath } from '$lib/utils/paths';
 import type { UserRow } from '$lib/types/auth';
 
 // Pre-computed hash for timing attack mitigation: always run argon2 even if user not found
@@ -48,7 +49,7 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
   const session = createSession(db, user.id);
 
   cookies.set('erdmini_session', session.id, {
-    path: '/',
+    path: cookiePath(),
     httpOnly: true,
     sameSite: 'strict',
     secure: url.protocol === 'https:',

@@ -6,6 +6,7 @@ import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { syncUserGroups, syncAdminRole } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
 import { logger } from '$lib/server/logger';
+import { appPath, cookiePath } from '$lib/utils/paths';
 import type { OIDCProviderRow, OIDCStateRow } from '$lib/types/auth';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
@@ -13,11 +14,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const error = url.searchParams.get('error');
 
   if (error) {
-    throw redirect(303, '/login?error=auth_failed');
+    throw redirect(303, appPath('/login?error=auth_failed'));
   }
 
   if (!state) {
-    throw redirect(303, '/login?error=auth_failed');
+    throw redirect(303, appPath('/login?error=auth_failed'));
   }
 
   // Look up state to find provider
@@ -26,7 +27,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   ).get(state) as OIDCStateRow | undefined;
 
   if (!stateRow) {
-    throw redirect(303, '/login?error=auth_failed');
+    throw redirect(303, appPath('/login?error=auth_failed'));
   }
 
   const provider = db.prepare(
@@ -34,7 +35,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   ).get(stateRow.provider_id) as OIDCProviderRow | undefined;
 
   if (!provider) {
-    throw redirect(303, '/login?error=auth_failed');
+    throw redirect(303, appPath('/login?error=auth_failed'));
   }
 
   try {
@@ -51,7 +52,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
     if (!result) {
       logAudit({ action: 'oidc_login_failed', category: 'auth', detail: { provider: provider.display_name, error: 'auto_registration_disabled' } });
-      throw redirect(303, '/login?error=auto_registration_disabled');
+      throw redirect(303, appPath('/login?error=auto_registration_disabled'));
     }
 
     if (result.created) {
@@ -59,7 +60,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     }
 
     if (result.status === 'pending') {
-      throw redirect(303, '/login?error=pending_approval');
+      throw redirect(303, appPath('/login?error=pending_approval'));
     }
 
     // Extract groups from OIDC claims
@@ -81,7 +82,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     const session = createSession(db, result.userId);
 
     cookies.set('erdmini_session', session.id, {
-      path: '/',
+      path: cookiePath(),
       httpOnly: true,
       sameSite: 'lax',
       secure: url.protocol === 'https:',
@@ -93,7 +94,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     // Cleanup expired states occasionally
     cleanupExpiredStates(db);
 
-    throw redirect(302, '/');
+    throw redirect(302, appPath('/'));
   } catch (e) {
     // Re-throw redirects (302, 303, etc.)
     if (e && typeof e === 'object' && 'status' in e) {
@@ -104,6 +105,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
     }
     logger.error('auth', 'OIDC callback error', { error: e instanceof Error ? e.message : String(e) });
     logAudit({ action: 'oidc_login_failed', category: 'auth', detail: { provider: provider.display_name, error: String(e) } });
-    throw redirect(303, '/login?error=auth_failed');
+    throw redirect(303, appPath('/login?error=auth_failed'));
   }
 };

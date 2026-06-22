@@ -1,4 +1,5 @@
 import type { AuthUser, OIDCProviderRow } from '$lib/types/auth';
+import { appPath } from '$lib/utils/paths';
 
 class AuthStore {
   user = $state<AuthUser | null>(null);
@@ -21,9 +22,9 @@ class AuthStore {
   }
 
   async logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await fetch(appPath('/api/auth/logout'), { method: 'POST' });
     this.user = null;
-    window.location.href = '/login';
+    window.location.href = appPath('/login');
   }
 }
 

@@ -7,6 +7,7 @@ import { permissionStore } from '$lib/store/permission.svelte';
 import { getShareDataFromUrl, shareStringToSchema } from '$lib/utils/url-share';
 import { replaceState } from '$app/navigation';
 import { env } from '$env/dynamic/public';
+import { appPath } from '$lib/utils/paths';
 import * as m from '$lib/paraglide/messages';
 
 /**
@@ -54,18 +55,18 @@ export async function loadShareFromHash() {
 
 export async function autoLoadSharedProjects() {
   try {
-    const res = await fetch('/api/storage/shared');
+    const res = await fetch(appPath('/api/storage/shared'));
     if (!res.ok) return;
     const shared = await res.json();
     if (!shared.length) return;
     const first = shared[0];
-    const schemaRes = await fetch(`/api/storage/schemas/${first.projectId}`);
+    const schemaRes = await fetch(appPath(`/api/storage/schemas/${first.projectId}`));
     if (!schemaRes.ok) return;
     const schema = await schemaRes.json();
     await projectStore.loadSharedProject(first.projectId, first.projectName, schema);
     for (let i = 1; i < shared.length; i++) {
       const s = shared[i];
-      const sRes = await fetch(`/api/storage/schemas/${s.projectId}`);
+      const sRes = await fetch(appPath(`/api/storage/schemas/${s.projectId}`));
       if (!sRes.ok) continue;
       const sSchema = await sRes.json();
       await projectStore.loadSharedProject(s.projectId, s.projectName, sSchema);

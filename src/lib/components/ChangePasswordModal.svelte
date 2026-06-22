@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as m from '$lib/paraglide/messages';
   import ModalBackdrop from './ModalBackdrop.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface Props {
     onclose: () => void;
@@ -30,7 +31,7 @@
 
     cpLoading = true;
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await fetch(appPath('/api/auth/change-password'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: cpCurrent, newPassword: cpNew }),

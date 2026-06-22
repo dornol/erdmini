@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
 import { isPublicPath } from '$lib/server/auth/public-paths';
+import { appPath, cookiePath, routePath } from '$lib/utils/paths';
 
 export const handle: Handle = async ({ event, resolve }) => {
   const isServerMode = env.PUBLIC_STORAGE_MODE === 'server';
@@ -32,7 +33,7 @@ export const handle: Handle = async ({ event, resolve }) => {
       event.locals.user = result.user;
       event.locals.session = result.session;
     } else {
-      event.cookies.delete('erdmini_session', { path: '/' });
+      event.cookies.delete('erdmini_session', { path: cookiePath() });
       event.locals.user = null;
       event.locals.session = null;
     }
@@ -42,8 +43,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   // Protect routes — redirect unauthenticated users to login
-  if (!event.locals.user && !isPublicPath(event.url.pathname)) {
-    if (event.url.pathname.startsWith('/api/')) {
+  const pathname = routePath(event.url.pathname);
+
+  if (!event.locals.user && !isPublicPath(pathname)) {
+    if (pathname.startsWith('/api/')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -51,18 +54,18 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
     return new Response(null, {
       status: 302,
-      headers: { Location: '/login' },
+      headers: { Location: appPath('/login') },
     });
   }
 
   const response = await resolve(event);
 
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  if (!event.url.pathname.startsWith('/embed')) {
+  if (!pathname.startsWith('/embed')) {
     response.headers.set('X-Frame-Options', 'DENY');
   }
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  const frameAncestors = event.url.pathname.startsWith('/embed') ? 'frame-ancestors *' : "frame-ancestors 'none'";
+  const frameAncestors = pathname.startsWith('/embed') ? 'frame-ancestors *' : "frame-ancestors 'none'";
   response.headers.set('Content-Security-Policy', `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; worker-src 'self' blob:; ${frameAncestors}`);
 
   return response;

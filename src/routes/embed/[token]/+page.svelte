@@ -15,6 +15,7 @@
   import { onMount, onDestroy } from 'svelte';
   import * as m from '$lib/paraglide/messages';
   import { filterBySchema } from '$lib/utils/canvas-grid';
+  import { appPath } from '$lib/utils/paths';
 
   type ViewState = 'loading' | 'password' | 'ready' | 'error';
 
@@ -36,13 +37,13 @@
     try {
       let res: Response;
       if (password) {
-        res = await fetch(`/api/embed/view/${token}`, {
+        res = await fetch(appPath(`/api/embed/view/${token}`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password }),
         });
       } else {
-        res = await fetch(`/api/embed/view/${token}`);
+        res = await fetch(appPath(`/api/embed/view/${token}`));
       }
       const data = await res.json();
 
@@ -149,7 +150,7 @@
   <div class="embed-app" data-dark={themeStore.darkMode || undefined}>
     <!-- Minimal header -->
     <div class="embed-header">
-      <a class="embed-logo" href="/" target="_blank" rel="noopener">
+      <a class="embed-logo" href={appPath('/')} target="_blank" rel="noopener">
         {#if siteSettings?.logo_url}
           <img class="embed-logo-img" src={siteSettings.logo_url} alt="Logo" />
         {:else}
@@ -170,7 +171,7 @@
       <button class="embed-export-btn" onclick={() => exportCanvasImage(projectName)}>
         {m.toolbar_image_export()}
       </button>
-      <a class="embed-open-link" href="/" target="_blank" rel="noopener">
+      <a class="embed-open-link" href={appPath('/')} target="_blank" rel="noopener">
         {m.embed_open_in_app()} ↗
       </a>
       <a class="embed-github" href="https://github.com/dornol/erdmini" target="_blank" rel="noopener noreferrer" title="GitHub">

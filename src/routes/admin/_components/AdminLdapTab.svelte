@@ -2,6 +2,7 @@
   import type { LdapProviderRow } from '$lib/types/auth';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface Props {
     providers: LdapProviderRow[];
@@ -98,7 +99,7 @@
     if (editForm.bindPassword) {
       body.bindPassword = editForm.bindPassword;
     }
-    const res = await fetch(`/api/admin/ldap-providers/${editingProvider}`, {
+    const res = await fetch(appPath(`/api/admin/ldap-providers/${editingProvider}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -115,14 +116,14 @@
 
   async function deleteProvider(id: string) {
     const ok = await dialogStore.confirm(m.admin_ldap_delete_confirm(), { variant: 'danger' }); if (!ok) return;
-    await fetch(`/api/admin/ldap-providers/${id}`, { method: 'DELETE' });
+    await fetch(appPath(`/api/admin/ldap-providers/${id}`), { method: 'DELETE' });
     await onreload();
   }
 
   async function createProvider() {
     providerError = '';
     providerSuccess = '';
-    const res = await fetch('/api/admin/ldap-providers', {
+    const res = await fetch(appPath('/api/admin/ldap-providers'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProvider),
@@ -158,7 +159,7 @@
     testing = true;
     testResult = null;
     try {
-      const res = await fetch('/api/admin/ldap-providers/test', {
+      const res = await fetch(appPath('/api/admin/ldap-providers/test'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

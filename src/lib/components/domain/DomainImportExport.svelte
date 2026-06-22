@@ -17,19 +17,13 @@
   let fileInput: HTMLInputElement | undefined = $state();
   let uploadMessageTimer: ReturnType<typeof setTimeout> | undefined;
 
-  function handleDictExport(format: 'html' | 'markdown' | 'xlsx') {
+  function handleDictExport(format: 'html' | 'markdown') {
     showDictDropdown = false;
     const ctx = { schema: erdStore.schema, projectName: 'ERD Project' };
     if (format === 'markdown') {
       downloadBlob(exportDictionaryMarkdown(ctx), 'domain-dictionary.md', 'text/markdown');
     } else if (format === 'html') {
       downloadBlob(exportDictionaryHtml(ctx), 'domain-dictionary.html', 'text/html');
-    } else {
-      import('$lib/utils/domain-dictionary').then(mod => {
-        if ('exportDictionaryXlsx' in mod) {
-          (mod as any).exportDictionaryXlsx(ctx);
-        }
-      });
     }
   }
 

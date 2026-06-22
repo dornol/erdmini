@@ -111,42 +111,37 @@ describe('checkAccess', () => {
     expect(checkAccess(mockDb, 'proj1', 'admin1', 'admin', 'owner')).toBe(true);
   });
 
-  it('owner of project has owner access', () => {
-    // project_index lookup returns the project
-    mockGet
-      .mockReturnValueOnce({ data: makeProjectIndex([{ id: 'proj1', name: 'My' }]) });
+  it('project_index membership alone does not grant owner access', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValue([]);
 
-    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'owner')).toBe(true);
+    expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'owner')).toBe(false);
   });
 
   it('permission table grants access', () => {
-    // project_index lookup returns no project
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce({ permission: 'editor' });
+    mockGet.mockReturnValueOnce({ permission: 'editor' });
+    mockAll.mockReturnValue([]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(true);
   });
 
   it('insufficient permission denies access', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce({ permission: 'viewer' });
+    mockGet.mockReturnValueOnce({ permission: 'viewer' });
+    mockAll.mockReturnValue([]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(false);
   });
 
-  it('no permission and no project ownership denies access', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce(undefined);
+  it('no permission denies access', () => {
+    mockGet.mockReturnValueOnce(undefined);
+    mockAll.mockReturnValue([]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'viewer')).toBe(false);
   });
 
   it('scoped API key allows if scope matches', () => {
-    // project_index returns the project (user owns it)
-    mockGet.mockReturnValueOnce({ data: makeProjectIndex([{ id: 'proj1', name: 'A' }]) });
+    mockGet.mockReturnValueOnce({ permission: 'editor' });
+    mockAll.mockReturnValue([]);
 
     const scopes = [{ projectId: 'proj1', permission: 'editor' as const }];
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor', scopes)).toBe(true);
@@ -171,56 +166,42 @@ describe('checkAccess — group permissions', () => {
   });
 
   it('group permission grants access when no direct permission', () => {
-    // project_index: no ownership
-    mockGet
-      .mockReturnValueOnce(undefined)  // project_index
-      .mockReturnValueOnce(undefined); // direct permission
-    // group permission: editor
+    mockGet.mockReturnValueOnce(undefined);
     mockAll.mockReturnValue([{ permission: 'editor' }]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(true);
   });
 
   it('group viewer grants viewer access', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce(undefined);
+    mockGet.mockReturnValueOnce(undefined);
     mockAll.mockReturnValue([{ permission: 'viewer' }]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'viewer')).toBe(true);
   });
 
   it('group viewer denies editor access', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce(undefined);
+    mockGet.mockReturnValueOnce(undefined);
     mockAll.mockReturnValue([{ permission: 'viewer' }]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(false);
   });
 
   it('group editor + direct viewer → editor access granted', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)  // no project ownership
-      .mockReturnValueOnce({ permission: 'viewer' }); // direct: viewer
+    mockGet.mockReturnValueOnce({ permission: 'viewer' });
     mockAll.mockReturnValue([{ permission: 'editor' }]); // group: editor
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'editor')).toBe(true);
   });
 
   it('direct owner + group viewer → owner access granted', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce({ permission: 'owner' }); // direct: owner
+    mockGet.mockReturnValueOnce({ permission: 'owner' });
     mockAll.mockReturnValue([{ permission: 'viewer' }]); // group: viewer
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'owner')).toBe(true);
   });
 
   it('multiple groups — picks highest for access check', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce(undefined);
+    mockGet.mockReturnValueOnce(undefined);
     mockAll.mockReturnValue([
       { permission: 'viewer' },
       { permission: 'editor' },
@@ -232,18 +213,14 @@ describe('checkAccess — group permissions', () => {
   });
 
   it('no direct, no group → denies access', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce(undefined);
+    mockGet.mockReturnValueOnce(undefined);
     mockAll.mockReturnValue([]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'viewer')).toBe(false);
   });
 
   it('group owner permission grants owner access', () => {
-    mockGet
-      .mockReturnValueOnce(undefined)
-      .mockReturnValueOnce(undefined);
+    mockGet.mockReturnValueOnce(undefined);
     mockAll.mockReturnValue([{ permission: 'owner' }]);
 
     expect(checkAccess(mockDb, 'proj1', 'user1', 'user', 'owner')).toBe(true);
