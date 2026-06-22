@@ -4,7 +4,6 @@
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/store/auth.svelte';
   import { onMount } from 'svelte';
-  import { exportDictionaryXlsx, exportDictionaryTemplate, parseDictionaryXlsx } from '$lib/utils/dictionary-xlsx';
   import { appPath } from '$lib/utils/paths';
 
   interface WordRow {
@@ -201,7 +200,13 @@
   async function exportWordsXlsx() {
     const res = await fetch(appPath('/api/dictionary/export'));
     if (!res.ok) return;
+    const { exportDictionaryXlsx } = await import('$lib/utils/dictionary-xlsx');
     exportDictionaryXlsx(await res.json());
+  }
+
+  async function exportWordsTemplate() {
+    const { exportDictionaryTemplate } = await import('$lib/utils/dictionary-xlsx');
+    exportDictionaryTemplate();
   }
 
   async function importWordsFromFile() {
@@ -217,6 +222,7 @@
         try { data = JSON.parse(text); } catch { error = 'Invalid JSON'; return; }
         if (!Array.isArray(data)) { error = 'Expected JSON array'; return; }
       } else {
+        const { parseDictionaryXlsx } = await import('$lib/utils/dictionary-xlsx');
         data = parseDictionaryXlsx(await file.arrayBuffer());
         if (data.length === 0) { error = 'No valid rows found'; return; }
       }
@@ -279,7 +285,7 @@
     </button>
     {#if isAdmin}
       <button class="btn-sm" onclick={importWordsFromFile}>{m.dict_import()}</button>
-      <button class="btn-sm" onclick={() => exportDictionaryTemplate()}>Template</button>
+      <button class="btn-sm" onclick={exportWordsTemplate}>Template</button>
     {/if}
     <button class="btn-sm" onclick={exportWordsXlsx}>Excel</button>
     <button class="btn-sm" onclick={exportWordsJson}>JSON</button>

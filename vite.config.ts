@@ -103,6 +103,21 @@ export default defineConfig({
   optimizeDeps: {
     include: ['sql.js'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('/xlsx/')) return 'vendor-xlsx';
+          if (id.includes('@loancrate/prisma-schema-parser')) return 'vendor-prisma-parser';
+          if (id.includes('/jspdf/') || id.includes('/svg2pdf.js/')) return 'vendor-pdf';
+          if (id.includes('/html-to-image/')) return 'vendor-image-export';
+          if (id.includes('/codemirror/') || id.includes('/@codemirror/')) return 'vendor-codemirror';
+          if (id.includes('/d3-force/') || id.includes('/d3-')) return 'vendor-d3';
+        },
+      },
+    },
+  },
   test: {
     include: ['src/**/*.test.ts'],
   },

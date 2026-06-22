@@ -24,8 +24,8 @@
 
 ### 5. Bundle and build warnings
 - [x] Remove duplicate static/dynamic import in `DomainImportExport.svelte`.
-- [ ] Investigate large app chunks and lazy-load heavy import/export/editor modules where practical.
-- [ ] Investigate Rollup pure annotation warning in `use-auto-snapshot.svelte.ts`.
+- [x] Investigate large app chunks and lazy-load heavy import/export/editor modules where practical.
+- [x] Investigate Rollup pure annotation warning in `use-auto-snapshot.svelte.ts`.
 
 ## Quick Wins (Small Scope, High Impact)
 

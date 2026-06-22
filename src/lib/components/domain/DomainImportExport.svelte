@@ -1,7 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
-  import { exportDomainsToXlsx, exportDomainTemplate, importDomainsFromXlsx } from '$lib/utils/domain-xlsx';
   import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
   import { downloadBlob } from '$lib/utils/blob-download';
   import * as m from '$lib/paraglide/messages';
@@ -27,8 +26,14 @@
     }
   }
 
-  function handleDownload() {
+  async function handleDownload() {
+    const { exportDomainsToXlsx } = await import('$lib/utils/domain-xlsx');
     exportDomainsToXlsx(erdStore.schema.domains);
+  }
+
+  async function handleTemplateDownload() {
+    const { exportDomainTemplate } = await import('$lib/utils/domain-xlsx');
+    exportDomainTemplate();
   }
 
   async function handleUpload(e: Event) {
@@ -37,6 +42,7 @@
     if (!file) return;
 
     try {
+      const { importDomainsFromXlsx } = await import('$lib/utils/domain-xlsx');
       const items = await importDomainsFromXlsx(file);
       const result = erdStore.upsertDomains(items);
       onUploadMessageChange(m.domain_upload_result({
@@ -90,7 +96,7 @@
       </div>
     {/if}
   </div>
-  <button class="template-link" onclick={exportDomainTemplate}>
+  <button class="template-link" onclick={handleTemplateDownload}>
     {m.domain_download_template()}
   </button>
   <input
