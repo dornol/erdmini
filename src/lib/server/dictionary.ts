@@ -120,6 +120,23 @@ export function getDictionaryUsage(db: Database.Database, id: string): { words: 
   return { words, shareTokens };
 }
 
+export function listProjectsUsingDictionary(db: Database.Database, id: string): string[] {
+  const rows = db.prepare('SELECT project_id, data FROM schemas').all() as { project_id: string; data: string }[];
+  const projectIds: string[] = [];
+
+  for (const row of rows) {
+    try {
+      const schema = JSON.parse(row.data) as { dictionaryId?: string };
+      if (schema.dictionaryId === id) projectIds.push(row.project_id);
+    } catch {
+      // Keep malformed schemas from allowing destructive dictionary cleanup.
+      projectIds.push(row.project_id);
+    }
+  }
+
+  return projectIds;
+}
+
 export function deleteDictionary(db: Database.Database, id: string): void {
   const row = db.prepare('SELECT is_default FROM dictionaries WHERE id = ?').get(id) as { is_default: number } | undefined;
   if (!row) throw new Error('Dictionary not found');
@@ -128,6 +145,9 @@ export function deleteDictionary(db: Database.Database, id: string): void {
   const usage = getDictionaryUsage(db, id);
   if (usage.words > 0 || usage.shareTokens > 0) {
     throw new Error('Dictionary is in use');
+  }
+  if (listProjectsUsingDictionary(db, id).length > 0) {
+    throw new Error('Dictionary is used by projects');
   }
 
   db.prepare('DELETE FROM dictionaries WHERE id = ?').run(id);

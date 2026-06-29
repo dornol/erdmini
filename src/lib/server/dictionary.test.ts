@@ -30,6 +30,8 @@ import {
   validateDictShareToken,
   verifyDictSharePassword,
   listDictShareTokens,
+  listProjectsUsingDictionary,
+  deleteDictionary,
   deleteDictShareToken,
 } from './dictionary';
 import type Database from 'better-sqlite3';
@@ -500,6 +502,37 @@ describe('dictionary', () => {
       deleteDictShareToken(db, 't1');
       expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM dictionary_share_tokens'));
       expect(mockRun).toHaveBeenCalledWith('t1');
+    });
+  });
+
+  // ── dictionary project usage ─────────────────────────────────────
+
+  describe('listProjectsUsingDictionary', () => {
+    it('returns projects that reference the dictionary', () => {
+      mockAll.mockReturnValueOnce([
+        { project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) },
+        { project_id: 'p2', data: JSON.stringify({ dictionaryId: 'other' }) },
+        { project_id: 'p3', data: JSON.stringify({}) },
+      ]);
+
+      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual(['p1']);
+    });
+
+    it('treats malformed schema data as using the dictionary', () => {
+      mockAll.mockReturnValueOnce([{ project_id: 'bad', data: '{' }]);
+      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual(['bad']);
+    });
+  });
+
+  describe('deleteDictionary', () => {
+    it('blocks deleting a dictionary used by projects', () => {
+      mockGet
+        .mockReturnValueOnce({ is_default: 0 })
+        .mockReturnValueOnce({ cnt: 0 })
+        .mockReturnValueOnce({ cnt: 0 });
+      mockAll.mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }]);
+
+      expect(() => deleteDictionary(db, 'dict1')).toThrow('Dictionary is used by projects');
     });
   });
 });
