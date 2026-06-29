@@ -18,6 +18,7 @@ vi.mock('./auth/password', () => ({
 }));
 
 import {
+  cloneDictionary,
   listDictionariesWithUsage,
   listWords,
   createWord,
@@ -53,7 +54,8 @@ describe('dictionary', () => {
     it('adds usage counts to dictionaries', () => {
       mockAll
         .mockReturnValueOnce([{ id: 'dict1', name: 'Dictionary 1', description: null, is_default: 0 }])
-        .mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }]);
+        .mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }])
+        .mockReturnValueOnce([{ data: JSON.stringify({ projects: [{ id: 'p1', name: 'Project 1' }] }) }]);
       mockGet
         .mockReturnValueOnce({ cnt: 2 })
         .mockReturnValueOnce({ cnt: 1 });
@@ -64,8 +66,30 @@ describe('dictionary', () => {
           wordCount: 2,
           shareTokenCount: 1,
           projectCount: 1,
+          projects: [{ id: 'p1', name: 'Project 1' }],
         }),
       ]);
+    });
+  });
+
+  describe('cloneDictionary', () => {
+    it('creates a new dictionary and copies source words', () => {
+      const txFn = vi.fn((fn: () => unknown) => () => fn());
+      (db as any).transaction = txFn;
+      mockGet
+        .mockReturnValueOnce({ id: 'source', name: 'Source' })
+        .mockReturnValueOnce({ id: 'copy', name: 'Copy', description: null, is_default: 0 });
+      mockAll.mockReturnValueOnce([
+        { word: 'acct', meaning: 'Account', description: null, category: 'domain', status: 'approved' },
+        { word: 'tmp', meaning: 'Temporary', description: null, category: null, status: 'pending' },
+      ]);
+
+      const result = cloneDictionary(db, 'source', { name: 'Copy' }, 'u1');
+
+      expect(result.id).toBe('copy');
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT word, meaning, description, category, status'));
+      expect(mockRun).toHaveBeenCalledWith(expect.any(String), 'copy', 'acct', 'Account', null, 'domain', 'approved', 'u1');
+      expect(mockRun).toHaveBeenCalledWith(expect.any(String), 'copy', 'tmp', 'Temporary', null, null, 'pending', 'u1');
     });
   });
 
@@ -346,6 +370,21 @@ describe('dictionary', () => {
       expect(result.updated).toBe(1);
     });
 
+    it('imports words with pending status', () => {
+      const txFn = vi.fn((fn: () => void) => {
+        const wrappedFn = () => fn();
+        return wrappedFn;
+      });
+      (db as any).transaction = txFn;
+      mockGet.mockReturnValue(undefined);
+
+      importWords(db, [
+        { word: 'candidate', meaning: '검토 대상' },
+      ], 'u1', 'dict1', 'pending');
+
+      expect(mockRun).toHaveBeenCalledWith(expect.any(String), 'dict1', 'candidate', '검토 대상', null, null, 'pending', 'u1');
+    });
+
     it('skips empty entries and reports errors', () => {
       const txFn = vi.fn((fn: () => void) => {
         const wrappedFn = () => fn();
@@ -532,18 +571,22 @@ describe('dictionary', () => {
 
   describe('listProjectsUsingDictionary', () => {
     it('returns projects that reference the dictionary', () => {
-      mockAll.mockReturnValueOnce([
-        { project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) },
-        { project_id: 'p2', data: JSON.stringify({ dictionaryId: 'other' }) },
-        { project_id: 'p3', data: JSON.stringify({}) },
-      ]);
+      mockAll
+        .mockReturnValueOnce([
+          { project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) },
+          { project_id: 'p2', data: JSON.stringify({ dictionaryId: 'other' }) },
+          { project_id: 'p3', data: JSON.stringify({}) },
+        ])
+        .mockReturnValueOnce([{ data: JSON.stringify({ projects: [{ id: 'p1', name: 'Project 1' }] }) }]);
 
-      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual(['p1']);
+      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual([{ id: 'p1', name: 'Project 1' }]);
     });
 
     it('treats malformed schema data as using the dictionary', () => {
-      mockAll.mockReturnValueOnce([{ project_id: 'bad', data: '{' }]);
-      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual(['bad']);
+      mockAll
+        .mockReturnValueOnce([{ project_id: 'bad', data: '{' }])
+        .mockReturnValueOnce([]);
+      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual([{ id: 'bad', name: 'bad' }]);
     });
   });
 
@@ -553,7 +596,9 @@ describe('dictionary', () => {
         .mockReturnValueOnce({ is_default: 0 })
         .mockReturnValueOnce({ cnt: 0 })
         .mockReturnValueOnce({ cnt: 0 });
-      mockAll.mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }]);
+      mockAll
+        .mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }])
+        .mockReturnValueOnce([]);
 
       expect(() => deleteDictionary(db, 'dict1')).toThrow('Dictionary is used by projects');
     });

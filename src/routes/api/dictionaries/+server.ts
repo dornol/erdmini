@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import db from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth/guards';
-import { createDictionary, listDictionaries, listDictionariesWithUsage } from '$lib/server/dictionary';
+import { cloneDictionary, createDictionary, listDictionaries, listDictionariesWithUsage } from '$lib/server/dictionary';
 import { logAudit } from '$lib/server/audit';
 import { err } from '$lib/server/api-helpers';
 
@@ -17,23 +17,28 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (adminErr) return adminErr;
 
   const body = await request.json();
-  const { name, description } = body;
+  const { name, description, cloneFromDictionaryId } = body;
   if (!name?.trim()) return err('name is required');
 
   try {
-    const row = createDictionary(db, { name, description }, locals.user!.id);
+    const row = cloneFromDictionaryId
+      ? cloneDictionary(db, cloneFromDictionaryId, { name, description }, locals.user!.id)
+      : createDictionary(db, { name, description }, locals.user!.id);
     logAudit({
-      action: 'create_dictionary',
+      action: cloneFromDictionaryId ? 'clone_dictionary' : 'create_dictionary',
       category: 'system',
       userId: locals.user!.id,
       username: locals.user!.username,
-      detail: { dictionaryId: row.id, name: row.name },
+      detail: { dictionaryId: row.id, name: row.name, cloneFromDictionaryId },
       source: 'web',
     });
     return json(row, { status: 201 });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes('UNIQUE constraint')) {
       return err('Dictionary already exists', 409);
+    }
+    if (e instanceof Error && e.message.includes('Source dictionary not found')) {
+      return err(e.message, 404);
     }
     throw e;
   }

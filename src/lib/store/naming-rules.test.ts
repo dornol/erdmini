@@ -25,6 +25,17 @@ function parseDictionaryResponse(data: DictionaryApiResponse): Set<string> {
   return words;
 }
 
+async function loadDictionaryWords(
+  fetcher: typeof fetch,
+  dictionaryId?: string,
+): Promise<Set<string>> {
+  const params = new URLSearchParams({ limit: '200', status: 'approved' });
+  if (dictionaryId) params.set('dictionaryId', dictionaryId);
+  const res = await fetcher(`/api/dictionary?${params}`);
+  if (!res.ok) return new Set();
+  return parseDictionaryResponse(await res.json());
+}
+
 describe('fetchDictionaryWords parsing', () => {
   it('correctly parses paginated API response { words: [...], total }', () => {
     const apiResponse: DictionaryApiResponse = {
@@ -92,6 +103,39 @@ describe('fetchDictionaryWords parsing', () => {
     expect(result.has('username')).toBe(true);
     expect(result.has('email')).toBe(true);
     expect(result.has('UserName')).toBe(false); // must be lowercase
+  });
+
+  it('reloads words for the selected project dictionary', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          words: [{ id: '1', word: 'Customer', meaning: '', category: '', status: 'approved' }],
+          total: 1,
+          pendingCount: 0,
+          mySuggestions: [],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          words: [{ id: '2', word: 'Invoice', meaning: '', category: '', status: 'approved' }],
+          total: 1,
+          pendingCount: 0,
+          mySuggestions: [],
+        }),
+      });
+
+    const dictA = await loadDictionaryWords(mockFetch as unknown as typeof fetch, 'dict-a');
+    const dictB = await loadDictionaryWords(mockFetch as unknown as typeof fetch, 'dict-b');
+
+    expect(mockFetch).toHaveBeenNthCalledWith(1, '/api/dictionary?limit=200&status=approved&dictionaryId=dict-a');
+    expect(mockFetch).toHaveBeenNthCalledWith(2, '/api/dictionary?limit=200&status=approved&dictionaryId=dict-b');
+    expect(dictA.has('customer')).toBe(true);
+    expect(dictA.has('invoice')).toBe(false);
+    expect(dictB.has('invoice')).toBe(true);
+    expect(dictB.has('customer')).toBe(false);
   });
 });
 

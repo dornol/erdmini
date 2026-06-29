@@ -22,6 +22,12 @@ export interface DictionaryWithUsageRow extends DictionaryRow {
   wordCount: number;
   shareTokenCount: number;
   projectCount: number;
+  projects: DictionaryProjectReference[];
+}
+
+export interface DictionaryProjectReference {
+  id: string;
+  name: string;
 }
 
 export interface WordRow {
@@ -59,12 +65,13 @@ export function listDictionaries(db: Database.Database): DictionaryRow[] {
 export function listDictionariesWithUsage(db: Database.Database): DictionaryWithUsageRow[] {
   return listDictionaries(db).map((dictionary) => {
     const usage = getDictionaryUsage(db, dictionary.id);
-    const projectCount = listProjectsUsingDictionary(db, dictionary.id).length;
+    const projects = listProjectsUsingDictionary(db, dictionary.id);
     return {
       ...dictionary,
       wordCount: usage.words,
       shareTokenCount: usage.shareTokens,
-      projectCount,
+      projectCount: projects.length,
+      projects,
     };
   });
 }
@@ -88,6 +95,34 @@ export function createDictionary(
   const row = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow | undefined;
   if (!row) throw new Error('Dictionary not found');
   return row;
+}
+
+export function cloneDictionary(
+  db: Database.Database,
+  sourceId: string,
+  data: { name: string; description?: string },
+  userId: string,
+): DictionaryRow {
+  const source = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(sourceId) as DictionaryRow | undefined;
+  if (!source) throw new Error('Source dictionary not found');
+
+  const tx = db.transaction(() => {
+    const dictionary = createDictionary(db, data, userId);
+    const words = db.prepare(
+      'SELECT word, meaning, description, category, status FROM word_dictionary WHERE dictionary_id = ? ORDER BY word COLLATE NOCASE',
+    ).all(sourceId) as Pick<WordRow, 'word' | 'meaning' | 'description' | 'category' | 'status'>[];
+    const insertWord = db.prepare(
+      'INSERT INTO word_dictionary (id, dictionary_id, word, meaning, description, category, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+
+    for (const word of words) {
+      insertWord.run(generateId(), dictionary.id, word.word, word.meaning, word.description, word.category, word.status, userId);
+    }
+
+    return dictionary;
+  });
+
+  return tx();
 }
 
 export function updateDictionary(
@@ -139,21 +174,44 @@ export function getDictionaryUsage(db: Database.Database, id: string): { words: 
   return { words, shareTokens };
 }
 
-export function listProjectsUsingDictionary(db: Database.Database, id: string): string[] {
+function listProjectNames(db: Database.Database): Map<string, string> {
+  const rows = db.prepare('SELECT data FROM project_index').all() as { data: string }[];
+  const names = new Map<string, string>();
+
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.data) as { projects?: { id: string; name?: string }[] };
+      for (const project of parsed.projects ?? []) {
+        if (project.id && project.name && !names.has(project.id)) names.set(project.id, project.name);
+      }
+    } catch {
+      // Ignore malformed index rows; schema references still fall back to project IDs.
+    }
+  }
+
+  return names;
+}
+
+export function listProjectsUsingDictionary(db: Database.Database, id: string): DictionaryProjectReference[] {
   const rows = db.prepare('SELECT project_id, data FROM schemas').all() as { project_id: string; data: string }[];
-  const projectIds: string[] = [];
+  const projectNames = listProjectNames(db);
+  const projects: DictionaryProjectReference[] = [];
+
+  function addProject(projectId: string) {
+    projects.push({ id: projectId, name: projectNames.get(projectId) ?? projectId });
+  }
 
   for (const row of rows) {
     try {
       const schema = JSON.parse(row.data) as { dictionaryId?: string };
-      if (schema.dictionaryId === id) projectIds.push(row.project_id);
+      if (schema.dictionaryId === id) addProject(row.project_id);
     } catch {
       // Keep malformed schemas from allowing destructive dictionary cleanup.
-      projectIds.push(row.project_id);
+      addProject(row.project_id);
     }
   }
 
-  return projectIds;
+  return projects;
 }
 
 export function deleteDictionary(db: Database.Database, id: string): void {
@@ -290,16 +348,17 @@ export function importWords(
   words: { word: string; meaning: string; description?: string; category?: string }[],
   userId: string,
   dictionaryId = DEFAULT_DICTIONARY_ID,
+  status: WordStatus = 'approved',
 ): { created: number; updated: number; errors: string[] } {
   let created = 0;
   let updated = 0;
   const errors: string[] = [];
 
   const insertStmt = db.prepare(
-    'INSERT INTO word_dictionary (id, dictionary_id, word, meaning, description, category, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO word_dictionary (id, dictionary_id, word, meaning, description, category, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const updateStmt = db.prepare(
-    "UPDATE word_dictionary SET meaning = ?, description = ?, category = ?, updated_at = datetime('now') WHERE dictionary_id = ? AND word = ? COLLATE NOCASE",
+    "UPDATE word_dictionary SET meaning = ?, description = ?, category = ?, status = ?, updated_at = datetime('now') WHERE dictionary_id = ? AND word = ? COLLATE NOCASE",
   );
   const findStmt = db.prepare('SELECT id FROM word_dictionary WHERE dictionary_id = ? AND word = ? COLLATE NOCASE');
 
@@ -311,10 +370,10 @@ export function importWords(
       }
       const existing = findStmt.get(dictionaryId, w.word.trim()) as { id: string } | undefined;
       if (existing) {
-        updateStmt.run(w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, dictionaryId, w.word.trim());
+        updateStmt.run(w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, status, dictionaryId, w.word.trim());
         updated++;
       } else {
-        insertStmt.run(generateId(), dictionaryId, w.word.trim(), w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, userId);
+        insertStmt.run(generateId(), dictionaryId, w.word.trim(), w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, status, userId);
         created++;
       }
     }

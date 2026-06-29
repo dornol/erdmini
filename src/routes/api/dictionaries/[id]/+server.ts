@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import db from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth/guards';
-import { deleteDictionary, setDefaultDictionary, updateDictionary } from '$lib/server/dictionary';
+import { deleteDictionary, getDictionaryUsage, listProjectsUsingDictionary, setDefaultDictionary, updateDictionary } from '$lib/server/dictionary';
 import { logAudit } from '$lib/server/audit';
 import { err } from '$lib/server/api-helpers';
 
@@ -62,7 +62,28 @@ export const DELETE: RequestHandler = ({ locals, params }) => {
       return err(e.message, 404);
     }
     if (e instanceof Error && (e.message.includes('in use') || e.message.includes('Default dictionary'))) {
-      return err(e.message, 409);
+      const usage = getDictionaryUsage(db, params.id);
+      const projects = listProjectsUsingDictionary(db, params.id);
+      return json({
+        error: e.message,
+        code: e.message.includes('Default dictionary') ? 'default_dictionary' : 'dictionary_in_use',
+        wordCount: usage.words,
+        shareTokenCount: usage.shareTokens,
+        projectCount: projects.length,
+        projects,
+      }, { status: 409 });
+    }
+    if (e instanceof Error && e.message.includes('used by projects')) {
+      const usage = getDictionaryUsage(db, params.id);
+      const projects = listProjectsUsingDictionary(db, params.id);
+      return json({
+        error: e.message,
+        code: 'dictionary_used_by_projects',
+        wordCount: usage.words,
+        shareTokenCount: usage.shareTokens,
+        projectCount: projects.length,
+        projects,
+      }, { status: 409 });
     }
     throw e;
   }

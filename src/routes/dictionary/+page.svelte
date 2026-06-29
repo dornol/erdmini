@@ -38,6 +38,7 @@
     wordCount?: number;
     shareTokenCount?: number;
     projectCount?: number;
+    projects?: { id: string; name: string }[];
   }
 
   let dictionaries = $state<DictionaryRow[]>([]);
@@ -45,6 +46,8 @@
   let newDictionaryName = $state('');
   let dictionaryEditName = $state('');
   let dictionaryEditDescription = $state('');
+  let cloneDictionaryName = $state('');
+  let showCloneDictionary = $state(false);
   let words = $state<WordRow[]>([]);
   let total = $state(0);
   let pendingCount = $state(0);
@@ -70,6 +73,7 @@
   let newSharePassword = $state('');
   let newShareExpires = $state('');
   let shareCopied = $state<string | null>(null);
+  let importStatus = $state<'approved' | 'pending'>('approved');
 
   const isAdmin = $derived(authStore.user?.role === 'admin');
   const selectedDictionary = $derived(dictionaries.find(d => d.id === selectedDictionaryId));
@@ -77,6 +81,7 @@
   const selectedDictionaryWordCount = $derived(selectedDictionary?.wordCount ?? total);
   const selectedDictionaryShareTokenCount = $derived(selectedDictionary?.shareTokenCount ?? selectedShareTokens.length);
   const selectedDictionaryProjectCount = $derived(selectedDictionary?.projectCount ?? 0);
+  const selectedDictionaryProjects = $derived(selectedDictionary?.projects ?? []);
   const dictionaryDeleteBlockedReason = $derived.by(() => {
     if (!selectedDictionary) return '';
     if (selectedDictionary.is_default) return m.dict_delete_blocked_default();
@@ -85,11 +90,14 @@
     if (selectedDictionaryProjectCount > 0) return m.dict_delete_blocked_projects({ count: selectedDictionaryProjectCount });
     return '';
   });
+  const dictionaryProjectNames = $derived(selectedDictionaryProjects.map(p => p.name || p.id).join(', '));
 
   function syncDictionaryForm() {
     const dict = dictionaries.find(d => d.id === selectedDictionaryId);
     dictionaryEditName = dict?.name ?? '';
     dictionaryEditDescription = dict?.description ?? '';
+    cloneDictionaryName = dict ? `${dict.name} Copy` : '';
+    showCloneDictionary = false;
   }
 
   let searchTimer: ReturnType<typeof setTimeout>;
@@ -279,7 +287,8 @@
         data = parseDictionaryXlsx(await file.arrayBuffer());
         if (data.length === 0) { error = 'No valid rows found'; return; }
       }
-      const res = await fetch(`/api/dictionary/import?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`, {
+      const params = new URLSearchParams({ dictionaryId: selectedDictionaryId, status: importStatus });
+      const res = await fetch(`/api/dictionary/import?${params}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
       });
       if (!res.ok) { error = 'Import failed'; return; }
@@ -316,6 +325,24 @@
     await selectDictionary(row.id);
   }
 
+  async function cloneDictionaryById() {
+    error = ''; success = '';
+    if (!selectedDictionary || !cloneDictionaryName.trim()) return;
+    const res = await fetch('/api/dictionaries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: cloneDictionaryName,
+        description: dictionaryEditDescription,
+        cloneFromDictionaryId: selectedDictionary.id,
+      }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    const row = await res.json();
+    await loadDictionaries();
+    await selectDictionary(row.id);
+  }
+
   async function saveDictionary() {
     error = ''; success = '';
     if (!selectedDictionaryId || !dictionaryEditName.trim()) return;
@@ -347,7 +374,16 @@
     }
     if (!confirm(m.dict_delete_dictionary_confirm({ name: selectedDictionary.name }))) return;
     const res = await fetch(`/api/dictionaries/${selectedDictionaryId}`, { method: 'DELETE' });
-    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    if (!res.ok) {
+      const data = await res.json();
+      if (data.code === 'default_dictionary') error = m.dict_delete_blocked_default();
+      else if (data.wordCount > 0) error = m.dict_delete_blocked_words({ count: data.wordCount });
+      else if (data.shareTokenCount > 0) error = m.dict_delete_blocked_share_tokens({ count: data.shareTokenCount });
+      else if (data.projectCount > 0) error = m.dict_delete_blocked_projects({ count: data.projectCount });
+      else error = data.error || 'Failed';
+      await loadDictionaries();
+      return;
+    }
     await loadDictionaries();
     await reload();
   }
@@ -409,6 +445,7 @@
       <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
       <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
       <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
+      <button class="btn-sm" onclick={() => { showCloneDictionary = !showCloneDictionary; }}>{m.dict_clone_dictionary()}</button>
       <button
         class="btn-sm btn-danger"
         disabled={!!dictionaryDeleteBlockedReason}
@@ -418,6 +455,15 @@
     </div>
     {#if dictionaryDeleteBlockedReason}
       <p class="dictionary-delete-hint">{dictionaryDeleteBlockedReason}</p>
+      {#if selectedDictionaryProjectCount > 0 && dictionaryProjectNames}
+        <p class="dictionary-project-list">{dictionaryProjectNames}</p>
+      {/if}
+    {/if}
+    {#if showCloneDictionary}
+      <div class="dictionary-clone-row">
+        <input class="dictionary-input" bind:value={cloneDictionaryName} placeholder={m.dict_clone_dictionary_name()} />
+        <button class="btn-sm" onclick={cloneDictionaryById}>{m.dict_clone_dictionary_create()}</button>
+      </div>
     {/if}
   {/if}
 
@@ -427,6 +473,10 @@
       {isAdmin ? m.dict_add() : m.dict_suggest()}
     </button>
     {#if isAdmin}
+      <select class="import-status-select" bind:value={importStatus} title={m.dict_import_status()}>
+        <option value="approved">{m.dict_approved()}</option>
+        <option value="pending">{m.dict_pending()}</option>
+      </select>
       <button class="btn-sm" onclick={importWordsFromFile}>{m.dict_import()}</button>
       <button class="btn-sm" onclick={() => exportDictionaryTemplate()}>Template</button>
     {/if}
@@ -666,8 +716,11 @@
   .dictionary-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
   .dictionary-manage-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; }
   .dictionary-delete-hint { margin: -8px 0 12px; font-size: 12px; color: #f59e0b; }
+  .dictionary-project-list { margin: -8px 0 12px; font-size: 12px; color: var(--app-text-muted); }
+  .dictionary-clone-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; }
   .dictionary-select,
-  .dictionary-input {
+  .dictionary-input,
+  .import-status-select {
     padding: 7px 10px;
     background: var(--app-input-bg);
     border: 1px solid var(--app-input-border);
