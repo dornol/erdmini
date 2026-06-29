@@ -66,7 +66,71 @@ export function createDictionary(
   db.prepare(
     'INSERT INTO dictionaries (id, name, description, created_by) VALUES (?, ?, ?, ?)',
   ).run(id, name, description, userId);
+  const row = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow | undefined;
+  if (!row) throw new Error('Dictionary not found');
+  return row;
+}
+
+export function updateDictionary(
+  db: Database.Database,
+  id: string,
+  patch: { name?: string; description?: string | null },
+): DictionaryRow {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+
+  if (patch.name !== undefined) {
+    const name = patch.name.trim();
+    if (!name) throw new Error('name is required');
+    sets.push('name = ?');
+    params.push(name);
+  }
+  if (patch.description !== undefined) {
+    sets.push('description = ?');
+    params.push(patch.description?.trim() || null);
+  }
+
+  if (sets.length > 0) {
+    sets.push("updated_at = datetime('now')");
+    params.push(id);
+    db.prepare(`UPDATE dictionaries SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  const row = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow | undefined;
+  if (!row) throw new Error('Dictionary not found');
+  return row;
+}
+
+export function setDefaultDictionary(db: Database.Database, id: string): DictionaryRow {
+  const row = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow | undefined;
+  if (!row) throw new Error('Dictionary not found');
+
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE dictionaries SET is_default = 0').run();
+    db.prepare("UPDATE dictionaries SET is_default = 1, updated_at = datetime('now') WHERE id = ?").run(id);
+  });
+  tx();
+
   return db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow;
+}
+
+export function getDictionaryUsage(db: Database.Database, id: string): { words: number; shareTokens: number } {
+  const words = (db.prepare('SELECT COUNT(*) as cnt FROM word_dictionary WHERE dictionary_id = ?').get(id) as { cnt: number }).cnt;
+  const shareTokens = (db.prepare('SELECT COUNT(*) as cnt FROM dictionary_share_tokens WHERE dictionary_id = ?').get(id) as { cnt: number }).cnt;
+  return { words, shareTokens };
+}
+
+export function deleteDictionary(db: Database.Database, id: string): void {
+  const row = db.prepare('SELECT is_default FROM dictionaries WHERE id = ?').get(id) as { is_default: number } | undefined;
+  if (!row) throw new Error('Dictionary not found');
+  if (row.is_default) throw new Error('Default dictionary cannot be deleted');
+
+  const usage = getDictionaryUsage(db, id);
+  if (usage.words > 0 || usage.shareTokens > 0) {
+    throw new Error('Dictionary is in use');
+  }
+
+  db.prepare('DELETE FROM dictionaries WHERE id = ?').run(id);
 }
 
 // ─── Word CRUD ───────────────────────────────────────────────────────

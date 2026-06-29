@@ -40,6 +40,8 @@
   let dictionaries = $state<DictionaryRow[]>([]);
   let selectedDictionaryId = $state('default');
   let newDictionaryName = $state('');
+  let dictionaryEditName = $state('');
+  let dictionaryEditDescription = $state('');
   let words = $state<WordRow[]>([]);
   let total = $state(0);
   let pendingCount = $state(0);
@@ -67,7 +69,14 @@
   let shareCopied = $state<string | null>(null);
 
   const isAdmin = $derived(authStore.user?.role === 'admin');
+  const selectedDictionary = $derived(dictionaries.find(d => d.id === selectedDictionaryId));
   const selectedShareTokens = $derived(shareTokens.filter(t => t.dictionaryId === selectedDictionaryId));
+
+  function syncDictionaryForm() {
+    const dict = dictionaries.find(d => d.id === selectedDictionaryId);
+    dictionaryEditName = dict?.name ?? '';
+    dictionaryEditDescription = dict?.description ?? '';
+  }
 
   let searchTimer: ReturnType<typeof setTimeout>;
   function onSearchInput() {
@@ -113,6 +122,7 @@
     if (!dictionaries.some(d => d.id === selectedDictionaryId)) {
       selectedDictionaryId = dictionaries[0]?.id ?? 'default';
     }
+    syncDictionaryForm();
   }
 
   async function loadShareTokens() {
@@ -139,6 +149,7 @@
     selectedDictionaryId = id;
     selectedCategory = undefined;
     page = 1;
+    syncDictionaryForm();
     await reload();
   }
   function prevPage() { if (page > 1) { page--; loadWords(); } }
@@ -290,6 +301,39 @@
     await selectDictionary(row.id);
   }
 
+  async function saveDictionary() {
+    error = ''; success = '';
+    if (!selectedDictionaryId || !dictionaryEditName.trim()) return;
+    const res = await fetch(`/api/dictionaries/${selectedDictionaryId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: dictionaryEditName, description: dictionaryEditDescription }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    await loadDictionaries();
+  }
+
+  async function makeDefaultDictionary() {
+    error = ''; success = '';
+    const res = await fetch(`/api/dictionaries/${selectedDictionaryId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isDefault: true }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    await loadDictionaries();
+  }
+
+  async function deleteDictionaryById() {
+    error = ''; success = '';
+    if (!selectedDictionary || selectedDictionary.is_default) return;
+    if (!confirm(m.dict_delete_dictionary_confirm({ name: selectedDictionary.name }))) return;
+    const res = await fetch(`/api/dictionaries/${selectedDictionaryId}`, { method: 'DELETE' });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    await loadDictionaries();
+    await reload();
+  }
+
   async function deleteShareToken(tokenId: string) {
     if (!confirm(m.dict_share_delete_confirm())) return;
     await fetch('/api/admin/dictionary-tokens', {
@@ -327,19 +371,29 @@
       onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}
     >
       {#each dictionaries as dict}
-        <option value={dict.id}>{dict.name}{dict.is_default ? ' (Default)' : ''}</option>
+        <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
       {/each}
     </select>
     {#if isAdmin}
       <input
         class="dictionary-input"
-        placeholder="New dictionary"
+        placeholder={m.dict_new_dictionary()}
         bind:value={newDictionaryName}
         onkeydown={(e) => { if (e.key === 'Enter') createDictionary(); }}
       />
-      <button class="btn-sm" onclick={createDictionary}>Create</button>
+      <button class="btn-sm" onclick={createDictionary}>{m.dict_create_dictionary()}</button>
     {/if}
   </div>
+
+  {#if isAdmin && selectedDictionary}
+    <div class="dictionary-manage-row">
+      <input class="dictionary-input" bind:value={dictionaryEditName} placeholder={m.dict_dictionary_name()} />
+      <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
+      <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
+      <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
+      <button class="btn-sm btn-danger" disabled={!!selectedDictionary.is_default || total > 0 || selectedShareTokens.length > 0} onclick={deleteDictionaryById}>{m.dict_delete_dictionary()}</button>
+    </div>
+  {/if}
 
   <!-- Toolbar -->
   <div class="toolbar-row">
@@ -584,6 +638,7 @@
   .toolbar-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 
   .dictionary-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .dictionary-manage-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; }
   .dictionary-select,
   .dictionary-input {
     padding: 7px 10px;
@@ -595,6 +650,7 @@
   }
   .dictionary-select { min-width: 220px; }
   .dictionary-input { width: 180px; }
+  .dictionary-description-input { width: 260px; }
 
   /* ── Filters ────────────────────────────────────── */
   .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
