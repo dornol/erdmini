@@ -35,6 +35,9 @@
     name: string;
     description: string | null;
     is_default: number;
+    wordCount?: number;
+    shareTokenCount?: number;
+    projectCount?: number;
   }
 
   let dictionaries = $state<DictionaryRow[]>([]);
@@ -71,6 +74,17 @@
   const isAdmin = $derived(authStore.user?.role === 'admin');
   const selectedDictionary = $derived(dictionaries.find(d => d.id === selectedDictionaryId));
   const selectedShareTokens = $derived(shareTokens.filter(t => t.dictionaryId === selectedDictionaryId));
+  const selectedDictionaryWordCount = $derived(selectedDictionary?.wordCount ?? total);
+  const selectedDictionaryShareTokenCount = $derived(selectedDictionary?.shareTokenCount ?? selectedShareTokens.length);
+  const selectedDictionaryProjectCount = $derived(selectedDictionary?.projectCount ?? 0);
+  const dictionaryDeleteBlockedReason = $derived.by(() => {
+    if (!selectedDictionary) return '';
+    if (selectedDictionary.is_default) return m.dict_delete_blocked_default();
+    if (selectedDictionaryWordCount > 0) return m.dict_delete_blocked_words({ count: selectedDictionaryWordCount });
+    if (selectedDictionaryShareTokenCount > 0) return m.dict_delete_blocked_share_tokens({ count: selectedDictionaryShareTokenCount });
+    if (selectedDictionaryProjectCount > 0) return m.dict_delete_blocked_projects({ count: selectedDictionaryProjectCount });
+    return '';
+  });
 
   function syncDictionaryForm() {
     const dict = dictionaries.find(d => d.id === selectedDictionaryId);
@@ -132,6 +146,7 @@
 
   async function reload() {
     await Promise.all([loadWords(), loadCategories()]);
+    if (isAdmin) await loadDictionaries();
     if (isAdmin) await loadPendingWords();
   }
 
@@ -326,7 +341,10 @@
 
   async function deleteDictionaryById() {
     error = ''; success = '';
-    if (!selectedDictionary || selectedDictionary.is_default) return;
+    if (!selectedDictionary || dictionaryDeleteBlockedReason) {
+      if (dictionaryDeleteBlockedReason) error = dictionaryDeleteBlockedReason;
+      return;
+    }
     if (!confirm(m.dict_delete_dictionary_confirm({ name: selectedDictionary.name }))) return;
     const res = await fetch(`/api/dictionaries/${selectedDictionaryId}`, { method: 'DELETE' });
     if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
@@ -391,8 +409,16 @@
       <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
       <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
       <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
-      <button class="btn-sm btn-danger" disabled={!!selectedDictionary.is_default || total > 0 || selectedShareTokens.length > 0} onclick={deleteDictionaryById}>{m.dict_delete_dictionary()}</button>
+      <button
+        class="btn-sm btn-danger"
+        disabled={!!dictionaryDeleteBlockedReason}
+        title={dictionaryDeleteBlockedReason}
+        onclick={deleteDictionaryById}
+      >{m.dict_delete_dictionary()}</button>
     </div>
+    {#if dictionaryDeleteBlockedReason}
+      <p class="dictionary-delete-hint">{dictionaryDeleteBlockedReason}</p>
+    {/if}
   {/if}
 
   <!-- Toolbar -->
@@ -639,6 +665,7 @@
 
   .dictionary-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
   .dictionary-manage-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; }
+  .dictionary-delete-hint { margin: -8px 0 12px; font-size: 12px; color: #f59e0b; }
   .dictionary-select,
   .dictionary-input {
     padding: 7px 10px;

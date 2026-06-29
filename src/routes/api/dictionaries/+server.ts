@@ -2,12 +2,13 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import db from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth/guards';
-import { createDictionary, listDictionaries } from '$lib/server/dictionary';
+import { createDictionary, listDictionaries, listDictionariesWithUsage } from '$lib/server/dictionary';
 import { logAudit } from '$lib/server/audit';
 import { err } from '$lib/server/api-helpers';
 
 export const GET: RequestHandler = ({ locals }) => {
   if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
+  if (locals.user.role === 'admin') return json(listDictionariesWithUsage(db));
   return json(listDictionaries(db));
 };
 

@@ -18,6 +18,7 @@ vi.mock('./auth/password', () => ({
 }));
 
 import {
+  listDictionariesWithUsage,
   listWords,
   createWord,
   updateWord,
@@ -44,6 +45,28 @@ describe('dictionary', () => {
     mockPrepare.mockClear();
     mockGet.mockClear();
     mockAll.mockClear();
+  });
+
+  // ── dictionaries ─────────────────────────────────────────────────
+
+  describe('listDictionariesWithUsage', () => {
+    it('adds usage counts to dictionaries', () => {
+      mockAll
+        .mockReturnValueOnce([{ id: 'dict1', name: 'Dictionary 1', description: null, is_default: 0 }])
+        .mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }]);
+      mockGet
+        .mockReturnValueOnce({ cnt: 2 })
+        .mockReturnValueOnce({ cnt: 1 });
+
+      expect(listDictionariesWithUsage(db)).toEqual([
+        expect.objectContaining({
+          id: 'dict1',
+          wordCount: 2,
+          shareTokenCount: 1,
+          projectCount: 1,
+        }),
+      ]);
+    });
   });
 
   // ── listWords ────────────────────────────────────────────────────

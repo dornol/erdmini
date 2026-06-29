@@ -18,6 +18,12 @@ export interface DictionaryRow {
   updated_at: string;
 }
 
+export interface DictionaryWithUsageRow extends DictionaryRow {
+  wordCount: number;
+  shareTokenCount: number;
+  projectCount: number;
+}
+
 export interface WordRow {
   id: string;
   dictionary_id: string;
@@ -48,6 +54,19 @@ export function listDictionaries(db: Database.Database): DictionaryRow[] {
   return db
     .prepare('SELECT * FROM dictionaries ORDER BY is_default DESC, name COLLATE NOCASE ASC')
     .all() as DictionaryRow[];
+}
+
+export function listDictionariesWithUsage(db: Database.Database): DictionaryWithUsageRow[] {
+  return listDictionaries(db).map((dictionary) => {
+    const usage = getDictionaryUsage(db, dictionary.id);
+    const projectCount = listProjectsUsingDictionary(db, dictionary.id).length;
+    return {
+      ...dictionary,
+      wordCount: usage.words,
+      shareTokenCount: usage.shareTokens,
+      projectCount,
+    };
+  });
 }
 
 export function getDefaultDictionaryId(db: Database.Database): string {
