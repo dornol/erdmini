@@ -138,6 +138,7 @@ export interface ERDSchema {
   groupColors?: Record<string, string>;
   schemas?: string[];
   namingRules?: import('./naming-rules').ProjectNamingOverrides;
+  dictionaryId?: string;
   createdAt: string;
   updatedAt: string;
 }

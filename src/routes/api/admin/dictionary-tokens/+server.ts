@@ -19,19 +19,19 @@ export const POST: RequestHandler = async ({ locals, request }) => {
   if (adminErr) return adminErr;
 
   const body = await request.json();
-  const { password, expiresInDays } = body;
+  const { dictionaryId, password, expiresInDays } = body;
 
   if (expiresInDays !== undefined && (typeof expiresInDays !== 'number' || expiresInDays < 0)) {
     return err('Invalid expiresInDays');
   }
 
-  const result = await createDictShareToken(db, locals.user!.id, { password, expiresInDays });
+  const result = await createDictShareToken(db, locals.user!.id, { dictionaryId, password, expiresInDays });
   logAudit({
     action: 'create_dictionary_share_token',
     category: 'system',
     userId: locals.user!.id,
     username: locals.user!.username,
-    detail: { tokenId: result.id, hasPassword: !!password, expiresInDays },
+    detail: { dictionaryId, tokenId: result.id, hasPassword: !!password, expiresInDays },
     source: 'web',
   });
   return json(result, { status: 201 });

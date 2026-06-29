@@ -8,6 +8,7 @@
 
   interface WordRow {
     id: string;
+    dictionary_id: string;
     word: string;
     meaning: string;
     description: string | null;
@@ -21,6 +22,7 @@
 
   interface ShareToken {
     id: string;
+    dictionaryId: string;
     token: string;
     hasPassword: boolean;
     createdBy: string;
@@ -28,6 +30,16 @@
     expiresAt: string | null;
   }
 
+  interface DictionaryRow {
+    id: string;
+    name: string;
+    description: string | null;
+    is_default: number;
+  }
+
+  let dictionaries = $state<DictionaryRow[]>([]);
+  let selectedDictionaryId = $state('default');
+  let newDictionaryName = $state('');
   let words = $state<WordRow[]>([]);
   let total = $state(0);
   let pendingCount = $state(0);
@@ -55,6 +67,7 @@
   let shareCopied = $state<string | null>(null);
 
   const isAdmin = $derived(authStore.user?.role === 'admin');
+  const selectedShareTokens = $derived(shareTokens.filter(t => t.dictionaryId === selectedDictionaryId));
 
   let searchTimer: ReturnType<typeof setTimeout>;
   function onSearchInput() {
@@ -65,6 +78,7 @@
   async function loadWords() {
     error = '';
     const params = new URLSearchParams();
+    if (selectedDictionaryId) params.set('dictionaryId', selectedDictionaryId);
     if (search) params.set('search', search);
     if (selectedCategory !== undefined) params.set('category', selectedCategory);
     params.set('page', String(page));
@@ -79,13 +93,26 @@
   }
 
   async function loadPendingWords() {
-    const res = await fetch('/api/dictionary?status=pending&limit=200');
+    const params = new URLSearchParams({ status: 'pending', limit: '200' });
+    if (selectedDictionaryId) params.set('dictionaryId', selectedDictionaryId);
+    const res = await fetch(`/api/dictionary?${params}`);
     if (res.ok) { pendingWords = (await res.json()).words; }
   }
 
   async function loadCategories() {
-    const res = await fetch('/api/dictionary/categories');
+    const params = new URLSearchParams();
+    if (selectedDictionaryId) params.set('dictionaryId', selectedDictionaryId);
+    const res = await fetch(`/api/dictionary/categories?${params}`);
     if (res.ok) categories = await res.json();
+  }
+
+  async function loadDictionaries() {
+    const res = await fetch('/api/dictionaries');
+    if (!res.ok) return;
+    dictionaries = await res.json();
+    if (!dictionaries.some(d => d.id === selectedDictionaryId)) {
+      selectedDictionaryId = dictionaries[0]?.id ?? 'default';
+    }
   }
 
   async function loadShareTokens() {
@@ -101,12 +128,19 @@
   onMount(async () => {
     const layoutData = $pageStore.data as { isServerMode?: boolean };
     if (!layoutData.isServerMode) { goto('/'); return; }
+    await loadDictionaries();
     await Promise.all([loadWords(), loadCategories()]);
     if (isAdmin) await Promise.all([loadShareTokens(), loadPendingWords()]);
     loading = false;
   });
 
   function selectCategory(cat: string | undefined) { selectedCategory = cat; page = 1; loadWords(); }
+  async function selectDictionary(id: string) {
+    selectedDictionaryId = id;
+    selectedCategory = undefined;
+    page = 1;
+    await reload();
+  }
   function prevPage() { if (page > 1) { page--; loadWords(); } }
   function nextPage() { if (page * limit < total) { page++; loadWords(); } }
 
@@ -116,7 +150,7 @@
     const res = await fetch('/api/dictionary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(addForm),
+      body: JSON.stringify({ ...addForm, dictionaryId: selectedDictionaryId }),
     });
     if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
     addForm = { word: '', meaning: '', description: '', category: '' };
@@ -189,7 +223,7 @@
   }
 
   async function exportWordsJson() {
-    const res = await fetch('/api/dictionary/export');
+    const res = await fetch(`/api/dictionary/export?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`);
     if (!res.ok) return;
     const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -198,7 +232,7 @@
   }
 
   async function exportWordsXlsx() {
-    const res = await fetch('/api/dictionary/export');
+    const res = await fetch(`/api/dictionary/export?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`);
     if (!res.ok) return;
     exportDictionaryXlsx(await res.json());
   }
@@ -219,7 +253,7 @@
         data = parseDictionaryXlsx(await file.arrayBuffer());
         if (data.length === 0) { error = 'No valid rows found'; return; }
       }
-      const res = await fetch('/api/dictionary/import', {
+      const res = await fetch(`/api/dictionary/import?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
       });
       if (!res.ok) { error = 'Import failed'; return; }
@@ -232,13 +266,28 @@
   }
 
   async function createShareToken() {
-    const body: Record<string, unknown> = {};
+    const body: Record<string, unknown> = { dictionaryId: selectedDictionaryId };
     if (newSharePassword) body.password = newSharePassword;
     if (newShareExpires) body.expiresInDays = parseInt(newShareExpires, 10);
     const res = await fetch('/api/admin/dictionary-tokens', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     if (res.ok) { newSharePassword = ''; newShareExpires = ''; await loadShareTokens(); }
+  }
+
+  async function createDictionary() {
+    error = ''; success = '';
+    if (!newDictionaryName.trim()) return;
+    const res = await fetch('/api/dictionaries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newDictionaryName }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    const row = await res.json();
+    newDictionaryName = '';
+    await loadDictionaries();
+    await selectDictionary(row.id);
   }
 
   async function deleteShareToken(tokenId: string) {
@@ -271,6 +320,27 @@
     {/if}
   </p>
 
+  <div class="dictionary-row">
+    <select
+      class="dictionary-select"
+      value={selectedDictionaryId}
+      onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}
+    >
+      {#each dictionaries as dict}
+        <option value={dict.id}>{dict.name}{dict.is_default ? ' (Default)' : ''}</option>
+      {/each}
+    </select>
+    {#if isAdmin}
+      <input
+        class="dictionary-input"
+        placeholder="New dictionary"
+        bind:value={newDictionaryName}
+        onkeydown={(e) => { if (e.key === 'Enter') createDictionary(); }}
+      />
+      <button class="btn-sm" onclick={createDictionary}>Create</button>
+    {/if}
+  </div>
+
   <!-- Toolbar -->
   <div class="toolbar-row">
     <button class="btn-primary" onclick={() => { showAddRow = true; }}>
@@ -302,11 +372,11 @@
         </select>
         <button class="btn-primary" onclick={createShareToken}>{m.dict_share_create()}</button>
       </div>
-      {#if shareTokens.length > 0}
+      {#if selectedShareTokens.length > 0}
         <table class="data-table" style="margin-top:12px">
           <thead><tr><th>Token</th><th>{m.dict_share_password()}</th><th>{m.dict_share_expires()}</th><th></th></tr></thead>
           <tbody>
-            {#each shareTokens as t}
+            {#each selectedShareTokens as t}
               <tr>
                 <td><code style="color:var(--app-success);font-size:11px">{t.token.slice(0,20)}...</code></td>
                 <td>{t.hasPassword ? '🔒' : '—'}</td>
@@ -512,6 +582,19 @@
   .section-desc { color: var(--app-text-muted); font-size: 13px; margin: 0 0 16px; }
 
   .toolbar-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+
+  .dictionary-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .dictionary-select,
+  .dictionary-input {
+    padding: 7px 10px;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
+    border-radius: 6px;
+    color: var(--app-text);
+    font-size: 13px;
+  }
+  .dictionary-select { min-width: 220px; }
+  .dictionary-input { width: 180px; }
 
   /* ── Filters ────────────────────────────────────── */
   .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
