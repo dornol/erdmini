@@ -175,21 +175,22 @@
           <div class="empty-hint">{m.db_object_no_items()}</div>
         {:else}
           {#each objs as obj (obj.id)}
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-              class="object-item"
-              class:active={erdStore.selectedDbObjectId === obj.id}
-              onclick={() => selectObject(obj.id)}
-            >
-              <span class="object-name">{obj.name}</span>
-              {#if obj.includeInDdl}
-                <span class="ddl-badge" title={m.db_object_include_ddl()}>DDL</span>
-              {/if}
+            <div class="object-row" class:active={erdStore.selectedDbObjectId === obj.id}>
+              <button
+                type="button"
+                class="object-item"
+                onclick={() => selectObject(obj.id)}
+              >
+                <span class="object-name">{obj.name}</span>
+                {#if obj.includeInDdl}
+                  <span class="ddl-badge" title={m.db_object_include_ddl()}>DDL</span>
+                {/if}
+              </button>
               {#if !permissionStore.isReadOnly}
                 <button
                   class="object-delete-btn"
                   title={m.db_object_delete()}
-                  onclick={(e) => { e.stopPropagation(); handleDeleteObject(obj.id, obj.name); }}
+                  onclick={() => handleDeleteObject(obj.id, obj.name)}
                 >✕</button>
               {/if}
             </div>
@@ -371,28 +372,41 @@
     outline: none;
   }
 
+  .object-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0 8px 0 28px;
+    background: none;
+    transition: background 0.1s;
+  }
+
+  .object-row:hover {
+    background: var(--app-hover-bg, #f1f5f9);
+  }
+
+  .object-row.active {
+    background: var(--app-active-bg, #eff6ff);
+  }
+
+  .object-row.active .object-item {
+    color: #60a5fa;
+  }
+
   .object-item {
     display: flex;
     align-items: center;
     gap: 4px;
-    width: 100%;
-    padding: 4px 10px 4px 28px;
+    flex: 1;
+    min-width: 0;
+    padding: 4px 2px 4px 0;
     background: none;
-    border: none;
+    border: 0;
     color: var(--app-text, #334155);
     font-size: 12px;
     cursor: pointer;
     text-align: left;
-    transition: background 0.1s;
-  }
-
-  .object-item:hover {
-    background: var(--app-hover-bg, #f1f5f9);
-  }
-
-  .object-item.active {
-    background: var(--app-active-bg, #eff6ff);
-    color: #60a5fa;
+    font-family: inherit;
   }
 
   .object-name {
@@ -423,7 +437,7 @@
     flex-shrink: 0;
   }
 
-  .object-item:hover .object-delete-btn {
+  .object-row:hover .object-delete-btn {
     display: block;
   }
 
