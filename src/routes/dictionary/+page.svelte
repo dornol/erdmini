@@ -407,83 +407,94 @@
 
 <div class="dict-page">
   <div class="dict-header">
-    <a href="/" class="back-link">&larr; {m.dict_back()}</a>
-    <h1>{m.dict_title()}</h1>
-  </div>
-
-  <p class="section-desc">
-    {m.dict_total_words({ count: total })}
-    {#if isAdmin && pendingCount > 0}
-      &middot; <span class="badge badge-pending">{m.dict_pending_count({ count: pendingCount })}</span>
-    {/if}
-  </p>
-
-  <div class="dictionary-row">
-    <select
-      class="dictionary-select"
-      value={selectedDictionaryId}
-      onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}
-    >
-      {#each dictionaries as dict}
-        <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
-      {/each}
-    </select>
-    {#if isAdmin}
-      <input
-        class="dictionary-input"
-        placeholder={m.dict_new_dictionary()}
-        bind:value={newDictionaryName}
-        onkeydown={(e) => { if (e.key === 'Enter') createDictionary(); }}
-      />
-      <button class="btn-sm" onclick={createDictionary}>{m.dict_create_dictionary()}</button>
-    {/if}
-  </div>
-
-  {#if isAdmin && selectedDictionary}
-    <div class="dictionary-manage-row">
-      <input class="dictionary-input" bind:value={dictionaryEditName} placeholder={m.dict_dictionary_name()} />
-      <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
-      <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
-      <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
-      <button class="btn-sm" onclick={() => { showCloneDictionary = !showCloneDictionary; }}>{m.dict_clone_dictionary()}</button>
-      <button
-        class="btn-sm btn-danger"
-        disabled={!!dictionaryDeleteBlockedReason}
-        title={dictionaryDeleteBlockedReason}
-        onclick={deleteDictionaryById}
-      >{m.dict_delete_dictionary()}</button>
+    <div class="dict-heading">
+      <a href="/" class="back-link">&larr; {m.dict_back()}</a>
+      <div class="title-row">
+        <h1>{m.dict_title()}</h1>
+        <span class="word-total">{m.dict_total_words({ count: total })}</span>
+        {#if isAdmin && pendingCount > 0}
+          <span class="badge badge-pending">{m.dict_pending_count({ count: pendingCount })}</span>
+        {/if}
+      </div>
     </div>
-    {#if dictionaryDeleteBlockedReason}
-      <p class="dictionary-delete-hint">{dictionaryDeleteBlockedReason}</p>
-      {#if selectedDictionaryProjectCount > 0 && dictionaryProjectNames}
-        <p class="dictionary-project-list">{dictionaryProjectNames}</p>
+    <div class="header-actions">
+      <button class="btn-primary" onclick={() => { showAddRow = true; }}>
+        {isAdmin ? m.dict_add() : m.dict_suggest()}
+      </button>
+      {#if isAdmin}
+        <div class="import-group">
+          <select class="import-status-select" bind:value={importStatus} title={m.dict_import_status()}>
+            <option value="approved">{m.dict_approved()}</option>
+            <option value="pending">{m.dict_pending()}</option>
+          </select>
+          <button class="btn-sm" onclick={importWordsFromFile}>{m.dict_import()}</button>
+          <button class="btn-sm" onclick={() => exportDictionaryTemplate()}>Template</button>
+        </div>
       {/if}
-    {/if}
-    {#if showCloneDictionary}
-      <div class="dictionary-clone-row">
-        <input class="dictionary-input" bind:value={cloneDictionaryName} placeholder={m.dict_clone_dictionary_name()} />
-        <button class="btn-sm" onclick={cloneDictionaryById}>{m.dict_clone_dictionary_create()}</button>
+      <div class="export-group">
+        <button class="btn-sm" onclick={exportWordsXlsx}>Excel</button>
+        <button class="btn-sm" onclick={exportWordsJson}>JSON</button>
+      </div>
+      {#if isAdmin}
+        <button class="btn-sm" class:btn-sm-active={showShare} onclick={() => (showShare = !showShare)}>{m.dict_share_title()}</button>
+      {/if}
+    </div>
+  </div>
+
+  <div class="dictionary-toolbar">
+    <div class="dictionary-selector">
+      <span class="control-caption">{m.dict_title()}</span>
+      <select
+        class="dictionary-select"
+        value={selectedDictionaryId}
+        onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}
+      >
+        {#each dictionaries as dict}
+          <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
+        {/each}
+      </select>
+    </div>
+
+    {#if isAdmin}
+      <div class="dictionary-create">
+        <input
+          class="dictionary-input"
+          placeholder={m.dict_new_dictionary()}
+          bind:value={newDictionaryName}
+          onkeydown={(e) => { if (e.key === 'Enter') createDictionary(); }}
+        />
+        <button class="btn-sm" onclick={createDictionary}>{m.dict_create_dictionary()}</button>
       </div>
     {/if}
-  {/if}
 
-  <!-- Toolbar -->
-  <div class="toolbar-row">
-    <button class="btn-primary" onclick={() => { showAddRow = true; }}>
-      {isAdmin ? m.dict_add() : m.dict_suggest()}
-    </button>
-    {#if isAdmin}
-      <select class="import-status-select" bind:value={importStatus} title={m.dict_import_status()}>
-        <option value="approved">{m.dict_approved()}</option>
-        <option value="pending">{m.dict_pending()}</option>
-      </select>
-      <button class="btn-sm" onclick={importWordsFromFile}>{m.dict_import()}</button>
-      <button class="btn-sm" onclick={() => exportDictionaryTemplate()}>Template</button>
-    {/if}
-    <button class="btn-sm" onclick={exportWordsXlsx}>Excel</button>
-    <button class="btn-sm" onclick={exportWordsJson}>JSON</button>
-    {#if isAdmin}
-      <button class="btn-sm" class:btn-sm-active={showShare} onclick={() => (showShare = !showShare)}>{m.dict_share_title()}</button>
+    {#if isAdmin && selectedDictionary}
+      <div class="dictionary-manage-row">
+        <input class="dictionary-input" bind:value={dictionaryEditName} placeholder={m.dict_dictionary_name()} />
+        <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
+        <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
+        <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
+        <button class="btn-sm" onclick={() => { showCloneDictionary = !showCloneDictionary; }}>{m.dict_clone_dictionary()}</button>
+        <button
+          class="btn-sm btn-danger"
+          disabled={!!dictionaryDeleteBlockedReason}
+          title={dictionaryDeleteBlockedReason}
+          onclick={deleteDictionaryById}
+        >{m.dict_delete_dictionary()}</button>
+      </div>
+      {#if dictionaryDeleteBlockedReason}
+        <div class="dictionary-delete-hint">
+          <span>{dictionaryDeleteBlockedReason}</span>
+          {#if selectedDictionaryProjectCount > 0 && dictionaryProjectNames}
+            <span class="dictionary-project-list">{dictionaryProjectNames}</span>
+          {/if}
+        </div>
+      {/if}
+      {#if showCloneDictionary}
+        <div class="dictionary-clone-row">
+          <input class="dictionary-input" bind:value={cloneDictionaryName} placeholder={m.dict_clone_dictionary_name()} />
+          <button class="btn-sm" onclick={cloneDictionaryById}>{m.dict_clone_dictionary_create()}</button>
+        </div>
+      {/if}
     {/if}
   </div>
 
@@ -700,24 +711,112 @@
     min-height: 100vh;
     background: var(--app-bg);
     color: var(--app-text);
-    padding: 24px 40px;
+    padding: 20px 32px;
   }
 
-  .dict-header { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
+  .dict-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 14px;
+  }
+
+  .dict-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
   .dict-header h1 { font-size: 22px; font-weight: 700; margin: 0; }
+
+  .word-total {
+    font-size: 12px;
+    color: var(--app-text-muted);
+    padding: 2px 8px;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .import-group,
+  .export-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
 
   .back-link { color: var(--app-accent); text-decoration: none; font-size: 14px; }
   .back-link:hover { text-decoration: underline; }
 
-  .section-desc { color: var(--app-text-muted); font-size: 13px; margin: 0 0 16px; }
+  .dictionary-toolbar {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+    padding: 12px;
+    margin-bottom: 16px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-card-bg);
+  }
 
-  .toolbar-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .dictionary-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
 
-  .dictionary-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
-  .dictionary-manage-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; }
-  .dictionary-delete-hint { margin: -8px 0 12px; font-size: 12px; color: #f59e0b; }
-  .dictionary-project-list { margin: -8px 0 12px; font-size: 12px; color: var(--app-text-muted); }
-  .dictionary-clone-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; }
+  .control-caption {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--app-text-muted);
+    text-transform: uppercase;
+  }
+
+  .dictionary-create,
+  .dictionary-manage-row,
+  .dictionary-clone-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .dictionary-manage-row,
+  .dictionary-clone-row,
+  .dictionary-delete-hint {
+    grid-column: 1 / -1;
+  }
+
+  .dictionary-delete-hint {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 12px;
+    color: #f59e0b;
+  }
+
+  .dictionary-project-list { color: var(--app-text-muted); }
+
   .dictionary-select,
   .dictionary-input,
   .import-status-select {
@@ -728,7 +827,7 @@
     color: var(--app-text);
     font-size: 13px;
   }
-  .dictionary-select { min-width: 220px; }
+  .dictionary-select { min-width: 220px; width: 100%; }
   .dictionary-input { width: 180px; }
   .dictionary-description-input { width: 260px; }
 
@@ -816,4 +915,16 @@
 
   .dict-page :global(.msg-error) { margin-bottom: 12px; font-size: 13px; color: var(--app-danger); }
   .dict-page :global(.msg-success) { margin-bottom: 12px; font-size: 13px; color: var(--app-success); }
+
+  @media (max-width: 900px) {
+    .dict-page { padding: 16px; }
+    .dict-header { align-items: stretch; flex-direction: column; }
+    .header-actions { justify-content: flex-start; }
+    .dictionary-toolbar { grid-template-columns: 1fr; }
+    .dictionary-create,
+    .dictionary-manage-row,
+    .dictionary-clone-row { justify-content: flex-start; }
+    .dictionary-input,
+    .dictionary-description-input { width: min(100%, 260px); }
+  }
 </style>
