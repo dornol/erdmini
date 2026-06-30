@@ -411,11 +411,11 @@
       <a href="/" class="back-link">&larr; {m.dict_back()}</a>
       <div class="title-row">
         <h1>{m.dict_title()}</h1>
-        <span class="word-total">{m.dict_total_words({ count: total })}</span>
         {#if isAdmin && pendingCount > 0}
           <span class="badge badge-pending">{m.dict_pending_count({ count: pendingCount })}</span>
         {/if}
       </div>
+      <p class="dict-subtitle">{m.dict_desc()}</p>
     </div>
     <div class="header-actions">
       <button class="btn-primary" onclick={() => { showAddRow = true; }}>
@@ -441,45 +441,79 @@
     </div>
   </div>
 
-  <div class="dictionary-toolbar">
-    <div class="dictionary-selector">
-      <span class="control-caption">{m.dict_title()}</span>
-      <select
-        class="dictionary-select"
-        value={selectedDictionaryId}
-        onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}
-      >
-        {#each dictionaries as dict}
-          <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
-        {/each}
-      </select>
+  <div class="overview-grid">
+    <div class="metric">
+      <span>{m.dict_title()}</span>
+      <strong>{selectedDictionary?.name ?? '-'}</strong>
     </div>
-
+    <div class="metric">
+      <span>{m.dict_word()}</span>
+      <strong>{total}</strong>
+    </div>
     {#if isAdmin}
-      <div class="dictionary-create">
-        <input
-          class="dictionary-input"
-          placeholder={m.dict_new_dictionary()}
-          bind:value={newDictionaryName}
-          onkeydown={(e) => { if (e.key === 'Enter') createDictionary(); }}
-        />
-        <button class="btn-sm" onclick={createDictionary}>{m.dict_create_dictionary()}</button>
+      <div class="metric">
+        <span>{m.dict_pending()}</span>
+        <strong>{pendingCount}</strong>
+      </div>
+      <div class="metric">
+        <span>{m.dict_share_title()}</span>
+        <strong>{selectedShareTokens.length}</strong>
       </div>
     {/if}
+  </div>
+
+  <div class="dictionary-panel">
+    <div class="dictionary-panel-main">
+      <div class="dictionary-selector">
+        <span class="control-caption">{m.dict_title()}</span>
+        <select
+          class="dictionary-select"
+          value={selectedDictionaryId}
+          onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}
+        >
+          {#each dictionaries as dict}
+            <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
+          {/each}
+        </select>
+      </div>
+
+      {#if isAdmin}
+        <div class="dictionary-create">
+          <span class="control-caption">{m.dict_new_dictionary()}</span>
+          <div class="inline-control">
+            <input
+              class="dictionary-input"
+              placeholder={m.dict_new_dictionary()}
+              bind:value={newDictionaryName}
+              onkeydown={(e) => { if (e.key === 'Enter') createDictionary(); }}
+            />
+            <button class="btn-sm" onclick={createDictionary}>{m.dict_create_dictionary()}</button>
+          </div>
+        </div>
+      {/if}
+    </div>
 
     {#if isAdmin && selectedDictionary}
       <div class="dictionary-manage-row">
-        <input class="dictionary-input" bind:value={dictionaryEditName} placeholder={m.dict_dictionary_name()} />
-        <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
-        <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
-        <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
-        <button class="btn-sm" onclick={() => { showCloneDictionary = !showCloneDictionary; }}>{m.dict_clone_dictionary()}</button>
-        <button
-          class="btn-sm btn-danger"
-          disabled={!!dictionaryDeleteBlockedReason}
-          title={dictionaryDeleteBlockedReason}
-          onclick={deleteDictionaryById}
-        >{m.dict_delete_dictionary()}</button>
+        <div class="field-stack name-field">
+          <span class="control-caption">{m.dict_dictionary_name()}</span>
+          <input class="dictionary-input" bind:value={dictionaryEditName} placeholder={m.dict_dictionary_name()} />
+        </div>
+        <div class="field-stack description-field">
+          <span class="control-caption">{m.dict_dictionary_description()}</span>
+          <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
+        </div>
+        <div class="dictionary-actions">
+          <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
+          <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
+          <button class="btn-sm" onclick={() => { showCloneDictionary = !showCloneDictionary; }}>{m.dict_clone_dictionary()}</button>
+          <button
+            class="btn-sm btn-danger"
+            disabled={!!dictionaryDeleteBlockedReason}
+            title={dictionaryDeleteBlockedReason}
+            onclick={deleteDictionaryById}
+          >{m.dict_delete_dictionary()}</button>
+        </div>
       </div>
       {#if dictionaryDeleteBlockedReason}
         <div class="dictionary-delete-hint">
@@ -620,8 +654,11 @@
   {/if}
 
   <!-- Filters -->
-  <div class="filter-row">
-    <input class="filter-search" placeholder={m.dict_search()} bind:value={search} oninput={onSearchInput} />
+  <div class="list-panel">
+    <div class="list-toolbar">
+      <input class="filter-search" placeholder={m.dict_search()} bind:value={search} oninput={onSearchInput} />
+      <span class="word-total">{m.dict_total_words({ count: total })}</span>
+    </div>
     {#if categories.length > 0}
       <div class="filter-pills">
         <button class="pill" class:active={selectedCategory === undefined} onclick={() => selectCategory(undefined)}>{m.dict_all_categories()}</button>
@@ -631,13 +668,13 @@
         {/each}
       </div>
     {/if}
-  </div>
 
-  <!-- Main table -->
-  {#if loading}
-    <div class="empty-state">{m.dict_share_loading()}</div>
-  {:else}
-    <table class="data-table">
+    <!-- Main table -->
+    {#if loading}
+      <div class="empty-state">{m.dict_share_loading()}</div>
+    {:else}
+      <div class="table-scroll">
+        <table class="data-table">
       <thead>
         <tr>
           <th style="width:16%">{m.dict_word()}</th>
@@ -694,16 +731,18 @@
           <tr><td colspan={(isAdmin || showAddRow) ? 5 : 4} class="empty-state">{m.dict_no_words()}</td></tr>
         {/if}
       </tbody>
-    </table>
-
-    {#if totalPages > 1}
-      <div class="pagination">
-        <button class="btn-sm" disabled={page <= 1} onclick={prevPage}>&laquo;</button>
-        <span>{page} / {totalPages}</span>
-        <button class="btn-sm" disabled={page >= totalPages} onclick={nextPage}>&raquo;</button>
+        </table>
       </div>
+
+      {#if totalPages > 1}
+        <div class="pagination">
+          <button class="btn-sm" disabled={page <= 1} onclick={prevPage}>&laquo;</button>
+          <span>{page} / {totalPages}</span>
+          <button class="btn-sm" disabled={page >= totalPages} onclick={nextPage}>&raquo;</button>
+        </div>
+      {/if}
     {/if}
-  {/if}
+  </div>
 </div>
 
 <style>
@@ -711,15 +750,15 @@
     min-height: 100vh;
     background: var(--app-bg);
     color: var(--app-text);
-    padding: 20px 32px;
+    padding: 24px 32px 40px;
   }
 
   .dict-header {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 14px;
+    gap: 24px;
+    margin-bottom: 18px;
   }
 
   .dict-heading {
@@ -736,14 +775,20 @@
     flex-wrap: wrap;
   }
 
-  .dict-header h1 { font-size: 22px; font-weight: 700; margin: 0; }
+  .dict-header h1 { font-size: 26px; line-height: 1.2; font-weight: 700; margin: 0; }
+
+  .dict-subtitle {
+    margin: 0;
+    color: var(--app-text-muted);
+    font-size: 13px;
+  }
 
   .word-total {
     font-size: 12px;
     color: var(--app-text-muted);
-    padding: 2px 8px;
+    padding: 5px 10px;
     border: 1px solid var(--app-border);
-    border-radius: 999px;
+    border-radius: 6px;
     white-space: nowrap;
   }
 
@@ -765,16 +810,55 @@
   .back-link { color: var(--app-accent); text-decoration: none; font-size: 14px; }
   .back-link:hover { text-decoration: underline; }
 
-  .dictionary-toolbar {
+  .overview-grid {
     display: grid;
-    grid-template-columns: minmax(240px, 1fr) auto;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 10px;
-    align-items: end;
-    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .metric {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-card-bg);
+  }
+
+  .metric span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--app-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .metric strong {
+    display: block;
+    overflow: hidden;
+    color: var(--app-text);
+    font-size: 20px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dictionary-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
     margin-bottom: 16px;
     border: 1px solid var(--app-border);
     border-radius: 8px;
     background: var(--app-card-bg);
+  }
+
+  .dictionary-panel-main {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(280px, auto);
+    gap: 12px;
+    align-items: end;
   }
 
   .dictionary-selector {
@@ -792,7 +876,6 @@
   }
 
   .dictionary-create,
-  .dictionary-manage-row,
   .dictionary-clone-row {
     display: flex;
     flex-wrap: wrap;
@@ -801,10 +884,35 @@
     justify-content: flex-end;
   }
 
-  .dictionary-manage-row,
-  .dictionary-clone-row,
-  .dictionary-delete-hint {
-    grid-column: 1 / -1;
+  .dictionary-create {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inline-control {
+    display: flex;
+    gap: 6px;
+  }
+
+  .dictionary-manage-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) minmax(220px, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .field-stack {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dictionary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
   }
 
   .dictionary-delete-hint {
@@ -828,11 +936,24 @@
     font-size: 13px;
   }
   .dictionary-select { min-width: 220px; width: 100%; }
-  .dictionary-input { width: 180px; }
-  .dictionary-description-input { width: 260px; }
+  .dictionary-input { width: 100%; min-width: 0; }
+  .dictionary-clone-row .dictionary-input { max-width: 320px; }
 
   /* ── Filters ────────────────────────────────────── */
-  .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .list-panel {
+    padding: 14px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-card-bg);
+  }
+
+  .list-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
 
   .filter-search {
     padding: 8px 12px;
@@ -843,18 +964,17 @@
     font-size: 13px;
     min-width: 200px;
     flex: 1;
-    max-width: 360px;
   }
 
   .filter-search:focus { outline: none; border-color: var(--app-accent); }
 
-  .filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 
   .pill {
-    padding: 4px 12px;
+    padding: 5px 12px;
     background: none;
     border: 1px solid var(--app-border);
-    border-radius: 4px;
+    border-radius: 999px;
     color: var(--app-text-muted);
     font-size: 12px;
     cursor: pointer;
@@ -873,13 +993,17 @@
 
   .btn-sm-active { border-color: var(--app-accent) !important; color: var(--app-accent) !important; }
 
+  .table-scroll {
+    overflow-x: auto;
+  }
+
   /* ── Global class styles (CSS variable based) ──── */
-  .dict-page :global(.data-table) { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
-  .dict-page :global(.data-table th) { text-align: left; padding: 8px 12px; color: var(--app-text-muted); font-weight: 500; border-bottom: 1px solid var(--app-border); }
-  .dict-page :global(.data-table td) { padding: 8px 12px; border-bottom: 1px solid var(--app-border-light); }
+  .dict-page :global(.data-table) { width: 100%; min-width: 760px; border-collapse: collapse; margin-bottom: 0; font-size: 13px; }
+  .dict-page :global(.data-table th) { text-align: left; padding: 10px 12px; color: var(--app-text-muted); font-weight: 600; border-bottom: 1px solid var(--app-border); background: var(--app-card-bg); }
+  .dict-page :global(.data-table td) { padding: 10px 12px; border-bottom: 1px solid var(--app-border-light); vertical-align: top; }
   .dict-page :global(.data-table tbody tr:hover) { background: var(--app-hover-bg); }
 
-  .dict-page :global(.badge) { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--app-badge-bg); color: var(--app-text-muted); }
+  .dict-page :global(.badge) { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--app-badge-bg); color: var(--app-text-muted); }
   .dict-page :global(.badge-pending) { background: var(--app-warning-bg); color: var(--app-warning-text); }
   .dict-page :global(.badge-rejected) { background: rgba(248,113,113,0.15); color: var(--app-danger); }
 
@@ -892,10 +1016,10 @@
   .dict-page :global(.form-grid input:focus),
   .dict-page :global(.form-grid select:focus) { outline: none; border-color: var(--app-accent); }
 
-  .dict-page :global(.btn-primary) { padding: 8px 16px; background: var(--app-accent); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .dict-page :global(.btn-primary) { padding: 9px 16px; background: var(--app-accent); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .dict-page :global(.btn-primary:hover) { background: var(--app-accent-hover); }
 
-  .dict-page :global(.btn-sm) { padding: 4px 10px; background: var(--app-badge-bg); color: var(--app-text-secondary); border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .dict-page :global(.btn-sm) { min-height: 30px; padding: 5px 10px; background: var(--app-badge-bg); color: var(--app-text-secondary); border: 1px solid transparent; border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; }
   .dict-page :global(.btn-sm:hover) { background: var(--app-hover-bg); }
   .dict-page :global(.btn-sm:disabled) { opacity: 0.3; cursor: default; }
 
@@ -908,7 +1032,7 @@
   .dict-page :global(.btn-approve) { background: var(--app-success); color: white; }
   .dict-page :global(.btn-approve:hover) { background: var(--app-success-hover); }
 
-  .dict-page :global(.btn-row) { display: flex; gap: 6px; }
+  .dict-page :global(.btn-row) { display: flex; gap: 6px; justify-content: flex-end; }
 
   .dict-page :global(.inline-input) { padding: 4px 8px; background: var(--app-input-bg); border: 1px solid var(--app-input-border); border-radius: 4px; color: var(--app-text); font-size: 12px; width: 100%; min-width: 60px; box-sizing: border-box; }
   .dict-page :global(.inline-input:focus) { outline: none; border-color: var(--app-accent); }
@@ -920,11 +1044,26 @@
     .dict-page { padding: 16px; }
     .dict-header { align-items: stretch; flex-direction: column; }
     .header-actions { justify-content: flex-start; }
-    .dictionary-toolbar { grid-template-columns: 1fr; }
+    .dictionary-panel-main,
+    .dictionary-manage-row { grid-template-columns: 1fr; }
     .dictionary-create,
     .dictionary-manage-row,
     .dictionary-clone-row { justify-content: flex-start; }
-    .dictionary-input,
-    .dictionary-description-input { width: min(100%, 260px); }
+    .dictionary-actions { justify-content: flex-start; }
+    .list-toolbar { align-items: stretch; flex-direction: column; }
+    .word-total { align-self: flex-start; }
+  }
+
+  @media (max-width: 560px) {
+    .dict-header h1 { font-size: 22px; }
+    .overview-grid { grid-template-columns: 1fr; }
+    .header-actions,
+    .import-group,
+    .export-group,
+    .inline-control,
+    .dictionary-actions { width: 100%; }
+    .dict-page :global(.btn-primary),
+    .dict-page :global(.btn-sm),
+    .import-status-select { flex: 1; }
   }
 </style>
