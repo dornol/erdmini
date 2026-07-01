@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-69 tools available. Read tools require `viewer` permission, write tools require `editor`.
+88 tools available. Project read tools require `viewer` permission, project write tools require `editor`.
 
 ---
 
@@ -91,6 +91,23 @@
 | `domain_coverage` | Get domain coverage statistics |
 | `export_domain_dictionary` | Export domain dictionary (markdown or HTML) |
 
+## Word Dictionary & Naming Rule Tools
+
+| Tool | Description |
+|---|---|
+| `list_dictionaries` | List word dictionaries; admin keys include usage details |
+| `create_dictionary` | Create or clone a word dictionary (admin key required) |
+| `update_dictionary` | Update dictionary metadata or set default (admin key required) |
+| `delete_dictionary` | Delete an unused non-default dictionary (admin key required) |
+| `list_dictionary_words` | List dictionary words with search/category/status filters |
+| `add_dictionary_word` | Add an approved word as admin or pending suggestion as user |
+| `update_dictionary_word` | Update/approve/reject a dictionary word (admin key required) |
+| `delete_dictionary_word` | Delete any word as admin, or own pending/rejected suggestion as user |
+| `import_dictionary_words` | Bulk import dictionary words (admin key required) |
+| `export_dictionary_words` | Export approved dictionary words as JSON |
+| `set_project_dictionary` | Set or clear the dictionary used by a project |
+| `get_naming_rules` | Get site rules, or effective project naming rules |
+
 ## Memo Tools
 
 | Tool | Description |
@@ -155,6 +172,8 @@ Most tools require a `projectId` parameter. Some tools accept alternative lookup
 | **admin** | All | All |
 
 Scoped API keys further restrict access to specific projects.
+
+Global dictionary administration (`create_dictionary`, `update_dictionary`, `delete_dictionary`, `import_dictionary_words`, `update_dictionary_word`) requires an admin API key. `set_project_dictionary` requires editor access to the target project.
 
 ## Collab Integration
 

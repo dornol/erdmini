@@ -7,15 +7,39 @@ import type { WordStatus, WordRow } from '$lib/server/dictionary';
 import { logAudit } from '$lib/server/audit';
 import { err } from '$lib/server/api-helpers';
 
+const VALID_STATUSES: WordStatus[] = ['approved', 'pending', 'rejected'];
+
+function parsePositiveInt(value: string | null, fallback: number, max: number): number | null {
+  if (value == null || value === '') return fallback;
+  if (!/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return null;
+  return Math.min(parsed, max);
+}
+
+function parseNonNegativeInt(value: string | null, fallback: number, max: number): number | null {
+  if (value == null || value === '') return fallback;
+  if (!/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) return null;
+  return Math.min(parsed, max);
+}
+
 export const GET: RequestHandler = ({ locals, url }) => {
   if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
 
   const search = url.searchParams.get('search') || undefined;
   const dictionaryId = url.searchParams.get('dictionaryId') || undefined;
   const category = url.searchParams.has('category') ? url.searchParams.get('category')! : undefined;
-  const status = (url.searchParams.get('status') as WordStatus) || undefined;
-  const page = parseInt(url.searchParams.get('page') || '1', 10);
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 200);
+  const statusParam = url.searchParams.get('status');
+  if (statusParam && !VALID_STATUSES.includes(statusParam as WordStatus)) {
+    return err('Invalid status');
+  }
+  const status = statusParam as WordStatus | null;
+  const page = parsePositiveInt(url.searchParams.get('page'), 1, Number.MAX_SAFE_INTEGER);
+  const limit = parseNonNegativeInt(url.searchParams.get('limit'), 50, 200);
+  if (page == null) return err('Invalid page');
+  if (limit == null) return err('Invalid limit');
 
   const isAdmin = locals.user.role === 'admin';
 

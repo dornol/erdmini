@@ -3,6 +3,7 @@
   import { page as pageStore } from '$app/stores';
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/store/auth.svelte';
+  import { dialogStore } from '$lib/store/dialog.svelte';
   import { onMount } from 'svelte';
   import { appPath } from '$lib/utils/paths';
 
@@ -217,7 +218,12 @@
   }
 
   async function deleteWordById(id: string, word: string) {
-    if (!confirm(m.dict_delete_confirm({ word }))) return;
+    const ok = await dialogStore.confirm(m.dict_delete_confirm({ word }), {
+      title: m.dict_delete(),
+      confirmText: m.action_delete(),
+      variant: 'danger',
+    });
+    if (!ok) return;
     await fetch(appPath(`/api/dictionary/${id}`), { method: 'DELETE' });
     await reload();
   }
@@ -258,7 +264,7 @@
 
   async function exportWordsJson() {
     const res = await fetch(appPath(`/api/dictionary/export?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`));
-    if (!res.ok) return;
+    if (!res.ok) { error = (await res.json()).error || 'Export failed'; return; }
     const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     Object.assign(document.createElement('a'), { href: url, download: 'word-dictionary.json' }).click();
@@ -267,7 +273,7 @@
 
   async function exportWordsXlsx() {
     const res = await fetch(appPath(`/api/dictionary/export?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`));
-    if (!res.ok) return;
+    if (!res.ok) { error = (await res.json()).error || 'Export failed'; return; }
     const { exportDictionaryXlsx } = await import('$lib/utils/dictionary-xlsx');
     exportDictionaryXlsx(await res.json());
   }
@@ -379,7 +385,12 @@
       if (dictionaryDeleteBlockedReason) error = dictionaryDeleteBlockedReason;
       return;
     }
-    if (!confirm(m.dict_delete_dictionary_confirm({ name: selectedDictionary.name }))) return;
+    const ok = await dialogStore.confirm(m.dict_delete_dictionary_confirm({ name: selectedDictionary.name }), {
+      title: m.dict_delete_dictionary(),
+      confirmText: m.action_delete(),
+      variant: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch(appPath(`/api/dictionaries/${selectedDictionaryId}`), { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
@@ -396,7 +407,12 @@
   }
 
   async function deleteShareToken(tokenId: string) {
-    if (!confirm(m.dict_share_delete_confirm())) return;
+    const ok = await dialogStore.confirm(m.dict_share_delete_confirm(), {
+      title: m.dict_share_title(),
+      confirmText: m.action_delete(),
+      variant: 'danger',
+    });
+    if (!ok) return;
     await fetch(appPath('/api/admin/dictionary-tokens'), {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenId }),
     });

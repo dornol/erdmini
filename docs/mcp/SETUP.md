@@ -1,6 +1,6 @@
 # MCP Setup Guide
 
-erdmini server has a built-in MCP (Model Context Protocol) Streamable HTTP endpoint at `/mcp` with 69 tools. Server mode only — local mode does not support MCP.
+erdmini server has a built-in MCP (Model Context Protocol) Streamable HTTP endpoint at `/mcp` with 88 tools. Server mode only — local mode does not support MCP.
 
 ```
 http://localhost:3000/mcp   ← MCP endpoint

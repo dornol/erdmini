@@ -7,10 +7,17 @@ import { RateLimiter } from '$lib/server/auth/rate-limiter';
 const dictPasswordLimiter = new RateLimiter({ maxAttempts: 10, windowMs: 15 * 60_000, maxMapSize: 1000 });
 setInterval(() => dictPasswordLimiter.cleanup(), 5 * 60 * 1000);
 
+const DICTIONARY_SHARE_MAX_WORDS = 10000;
+
 function getDictionaryData(dictionaryId: string) {
-  const { words } = listWords(db, { dictionaryId, limit: 100000 });
+  const { total } = listWords(db, { dictionaryId, limit: 0 });
+  if (total > DICTIONARY_SHARE_MAX_WORDS) {
+    return json({ error: `Dictionary share is limited to ${DICTIONARY_SHARE_MAX_WORDS} words` }, { status: 413 });
+  }
+
+  const { words } = listWords(db, { dictionaryId, limit: DICTIONARY_SHARE_MAX_WORDS });
   const categories = listCategories(db, dictionaryId);
-  return { words, categories };
+  return json({ words, categories });
 }
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -23,7 +30,7 @@ export const GET: RequestHandler = async ({ params }) => {
     return json({ requiresPassword: true }, { status: 401 });
   }
 
-  return json(getDictionaryData(result.dictionaryId));
+  return getDictionaryData(result.dictionaryId);
 };
 
 export const POST: RequestHandler = async ({ params, request, getClientAddress }) => {
@@ -58,5 +65,5 @@ export const POST: RequestHandler = async ({ params, request, getClientAddress }
     return json({ error: 'Wrong password', requiresPassword: true }, { status: 401 });
   }
 
-  return json(getDictionaryData(result.dictionaryId));
+  return getDictionaryData(result.dictionaryId);
 };
