@@ -18,6 +18,8 @@ vi.mock('./auth/password', () => ({
 }));
 
 import {
+  cloneDictionary,
+  listDictionariesWithUsage,
   listWords,
   createWord,
   updateWord,
@@ -30,6 +32,8 @@ import {
   validateDictShareToken,
   verifyDictSharePassword,
   listDictShareTokens,
+  listProjectsUsingDictionary,
+  deleteDictionary,
   deleteDictShareToken,
 } from './dictionary';
 import type Database from 'better-sqlite3';
@@ -42,6 +46,51 @@ describe('dictionary', () => {
     mockPrepare.mockClear();
     mockGet.mockClear();
     mockAll.mockClear();
+  });
+
+  // ── dictionaries ─────────────────────────────────────────────────
+
+  describe('listDictionariesWithUsage', () => {
+    it('adds usage counts to dictionaries', () => {
+      mockAll
+        .mockReturnValueOnce([{ id: 'dict1', name: 'Dictionary 1', description: null, is_default: 0 }])
+        .mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }])
+        .mockReturnValueOnce([{ data: JSON.stringify({ projects: [{ id: 'p1', name: 'Project 1' }] }) }]);
+      mockGet
+        .mockReturnValueOnce({ cnt: 2 })
+        .mockReturnValueOnce({ cnt: 1 });
+
+      expect(listDictionariesWithUsage(db)).toEqual([
+        expect.objectContaining({
+          id: 'dict1',
+          wordCount: 2,
+          shareTokenCount: 1,
+          projectCount: 1,
+          projects: [{ id: 'p1', name: 'Project 1' }],
+        }),
+      ]);
+    });
+  });
+
+  describe('cloneDictionary', () => {
+    it('creates a new dictionary and copies source words', () => {
+      const txFn = vi.fn((fn: () => unknown) => () => fn());
+      (db as any).transaction = txFn;
+      mockGet
+        .mockReturnValueOnce({ id: 'source', name: 'Source' })
+        .mockReturnValueOnce({ id: 'copy', name: 'Copy', description: null, is_default: 0 });
+      mockAll.mockReturnValueOnce([
+        { word: 'acct', meaning: 'Account', description: null, category: 'domain', status: 'approved' },
+        { word: 'tmp', meaning: 'Temporary', description: null, category: null, status: 'pending' },
+      ]);
+
+      const result = cloneDictionary(db, 'source', { name: 'Copy' }, 'u1');
+
+      expect(result.id).toBe('copy');
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT word, meaning, description, category, status'));
+      expect(mockRun).toHaveBeenCalledWith(expect.any(String), 'copy', 'acct', 'Account', null, 'domain', 'approved', 'u1');
+      expect(mockRun).toHaveBeenCalledWith(expect.any(String), 'copy', 'tmp', 'Temporary', null, null, 'pending', 'u1');
+    });
   });
 
   // ── listWords ────────────────────────────────────────────────────
@@ -66,8 +115,8 @@ describe('dictionary', () => {
       mockAll.mockReturnValueOnce([]);
 
       listWords(db, { search: 'test' });
-      // status=approved (default) + search LIKE params
-      expect(mockGet).toHaveBeenCalledWith('approved', '%test%', '%test%');
+      // dictionary=default + status=approved (default) + search LIKE params
+      expect(mockGet).toHaveBeenCalledWith('default', 'approved', '%test%', '%test%');
     });
 
     it('applies category filter', () => {
@@ -75,7 +124,7 @@ describe('dictionary', () => {
       mockAll.mockReturnValueOnce([]);
 
       listWords(db, { category: '접미어' });
-      expect(mockGet).toHaveBeenCalledWith('approved', '접미어');
+      expect(mockGet).toHaveBeenCalledWith('default', 'approved', '접미어');
     });
 
     it('applies empty category filter for uncategorized', () => {
@@ -91,8 +140,8 @@ describe('dictionary', () => {
       mockAll.mockReturnValueOnce([]);
 
       listWords(db, { page: 3, limit: 20 });
-      // status param + LIMIT 20 OFFSET 40
-      expect(mockAll).toHaveBeenCalledWith('approved', 20, 40);
+      // dictionary + status param + LIMIT 20 OFFSET 40
+      expect(mockAll).toHaveBeenCalledWith('default', 'approved', 20, 40);
     });
 
     it('defaults to page 1 limit 50 with status=approved', () => {
@@ -100,8 +149,8 @@ describe('dictionary', () => {
       mockAll.mockReturnValueOnce([]);
 
       listWords(db);
-      expect(mockGet).toHaveBeenCalledWith('approved');
-      expect(mockAll).toHaveBeenCalledWith('approved', 50, 0);
+      expect(mockGet).toHaveBeenCalledWith('default', 'approved');
+      expect(mockAll).toHaveBeenCalledWith('default', 'approved', 50, 0);
     });
 
     it('filters by pending status', () => {
@@ -109,7 +158,7 @@ describe('dictionary', () => {
       mockAll.mockReturnValueOnce([]);
 
       listWords(db, { status: 'pending' });
-      expect(mockGet).toHaveBeenCalledWith('pending');
+      expect(mockGet).toHaveBeenCalledWith('default', 'pending');
     });
 
     it('combines search and category filters', () => {
@@ -136,6 +185,7 @@ describe('dictionary', () => {
       expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO word_dictionary'));
       expect(mockRun).toHaveBeenCalledWith(
         expect.any(String), // id
+        'default',
         'seq',
         '일련번호',
         null,       // description
@@ -152,7 +202,7 @@ describe('dictionary', () => {
 
       createWord(db, { word: 'test', meaning: 'test', status: 'pending' }, 'u1');
       expect(mockRun).toHaveBeenCalledWith(
-        expect.any(String), 'test', 'test', null, null, 'pending', 'u1',
+        expect.any(String), 'default', 'test', 'test', null, null, 'pending', 'u1',
       );
     });
 
@@ -175,6 +225,7 @@ describe('dictionary', () => {
       createWord(db, { word: '  seq  ', meaning: '  일련번호  ', description: '  desc  ', category: '  cat  ' }, 'u1');
       expect(mockRun).toHaveBeenCalledWith(
         expect.any(String),
+        'default',
         'seq',
         '일련번호',
         'desc',
@@ -190,7 +241,7 @@ describe('dictionary', () => {
 
       createWord(db, { word: 'x', meaning: 'y', description: '', category: '' }, 'u1');
       expect(mockRun).toHaveBeenCalledWith(
-        expect.any(String), 'x', 'y', null, null, 'approved', 'u1',
+        expect.any(String), 'default', 'x', 'y', null, null, 'approved', 'u1',
       );
     });
   });
@@ -249,6 +300,7 @@ describe('dictionary', () => {
       mockGet.mockReturnValueOnce({ cnt: 5 });
       expect(countPendingWords(db)).toBe(5);
       expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining("status = 'pending'"));
+      expect(mockGet).toHaveBeenCalledWith('default');
     });
   });
 
@@ -271,6 +323,7 @@ describe('dictionary', () => {
       const result = listCategories(db);
       expect(result).toEqual(['접두어', '접미어']);
       expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('DISTINCT category'));
+      expect(mockAll).toHaveBeenCalledWith('default');
     });
 
     it('returns empty array when no categories', () => {
@@ -317,6 +370,21 @@ describe('dictionary', () => {
       expect(result.updated).toBe(1);
     });
 
+    it('imports words with pending status', () => {
+      const txFn = vi.fn((fn: () => void) => {
+        const wrappedFn = () => fn();
+        return wrappedFn;
+      });
+      (db as any).transaction = txFn;
+      mockGet.mockReturnValue(undefined);
+
+      importWords(db, [
+        { word: 'candidate', meaning: '검토 대상' },
+      ], 'u1', 'dict1', 'pending');
+
+      expect(mockRun).toHaveBeenCalledWith(expect.any(String), 'dict1', 'candidate', '검토 대상', null, null, 'pending', 'u1');
+    });
+
     it('skips empty entries and reports errors', () => {
       const txFn = vi.fn((fn: () => void) => {
         const wrappedFn = () => fn();
@@ -342,6 +410,7 @@ describe('dictionary', () => {
       expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO dictionary_share_tokens'));
       expect(mockRun).toHaveBeenCalledWith(
         expect.any(String), // id
+        'default',
         expect.any(String), // token (64 hex)
         null,               // password_hash
         'user1',
@@ -356,6 +425,7 @@ describe('dictionary', () => {
       const result = await createDictShareToken(db, 'user1', { password: 'secret' });
       expect(mockRun).toHaveBeenCalledWith(
         expect.any(String),
+        'default',
         expect.any(String),
         'hashed_secret',
         'user1',
@@ -380,6 +450,7 @@ describe('dictionary', () => {
       const result = await createDictShareToken(db, 'user1', { password: 'pw', expiresInDays: 7 });
       expect(mockRun).toHaveBeenCalledWith(
         expect.any(String),
+        'default',
         expect.any(String),
         'hashed_pw',
         'user1',
@@ -403,15 +474,15 @@ describe('dictionary', () => {
 
   describe('validateDictShareToken', () => {
     it('returns token info when valid (no password)', () => {
-      mockGet.mockReturnValueOnce({ id: 't1', password_hash: null, expires_at: null });
+      mockGet.mockReturnValueOnce({ id: 't1', dictionary_id: 'default', password_hash: null, expires_at: null });
       const result = validateDictShareToken(db, 'sometoken');
-      expect(result).toEqual({ id: 't1', hasPassword: false });
+      expect(result).toEqual({ id: 't1', dictionaryId: 'default', hasPassword: false });
     });
 
     it('returns hasPassword true when password set', () => {
-      mockGet.mockReturnValueOnce({ id: 't1', password_hash: 'hash123', expires_at: null });
+      mockGet.mockReturnValueOnce({ id: 't1', dictionary_id: 'default', password_hash: 'hash123', expires_at: null });
       const result = validateDictShareToken(db, 'sometoken');
-      expect(result).toEqual({ id: 't1', hasPassword: true });
+      expect(result).toEqual({ id: 't1', dictionaryId: 'default', hasPassword: true });
     });
 
     it('returns null for non-existent token', () => {
@@ -422,6 +493,7 @@ describe('dictionary', () => {
     it('returns null for expired token', () => {
       mockGet.mockReturnValueOnce({
         id: 't1',
+        dictionary_id: 'default',
         password_hash: null,
         expires_at: new Date(Date.now() - 86400000).toISOString(), // yesterday
       });
@@ -431,11 +503,12 @@ describe('dictionary', () => {
     it('returns valid for non-expired token', () => {
       mockGet.mockReturnValueOnce({
         id: 't1',
+        dictionary_id: 'default',
         password_hash: null,
         expires_at: new Date(Date.now() + 86400000).toISOString(), // tomorrow
       });
       const result = validateDictShareToken(db, 'valid');
-      expect(result).toEqual({ id: 't1', hasPassword: false });
+      expect(result).toEqual({ id: 't1', dictionaryId: 'default', hasPassword: false });
     });
   });
 
@@ -468,14 +541,14 @@ describe('dictionary', () => {
   describe('listDictShareTokens', () => {
     it('returns mapped token list', () => {
       mockAll.mockReturnValueOnce([
-        { id: 't1', token: 'abc', password_hash: null, created_by: 'u1', created_at: '2024-01-01', expires_at: null },
-        { id: 't2', token: 'def', password_hash: 'hash', created_by: 'u2', created_at: '2024-01-02', expires_at: '2024-12-31' },
+        { id: 't1', dictionary_id: 'default', token: 'abc', password_hash: null, created_by: 'u1', created_at: '2024-01-01', expires_at: null },
+        { id: 't2', dictionary_id: 'default', token: 'def', password_hash: 'hash', created_by: 'u2', created_at: '2024-01-02', expires_at: '2024-12-31' },
       ]);
 
       const result = listDictShareTokens(db);
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ id: 't1', token: 'abc', hasPassword: false, createdBy: 'u1', createdAt: '2024-01-01', expiresAt: null });
-      expect(result[1]).toEqual({ id: 't2', token: 'def', hasPassword: true, createdBy: 'u2', createdAt: '2024-01-02', expiresAt: '2024-12-31' });
+      expect(result[0]).toEqual({ id: 't1', dictionaryId: 'default', token: 'abc', hasPassword: false, createdBy: 'u1', createdAt: '2024-01-01', expiresAt: null });
+      expect(result[1]).toEqual({ id: 't2', dictionaryId: 'default', token: 'def', hasPassword: true, createdBy: 'u2', createdAt: '2024-01-02', expiresAt: '2024-12-31' });
     });
 
     it('returns empty array when no tokens', () => {
@@ -491,6 +564,43 @@ describe('dictionary', () => {
       deleteDictShareToken(db, 't1');
       expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM dictionary_share_tokens'));
       expect(mockRun).toHaveBeenCalledWith('t1');
+    });
+  });
+
+  // ── dictionary project usage ─────────────────────────────────────
+
+  describe('listProjectsUsingDictionary', () => {
+    it('returns projects that reference the dictionary', () => {
+      mockAll
+        .mockReturnValueOnce([
+          { project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) },
+          { project_id: 'p2', data: JSON.stringify({ dictionaryId: 'other' }) },
+          { project_id: 'p3', data: JSON.stringify({}) },
+        ])
+        .mockReturnValueOnce([{ data: JSON.stringify({ projects: [{ id: 'p1', name: 'Project 1' }] }) }]);
+
+      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual([{ id: 'p1', name: 'Project 1' }]);
+    });
+
+    it('treats malformed schema data as using the dictionary', () => {
+      mockAll
+        .mockReturnValueOnce([{ project_id: 'bad', data: '{' }])
+        .mockReturnValueOnce([]);
+      expect(listProjectsUsingDictionary(db, 'dict1')).toEqual([{ id: 'bad', name: 'bad' }]);
+    });
+  });
+
+  describe('deleteDictionary', () => {
+    it('blocks deleting a dictionary used by projects', () => {
+      mockGet
+        .mockReturnValueOnce({ is_default: 0 })
+        .mockReturnValueOnce({ cnt: 0 })
+        .mockReturnValueOnce({ cnt: 0 });
+      mockAll
+        .mockReturnValueOnce([{ project_id: 'p1', data: JSON.stringify({ dictionaryId: 'dict1' }) }])
+        .mockReturnValueOnce([]);
+
+      expect(() => deleteDictionary(db, 'dict1')).toThrow('Dictionary is used by projects');
     });
   });
 });

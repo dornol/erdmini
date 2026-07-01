@@ -28,6 +28,8 @@
   ];
 
   let effectiveRules = $derived(namingRuleStore.effectiveRules);
+  let dictionaries = $derived(namingRuleStore.dictionaries);
+  let selectedDictionaryId = $derived(erdStore.schema.dictionaryId ?? dictionaries[0]?.id ?? 'default');
   let activeRuleTypes = $derived(
     NAMING_RULE_TYPES.filter(t => namingRuleStore.siteRules[t]?.enabled)
   );
@@ -44,6 +46,11 @@
     erdStore.setNamingOverride(type, undefined);
   }
 
+  function setDictionaryId(value: string) {
+    erdStore.setDictionaryId(value || undefined);
+    namingRuleStore.fetchDictionaryWords(value || undefined);
+  }
+
   function isCaseRule(type: NamingRuleType) { return CASE_RULES.includes(type); }
   function isAffixRule(type: NamingRuleType) { return AFFIX_RULES.includes(type); }
   function isDictRule(type: NamingRuleType) { return DICT_RULES.includes(type); }
@@ -56,6 +63,30 @@
   </div>
 
   <div class="nr-body">
+    {#if dictionaries.length > 0}
+      <div class="nr-rule">
+        <div class="nr-rule-header">
+          <span class="nr-rule-name">{m.dict_title()}</span>
+          <span class="nr-rule-source nr-source-project">{m.naming_rule_source_project()}</span>
+        </div>
+        <div class="nr-rule-value">
+          {#if !permissionStore.isReadOnly}
+            <select
+              class="nr-select"
+              value={selectedDictionaryId}
+              onchange={(e) => setDictionaryId((e.target as HTMLSelectElement).value)}
+            >
+              {#each dictionaries as dict}
+                <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
+              {/each}
+            </select>
+          {:else}
+            <span class="nr-value-readonly">{dictionaries.find(d => d.id === selectedDictionaryId)?.name ?? selectedDictionaryId}</span>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
     {#if activeRuleTypes.length === 0}
       <div class="nr-empty">{m.naming_rule_no_rules()}</div>
     {:else}

@@ -8,6 +8,7 @@
 
   interface WordRow {
     id: string;
+    dictionary_id: string;
     word: string;
     meaning: string;
     description: string | null;
@@ -21,6 +22,7 @@
 
   interface ShareToken {
     id: string;
+    dictionaryId: string;
     token: string;
     hasPassword: boolean;
     createdBy: string;
@@ -28,6 +30,24 @@
     expiresAt: string | null;
   }
 
+  interface DictionaryRow {
+    id: string;
+    name: string;
+    description: string | null;
+    is_default: number;
+    wordCount?: number;
+    shareTokenCount?: number;
+    projectCount?: number;
+    projects?: { id: string; name: string }[];
+  }
+
+  let dictionaries = $state<DictionaryRow[]>([]);
+  let selectedDictionaryId = $state('default');
+  let newDictionaryName = $state('');
+  let dictionaryEditName = $state('');
+  let dictionaryEditDescription = $state('');
+  let cloneDictionaryName = $state('');
+  let showCloneDictionary = $state(false);
   let words = $state<WordRow[]>([]);
   let total = $state(0);
   let pendingCount = $state(0);
@@ -53,8 +73,32 @@
   let newSharePassword = $state('');
   let newShareExpires = $state('');
   let shareCopied = $state<string | null>(null);
+  let importStatus = $state<'approved' | 'pending'>('approved');
 
   const isAdmin = $derived(authStore.user?.role === 'admin');
+  const selectedDictionary = $derived(dictionaries.find(d => d.id === selectedDictionaryId));
+  const selectedShareTokens = $derived(shareTokens.filter(t => t.dictionaryId === selectedDictionaryId));
+  const selectedDictionaryWordCount = $derived(selectedDictionary?.wordCount ?? total);
+  const selectedDictionaryShareTokenCount = $derived(selectedDictionary?.shareTokenCount ?? selectedShareTokens.length);
+  const selectedDictionaryProjectCount = $derived(selectedDictionary?.projectCount ?? 0);
+  const selectedDictionaryProjects = $derived(selectedDictionary?.projects ?? []);
+  const dictionaryDeleteBlockedReason = $derived.by(() => {
+    if (!selectedDictionary) return '';
+    if (selectedDictionary.is_default) return m.dict_delete_blocked_default();
+    if (selectedDictionaryWordCount > 0) return m.dict_delete_blocked_words({ count: selectedDictionaryWordCount });
+    if (selectedDictionaryShareTokenCount > 0) return m.dict_delete_blocked_share_tokens({ count: selectedDictionaryShareTokenCount });
+    if (selectedDictionaryProjectCount > 0) return m.dict_delete_blocked_projects({ count: selectedDictionaryProjectCount });
+    return '';
+  });
+  const dictionaryProjectNames = $derived(selectedDictionaryProjects.map(p => p.name || p.id).join(', '));
+
+  function syncDictionaryForm() {
+    const dict = dictionaries.find(d => d.id === selectedDictionaryId);
+    dictionaryEditName = dict?.name ?? '';
+    dictionaryEditDescription = dict?.description ?? '';
+    cloneDictionaryName = dict ? `${dict.name} Copy` : '';
+    showCloneDictionary = false;
+  }
 
   let searchTimer: ReturnType<typeof setTimeout>;
   function onSearchInput() {
@@ -65,6 +109,7 @@
   async function loadWords() {
     error = '';
     const params = new URLSearchParams();
+    if (selectedDictionaryId) params.set('dictionaryId', selectedDictionaryId);
     if (search) params.set('search', search);
     if (selectedCategory !== undefined) params.set('category', selectedCategory);
     params.set('page', String(page));
@@ -79,13 +124,27 @@
   }
 
   async function loadPendingWords() {
-    const res = await fetch(appPath('/api/dictionary?status=pending&limit=200'));
+    const params = new URLSearchParams({ status: 'pending', limit: '200' });
+    if (selectedDictionaryId) params.set('dictionaryId', selectedDictionaryId);
+    const res = await fetch(appPath(`/api/dictionary?${params}`));
     if (res.ok) { pendingWords = (await res.json()).words; }
   }
 
   async function loadCategories() {
-    const res = await fetch(appPath('/api/dictionary/categories'));
+    const params = new URLSearchParams();
+    if (selectedDictionaryId) params.set('dictionaryId', selectedDictionaryId);
+    const res = await fetch(appPath(`/api/dictionary/categories?${params}`));
     if (res.ok) categories = await res.json();
+  }
+
+  async function loadDictionaries() {
+    const res = await fetch(appPath('/api/dictionaries'));
+    if (!res.ok) return;
+    dictionaries = await res.json();
+    if (!dictionaries.some(d => d.id === selectedDictionaryId)) {
+      selectedDictionaryId = dictionaries[0]?.id ?? 'default';
+    }
+    syncDictionaryForm();
   }
 
   async function loadShareTokens() {
@@ -95,18 +154,27 @@
 
   async function reload() {
     await Promise.all([loadWords(), loadCategories()]);
+    if (isAdmin) await loadDictionaries();
     if (isAdmin) await loadPendingWords();
   }
 
   onMount(async () => {
     const layoutData = $pageStore.data as { isServerMode?: boolean };
     if (!layoutData.isServerMode) { goto(appPath('/')); return; }
+    await loadDictionaries();
     await Promise.all([loadWords(), loadCategories()]);
     if (isAdmin) await Promise.all([loadShareTokens(), loadPendingWords()]);
     loading = false;
   });
 
   function selectCategory(cat: string | undefined) { selectedCategory = cat; page = 1; loadWords(); }
+  async function selectDictionary(id: string) {
+    selectedDictionaryId = id;
+    selectedCategory = undefined;
+    page = 1;
+    syncDictionaryForm();
+    await reload();
+  }
   function prevPage() { if (page > 1) { page--; loadWords(); } }
   function nextPage() { if (page * limit < total) { page++; loadWords(); } }
 
@@ -116,7 +184,7 @@
     const res = await fetch(appPath('/api/dictionary'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(addForm),
+      body: JSON.stringify({ ...addForm, dictionaryId: selectedDictionaryId }),
     });
     if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
     addForm = { word: '', meaning: '', description: '', category: '' };
@@ -189,7 +257,7 @@
   }
 
   async function exportWordsJson() {
-    const res = await fetch(appPath('/api/dictionary/export'));
+    const res = await fetch(appPath(`/api/dictionary/export?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`));
     if (!res.ok) return;
     const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -198,7 +266,7 @@
   }
 
   async function exportWordsXlsx() {
-    const res = await fetch(appPath('/api/dictionary/export'));
+    const res = await fetch(appPath(`/api/dictionary/export?dictionaryId=${encodeURIComponent(selectedDictionaryId)}`));
     if (!res.ok) return;
     const { exportDictionaryXlsx } = await import('$lib/utils/dictionary-xlsx');
     exportDictionaryXlsx(await res.json());
@@ -226,7 +294,8 @@
         data = parseDictionaryXlsx(await file.arrayBuffer());
         if (data.length === 0) { error = 'No valid rows found'; return; }
       }
-      const res = await fetch(appPath('/api/dictionary/import'), {
+      const params = new URLSearchParams({ dictionaryId: selectedDictionaryId, status: importStatus });
+      const res = await fetch(appPath(`/api/dictionary/import?${params}`), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
       });
       if (!res.ok) { error = 'Import failed'; return; }
@@ -239,13 +308,91 @@
   }
 
   async function createShareToken() {
-    const body: Record<string, unknown> = {};
+    const body: Record<string, unknown> = { dictionaryId: selectedDictionaryId };
     if (newSharePassword) body.password = newSharePassword;
     if (newShareExpires) body.expiresInDays = parseInt(newShareExpires, 10);
     const res = await fetch(appPath('/api/admin/dictionary-tokens'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     if (res.ok) { newSharePassword = ''; newShareExpires = ''; await loadShareTokens(); }
+  }
+
+  async function createDictionary() {
+    error = ''; success = '';
+    if (!newDictionaryName.trim()) return;
+    const res = await fetch(appPath('/api/dictionaries'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newDictionaryName }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    const row = await res.json();
+    newDictionaryName = '';
+    await loadDictionaries();
+    await selectDictionary(row.id);
+  }
+
+  async function cloneDictionaryById() {
+    error = ''; success = '';
+    if (!selectedDictionary || !cloneDictionaryName.trim()) return;
+    const res = await fetch(appPath('/api/dictionaries'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: cloneDictionaryName,
+        description: dictionaryEditDescription,
+        cloneFromDictionaryId: selectedDictionary.id,
+      }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    const row = await res.json();
+    await loadDictionaries();
+    await selectDictionary(row.id);
+  }
+
+  async function saveDictionary() {
+    error = ''; success = '';
+    if (!selectedDictionaryId || !dictionaryEditName.trim()) return;
+    const res = await fetch(appPath(`/api/dictionaries/${selectedDictionaryId}`), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: dictionaryEditName, description: dictionaryEditDescription }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    await loadDictionaries();
+  }
+
+  async function makeDefaultDictionary() {
+    error = ''; success = '';
+    const res = await fetch(appPath(`/api/dictionaries/${selectedDictionaryId}`), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isDefault: true }),
+    });
+    if (!res.ok) { error = (await res.json()).error || 'Failed'; return; }
+    await loadDictionaries();
+  }
+
+  async function deleteDictionaryById() {
+    error = ''; success = '';
+    if (!selectedDictionary || dictionaryDeleteBlockedReason) {
+      if (dictionaryDeleteBlockedReason) error = dictionaryDeleteBlockedReason;
+      return;
+    }
+    if (!confirm(m.dict_delete_dictionary_confirm({ name: selectedDictionary.name }))) return;
+    const res = await fetch(appPath(`/api/dictionaries/${selectedDictionaryId}`), { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      if (data.code === 'default_dictionary') error = m.dict_delete_blocked_default();
+      else if (data.wordCount > 0) error = m.dict_delete_blocked_words({ count: data.wordCount });
+      else if (data.shareTokenCount > 0) error = m.dict_delete_blocked_share_tokens({ count: data.shareTokenCount });
+      else if (data.projectCount > 0) error = m.dict_delete_blocked_projects({ count: data.projectCount });
+      else error = data.error || 'Failed';
+      await loadDictionaries();
+      return;
+    }
+    await loadDictionaries();
+    await reload();
   }
 
   async function deleteShareToken(tokenId: string) {
@@ -267,30 +414,128 @@
 
 <div class="dict-page">
   <div class="dict-header">
-    <a href={appPath('/')} class="back-link">&larr; {m.dict_back()}</a>
-    <h1>{m.dict_title()}</h1>
+    <div class="dict-heading">
+      <a href={appPath('/')} class="back-link">&larr; {m.dict_back()}</a>
+      <div class="title-row">
+        <h1>{m.dict_title()}</h1>
+        {#if isAdmin && pendingCount > 0}
+          <span class="badge badge-pending">{m.dict_pending_count({ count: pendingCount })}</span>
+        {/if}
+      </div>
+      <p class="dict-subtitle">{m.dict_desc()}</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-primary" onclick={() => { showAddRow = true; }}>
+        {isAdmin ? m.dict_add() : m.dict_suggest()}
+      </button>
+      {#if isAdmin}
+        <div class="import-group">
+          <select class="import-status-select" bind:value={importStatus} title={m.dict_import_status()}>
+            <option value="approved">{m.dict_approved()}</option>
+            <option value="pending">{m.dict_pending()}</option>
+          </select>
+          <button class="btn-sm" onclick={importWordsFromFile}>{m.dict_import()}</button>
+          <button class="btn-sm" onclick={exportWordsTemplate}>Template</button>
+        </div>
+      {/if}
+      <div class="export-group">
+        <button class="btn-sm" onclick={exportWordsXlsx}>Excel</button>
+        <button class="btn-sm" onclick={exportWordsJson}>JSON</button>
+      </div>
+      {#if isAdmin}
+        <button class="btn-sm" class:btn-sm-active={showShare} onclick={() => (showShare = !showShare)}>{m.dict_share_title()}</button>
+      {/if}
+    </div>
   </div>
 
-  <p class="section-desc">
-    {m.dict_total_words({ count: total })}
-    {#if isAdmin && pendingCount > 0}
-      &middot; <span class="badge badge-pending">{m.dict_pending_count({ count: pendingCount })}</span>
+  <div class="overview-grid">
+    <div class="metric">
+      <span>{m.dict_title()}</span>
+      <strong>{selectedDictionary?.name ?? '-'}</strong>
+    </div>
+    <div class="metric">
+      <span>{m.dict_word()}</span>
+      <strong>{total}</strong>
+    </div>
+    {#if isAdmin}
+      <div class="metric">
+        <span>{m.dict_pending()}</span>
+        <strong>{pendingCount}</strong>
+      </div>
+      <div class="metric">
+        <span>{m.dict_share_title()}</span>
+        <strong>{selectedShareTokens.length}</strong>
+      </div>
     {/if}
-  </p>
+  </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar-row">
-    <button class="btn-primary" onclick={() => { showAddRow = true; }}>
-      {isAdmin ? m.dict_add() : m.dict_suggest()}
-    </button>
-    {#if isAdmin}
-      <button class="btn-sm" onclick={importWordsFromFile}>{m.dict_import()}</button>
-      <button class="btn-sm" onclick={exportWordsTemplate}>Template</button>
-    {/if}
-    <button class="btn-sm" onclick={exportWordsXlsx}>Excel</button>
-    <button class="btn-sm" onclick={exportWordsJson}>JSON</button>
-    {#if isAdmin}
-      <button class="btn-sm" class:btn-sm-active={showShare} onclick={() => (showShare = !showShare)}>{m.dict_share_title()}</button>
+  <div class="dictionary-panel">
+    <div class="dictionary-panel-main">
+      <div class="dictionary-selector">
+        <span class="control-caption">{m.dict_title()}</span>
+        <select
+          class="dictionary-select"
+          value={selectedDictionaryId}
+          onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}
+        >
+          {#each dictionaries as dict}
+            <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
+          {/each}
+        </select>
+      </div>
+
+      {#if isAdmin}
+        <div class="dictionary-create">
+          <span class="control-caption">{m.dict_new_dictionary()}</span>
+          <div class="inline-control">
+            <input
+              class="dictionary-input"
+              placeholder={m.dict_new_dictionary()}
+              bind:value={newDictionaryName}
+              onkeydown={(e) => { if (e.key === 'Enter') createDictionary(); }}
+            />
+            <button class="btn-sm" onclick={createDictionary}>{m.dict_create_dictionary()}</button>
+          </div>
+        </div>
+      {/if}
+    </div>
+
+    {#if isAdmin && selectedDictionary}
+      <div class="dictionary-manage-row">
+        <div class="field-stack name-field">
+          <span class="control-caption">{m.dict_dictionary_name()}</span>
+          <input class="dictionary-input" bind:value={dictionaryEditName} placeholder={m.dict_dictionary_name()} />
+        </div>
+        <div class="field-stack description-field">
+          <span class="control-caption">{m.dict_dictionary_description()}</span>
+          <input class="dictionary-input dictionary-description-input" bind:value={dictionaryEditDescription} placeholder={m.dict_dictionary_description()} />
+        </div>
+        <div class="dictionary-actions">
+          <button class="btn-sm" onclick={saveDictionary}>{m.dict_save_dictionary()}</button>
+          <button class="btn-sm" disabled={!!selectedDictionary.is_default} onclick={makeDefaultDictionary}>{m.dict_set_default()}</button>
+          <button class="btn-sm" onclick={() => { showCloneDictionary = !showCloneDictionary; }}>{m.dict_clone_dictionary()}</button>
+          <button
+            class="btn-sm btn-danger"
+            disabled={!!dictionaryDeleteBlockedReason}
+            title={dictionaryDeleteBlockedReason}
+            onclick={deleteDictionaryById}
+          >{m.dict_delete_dictionary()}</button>
+        </div>
+      </div>
+      {#if dictionaryDeleteBlockedReason}
+        <div class="dictionary-delete-hint">
+          <span>{dictionaryDeleteBlockedReason}</span>
+          {#if selectedDictionaryProjectCount > 0 && dictionaryProjectNames}
+            <span class="dictionary-project-list">{dictionaryProjectNames}</span>
+          {/if}
+        </div>
+      {/if}
+      {#if showCloneDictionary}
+        <div class="dictionary-clone-row">
+          <input class="dictionary-input" bind:value={cloneDictionaryName} placeholder={m.dict_clone_dictionary_name()} />
+          <button class="btn-sm" onclick={cloneDictionaryById}>{m.dict_clone_dictionary_create()}</button>
+        </div>
+      {/if}
     {/if}
   </div>
 
@@ -309,11 +554,11 @@
         </select>
         <button class="btn-primary" onclick={createShareToken}>{m.dict_share_create()}</button>
       </div>
-      {#if shareTokens.length > 0}
+      {#if selectedShareTokens.length > 0}
         <table class="data-table" style="margin-top:12px">
           <thead><tr><th>Token</th><th>{m.dict_share_password()}</th><th>{m.dict_share_expires()}</th><th></th></tr></thead>
           <tbody>
-            {#each shareTokens as t}
+            {#each selectedShareTokens as t}
               <tr>
                 <td><code style="color:var(--app-success);font-size:11px">{t.token.slice(0,20)}...</code></td>
                 <td>{t.hasPassword ? '🔒' : '—'}</td>
@@ -416,8 +661,11 @@
   {/if}
 
   <!-- Filters -->
-  <div class="filter-row">
-    <input class="filter-search" placeholder={m.dict_search()} bind:value={search} oninput={onSearchInput} />
+  <div class="list-panel">
+    <div class="list-toolbar">
+      <input class="filter-search" placeholder={m.dict_search()} bind:value={search} oninput={onSearchInput} />
+      <span class="word-total">{m.dict_total_words({ count: total })}</span>
+    </div>
     {#if categories.length > 0}
       <div class="filter-pills">
         <button class="pill" class:active={selectedCategory === undefined} onclick={() => selectCategory(undefined)}>{m.dict_all_categories()}</button>
@@ -427,13 +675,13 @@
         {/each}
       </div>
     {/if}
-  </div>
 
-  <!-- Main table -->
-  {#if loading}
-    <div class="empty-state">{m.dict_share_loading()}</div>
-  {:else}
-    <table class="data-table">
+    <!-- Main table -->
+    {#if loading}
+      <div class="empty-state">{m.dict_share_loading()}</div>
+    {:else}
+      <div class="table-scroll">
+        <table class="data-table">
       <thead>
         <tr>
           <th style="width:16%">{m.dict_word()}</th>
@@ -490,16 +738,18 @@
           <tr><td colspan={(isAdmin || showAddRow) ? 5 : 4} class="empty-state">{m.dict_no_words()}</td></tr>
         {/if}
       </tbody>
-    </table>
-
-    {#if totalPages > 1}
-      <div class="pagination">
-        <button class="btn-sm" disabled={page <= 1} onclick={prevPage}>&laquo;</button>
-        <span>{page} / {totalPages}</span>
-        <button class="btn-sm" disabled={page >= totalPages} onclick={nextPage}>&raquo;</button>
+        </table>
       </div>
+
+      {#if totalPages > 1}
+        <div class="pagination">
+          <button class="btn-sm" disabled={page <= 1} onclick={prevPage}>&laquo;</button>
+          <span>{page} / {totalPages}</span>
+          <button class="btn-sm" disabled={page >= totalPages} onclick={nextPage}>&raquo;</button>
+        </div>
+      {/if}
     {/if}
-  {/if}
+  </div>
 </div>
 
 <style>
@@ -507,21 +757,210 @@
     min-height: 100vh;
     background: var(--app-bg);
     color: var(--app-text);
-    padding: 24px 40px;
+    padding: 24px 32px 40px;
   }
 
-  .dict-header { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
-  .dict-header h1 { font-size: 22px; font-weight: 700; margin: 0; }
+  .dict-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 18px;
+  }
+
+  .dict-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .dict-header h1 { font-size: 26px; line-height: 1.2; font-weight: 700; margin: 0; }
+
+  .dict-subtitle {
+    margin: 0;
+    color: var(--app-text-muted);
+    font-size: 13px;
+  }
+
+  .word-total {
+    font-size: 12px;
+    color: var(--app-text-muted);
+    padding: 5px 10px;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .import-group,
+  .export-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
 
   .back-link { color: var(--app-accent); text-decoration: none; font-size: 14px; }
   .back-link:hover { text-decoration: underline; }
 
-  .section-desc { color: var(--app-text-muted); font-size: 13px; margin: 0 0 16px; }
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
 
-  .toolbar-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .metric {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-card-bg);
+  }
+
+  .metric span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--app-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .metric strong {
+    display: block;
+    overflow: hidden;
+    color: var(--app-text);
+    font-size: 20px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dictionary-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-card-bg);
+  }
+
+  .dictionary-panel-main {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(280px, auto);
+    gap: 12px;
+    align-items: end;
+  }
+
+  .dictionary-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .control-caption {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--app-text-muted);
+    text-transform: uppercase;
+  }
+
+  .dictionary-create,
+  .dictionary-clone-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .dictionary-create {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inline-control {
+    display: flex;
+    gap: 6px;
+  }
+
+  .dictionary-manage-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) minmax(220px, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .field-stack {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dictionary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .dictionary-delete-hint {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 12px;
+    color: #f59e0b;
+  }
+
+  .dictionary-project-list { color: var(--app-text-muted); }
+
+  .dictionary-select,
+  .dictionary-input,
+  .import-status-select {
+    padding: 7px 10px;
+    background: var(--app-input-bg);
+    border: 1px solid var(--app-input-border);
+    border-radius: 6px;
+    color: var(--app-text);
+    font-size: 13px;
+  }
+  .dictionary-select { min-width: 220px; width: 100%; }
+  .dictionary-input { width: 100%; min-width: 0; }
+  .dictionary-clone-row .dictionary-input { max-width: 320px; }
 
   /* ── Filters ────────────────────────────────────── */
-  .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .list-panel {
+    padding: 14px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-card-bg);
+  }
+
+  .list-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
 
   .filter-search {
     padding: 8px 12px;
@@ -532,18 +971,17 @@
     font-size: 13px;
     min-width: 200px;
     flex: 1;
-    max-width: 360px;
   }
 
   .filter-search:focus { outline: none; border-color: var(--app-accent); }
 
-  .filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 
   .pill {
-    padding: 4px 12px;
+    padding: 5px 12px;
     background: none;
     border: 1px solid var(--app-border);
-    border-radius: 4px;
+    border-radius: 999px;
     color: var(--app-text-muted);
     font-size: 12px;
     cursor: pointer;
@@ -562,13 +1000,17 @@
 
   .btn-sm-active { border-color: var(--app-accent) !important; color: var(--app-accent) !important; }
 
+  .table-scroll {
+    overflow-x: auto;
+  }
+
   /* ── Global class styles (CSS variable based) ──── */
-  .dict-page :global(.data-table) { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
-  .dict-page :global(.data-table th) { text-align: left; padding: 8px 12px; color: var(--app-text-muted); font-weight: 500; border-bottom: 1px solid var(--app-border); }
-  .dict-page :global(.data-table td) { padding: 8px 12px; border-bottom: 1px solid var(--app-border-light); }
+  .dict-page :global(.data-table) { width: 100%; min-width: 760px; border-collapse: collapse; margin-bottom: 0; font-size: 13px; }
+  .dict-page :global(.data-table th) { text-align: left; padding: 10px 12px; color: var(--app-text-muted); font-weight: 600; border-bottom: 1px solid var(--app-border); background: var(--app-card-bg); }
+  .dict-page :global(.data-table td) { padding: 10px 12px; border-bottom: 1px solid var(--app-border-light); vertical-align: top; }
   .dict-page :global(.data-table tbody tr:hover) { background: var(--app-hover-bg); }
 
-  .dict-page :global(.badge) { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--app-badge-bg); color: var(--app-text-muted); }
+  .dict-page :global(.badge) { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--app-badge-bg); color: var(--app-text-muted); }
   .dict-page :global(.badge-pending) { background: var(--app-warning-bg); color: var(--app-warning-text); }
   .dict-page :global(.badge-rejected) { background: rgba(248,113,113,0.15); color: var(--app-danger); }
 
@@ -581,10 +1023,10 @@
   .dict-page :global(.form-grid input:focus),
   .dict-page :global(.form-grid select:focus) { outline: none; border-color: var(--app-accent); }
 
-  .dict-page :global(.btn-primary) { padding: 8px 16px; background: var(--app-accent); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .dict-page :global(.btn-primary) { padding: 9px 16px; background: var(--app-accent); color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
   .dict-page :global(.btn-primary:hover) { background: var(--app-accent-hover); }
 
-  .dict-page :global(.btn-sm) { padding: 4px 10px; background: var(--app-badge-bg); color: var(--app-text-secondary); border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .dict-page :global(.btn-sm) { min-height: 30px; padding: 5px 10px; background: var(--app-badge-bg); color: var(--app-text-secondary); border: 1px solid transparent; border-radius: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; }
   .dict-page :global(.btn-sm:hover) { background: var(--app-hover-bg); }
   .dict-page :global(.btn-sm:disabled) { opacity: 0.3; cursor: default; }
 
@@ -597,11 +1039,38 @@
   .dict-page :global(.btn-approve) { background: var(--app-success); color: white; }
   .dict-page :global(.btn-approve:hover) { background: var(--app-success-hover); }
 
-  .dict-page :global(.btn-row) { display: flex; gap: 6px; }
+  .dict-page :global(.btn-row) { display: flex; gap: 6px; justify-content: flex-end; }
 
   .dict-page :global(.inline-input) { padding: 4px 8px; background: var(--app-input-bg); border: 1px solid var(--app-input-border); border-radius: 4px; color: var(--app-text); font-size: 12px; width: 100%; min-width: 60px; box-sizing: border-box; }
   .dict-page :global(.inline-input:focus) { outline: none; border-color: var(--app-accent); }
 
   .dict-page :global(.msg-error) { margin-bottom: 12px; font-size: 13px; color: var(--app-danger); }
   .dict-page :global(.msg-success) { margin-bottom: 12px; font-size: 13px; color: var(--app-success); }
+
+  @media (max-width: 900px) {
+    .dict-page { padding: 16px; }
+    .dict-header { align-items: stretch; flex-direction: column; }
+    .header-actions { justify-content: flex-start; }
+    .dictionary-panel-main,
+    .dictionary-manage-row { grid-template-columns: 1fr; }
+    .dictionary-create,
+    .dictionary-manage-row,
+    .dictionary-clone-row { justify-content: flex-start; }
+    .dictionary-actions { justify-content: flex-start; }
+    .list-toolbar { align-items: stretch; flex-direction: column; }
+    .word-total { align-self: flex-start; }
+  }
+
+  @media (max-width: 560px) {
+    .dict-header h1 { font-size: 22px; }
+    .overview-grid { grid-template-columns: 1fr; }
+    .header-actions,
+    .import-group,
+    .export-group,
+    .inline-control,
+    .dictionary-actions { width: 100%; }
+    .dict-page :global(.btn-primary),
+    .dict-page :global(.btn-sm),
+    .import-status-select { flex: 1; }
+  }
 </style>

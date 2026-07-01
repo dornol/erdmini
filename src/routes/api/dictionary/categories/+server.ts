@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import db from '$lib/server/db';
 import { listCategories } from '$lib/server/dictionary';
 
-export const GET: RequestHandler = ({ locals }) => {
+export const GET: RequestHandler = ({ locals, url }) => {
   if (!locals.user) return json({ error: 'Unauthorized' }, { status: 401 });
-  return json(listCategories(db));
+  return json(listCategories(db, url.searchParams.get('dictionaryId') || undefined));
 };

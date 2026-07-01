@@ -3,6 +3,13 @@ import { computeEffectiveRules, NAMING_RULE_TYPES } from '$lib/types/naming-rule
 import { erdStore } from '$lib/store/erd.svelte';
 import { appPath } from '$lib/utils/paths';
 
+export interface DictionarySummary {
+  id: string;
+  name: string;
+  description: string | null;
+  is_default: number;
+}
+
 class NamingRuleStore {
   /** Admin-configured site-wide rules */
   siteRules = $state<SiteNamingRules>({});
@@ -10,6 +17,7 @@ class NamingRuleStore {
   loaded = $state(false);
   /** Dictionary words for validation */
   dictionaryWords = $state<Set<string>>(new Set());
+  dictionaries = $state<DictionarySummary[]>([]);
 
   /** Effective rules = merged admin + project overrides */
   get effectiveRules(): EffectiveNamingRules {
@@ -40,10 +48,23 @@ class NamingRuleStore {
   }
 
   /** Fetch all approved dictionary words for validation */
-  async fetchDictionaryWords() {
+  async fetchDictionaries() {
+    try {
+      const res = await fetch(appPath('/api/dictionaries'));
+      if (res.ok) {
+        this.dictionaries = await res.json();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async fetchDictionaryWords(dictionaryId?: string) {
     try {
       // Fetch all approved words (up to 10000) for naming validation
-      const res = await fetch(appPath('/api/dictionary?limit=200&status=approved'));
+      const params = new URLSearchParams({ limit: '200', status: 'approved' });
+      if (dictionaryId) params.set('dictionaryId', dictionaryId);
+      const res = await fetch(appPath(`/api/dictionary?${params}`));
       if (!res.ok) return;
       const data = await res.json();
       const words: Set<string> = new Set();
@@ -56,7 +77,8 @@ class NamingRuleStore {
       const total: number = data.total ?? 0;
       let page = 2;
       while (words.size < total) {
-        const nextRes = await fetch(appPath(`/api/dictionary?limit=200&page=${page}&status=approved`));
+        params.set('page', String(page));
+        const nextRes = await fetch(appPath(`/api/dictionary?${params}`));
         if (!nextRes.ok) break;
         const nextData = await nextRes.json();
         const nextRows: { word: string }[] = nextData.words ?? [];

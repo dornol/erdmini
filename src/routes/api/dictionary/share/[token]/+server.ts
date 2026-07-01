@@ -7,9 +7,9 @@ import { RateLimiter } from '$lib/server/auth/rate-limiter';
 const dictPasswordLimiter = new RateLimiter({ maxAttempts: 10, windowMs: 15 * 60_000, maxMapSize: 1000 });
 setInterval(() => dictPasswordLimiter.cleanup(), 5 * 60 * 1000);
 
-function getDictionaryData() {
-  const { words } = listWords(db, { limit: 100000 });
-  const categories = listCategories(db);
+function getDictionaryData(dictionaryId: string) {
+  const { words } = listWords(db, { dictionaryId, limit: 100000 });
+  const categories = listCategories(db, dictionaryId);
   return { words, categories };
 }
 
@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ params }) => {
     return json({ requiresPassword: true }, { status: 401 });
   }
 
-  return json(getDictionaryData());
+  return json(getDictionaryData(result.dictionaryId));
 };
 
 export const POST: RequestHandler = async ({ params, request, getClientAddress }) => {
@@ -58,5 +58,5 @@ export const POST: RequestHandler = async ({ params, request, getClientAddress }
     return json({ error: 'Wrong password', requiresPassword: true }, { status: 401 });
   }
 
-  return json(getDictionaryData());
+  return json(getDictionaryData(result.dictionaryId));
 };

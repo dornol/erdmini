@@ -6,6 +6,7 @@
 
   interface DictShareToken {
     id: string;
+    dictionaryId: string;
     token: string;
     hasPassword: boolean;
     createdBy: string;
@@ -13,6 +14,15 @@
     expiresAt: string | null;
   }
 
+  interface DictionaryRow {
+    id: string;
+    name: string;
+    description: string | null;
+    is_default: number;
+  }
+
+  let dictionaries = $state<DictionaryRow[]>([]);
+  let selectedDictionaryId = $state('default');
   let tokens = $state<DictShareToken[]>([]);
   let wordCount = $state(0);
   let message = $state<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -22,8 +32,18 @@
   let newExpires = $state('');
 
   onMount(async () => {
+    await loadDictionaries();
     await Promise.all([loadTokens(), loadWordCount()]);
   });
+
+  async function loadDictionaries() {
+    const res = await fetch(appPath('/api/dictionaries'));
+    if (!res.ok) return;
+    dictionaries = await res.json();
+    if (!dictionaries.some(d => d.id === selectedDictionaryId)) {
+      selectedDictionaryId = dictionaries[0]?.id ?? 'default';
+    }
+  }
 
   async function loadTokens() {
     const res = await fetch(appPath('/api/admin/dictionary-tokens'));
@@ -31,11 +51,20 @@
   }
 
   async function loadWordCount() {
-    const res = await fetch(appPath('/api/dictionary?limit=0'));
+    const res = await fetch(appPath(`/api/dictionary?limit=0&dictionaryId=${encodeURIComponent(selectedDictionaryId)}`));
     if (res.ok) {
       const data = await res.json();
       wordCount = data.total;
     }
+  }
+
+  function dictionaryName(id: string): string {
+    return dictionaries.find(d => d.id === id)?.name ?? id;
+  }
+
+  async function selectDictionary(id: string) {
+    selectedDictionaryId = id;
+    await loadWordCount();
   }
 
   function shareUrl(token: string): string {
@@ -50,7 +79,7 @@
 
   async function createToken() {
     message = null;
-    const body: Record<string, unknown> = {};
+    const body: Record<string, unknown> = { dictionaryId: selectedDictionaryId };
     if (newPassword) body.password = newPassword;
     if (newExpires) body.expiresInDays = parseInt(newExpires, 10);
 
@@ -104,6 +133,11 @@
   <div class="form-section">
     <h3>{m.dict_share_create()}</h3>
     <div class="form-grid">
+      <select value={selectedDictionaryId} onchange={(e) => selectDictionary((e.target as HTMLSelectElement).value)}>
+        {#each dictionaries as dict}
+          <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
+        {/each}
+      </select>
       <input type="password" placeholder={m.dict_share_password()} bind:value={newPassword} />
       <select bind:value={newExpires}>
         <option value="">{m.dict_share_never()}</option>
@@ -120,6 +154,7 @@
     <thead>
       <tr>
         <th>Token</th>
+        <th>{m.dict_title()}</th>
         <th>{m.dict_share_password()}</th>
         <th>{m.dict_share_expires()}</th>
         <th>Created</th>
@@ -130,6 +165,7 @@
       {#each tokens as t}
         <tr>
           <td><code style="font-size:11px;color:#4ade80">{t.token.slice(0, 16)}...</code></td>
+          <td>{dictionaryName(t.dictionaryId)}</td>
           <td>{t.hasPassword ? '🔒' : '—'}</td>
           <td>
             {#if t.expiresAt}
@@ -148,7 +184,7 @@
         </tr>
       {/each}
       {#if tokens.length === 0}
-        <tr><td colspan="5" style="text-align:center;color:#64748b">{m.dict_share_no_tokens()}</td></tr>
+        <tr><td colspan="6" style="text-align:center;color:#64748b">{m.dict_share_no_tokens()}</td></tr>
       {/if}
     </tbody>
   </table>

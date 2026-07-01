@@ -241,6 +241,11 @@ class ERDStore {
     this.schema.updatedAt = now();
   }
 
+  setDictionaryId(dictionaryId: string | undefined) {
+    this.schema.dictionaryId = dictionaryId || undefined;
+    this.schema.updatedAt = now();
+  }
+
   renameGroup(oldName: string, newName: string) {
     if (!oldName || !newName || oldName === newName) return;
     for (const table of this.schema.tables) {
