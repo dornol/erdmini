@@ -52,7 +52,7 @@
           <span class="lint-badge">{lintIssueCount}</span>
         {/if}
       </button>
-      {#if namingRuleStore.hasActiveRules}
+      {#if namingRuleStore.hasActiveRules || namingRuleStore.dictionaries.length > 0}
         <button class="dropdown-item" role="menuitem" onclick={() => { onaction('naming-rules'); onclose(); }}>
           {m.naming_rule_title()}
         </button>
