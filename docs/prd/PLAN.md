@@ -157,7 +157,7 @@ A web application for visually authoring ERDs (Entity-Relationship Diagrams) in 
 
 - [x] MCP (Model Context Protocol) Streamable HTTP endpoint (`/mcp`)
 - [x] API key authentication (`erd_` prefix + SHA-256 hash, CRUD in Admin UI)
-- [x] 88 tools: schema CRUD, columns, FKs, UKs, indexes, domains, word dictionaries, memos, snapshots, schema namespaces, bulk ops, search, table templates, import/export (DDL/Prisma/DBML/diagram), lint, layout, domain analysis/dictionary, migration SQL
+- [x] 89 tools: schema CRUD, columns, FKs, UKs, indexes, domains, word dictionaries, memos, snapshots, schema namespaces, bulk ops, search, table templates, import/export (DDL/Prisma/DBML/diagram), lint, layout, domain analysis/dictionary, migration SQL
 - [x] `createMcpServer(db, keyInfo)` factory pattern
 - [x] SvelteKit API route (`src/routes/mcp/+server.ts`), no separate bundle required
 - [x] Collab server integration (WebSocket notification on schema change)
@@ -366,7 +366,7 @@ Monolithic SvelteKit structure — authentication, API, and MCP are all handled 
 - Admin UI: user CRUD, OIDC providers, API key management
 - Per-project permissions: owner / editor / viewer
 - Real-time collaboration: WebSocket, participant cursors, LWW conflict resolution
-- MCP: Streamable HTTP (`/mcp`), 88 tools, collab integration
+- MCP: Streamable HTTP (`/mcp`), 89 tools, collab integration
 
 ```
 [Browser] → [SvelteKit hooks.server.ts] → [OIDC / LDAP / Local Auth]
@@ -379,7 +379,7 @@ Monolithic SvelteKit structure — authentication, API, and MCP are all handled 
 
 [AI tool] → [/mcp (Streamable HTTP)] → [API key auth]
                      ↓
-             [MCP Server (88 tools)]
+             [MCP Server (89 tools)]
                      ↓
                 [SQLite DB] → [Collab notification]
 ```

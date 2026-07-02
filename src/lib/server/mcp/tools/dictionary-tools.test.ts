@@ -94,6 +94,18 @@ function makeCtx(role: 'admin' | 'user' = 'user', schema = makeSchema()): McpToo
   };
 }
 
+function mockSiteRules(ctx: McpToolContext, rules: Record<string, unknown>): void {
+  vi.mocked(ctx.db.prepare).mockImplementation((sql: string) => ({
+    get: vi.fn(() => {
+      if (sql.includes('FROM dictionaries')) return { id: 'dict1' };
+      if (sql.includes('site_settings')) return { value: JSON.stringify(rules) };
+      return undefined;
+    }),
+    all: vi.fn(() => []),
+    run: vi.fn(),
+  }) as never);
+}
+
 async function call(tools: Map<string, ToolHandler>, name: string, args: Record<string, unknown> = {}) {
   const handler = tools.get(name);
   if (!handler) throw new Error(`Tool not registered: ${name}`);
@@ -118,6 +130,7 @@ describe('registerDictionaryTools', () => {
       'list_dictionary_words',
       'add_dictionary_word',
       'set_project_dictionary',
+      'set_project_naming_rules',
       'get_naming_rules',
     ]));
   });
@@ -174,5 +187,119 @@ describe('registerDictionaryTools', () => {
     expect(ctx.requireAccess).toHaveBeenCalledWith('p1', 'viewer');
     expect(body.projectDictionaryId).toBe('dict1');
     expect(body.effectiveRules.dictionaryCheck).toEqual({ value: 'table', source: 'project' });
+    expect(body.ruleStatus.dictionaryCheck).toMatchObject({ status: 'project_override', allowOverride: true });
+  });
+
+  it('returns naming rule status for inherited, locked, disabled, and project override rules', async () => {
+    const ctx = makeCtx('user', makeSchema({ namingRules: { tablePrefix: 't_' } }));
+    mockSiteRules(ctx, {
+      tableCase: { enabled: true, value: 'snake_case', allowOverride: true },
+      columnCase: { enabled: true, value: 'camelCase', allowOverride: false },
+      tablePrefix: { enabled: true, value: 'tbl_', allowOverride: true },
+      dictionaryCheck: { enabled: false, value: 'both', allowOverride: true },
+    });
+    const { server, tools } = makeServer();
+    registerDictionaryTools(server as never, ctx);
+
+    const res = await call(tools, 'get_naming_rules', { projectId: 'p1' });
+    const body = JSON.parse(res.content[0].text);
+
+    expect(body.ruleStatus.tableCase).toMatchObject({ status: 'inherited', value: 'snake_case', source: 'admin' });
+    expect(body.ruleStatus.columnCase).toMatchObject({ status: 'admin_locked', value: 'camelCase', source: 'admin' });
+    expect(body.ruleStatus.tablePrefix).toMatchObject({ status: 'project_override', value: 't_', source: 'project' });
+    expect(body.ruleStatus.dictionaryCheck).toMatchObject({ status: 'disabled', value: 'both', source: null });
+  });
+
+  it('sets allowed project naming rule overrides with editor access', async () => {
+    const schema = makeSchema();
+    const ctx = makeCtx('user', schema);
+    const { server, tools } = makeServer();
+    registerDictionaryTools(server as never, ctx);
+
+    const res = await call(tools, 'set_project_naming_rules', {
+      projectId: 'p1',
+      overrides: { dictionaryCheck: 'column' },
+    });
+    const body = JSON.parse(res.content[0].text);
+
+    expect(ctx.requireAccess).toHaveBeenCalledWith('p1', 'editor');
+    expect(ctx.saveAndNotify).toHaveBeenCalledWith('p1', expect.objectContaining({
+      namingRules: { dictionaryCheck: 'column' },
+    }));
+    expect(ctx.mcpAudit).toHaveBeenCalledWith('set_project_naming_rules', 'p1', { overrides: { dictionaryCheck: 'column' } });
+    expect(body.effectiveRules.dictionaryCheck).toEqual({ value: 'column', source: 'project' });
+  });
+
+  it('clears project naming rule overrides with null values', async () => {
+    const ctx = makeCtx('user', makeSchema({ namingRules: { dictionaryCheck: 'table' } }));
+    const { server, tools } = makeServer();
+    registerDictionaryTools(server as never, ctx);
+
+    await call(tools, 'set_project_naming_rules', {
+      projectId: 'p1',
+      overrides: { dictionaryCheck: null },
+    });
+
+    expect(ctx.saveAndNotify).toHaveBeenCalledWith('p1', expect.objectContaining({
+      namingRules: undefined,
+    }));
+  });
+
+  it('preserves omitted project naming rule overrides when updating another rule', async () => {
+    const ctx = makeCtx('user', makeSchema({ namingRules: { tableCase: 'PascalCase', dictionaryCheck: 'table' } }));
+    mockSiteRules(ctx, {
+      tableCase: { enabled: true, value: 'snake_case', allowOverride: true },
+      dictionaryCheck: { enabled: true, value: 'both', allowOverride: true },
+    });
+    const { server, tools } = makeServer();
+    registerDictionaryTools(server as never, ctx);
+
+    await call(tools, 'set_project_naming_rules', {
+      projectId: 'p1',
+      overrides: { dictionaryCheck: null },
+    });
+
+    expect(ctx.saveAndNotify).toHaveBeenCalledWith('p1', expect.objectContaining({
+      namingRules: { tableCase: 'PascalCase' },
+    }));
+  });
+
+  it('rejects project naming rule overrides locked by admin', async () => {
+    const ctx = makeCtx('user', makeSchema());
+    mockSiteRules(ctx, { dictionaryCheck: { enabled: true, value: 'both', allowOverride: false } });
+    const { server, tools } = makeServer();
+    registerDictionaryTools(server as never, ctx);
+
+    await expect(call(tools, 'set_project_naming_rules', {
+      projectId: 'p1',
+      overrides: { dictionaryCheck: 'table' },
+    })).rejects.toThrow('dictionaryCheck is locked by admin');
+    expect(ctx.saveAndNotify).not.toHaveBeenCalled();
+  });
+
+  it('rejects project naming rule overrides disabled by admin', async () => {
+    const ctx = makeCtx('user', makeSchema());
+    mockSiteRules(ctx, { dictionaryCheck: { enabled: false, value: 'both', allowOverride: true } });
+    const { server, tools } = makeServer();
+    registerDictionaryTools(server as never, ctx);
+
+    await expect(call(tools, 'set_project_naming_rules', {
+      projectId: 'p1',
+      overrides: { dictionaryCheck: 'table' },
+    })).rejects.toThrow('dictionaryCheck is disabled by admin');
+    expect(ctx.saveAndNotify).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid project naming rule override values', async () => {
+    const ctx = makeCtx('user', makeSchema());
+    mockSiteRules(ctx, { tableCase: { enabled: true, value: 'snake_case', allowOverride: true } });
+    const { server, tools } = makeServer();
+    registerDictionaryTools(server as never, ctx);
+
+    await expect(call(tools, 'set_project_naming_rules', {
+      projectId: 'p1',
+      overrides: { tableCase: 'kebab-case' },
+    })).rejects.toThrow('Invalid tableCase value');
+    expect(ctx.saveAndNotify).not.toHaveBeenCalled();
   });
 });

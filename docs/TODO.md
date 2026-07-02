@@ -159,7 +159,7 @@
 
 ### ~~25. AI Schema Generation~~ ✅ (Replaced by MCP)
 - ~~Automatically generate a schema from a natural language description (e.g., "Create a blog system")~~
-- MCP server (88 tools) is already implemented, so AI clients (Claude, etc.) can directly call `add_table`, `add_column`, `add_foreign_key`, and dictionary tools to generate schemas
+- MCP server (89 tools) is already implemented, so AI clients (Claude, etc.) can directly call `add_table`, `add_column`, `add_foreign_key`, and dictionary tools to generate schemas
 - No separate LLM integration needed — MCP infrastructure fulfills this role
 
 ### ~~26. Live DB Connection & Reverse Engineering~~ — Won't Do

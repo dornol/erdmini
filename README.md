@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/332257be-b152-4422-83f7-94394e6bd207
 ## Highlights
 
 - **Two modes** — Browser-only (IndexedDB) or self-hosted server (SQLite + auth + real-time collab).
-- **AI-powered** — Claude MCP integration with 88 tools for schema design and dictionary management via natural language.
+- **AI-powered** — Claude MCP integration with 89 tools for schema design and dictionary management via natural language.
 - **Full DDL support** — Import/export SQL for MySQL, PostgreSQL, MariaDB, MSSQL, SQLite, Oracle, H2.
 - **Multiple formats** — Prisma, DBML, Mermaid, PlantUML, JSON, PNG, SVG, PDF.
 - **4 languages** — Korean, English, Japanese, Chinese.
@@ -98,7 +98,7 @@ Self-host erdmini with SQLite for teams. Switch via `PUBLIC_STORAGE_MODE=server`
 | **Groups** | User groups, per-project group permissions, OIDC/LDAP group auto-sync |
 | **Permissions** | Per-project roles (owner/editor/viewer), per-user permission flags |
 | **Collaboration** | Real-time WebSocket sync, cursor display, LWW conflict resolution |
-| **MCP** | Streamable HTTP endpoint (`/mcp`), API key auth, 88 tools |
+| **MCP** | Streamable HTTP endpoint (`/mcp`), API key auth, 89 tools |
 | **Admin** | User/group/provider management, site branding, API keys |
 | **Audit** | Action logging with configurable retention |
 | **Embed** | Read-only iframe embed with token + optional password |

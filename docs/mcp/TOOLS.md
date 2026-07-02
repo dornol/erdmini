@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-88 tools available. Project read tools require `viewer` permission, project write tools require `editor`.
+89 tools available. Project read tools require `viewer` permission, project write tools require `editor`.
 
 ---
 
@@ -106,7 +106,8 @@
 | `import_dictionary_words` | Bulk import dictionary words (admin key required) |
 | `export_dictionary_words` | Export approved dictionary words as JSON |
 | `set_project_dictionary` | Set or clear the dictionary used by a project |
-| `get_naming_rules` | Get site rules, or effective project naming rules |
+| `set_project_naming_rules` | Set or clear allowed project naming-rule overrides |
+| `get_naming_rules` | Get site rules, project rule status, and effective project naming rules |
 
 ## Memo Tools
 
@@ -173,7 +174,7 @@ Most tools require a `projectId` parameter. Some tools accept alternative lookup
 
 Scoped API keys further restrict access to specific projects.
 
-Global dictionary administration (`create_dictionary`, `update_dictionary`, `delete_dictionary`, `import_dictionary_words`, `update_dictionary_word`) requires an admin API key. `set_project_dictionary` requires editor access to the target project.
+Global dictionary administration (`create_dictionary`, `update_dictionary`, `delete_dictionary`, `import_dictionary_words`, `update_dictionary_word`) requires an admin API key. `set_project_dictionary` and `set_project_naming_rules` require editor access to the target project.
 
 ## Collab Integration
 

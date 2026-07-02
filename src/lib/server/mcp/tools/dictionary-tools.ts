@@ -18,12 +18,20 @@ import {
   updateWordStatus,
   type WordStatus,
 } from '$lib/server/dictionary';
-import { computeEffectiveRules, type SiteNamingRules } from '$lib/types/naming-rules';
+import {
+  NAMING_CONVENTIONS,
+  NAMING_RULE_TYPES,
+  computeEffectiveRules,
+  type NamingRuleType,
+  type ProjectNamingOverrides,
+  type SiteNamingRules,
+} from '$lib/types/naming-rules';
 import type { RegisterFn, McpToolContext } from './types';
 
 const WORD_STATUSES: WordStatus[] = ['approved', 'pending', 'rejected'];
 const MAX_EXPORT_WORDS = 10000;
 const MAX_IMPORT_WORDS = 5000;
+const DICTIONARY_CHECK_TARGETS = ['table', 'column', 'both'] as const;
 
 function isAdmin(ctx: McpToolContext): boolean {
   return ctx.keyInfo.userRole === 'admin';
@@ -65,6 +73,43 @@ function readNamingRules(ctx: McpToolContext): SiteNamingRules {
   } catch {
     return {};
   }
+}
+
+function validateNamingRuleValue(type: NamingRuleType, value: string): void {
+  if ((type === 'tableCase' || type === 'columnCase') && !NAMING_CONVENTIONS.includes(value as never)) {
+    throw new Error(`Invalid ${type} value. Use one of: ${NAMING_CONVENTIONS.join(', ')}`);
+  }
+  if (type === 'dictionaryCheck' && !DICTIONARY_CHECK_TARGETS.includes(value as never)) {
+    throw new Error(`Invalid dictionaryCheck value. Use one of: ${DICTIONARY_CHECK_TARGETS.join(', ')}`);
+  }
+  if (['tablePrefix', 'tableSuffix', 'columnPrefix', 'columnSuffix'].includes(type) && value.length > 20) {
+    throw new Error(`${type} must be 20 characters or fewer`);
+  }
+}
+
+function describeNamingRuleState(siteRules: SiteNamingRules, projectOverrides: ProjectNamingOverrides = {}) {
+  const effectiveRules = computeEffectiveRules(siteRules, projectOverrides);
+  const ruleStatus = Object.fromEntries(NAMING_RULE_TYPES.map((type) => {
+    const siteRule = siteRules[type];
+    const hasOverride = projectOverrides[type] !== undefined;
+    const status = !siteRule?.enabled
+      ? 'disabled'
+      : hasOverride && siteRule.allowOverride
+        ? 'project_override'
+        : siteRule.allowOverride
+          ? 'inherited'
+          : 'admin_locked';
+    return [type, {
+      status,
+      enabled: siteRule?.enabled === true,
+      allowOverride: siteRule?.allowOverride === true,
+      value: effectiveRules[type]?.value ?? siteRule?.value ?? null,
+      source: effectiveRules[type]?.source ?? null,
+      projectOverride: projectOverrides[type] ?? null,
+    }];
+  }));
+
+  return { ruleStatus, effectiveRules };
 }
 
 export const registerDictionaryTools: RegisterFn = (server, ctx) => {
@@ -285,8 +330,58 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
   );
 
   server.tool(
+    'set_project_naming_rules',
+    'Set or clear project naming-rule overrides. Only enabled site rules with project override allowed can be changed. Requires editor access to the project.',
+    {
+      projectId: z.string().max(256).describe('Project ID'),
+      overrides: z.object({
+        tableCase: z.string().max(256).nullable().optional().describe('Override table case, or null to clear'),
+        columnCase: z.string().max(256).nullable().optional().describe('Override column case, or null to clear'),
+        tablePrefix: z.string().max(20).nullable().optional().describe('Override table prefix, or null to clear'),
+        tableSuffix: z.string().max(20).nullable().optional().describe('Override table suffix, or null to clear'),
+        columnPrefix: z.string().max(20).nullable().optional().describe('Override column prefix, or null to clear'),
+        columnSuffix: z.string().max(20).nullable().optional().describe('Override column suffix, or null to clear'),
+        dictionaryCheck: z.enum(['table', 'column', 'both']).nullable().optional().describe('Override dictionary check target, or null to clear'),
+      }).strict().describe('Rule override values. Omitted keys are left unchanged; null clears an existing override.'),
+    },
+    async ({ projectId, overrides }) => {
+      ctx.requireAccess(projectId, 'editor');
+      const siteRules = readNamingRules(ctx);
+      const schema = ctx.getSchemaOrFail(projectId);
+      const nextOverrides: ProjectNamingOverrides = { ...(schema.namingRules ?? {}) };
+
+      for (const [rawType, value] of Object.entries(overrides)) {
+        const type = rawType as NamingRuleType;
+        const siteRule = siteRules[type];
+        if (!siteRule?.enabled) throw new Error(`${type} is disabled by admin`);
+        if (!siteRule.allowOverride) throw new Error(`${type} is locked by admin`);
+        if (value === null) {
+          delete nextOverrides[type];
+        } else if (value !== undefined) {
+          validateNamingRuleValue(type, value);
+          nextOverrides[type] = value;
+        }
+      }
+
+      const updated = {
+        ...schema,
+        namingRules: Object.keys(nextOverrides).length > 0 ? nextOverrides : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+      ctx.saveAndNotify(projectId, updated);
+      ctx.mcpAudit('set_project_naming_rules', projectId, { overrides });
+
+      const state = describeNamingRuleState(siteRules, updated.namingRules);
+      return { content: [{ type: 'text' as const, text: JSON.stringify({
+        projectOverrides: updated.namingRules ?? {},
+        ...state,
+      }, null, 2) }] };
+    },
+  );
+
+  server.tool(
     'get_naming_rules',
-    'Get site naming rules. If projectId is provided, also returns project overrides and effective rules for that project.',
+    'Get site naming rules. If projectId is provided, also returns project overrides, rule status, and effective rules for that project.',
     {
       projectId: z.string().max(256).optional().describe('Optional project ID for project-specific effective rules'),
     },
@@ -297,11 +392,12 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
       }
       ctx.requireAccess(projectId, 'viewer');
       const schema = ctx.getSchemaOrFail(projectId);
+      const state = describeNamingRuleState(siteRules, schema.namingRules);
       const result = {
         siteRules,
         projectDictionaryId: schema.dictionaryId ?? null,
         projectOverrides: schema.namingRules ?? {},
-        effectiveRules: computeEffectiveRules(siteRules, schema.namingRules),
+        ...state,
       };
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     },

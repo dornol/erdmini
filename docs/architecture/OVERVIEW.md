@@ -241,14 +241,14 @@ Stateless MCP endpoint at `/mcp` route. Fresh `McpServer` instance per POST requ
                 ↓
          createMcpServer(db, keyInfo)
                 ↓
-         88 tools (read + write)
+         89 tools (read + write)
                 ↓
          SQLite ←→ Collab notification
 ```
 
 Architecture:
 - `src/routes/mcp/+server.ts` — SvelteKit route (GET=SSE, POST=request, DELETE=session end)
-- `src/lib/server/mcp/server.ts` — `createMcpServer()` factory, 88 tool definitions
+- `src/lib/server/mcp/server.ts` — `createMcpServer()` factory, 89 tool definitions
 - `src/lib/server/mcp/db-helpers.ts` — Schema/project DB access
 - `src/lib/server/mcp/schema-ops.ts` — Pure schema transformation functions
 
@@ -286,7 +286,7 @@ src/
 │   ├── server/             Server-only code (auth, DB, migrations, MCP)
 │   │   ├── auth/           Password, session, API key, OIDC, LDAP, permissions, guards
 │   │   ├── migrations/     Versioned SQL files (V001 ~ V015)
-│   │   └── mcp/            MCP server factory + 88 tools
+│   │   └── mcp/            MCP server factory + 89 tools
 │   ├── collab/             Collaboration client + operation bridge
 │   ├── types/              TypeScript types (erd.ts, collab.ts, auth.ts)
 │   ├── utils/              Pure utility functions (DDL, Prisma, DBML, layout, export, lint, diff)

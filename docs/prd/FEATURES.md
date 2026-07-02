@@ -635,7 +635,7 @@ Per-user permission flags: `can_create_project`, `can_create_api_key`, `can_crea
 
 ### MCP
 
-Streamable HTTP endpoint (`/mcp`). API key authentication. 88 tools.
+Streamable HTTP endpoint (`/mcp`). API key authentication. 89 tools.
 
 See [docs/mcp/](../mcp/) for details.
 
