@@ -87,8 +87,8 @@
 </script>
 
 <div class="section">
-  <h2>{m.naming_rule_title()}</h2>
-  <p class="section-desc">{m.naming_rule_admin_desc()}</p>
+  <h2>{m.naming_rule_defaults_title()}</h2>
+  <p class="section-desc">{m.naming_rule_defaults_desc()}</p>
 
   <!-- Case Rules -->
   <div class="form-section">
