@@ -703,6 +703,89 @@ describe('lintSchema', () => {
       const issues = lintSchema(makeSchema([t]));
       expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(0);
     });
+
+    it('checks PascalCase after removing configured table affixes', () => {
+      const coupon = makeTable({
+        name: 'tCoupon',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const ebookHistory = makeTable({
+        name: 'tEbookHistory',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = {
+        tableCase: { value: 'PascalCase', source: 'admin' },
+        tablePrefix: { value: 't', source: 'admin' },
+      };
+      const issues = lintSchema(makeSchema([coupon, ebookHistory]), rules);
+
+      expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-prefix')).toHaveLength(0);
+    });
+
+    it('checks table case after removing both prefix and suffix', () => {
+      const t = makeTable({
+        name: 'tCouponTbl',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = {
+        tableCase: { value: 'PascalCase', source: 'admin' },
+        tablePrefix: { value: 't', source: 'admin' },
+        tableSuffix: { value: 'Tbl', source: 'admin' },
+      };
+      const issues = lintSchema(makeSchema([t]), rules);
+
+      expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-prefix')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-suffix')).toHaveLength(0);
+    });
+
+    it('keeps reporting case violations in the table core after affix removal', () => {
+      const t = makeTable({
+        name: 'tcouponTbl',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = {
+        tableCase: { value: 'PascalCase', source: 'admin' },
+        tablePrefix: { value: 't', source: 'admin' },
+        tableSuffix: { value: 'Tbl', source: 'admin' },
+      };
+      const issues = lintSchema(makeSchema([t]), rules);
+
+      expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(1);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-prefix')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-suffix')).toHaveLength(0);
+    });
+
+    it('checks snake_case after removing a snake_case table prefix', () => {
+      const t = makeTable({
+        name: 'tbl_user_accounts',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = {
+        tableCase: { value: 'snake_case', source: 'admin' },
+        tablePrefix: { value: 'tbl_', source: 'admin' },
+      };
+      const issues = lintSchema(makeSchema([t]), rules);
+
+      expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-prefix')).toHaveLength(0);
+    });
+
+    it('warns when affix removal leaves an empty table core', () => {
+      const t = makeTable({
+        name: 't',
+        columns: [makeColumn({ name: 'id', type: 'INT', primaryKey: true, nullable: false })],
+      });
+      const rules: EffectiveNamingRules = {
+        tableCase: { value: 'PascalCase', source: 'admin' },
+        tablePrefix: { value: 't', source: 'admin' },
+      };
+      const issues = lintSchema(makeSchema([t]), rules);
+
+      expect(issues.filter((i) => i.ruleId === 'naming-table-case')).toHaveLength(1);
+      expect(issues.filter((i) => i.ruleId === 'naming-table-prefix')).toHaveLength(0);
+    });
   });
 
   describe('naming-column-case', () => {
@@ -732,6 +815,44 @@ describe('lintSchema', () => {
       const rules: EffectiveNamingRules = { columnCase: { value: 'camelCase', source: 'admin' } };
       const issues = lintSchema(makeSchema([t]), rules);
       expect(issues.filter((i) => i.ruleId === 'naming-column-case')).toHaveLength(0);
+    });
+
+    it('checks column case after removing configured column affixes', () => {
+      const t = makeTable({
+        name: 'users',
+        columns: [
+          makeColumn({ name: 'cUserNameCol', type: 'VARCHAR' }),
+        ],
+      });
+      const rules: EffectiveNamingRules = {
+        columnCase: { value: 'PascalCase', source: 'admin' },
+        columnPrefix: { value: 'c', source: 'admin' },
+        columnSuffix: { value: 'Col', source: 'admin' },
+      };
+      const issues = lintSchema(makeSchema([t]), rules);
+
+      expect(issues.filter((i) => i.ruleId === 'naming-column-case')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-column-prefix')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-column-suffix')).toHaveLength(0);
+    });
+
+    it('keeps reporting column core case violations after affix removal', () => {
+      const t = makeTable({
+        name: 'users',
+        columns: [
+          makeColumn({ name: 'cuserNameCol', type: 'VARCHAR' }),
+        ],
+      });
+      const rules: EffectiveNamingRules = {
+        columnCase: { value: 'PascalCase', source: 'admin' },
+        columnPrefix: { value: 'c', source: 'admin' },
+        columnSuffix: { value: 'Col', source: 'admin' },
+      };
+      const issues = lintSchema(makeSchema([t]), rules);
+
+      expect(issues.filter((i) => i.ruleId === 'naming-column-case')).toHaveLength(1);
+      expect(issues.filter((i) => i.ruleId === 'naming-column-prefix')).toHaveLength(0);
+      expect(issues.filter((i) => i.ruleId === 'naming-column-suffix')).toHaveLength(0);
     });
   });
 
@@ -790,6 +911,45 @@ describe('lintSchema', () => {
       const dict = new Set(['user', 'accounts']);
       const issues = lintSchema(makeSchema([t]), rules, dict);
       expect(issues.filter(i => i.ruleId === 'naming-dictionary')).toHaveLength(0);
+    });
+
+    it('checks dictionary words after removing configured affixes', () => {
+      const t = makeTable({
+        name: 'tEbookHistoryTbl',
+        columns: [makeColumn({ name: 'cCouponCodeCol', type: 'VARCHAR' })],
+      });
+      const rules: EffectiveNamingRules = {
+        tablePrefix: { value: 't', source: 'admin' },
+        tableSuffix: { value: 'Tbl', source: 'admin' },
+        columnPrefix: { value: 'c', source: 'admin' },
+        columnSuffix: { value: 'Col', source: 'admin' },
+        dictionaryCheck: { value: 'both', source: 'admin' },
+      };
+      const dict = new Set(['ebook', 'history', 'coupon', 'code']);
+      const issues = lintSchema(makeSchema([t]), rules, dict);
+
+      expect(issues.filter(i => i.ruleId === 'naming-dictionary')).toHaveLength(0);
+    });
+
+    it('still reports unknown dictionary words in the core after affix removal', () => {
+      const t = makeTable({
+        name: 'tUnknownHistoryTbl',
+        columns: [makeColumn({ name: 'cCouponMysteryCol', type: 'VARCHAR' })],
+      });
+      const rules: EffectiveNamingRules = {
+        tablePrefix: { value: 't', source: 'admin' },
+        tableSuffix: { value: 'Tbl', source: 'admin' },
+        columnPrefix: { value: 'c', source: 'admin' },
+        columnSuffix: { value: 'Col', source: 'admin' },
+        dictionaryCheck: { value: 'both', source: 'admin' },
+      };
+      const dict = new Set(['history', 'coupon']);
+      const issues = lintSchema(makeSchema([t]), rules, dict);
+      const naming = issues.filter(i => i.ruleId === 'naming-dictionary');
+
+      expect(naming).toHaveLength(2);
+      expect(naming[0].message).toContain('unknown');
+      expect(naming[1].message).toContain('mystery');
     });
 
     it('checks both table and column when target is both', () => {
