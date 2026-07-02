@@ -7,6 +7,7 @@ import { validateHierarchy } from '$lib/utils/domain-hierarchy';
 const SNAKE_CASE_RE = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
 const CAMEL_CASE_RE = /^[a-z][a-zA-Z0-9]*$/;
 const PASCAL_CASE_RE = /^[A-Z][a-zA-Z0-9]*$/;
+const PASCAL_SNAKE_CASE_RE = /^[A-Z][a-zA-Z0-9]*(_[A-Z][a-zA-Z0-9]*)*$/;
 const UPPER_SNAKE_CASE_RE = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/;
 
 export function matchesNamingConvention(name: string, convention: NamingConvention): boolean {
@@ -14,6 +15,7 @@ export function matchesNamingConvention(name: string, convention: NamingConventi
     case 'snake_case': return SNAKE_CASE_RE.test(name);
     case 'camelCase': return CAMEL_CASE_RE.test(name);
     case 'PascalCase': return PASCAL_CASE_RE.test(name);
+    case 'Pascal_Snake_Case': return PASCAL_SNAKE_CASE_RE.test(name);
     case 'UPPER_SNAKE_CASE': return UPPER_SNAKE_CASE_RE.test(name);
     default: return true;
   }

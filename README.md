@@ -105,6 +105,8 @@ Self-host erdmini with SQLite for teams. Switch via `PUBLIC_STORAGE_MODE=server`
 | **Dictionaries** | Project-scoped word dictionaries, naming rules, import/export, and MCP access |
 | **Logging** | JSON Lines or text, configurable log level |
 
+Naming rules support `snake_case`, `camelCase`, `PascalCase`, `Pascal_Snake_Case`, and `UPPER_SNAKE_CASE`. Admin defaults can allow project overrides; projects may inherit, override, or disable allowed rules.
+
 ---
 
 ## Quick Start

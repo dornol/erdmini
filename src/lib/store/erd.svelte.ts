@@ -1,5 +1,6 @@
 import type { Column, ColumnDomain, Dialect, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
-import type { NamingRuleType } from '$lib/types/naming-rules';
+import type { NamingRuleType, ProjectNamingOverrideEntry } from '$lib/types/naming-rules';
+import { normalizeProjectNamingOverride } from '$lib/types/naming-rules';
 import { now } from '$lib/utils/common';
 import { normalizeSchema } from '$lib/utils/schema-normalize';
 import { canvasState } from '$lib/store/canvas.svelte';
@@ -235,7 +236,26 @@ class ERDStore {
     if (value === undefined) {
       delete this.schema.namingRules[ruleType];
     } else {
-      this.schema.namingRules[ruleType] = value;
+      const current = normalizeProjectNamingOverride(this.schema.namingRules[ruleType]) ?? {};
+      this.schema.namingRules[ruleType] = { ...current, value };
+    }
+    this.schema.namingRules = { ...this.schema.namingRules };
+    this.schema.updatedAt = now();
+  }
+
+  setNamingOverrideEnabled(ruleType: NamingRuleType, enabled: boolean | undefined) {
+    if (!this.schema.namingRules) this.schema.namingRules = {};
+    if (enabled === undefined) {
+      const current = normalizeProjectNamingOverride(this.schema.namingRules[ruleType]);
+      if (!current?.value) {
+        delete this.schema.namingRules[ruleType];
+      } else {
+        const next: ProjectNamingOverrideEntry = { value: current.value };
+        this.schema.namingRules[ruleType] = next;
+      }
+    } else {
+      const current = normalizeProjectNamingOverride(this.schema.namingRules[ruleType]) ?? {};
+      this.schema.namingRules[ruleType] = { ...current, enabled };
     }
     this.schema.namingRules = { ...this.schema.namingRules };
     this.schema.updatedAt = now();

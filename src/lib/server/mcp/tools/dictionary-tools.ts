@@ -22,7 +22,10 @@ import {
   NAMING_CONVENTIONS,
   NAMING_RULE_TYPES,
   computeEffectiveRules,
+  normalizeProjectNamingOverride,
   type NamingRuleType,
+  type ProjectNamingOverrideEntry,
+  type ProjectNamingOverrideValue,
   type ProjectNamingOverrides,
   type SiteNamingRules,
 } from '$lib/types/naming-rules';
@@ -32,6 +35,21 @@ const WORD_STATUSES: WordStatus[] = ['approved', 'pending', 'rejected'];
 const MAX_EXPORT_WORDS = 10000;
 const MAX_IMPORT_WORDS = 5000;
 const DICTIONARY_CHECK_TARGETS = ['table', 'column', 'both'] as const;
+const AFFIX_OVERRIDE_SCHEMA = z.union([
+  z.string().max(20),
+  z.object({ enabled: z.boolean().optional(), value: z.string().max(20).optional() }).strict(),
+  z.null(),
+]);
+const CASE_OVERRIDE_SCHEMA = z.union([
+  z.string().max(256),
+  z.object({ enabled: z.boolean().optional(), value: z.string().max(256).optional() }).strict(),
+  z.null(),
+]);
+const DICTIONARY_CHECK_OVERRIDE_SCHEMA = z.union([
+  z.enum(['table', 'column', 'both']),
+  z.object({ enabled: z.boolean().optional(), value: z.enum(['table', 'column', 'both']).optional() }).strict(),
+  z.null(),
+]);
 
 function isAdmin(ctx: McpToolContext): boolean {
   return ctx.keyInfo.userRole === 'admin';
@@ -91,10 +109,13 @@ function describeNamingRuleState(siteRules: SiteNamingRules, projectOverrides: P
   const effectiveRules = computeEffectiveRules(siteRules, projectOverrides);
   const ruleStatus = Object.fromEntries(NAMING_RULE_TYPES.map((type) => {
     const siteRule = siteRules[type];
-    const hasOverride = projectOverrides[type] !== undefined;
+    const override = normalizeProjectNamingOverride(projectOverrides[type]);
+    const hasOverride = override !== undefined;
     const status = !siteRule?.enabled
       ? 'disabled'
-      : hasOverride && siteRule.allowOverride
+      : hasOverride && siteRule.allowOverride && override.enabled === false
+        ? 'project_disabled'
+        : hasOverride && siteRule.allowOverride
         ? 'project_override'
         : siteRule.allowOverride
           ? 'inherited'
@@ -105,11 +126,15 @@ function describeNamingRuleState(siteRules: SiteNamingRules, projectOverrides: P
       allowOverride: siteRule?.allowOverride === true,
       value: effectiveRules[type]?.value ?? siteRule?.value ?? null,
       source: effectiveRules[type]?.source ?? null,
-      projectOverride: projectOverrides[type] ?? null,
+      projectOverride: override ?? null,
     }];
   }));
 
   return { ruleStatus, effectiveRules };
+}
+
+function normalizeIncomingOverride(value: ProjectNamingOverrideValue): ProjectNamingOverrideEntry {
+  return typeof value === 'string' ? { value } : value;
 }
 
 export const registerDictionaryTools: RegisterFn = (server, ctx) => {
@@ -335,14 +360,14 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
     {
       projectId: z.string().max(256).describe('Project ID'),
       overrides: z.object({
-        tableCase: z.string().max(256).nullable().optional().describe('Override table case, or null to clear'),
-        columnCase: z.string().max(256).nullable().optional().describe('Override column case, or null to clear'),
-        tablePrefix: z.string().max(20).nullable().optional().describe('Override table prefix, or null to clear'),
-        tableSuffix: z.string().max(20).nullable().optional().describe('Override table suffix, or null to clear'),
-        columnPrefix: z.string().max(20).nullable().optional().describe('Override column prefix, or null to clear'),
-        columnSuffix: z.string().max(20).nullable().optional().describe('Override column suffix, or null to clear'),
-        dictionaryCheck: z.enum(['table', 'column', 'both']).nullable().optional().describe('Override dictionary check target, or null to clear'),
-      }).strict().describe('Rule override values. Omitted keys are left unchanged; null clears an existing override.'),
+        tableCase: CASE_OVERRIDE_SCHEMA.optional().describe('Override table case. Use string for value, object for enabled/value, or null to clear'),
+        columnCase: CASE_OVERRIDE_SCHEMA.optional().describe('Override column case. Use string for value, object for enabled/value, or null to clear'),
+        tablePrefix: AFFIX_OVERRIDE_SCHEMA.optional().describe('Override table prefix. Use string for value, object for enabled/value, or null to clear'),
+        tableSuffix: AFFIX_OVERRIDE_SCHEMA.optional().describe('Override table suffix. Use string for value, object for enabled/value, or null to clear'),
+        columnPrefix: AFFIX_OVERRIDE_SCHEMA.optional().describe('Override column prefix. Use string for value, object for enabled/value, or null to clear'),
+        columnSuffix: AFFIX_OVERRIDE_SCHEMA.optional().describe('Override column suffix. Use string for value, object for enabled/value, or null to clear'),
+        dictionaryCheck: DICTIONARY_CHECK_OVERRIDE_SCHEMA.optional().describe('Override dictionary check target. Use string for value, object for enabled/value, or null to clear'),
+      }).strict().describe('Rule override values. Omitted keys are left unchanged; null clears an existing override. enabled=false disables an allowed project rule.'),
     },
     async ({ projectId, overrides }) => {
       ctx.requireAccess(projectId, 'editor');
@@ -352,14 +377,27 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
 
       for (const [rawType, value] of Object.entries(overrides)) {
         const type = rawType as NamingRuleType;
+        if (value === null) {
+          delete nextOverrides[type];
+          continue;
+        }
+
         const siteRule = siteRules[type];
         if (!siteRule?.enabled) throw new Error(`${type} is disabled by admin`);
         if (!siteRule.allowOverride) throw new Error(`${type} is locked by admin`);
-        if (value === null) {
+
+        if (value !== undefined) {
+          const incoming = normalizeIncomingOverride(value as ProjectNamingOverrideValue);
+          const current = normalizeProjectNamingOverride(nextOverrides[type]) ?? {};
+          const next: ProjectNamingOverrideEntry = { ...current, ...incoming };
+          if (next.value !== undefined) validateNamingRuleValue(type, next.value);
+          if (next.enabled === undefined && next.value === undefined) {
+            delete nextOverrides[type];
+          } else {
+            nextOverrides[type] = next;
+          }
+        } else if (value === undefined) {
           delete nextOverrides[type];
-        } else if (value !== undefined) {
-          validateNamingRuleValue(type, value);
-          nextOverrides[type] = value;
         }
       }
 

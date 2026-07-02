@@ -1025,6 +1025,23 @@ describe('matchesNamingConvention', () => {
     });
   });
 
+  describe('Pascal_Snake_Case', () => {
+    it.each([
+      ['Coupon_No', true],
+      ['PAYT_User_Limit_Type', true],
+      ['User_Limit_Type', true],
+      ['USER_LIMIT_TYPE', true],
+      ['coupon_No', false],
+      ['Coupon_no', false],
+      ['Coupon__No', false],
+      ['Coupon_', false],
+      ['_Coupon', false],
+      ['couponNo', false],
+    ])('%s → %s', (name, expected) => {
+      expect(matchesNamingConvention(name, 'Pascal_Snake_Case')).toBe(expected);
+    });
+  });
+
   describe('UPPER_SNAKE_CASE', () => {
     it.each([
       ['USER_ACCOUNTS', true],

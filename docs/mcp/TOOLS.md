@@ -106,8 +106,25 @@
 | `import_dictionary_words` | Bulk import dictionary words (admin key required) |
 | `export_dictionary_words` | Export approved dictionary words as JSON |
 | `set_project_dictionary` | Set or clear the dictionary used by a project |
-| `set_project_naming_rules` | Set or clear allowed project naming-rule overrides |
+| `set_project_naming_rules` | Set, disable, re-enable, or clear allowed project naming-rule overrides |
 | `get_naming_rules` | Get site rules, project rule status, and effective project naming rules |
+
+`set_project_naming_rules` accepts either a direct value, an object override, or `null` to reset a rule:
+
+```json
+{
+  "projectId": "project-id",
+  "overrides": {
+    "tableCase": { "value": "PascalCase" },
+    "dictionaryCheck": { "enabled": false },
+    "tablePrefix": null
+  }
+}
+```
+
+Only admin-enabled rules with `allowOverride=true` can be changed or disabled at project level. `null` clears a stale project override even if the admin later disables or locks that rule. `get_naming_rules` returns per-rule status values including `inherited`, `project_override`, `project_disabled`, `admin_locked`, and `disabled`.
+
+Supported case values are `snake_case`, `camelCase`, `PascalCase`, `Pascal_Snake_Case`, and `UPPER_SNAKE_CASE`. `Pascal_Snake_Case` covers names such as `Coupon_No` and `PAYT_User_Limit_Type`.
 
 ## Memo Tools
 
