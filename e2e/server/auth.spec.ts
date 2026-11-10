@@ -412,6 +412,38 @@ test.describe('server-mode authentication', () => {
     await expect(page.getByTestId('table-card')).toContainText('table_1');
   });
 
+  test('joins a collaboration room and propagates a table operation to a second tab', async ({ page }) => {
+    await loginAsAdmin(page);
+    const emptyCreate = page.getByTestId('create-project');
+    if (await emptyCreate.isVisible().catch(() => false)) {
+      await emptyCreate.click();
+    } else {
+      await page.getByTestId('project-menu-toggle').click();
+      await page.getByTestId('project-new').click();
+      const projectInput = page.locator('.project-rename-input');
+      await projectInput.fill(`E2E Collaboration ${Date.now()}`);
+      await projectInput.press('Enter');
+    }
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+
+    const projectId = (await (await page.request.get('/api/storage/index')).json() as { activeProjectId: string }).activeProjectId;
+    const secondPage = await page.context().newPage();
+    await secondPage.goto('/');
+    await expect(secondPage.getByTestId('canvas-empty-state')).toBeVisible({ timeout: 15_000 });
+
+    // Both tabs share the authenticated cookie and must appear in the same WS room.
+    await expect(page.locator('.collab-btn')).toHaveAttribute('title', /live|collaborators/i, { timeout: 15_000 });
+    await expect(page.locator('.peer-count')).toHaveText('2', { timeout: 15_000 });
+
+    await secondPage.getByTestId('empty-add-table').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.getByTestId('table-card')).toContainText('table_1');
+
+    await secondPage.close();
+    await expect(page.locator('.peer-count')).toHaveCount(0, { timeout: 15_000 });
+    expect(projectId).toBeTruthy();
+  });
+
   test('creates a password-protected embed and handles wrong and correct passwords', async ({ page }) => {
     await loginAsAdmin(page);
     const emptyCreate = page.getByTestId('create-project');

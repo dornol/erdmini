@@ -1,4 +1,5 @@
 import { expect, test, type Page } from 'playwright/test';
+import * as XLSX from 'xlsx';
 
 async function openEmptyCanvas(page: Page) {
   await page.goto('/');
@@ -513,6 +514,32 @@ test.describe('canvas smoke flows', () => {
     await expect(deletableRow).toHaveCount(0);
   });
 
+  test('imports domains from an XLSX file and applies typed metadata', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: /domains/i }).click();
+    const domainDialog = page.locator('.backdrop[role="dialog"]');
+
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet([{
+      Group: 'Identity', Name: 'account_status', Type: 'ENUM', Nullable: 'Y',
+      EnumValues: 'active, locked', Tags: 'auth, account', Description: 'Account state',
+    }]);
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Domains');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    await domainDialog.locator('input[type="file"]').setInputFiles({
+      name: 'domains.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer,
+    });
+
+    await expect(domainDialog).toContainText(/added|updated/i);
+    const row = domainDialog.locator('tr.display-row').filter({ hasText: 'account_status' });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText('ENUM');
+    await expect(row).toContainText('Identity');
+  });
+
   test('changes canvas display settings from the bottom bar', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -581,6 +608,40 @@ test.describe('canvas smoke flows', () => {
     await page.mouse.move(box.x + box.width - 12, box.y + box.height - 12);
     await page.mouse.up();
     await expect(page.locator('[data-testid="table-card"].selected')).toHaveCount(2);
+  });
+
+  test('pans and pinches the canvas through touch events', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    const viewport = page.locator('.canvas-viewport');
+    const world = page.locator('.canvas-world');
+    const initialTransform = await world.getAttribute('style');
+
+    await viewport.evaluate((element) => {
+      const target = element as HTMLElement;
+      const makeTouch = (identifier: number, clientX: number, clientY: number) =>
+        new Touch({ identifier, target, clientX, clientY, pageX: clientX, pageY: clientY, screenX: clientX, screenY: clientY });
+      const start = makeTouch(1, 300, 260);
+      target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [start], changedTouches: [start] }));
+      const moved = makeTouch(1, 360, 300);
+      window.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [moved], changedTouches: [moved] }));
+      window.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], changedTouches: [moved] }));
+    });
+    await expect.poll(() => world.getAttribute('style')).not.toBe(initialTransform);
+
+    await viewport.evaluate((element) => {
+      const target = element as HTMLElement;
+      const makeTouch = (identifier: number, clientX: number, clientY: number) =>
+        new Touch({ identifier, target, clientX, clientY, pageX: clientX, pageY: clientY, screenX: clientX, screenY: clientY });
+      const left = makeTouch(1, 280, 260);
+      const right = makeTouch(2, 320, 260);
+      target.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [left, right], changedTouches: [left, right] }));
+      const fartherLeft = makeTouch(1, 250, 260);
+      const fartherRight = makeTouch(2, 350, 260);
+      window.dispatchEvent(new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [fartherLeft, fartherRight], changedTouches: [fartherLeft, fartherRight] }));
+      window.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], changedTouches: [fartherLeft, fartherRight] }));
+    });
+    await expect(page.locator('.zoom-pct')).toHaveText(/(1[1-9][0-9]|[2-9][0-9]{2})%/);
   });
 
   test('creates, restores, and deletes a manual snapshot', async ({ page }) => {
