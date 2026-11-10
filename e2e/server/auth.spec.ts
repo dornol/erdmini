@@ -322,7 +322,7 @@ test.describe('server-mode authentication', () => {
     await expect(page.locator('.data-table tbody tr').filter({ hasText: username })).toHaveCount(0);
   });
 
-  test('grants, changes, and revokes project permissions', async ({ page }) => {
+  test('grants, changes, and revokes project permissions', async ({ page, browser }) => {
     await loginAsAdmin(page);
     const username = `e2e-share-${Date.now()}`;
     const userResponse = await page.request.post('/api/admin/users', {
@@ -347,6 +347,18 @@ test.describe('server-mode authentication', () => {
 
     const permissionRow = modal.locator('.perm-row').filter({ hasText: username });
     await expect(permissionRow).toContainText(/viewer/i);
+
+    const viewerContext = await browser.newContext();
+    const viewerPage = await viewerContext.newPage();
+    await viewerPage.goto('/login');
+    await viewerPage.locator('#username').fill(username);
+    await viewerPage.locator('#password').fill('share-password');
+    await viewerPage.getByRole('button', { name: /sign in/i }).click();
+    await expect(viewerPage).toHaveURL(/\/$/);
+    await expect(viewerPage.getByTestId('readonly-badge')).toBeVisible({ timeout: 15_000 });
+    await expect(viewerPage.locator('.toolbar .btn-primary')).toBeDisabled();
+    await viewerContext.close();
+
     await permissionRow.locator('select.perm-select-sm').selectOption('editor');
     await expect(permissionRow).toContainText(/editor/i);
     await permissionRow.locator('.remove-btn').click();
