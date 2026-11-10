@@ -70,6 +70,28 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toContainText('users');
   });
 
+  test('filters tables in the sidebar and selects a matching table', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    const tableName = page.getByTestId('table-name-input');
+    await tableName.fill('users');
+    await tableName.press('Enter');
+
+    const search = page.locator('.search-input');
+    await search.fill('missing');
+    await expect(page.locator('.table-item')).toHaveCount(0);
+    await expect(page.locator('.empty-hint')).toBeVisible();
+
+    await search.fill('users');
+    const tableItem = page.locator('.table-item').filter({ hasText: 'users' });
+    await expect(tableItem).toHaveCount(1);
+    await tableItem.click();
+
+    await expect(tableItem).toHaveClass(/active/);
+    await expect(page.getByTestId('table-card')).toHaveClass(/selected/);
+  });
+
   test('adds and edits a column from the table editor', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
