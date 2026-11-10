@@ -204,6 +204,19 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toContainText('orders');
   });
 
+  test('shows an error for invalid DDL import input', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.getByTestId('import-menu-toggle').click();
+    await page.getByTestId('import-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+    await modal.getByTestId('ddl-import-input').fill('THIS IS NOT VALID SQL;');
+    await modal.getByRole('button', { name: 'Import', exact: true }).click();
+
+    await expect(modal.locator('.msg-errors')).toBeVisible();
+    await expect(page.getByTestId('table-card')).toHaveCount(0);
+  });
+
   test('renders DDL export text for the current schema', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
