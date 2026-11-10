@@ -17,6 +17,7 @@
   <div class="dropdown-wrap">
     <button
       class="btn-user"
+      data-testid="user-menu-toggle"
       onclick={ontoggle}
       aria-expanded={open}
       aria-haspopup="menu"
@@ -63,6 +64,7 @@
         {/if}
         <button
           class="dropdown-item dropdown-item-danger"
+          data-testid="logout"
           role="menuitem"
           onclick={() => { onclose(); authStore.logout(); }}
         >
