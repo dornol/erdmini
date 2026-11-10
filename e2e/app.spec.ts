@@ -285,6 +285,18 @@ test.describe('canvas smoke flows', () => {
     await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
   });
 
+  test('renders DBML export text for the current schema', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.getByTestId('export-menu-toggle').click();
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+    await modal.getByRole('button', { name: 'DBML', exact: true }).click();
+    await expect(modal.locator('.code-area')).toHaveValue(/Table/i);
+    await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
+  });
+
   test('exports the current schema as JSON', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
