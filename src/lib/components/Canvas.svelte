@@ -449,13 +449,13 @@
     --erd-header-letter-spacing: normal;
     --erd-card-bg: white;
     --erd-card-border: #e2e8f0;
-    --erd-card-border-width: 2px;
-    --erd-card-radius: 8px;
-    --erd-header-radius: 6px 6px 0 0;
-    --erd-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --erd-card-border-width: 1px;
+    --erd-card-radius: 10px;
+    --erd-header-radius: 9px 9px 0 0;
+    --erd-card-shadow: 0 3px 12px rgba(15, 23, 42, 0.1);
     --erd-card-selected-border: #3b82f6;
     --erd-card-selected-glow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-    --erd-header-bg: #1e293b;
+    --erd-header-bg: #0f172a;
     --erd-header-text: white;
     --erd-header-delete: rgba(255, 255, 255, 0.5);
     --erd-header-border-bottom: none;

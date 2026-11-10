@@ -10,12 +10,12 @@
 </script>
 
 {#if toastStore.toasts.length > 0}
-  <div class="toast-container">
+  <div class="toast-container" aria-live="polite" aria-atomic="true">
     {#each toastStore.toasts as toast (toast.id)}
-      <div class="toast toast-{toast.type}">
-        <span class="toast-icon">{ICONS[toast.type]}</span>
+      <div class="toast toast-{toast.type}" role={toast.type === 'error' ? 'alert' : 'status'}>
+        <span class="toast-icon" aria-hidden="true">{ICONS[toast.type]}</span>
         <span class="toast-message">{toast.message}</span>
-        <button class="toast-close" onclick={() => toastStore.remove(toast.id)}>✕</button>
+        <button class="toast-close" aria-label="Dismiss notification" onclick={() => toastStore.remove(toast.id)}>✕</button>
       </div>
     {/each}
   </div>
@@ -24,13 +24,14 @@
 <style>
   .toast-container {
     position: fixed;
-    bottom: 20px;
+    bottom: 72px;
     right: 20px;
     z-index: 10000;
     display: flex;
     flex-direction: column-reverse;
     gap: 8px;
     pointer-events: none;
+    padding: 0 12px;
   }
 
   .toast {
@@ -38,13 +39,15 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 14px;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 10px 12px;
     border-radius: 8px;
     font-size: 13px;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     animation: toast-in 0.25s ease-out;
-    max-width: 360px;
+    width: min(360px, calc(100vw - 24px));
     backdrop-filter: blur(8px);
   }
 
@@ -92,6 +95,7 @@
   .toast-message {
     flex: 1;
     line-height: 1.4;
+    overflow-wrap: anywhere;
   }
 
   .toast-close {
@@ -100,7 +104,9 @@
     font-size: 12px;
     cursor: pointer;
     opacity: 0.5;
-    padding: 2px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
     line-height: 1;
     color: inherit;
     flex-shrink: 0;
@@ -118,6 +124,39 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  :global([data-dark]) .toast-success {
+    background: #064e3b;
+    color: #d1fae5;
+    border-color: #047857;
+  }
+
+  :global([data-dark]) .toast-error {
+    background: #450a0a;
+    color: #fee2e2;
+    border-color: #991b1b;
+  }
+
+  :global([data-dark]) .toast-warning {
+    background: #451a03;
+    color: #fef3c7;
+    border-color: #92400e;
+  }
+
+  :global([data-dark]) .toast-info {
+    background: #172554;
+    color: #dbeafe;
+    border-color: #1d4ed8;
+  }
+
+  @media (max-width: 760px) {
+    .toast-container {
+      right: 0;
+      bottom: 68px;
+      left: 0;
+      align-items: center;
     }
   }
 </style>

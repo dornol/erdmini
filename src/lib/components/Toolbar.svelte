@@ -357,9 +357,9 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 6px 12px;
-    padding: 6px 16px;
-    min-height: 48px;
-    background: #1e293b;
+    padding: 8px 16px;
+    min-height: 52px;
+    background: #0f172a;
     border-bottom: 1px solid #334155;
     flex-shrink: 0;
   }
@@ -367,13 +367,13 @@
   .logo {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex-shrink: 0;
   }
 
   .logo-icon {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
     object-fit: contain;
     border-radius: 4px;
@@ -382,14 +382,14 @@
   .logo-text {
     color: white;
     font-weight: 700;
-    font-size: 16px;
-    letter-spacing: -0.5px;
+    font-size: 15px;
+    letter-spacing: -0.25px;
   }
 
   .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     align-items: center;
   }
 
@@ -420,8 +420,8 @@
     background: #3b82f6;
     color: white;
     border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
+    border-radius: 8px;
+    padding: 8px 14px;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -442,8 +442,8 @@
     background: #f59e0b;
     color: #1e293b;
     border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
+    border-radius: 8px;
+    padding: 8px 14px;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -468,10 +468,11 @@
 
   .separator {
     width: 1px;
-    height: 20px;
+    height: 24px;
     background: #475569;
     flex-shrink: 0;
     margin: 0 2px;
+    opacity: 0.8;
   }
 
   .dbms-selector {
@@ -1116,5 +1117,64 @@
 
   .toolbar :global(.shared-project-item) {
     padding-left: 12px;
+  }
+
+  @media (max-width: 1100px) {
+    .toolbar {
+      gap: 6px 8px;
+      padding: 7px 10px;
+    }
+
+    .logo-text {
+      display: none;
+    }
+
+    .actions {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .toolbar-right {
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .toolbar {
+      align-items: center;
+      min-height: 48px;
+      padding: 6px 8px;
+    }
+
+    .dbms-selector {
+      order: 2;
+    }
+
+    .actions {
+      order: 3;
+      width: 100%;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    .actions::-webkit-scrollbar {
+      display: none;
+    }
+
+    .toolbar-right {
+      margin-left: auto;
+    }
+
+    .toolbar :global(.btn-secondary),
+    .btn-primary,
+    .btn-memo {
+      min-height: 36px;
+    }
+
+    .separator {
+      display: none;
+    }
   }
 </style>

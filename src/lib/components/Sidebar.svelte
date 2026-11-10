@@ -634,7 +634,7 @@
   .sidebar-header {
     display: flex;
     flex-direction: column;
-    padding: 10px 14px;
+    padding: 12px 14px 10px;
     font-size: 12px;
     font-weight: 600;
     color: var(--app-text-muted, #64748b);
@@ -646,15 +646,15 @@
 
   .sidebar-tabs {
     display: flex;
-    gap: 0;
+    gap: 4px;
   }
 
   .sidebar-tab {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 3px 10px;
-    background: none;
+    padding: 6px 10px;
+    background: transparent;
     border: none;
     color: var(--app-text-muted, #64748b);
     font-size: 11px;
@@ -662,8 +662,9 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
   }
 
   .sidebar-tab:hover {
@@ -672,7 +673,8 @@
 
   .sidebar-tab.active {
     color: var(--app-accent, #3b82f6);
-    border-bottom-color: var(--app-accent, #3b82f6);
+    background: var(--app-active-bg, #eff6ff);
+    border-color: color-mix(in srgb, var(--app-accent, #3b82f6) 30%, transparent);
   }
 
   .sidebar-tab .count {
@@ -705,7 +707,9 @@
     border: none;
     color: var(--app-text-faint, #94a3b8);
     cursor: pointer;
-    padding: 2px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 6px;
     border-radius: 3px;
     display: flex;
     align-items: center;
@@ -814,7 +818,7 @@
   .sidebar :global(.table-item) {
     display: flex;
     align-items: flex-start;
-    padding: 8px 14px;
+    padding: 9px 14px;
     cursor: pointer;
     border-bottom: 1px solid var(--app-border-light, #f1f5f9);
     transition: background 0.1s;

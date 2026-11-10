@@ -400,18 +400,25 @@
 <style>
   .canvas-bottom-bar {
     position: fixed;
-    bottom: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     z-index: 100;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 3px;
+    max-width: calc(100vw - 24px);
+    overflow-x: auto;
     background: var(--erd-zoom-bg);
     border: 1px solid var(--erd-zoom-border);
-    border-radius: 6px;
-    padding: 2px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    padding: 4px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+    scrollbar-width: none;
+  }
+
+  .canvas-bottom-bar::-webkit-scrollbar {
+    display: none;
   }
 
   .bar-dropdown-wrap {
@@ -422,16 +429,16 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    height: 28px;
-    padding: 0 10px;
+    min-height: 36px;
+    padding: 0 12px;
     border: none;
     background: transparent;
     color: var(--erd-zoom-btn);
     font-size: 11px;
     font-weight: 500;
     cursor: pointer;
-    border-radius: 4px;
-    transition: background 0.15s;
+    border-radius: 7px;
+    transition: background 0.15s, color 0.15s;
     white-space: nowrap;
   }
 
@@ -445,7 +452,8 @@
   }
 
   .bar-btn-icon {
-    padding: 0 7px;
+    min-width: 36px;
+    padding: 0 8px;
     justify-content: center;
   }
 
@@ -477,9 +485,9 @@
     transform: translateX(-50%);
     background: var(--erd-zoom-bg);
     border: 1px solid var(--erd-zoom-border);
-    border-radius: 6px;
-    padding: 4px;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
+    border-radius: 9px;
+    padding: 5px;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.16);
     min-width: 120px;
     z-index: 200;
   }
@@ -487,7 +495,8 @@
   .bar-dropdown-item {
     display: block;
     width: 100%;
-    padding: 6px 12px;
+    min-height: 32px;
+    padding: 7px 12px;
     border: none;
     background: none;
     color: var(--erd-zoom-text);
@@ -541,5 +550,15 @@
     margin-right: 6px;
     vertical-align: middle;
     flex-shrink: 0;
+  }
+
+  @media (max-width: 760px) {
+    .canvas-bottom-bar {
+      left: 8px;
+      right: 8px;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      transform: none;
+      justify-content: flex-start;
+    }
   }
 </style>

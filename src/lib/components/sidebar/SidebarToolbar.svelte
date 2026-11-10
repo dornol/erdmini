@@ -43,10 +43,19 @@
   function toggleViewMode() {
     onviewmodechange?.(viewMode === 'flat' ? 'group' : 'flat');
   }
+
+  function clearSearch() {
+    onsearchchange?.('');
+    searchInputEl?.focus();
+  }
 </script>
 
 <div class="search-bar">
   <div class="search-input-wrap">
+    <svg class="search-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.4" />
+      <path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+    </svg>
     <input
       type="text"
       class="search-input"
@@ -74,6 +83,13 @@
         }
       }}
     />
+    {#if searchQuery}
+      <button class="clear-search" type="button" aria-label={m.action_cancel()} title={m.action_cancel()} onclick={clearSearch}>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </button>
+    {/if}
     {#if searchFocused && !searchQuery.trim()}
       <div class="search-hints">
         <div class="search-hints-title">{m.search_hint_title()}</div>
@@ -116,24 +132,37 @@
   .search-bar {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 8px 10px;
+    gap: 6px;
+    padding: 9px 10px;
     border-bottom: 1px solid var(--app-border, #e2e8f0);
+  }
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 9px;
+    width: 15px;
+    height: 15px;
+    color: var(--app-text-faint, #94a3b8);
+    pointer-events: none;
+    transform: translateY(-50%);
   }
 
   .search-input {
     flex: 1;
     border: 1px solid var(--app-input-border, #e2e8f0);
-    border-radius: 4px;
-    padding: 5px 8px;
+    border-radius: 7px;
+    padding: 7px 30px 7px 30px;
     font-size: 12px;
     outline: none;
     background: var(--app-input-bg, white);
     color: var(--app-text, #1e293b);
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
 
   .search-input:focus {
-    border-color: #93c5fd;
+    border-color: var(--app-accent, #3b82f6);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent, #3b82f6) 16%, transparent);
   }
 
   .search-input::placeholder {
@@ -149,6 +178,33 @@
   .search-input-wrap .search-input {
     width: 100%;
     box-sizing: border-box;
+  }
+
+  .clear-search {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    display: grid;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    place-items: center;
+    color: var(--app-text-faint, #94a3b8);
+    background: transparent;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer;
+    transform: translateY(-50%);
+  }
+
+  .clear-search svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .clear-search:hover {
+    color: var(--app-text, #1e293b);
+    background: var(--app-hover-bg, #f1f5f9);
   }
 
   .search-hints {
@@ -212,8 +268,9 @@
   .sort-btn {
     background: none;
     border: 1px solid var(--app-input-border, #e2e8f0);
-    border-radius: 4px;
-    padding: 4px 6px;
+    min-height: 32px;
+    border-radius: 7px;
+    padding: 5px 8px;
     font-size: 10px;
     color: var(--app-text-muted, #64748b);
     cursor: pointer;
@@ -227,8 +284,8 @@
   }
 
   .active-mode {
-    background: #dbeafe;
-    color: #2563eb;
-    border-color: #93c5fd;
+    background: var(--app-active-bg, #dbeafe);
+    color: var(--app-accent-hover, #2563eb);
+    border-color: color-mix(in srgb, var(--app-accent, #3b82f6) 36%, transparent);
   }
 </style>

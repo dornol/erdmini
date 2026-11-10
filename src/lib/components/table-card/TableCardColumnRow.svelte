@@ -199,7 +199,7 @@
   }
 
   .column-row:hover {
-    background: var(--erd-col-hover);
+    background: color-mix(in srgb, var(--erd-col-hover) 82%, var(--erd-card-bg, white));
   }
 
   .column-row.fk-highlighted {

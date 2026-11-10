@@ -22,7 +22,6 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') onCancel();
-    if (e.key === 'Enter') onConfirm();
   }
 
   function handleChoiceBackdrop(e: MouseEvent) {
@@ -46,11 +45,11 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div class="backdrop" onmousedown={handleBackdrop} onkeydown={handleKeydown}>
-    <div class="dialog" role="alertdialog" aria-modal="true">
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby={opts.title ? 'dialog-title' : undefined} aria-describedby="dialog-message">
       {#if opts.title}
-        <div class="dialog-title">{opts.title}</div>
+        <div id="dialog-title" class="dialog-title">{opts.title}</div>
       {/if}
-      <div class="dialog-message">{opts.message}</div>
+      <div id="dialog-message" class="dialog-message">{opts.message}</div>
       <div class="dialog-actions">
         {#if isConfirm}
           <button class="btn btn-cancel" onclick={onCancel}>
@@ -75,11 +74,11 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div class="backdrop" onmousedown={handleChoiceBackdrop} onkeydown={handleChoiceKeydown}>
-    <div class="dialog" role="alertdialog" aria-modal="true">
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby={choiceOpts.title ? 'choice-dialog-title' : undefined} aria-describedby="choice-dialog-message">
       {#if choiceOpts.title}
-        <div class="dialog-title">{choiceOpts.title}</div>
+        <div id="choice-dialog-title" class="dialog-title">{choiceOpts.title}</div>
       {/if}
-      <div class="dialog-message">{choiceOpts.message}</div>
+      <div id="choice-dialog-message" class="dialog-message">{choiceOpts.message}</div>
       <div class="dialog-actions">
         <button class="btn btn-cancel" onclick={() => dialogStore.closeChoice(null)}>
           {m.action_cancel()}
@@ -104,7 +103,9 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.35);
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.42);
+    backdrop-filter: blur(3px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -123,12 +124,12 @@
   }
 
   .dialog {
+    width: min(440px, calc(100vw - 32px));
+    box-sizing: border-box;
     background: var(--app-popup-bg, white);
     border-radius: 12px;
     box-shadow: var(--app-popup-shadow, 0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05));
     padding: 24px;
-    min-width: 320px;
-    max-width: 440px;
     animation: slideIn 0.15s ease-out;
   }
 
@@ -152,11 +153,13 @@
     justify-content: flex-end;
     gap: 8px;
     margin-top: 20px;
+    flex-wrap: wrap;
   }
 
   .btn {
     border: none;
     border-radius: 8px;
+    min-height: 40px;
     padding: 8px 18px;
     font-size: 13px;
     font-weight: 500;
@@ -203,5 +206,19 @@
 
   .btn-default:hover {
     background: var(--app-cancel-hover, #e2e8f0);
+  }
+
+  @media (max-width: 480px) {
+    .dialog {
+      padding: 20px;
+    }
+
+    .dialog-actions {
+      flex-direction: column-reverse;
+    }
+
+    .dialog-actions .btn {
+      width: 100%;
+    }
   }
 </style>

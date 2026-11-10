@@ -40,3 +40,4 @@ project.inlang/cache/
 # Claude
 .claude
 .bkit
+.agents

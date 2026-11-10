@@ -370,7 +370,7 @@
 
   .table-card.selected {
     border-color: var(--erd-card-selected-border);
-    box-shadow: var(--erd-card-selected-glow), var(--erd-card-shadow);
+    box-shadow: var(--erd-card-selected-glow), 0 5px 16px rgba(15, 23, 42, 0.16);
   }
 
   .table-card.locked {

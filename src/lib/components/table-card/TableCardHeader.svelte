@@ -161,7 +161,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
+    padding: 9px 12px;
     background: var(--erd-header-bg);
     border-radius: var(--erd-header-radius);
     border-bottom: var(--erd-header-border-bottom);
@@ -170,8 +170,8 @@
 
   .table-name {
     color: var(--erd-header-text);
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 650;
+    font-size: 13.5px;
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -67,6 +67,7 @@
   const visibleMemos = $derived(filterBySchema(erdStore.schema.memos, canvasState.activeSchema));
   let showBulkEditModal = $state(false);
   let viewportWidth = $state(768);
+  let viewportHeight = $state(600);
   let forceDesktop = $state(false);
   let isMobile = $derived(viewportWidth < 768);
 
@@ -125,6 +126,14 @@
     });
   }
 
+  function addTableFromEmptyState() {
+    erdStore.addTable(viewportWidth, viewportHeight);
+  }
+
+  function addMemoFromEmptyState() {
+    erdStore.addMemo(viewportWidth, viewportHeight);
+  }
+
   onDestroy(() => {
     cleanupCollab();
     fullscreen.cleanup();
@@ -153,6 +162,7 @@
 
   function handleResize() {
     viewportWidth = window.innerWidth;
+    viewportHeight = window.innerHeight;
   }
   $effect(() => {
     handleResize();
@@ -273,6 +283,31 @@
               </div>
             {/each}
           </Canvas>
+          {#if visibleTables.length === 0 && visibleMemos.length === 0}
+            <div class="canvas-empty-state">
+              <div class="canvas-empty-card">
+                <div class="canvas-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" fill="none">
+                    <rect x="7" y="9" width="34" height="24" rx="4" stroke="currentColor" stroke-width="2" />
+                    <path d="M7 17h34M16 9v24M7 33l8 6h18l8-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="12" cy="13" r="1.5" fill="currentColor" />
+                    <circle cx="21" cy="13" r="1.5" fill="currentColor" />
+                  </svg>
+                </div>
+                <p class="canvas-empty-kicker">ERD canvas</p>
+                <p class="canvas-empty-desc">{m.welcome_desc()}</p>
+                <div class="canvas-empty-actions">
+                  <button class="canvas-empty-primary" onclick={addTableFromEmptyState}>
+                    {m.toolbar_add_table()}
+                  </button>
+                  <button class="canvas-empty-secondary" onclick={addMemoFromEmptyState}>
+                    {m.toolbar_add_memo()}
+                  </button>
+                </div>
+                <p class="canvas-empty-hint">You can also import a schema from the toolbar.</p>
+              </div>
+            </div>
+          {/if}
           <TableEditor />
         </div>
       {/if}
@@ -312,7 +347,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    min-height: 100dvh;
     background: #0f172a;
   }
 
@@ -332,7 +367,7 @@
   .app {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
 
     /* Light mode defaults */
@@ -386,6 +421,104 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+  }
+
+  .canvas-empty-state {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    pointer-events: none;
+  }
+
+  .canvas-empty-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 360px;
+    padding: 28px 32px 24px;
+    color: var(--app-text, #1e293b);
+    text-align: center;
+    pointer-events: auto;
+  }
+
+  .canvas-empty-icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 16px;
+    color: var(--app-accent, #3b82f6);
+    background: var(--app-active-bg, #eff6ff);
+    border: 1px solid color-mix(in srgb, var(--app-accent, #3b82f6) 24%, transparent);
+    border-radius: 16px;
+  }
+
+  .canvas-empty-icon svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .canvas-empty-kicker {
+    margin: 0 0 6px;
+    color: var(--app-text, #1e293b);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .canvas-empty-desc {
+    max-width: 280px;
+    margin: 0;
+    color: var(--app-text-secondary, #475569);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .canvas-empty-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .canvas-empty-primary,
+  .canvas-empty-secondary {
+    min-height: 38px;
+    padding: 8px 14px;
+    border-radius: var(--app-radius-sm, 6px);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .canvas-empty-primary {
+    color: white;
+    background: var(--app-accent, #3b82f6);
+    border: 1px solid var(--app-accent, #3b82f6);
+  }
+
+  .canvas-empty-primary:hover {
+    background: var(--app-accent-hover, #2563eb);
+    border-color: var(--app-accent-hover, #2563eb);
+  }
+
+  .canvas-empty-secondary {
+    color: var(--app-text-secondary, #475569);
+    background: var(--app-card-bg, white);
+    border: 1px solid var(--app-border, #e2e8f0);
+  }
+
+  .canvas-empty-secondary:hover {
+    color: var(--app-text, #1e293b);
+    background: var(--app-hover-bg, #f1f5f9);
+  }
+
+  .canvas-empty-hint {
+    margin: 16px 0 0;
+    color: var(--app-text-faint, #94a3b8);
+    font-size: 11px;
   }
 
   .no-project-screen {
