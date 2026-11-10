@@ -325,7 +325,7 @@ test.describe('server-mode authentication', () => {
     await expect(wordRow).toContainText('E2E test word');
     await wordRow.locator('.btn-danger').click();
     await expect(page.getByRole('alertdialog')).toBeVisible();
-    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
     await expect(page.locator('tr').filter({ hasText: 'e2e_word' })).toHaveCount(0);
   });
 
@@ -600,7 +600,6 @@ test.describe('server-mode authentication', () => {
     let projectName = `E2E Admin Embed ${Date.now()}`;
     if (await emptyCreate.isVisible().catch(() => false)) {
       await emptyCreate.click();
-      projectName = 'My Project';
     } else {
       await page.getByTestId('project-menu-toggle').click();
       await page.getByTestId('project-new').click();
@@ -609,11 +608,22 @@ test.describe('server-mode authentication', () => {
       await projectInput.press('Enter');
     }
     await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+    await page.getByTestId('project-menu-toggle').click();
+    const activeProject = page.locator('.project-item.active');
+    await activeProject.getByTestId('project-rename').click();
+    const renameInput = activeProject.locator('.project-rename-input');
+    await renameInput.fill(projectName);
+    await renameInput.press('Enter');
+    await expect(page.getByTestId('project-menu-toggle')).toContainText(projectName);
 
     const { activeProjectId } = await page.request.get('/api/storage/index').then((res) => res.json() as Promise<{ activeProjectId: string }>);
     const tokenResponse = await page.request.post(`/api/embed/${activeProjectId}`, { data: { password: 'admin-embed-secret' } });
     expect(tokenResponse.status()).toBe(201);
     const token = await tokenResponse.json() as { id: string; token: string };
+    const adminTokens = await page.request.get('/api/admin/embed-tokens').then((res) => res.json() as Promise<Array<{ id: string; projectName: string }>>);
+    const createdToken = adminTokens.find((item) => item.id === token.id);
+    if (!createdToken) throw new Error('Created embed token was not returned by the admin API');
+    projectName = createdToken.projectName;
 
     await page.goto('/admin');
     await page.getByRole('button', { name: /Embeds/ }).click();
