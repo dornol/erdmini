@@ -384,6 +384,49 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.fk-section .fk-row')).toHaveCount(0);
   });
 
+  test('creates a foreign key by dragging a column handle to a target column', async ({ page }) => {
+    await openEmptyCanvas(page);
+    const schema = {
+      version: '1',
+      tables: [
+        { id: 'child-table', name: 'orders', columns: [{ id: 'order-id', name: 'id', type: 'INT', nullable: false, primaryKey: true }, { id: 'customer-id', name: 'customer_id', type: 'INT', nullable: false }], foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 80, y: 140 } },
+        { id: 'parent-table', name: 'customers', columns: [{ id: 'customer-pk', name: 'id', type: 'INT', nullable: false, primaryKey: true }], foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 500, y: 140 } },
+      ],
+      domains: [], memos: [], groupColors: {}, createdAt: Date.now(), updatedAt: Date.now(),
+    };
+    await page.getByTestId('import-menu-toggle').click();
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: 'JSON' }).click(),
+    ]);
+    await fileChooser.setFiles({ name: 'fk-drag.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(schema)) });
+
+    const source = page.locator('[data-testid="table-card"]').filter({ hasText: 'orders' });
+    const target = page.locator('[data-testid="table-card"]').filter({ hasText: 'customers' });
+    const sourceHandle = source.locator('.column-row[data-column-id="customer-id"] .fk-handle');
+    const targetColumn = target.locator('.column-row[data-column-id="customer-pk"]');
+    const sourceBox = await sourceHandle.boundingBox();
+    const targetBox = await targetColumn.boundingBox();
+    if (!sourceBox || !targetBox) throw new Error('FK drag endpoints are not measurable');
+
+    await sourceHandle.dispatchEvent('mousedown', {
+      button: 0,
+      clientX: sourceBox.x + sourceBox.width / 2,
+      clientY: sourceBox.y + sourceBox.height / 2,
+    });
+    const targetX = targetBox.x + targetBox.width / 2;
+    const targetY = targetBox.y + targetBox.height / 2;
+    await page.evaluate(({ x, y }) => {
+      window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: x, clientY: y }));
+      window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0, clientX: x, clientY: y }));
+    }, { x: targetX, y: targetY });
+
+    await expect(source.locator('.key-badge.fk')).toHaveCount(1);
+    await source.click();
+    await expect(page.locator('.fk-section .fk-row')).toHaveCount(1);
+    await expect(page.locator('.fk-section .fk-row')).toContainText('customers.id');
+  });
+
   test('creates a self-referencing foreign key and warns for SET NULL on a non-nullable column', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
