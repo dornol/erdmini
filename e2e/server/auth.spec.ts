@@ -71,6 +71,13 @@ test.describe('server-mode authentication', () => {
     await expect(page.locator('#password')).toBeVisible();
   });
 
+  test('redirects unauthenticated users away from the admin console', async ({ page }) => {
+    await page.goto('/admin');
+
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.locator('#username')).toBeVisible();
+  });
+
   test('shows an error for invalid credentials', async ({ page }) => {
     await page.goto('/login');
 
@@ -83,6 +90,42 @@ test.describe('server-mode authentication', () => {
 
   test('logs in with the configured admin account', async ({ page }) => {
     await loginAsAdmin(page);
+  });
+
+  test('navigates across the admin console tabs', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/admin');
+    await expect(page.locator('.admin-page h1')).toHaveText('Admin');
+
+    const tabs = page.locator('.admin-page .tabs .tab');
+    await expect(tabs).toHaveCount(12);
+    for (const label of ['Groups', 'OIDC', 'LDAP', 'API Keys', 'Embeds', 'Dictionary', 'Naming Rules', 'Projects', 'Branding', 'Backup', 'Audit Log']) {
+      const tab = tabs.filter({ hasText: label });
+      await tab.click();
+      await expect(tab).toHaveClass(/active/);
+    }
+  });
+
+  test('creates and deletes a dictionary word from the server dictionary', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/dictionary');
+    await expect(page.locator('.dict-page')).toBeVisible();
+
+    await expect(page.getByRole('button', { name: 'Add Word', exact: true })).toBeEnabled();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: 'Add Word', exact: true }).click();
+    const addRow = page.locator('tr').filter({ has: page.locator('input[placeholder="seq"]') });
+    await expect(addRow).toBeVisible();
+    await addRow.locator('input.inline-input').nth(0).fill('e2e_word');
+    await addRow.locator('input.inline-input').nth(1).fill('E2E test word');
+    await addRow.getByRole('button', { name: /save/i }).click();
+
+    const wordRow = page.locator('tr').filter({ hasText: 'e2e_word' }).last();
+    await expect(wordRow).toContainText('E2E test word');
+    await wordRow.locator('.btn-danger').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
+    await expect(page.locator('tr').filter({ hasText: 'e2e_word' })).toHaveCount(0);
   });
 
   test('protects storage APIs and logs out an authenticated user', async ({ page }) => {

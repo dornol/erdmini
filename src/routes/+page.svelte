@@ -8,7 +8,6 @@
   import TableEditor from '$lib/components/TableEditor.svelte';
   import DbObjectEditor from '$lib/components/DbObjectEditor.svelte';
   import FkModal from '$lib/components/FkModal.svelte';
-  import DialogModal from '$lib/components/DialogModal.svelte';
   import Toolbar from '$lib/components/Toolbar.svelte';
   import BulkEditModal from '$lib/components/BulkEditModal.svelte';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
@@ -338,7 +337,6 @@
       <FkModal tableId={fkModalTableId} editFkId={fkModalEditId} onclose={() => { fkModalTableId = null; fkModalEditId = undefined; }} />
     {/if}
 
-    <DialogModal />
   </div>
 {/if}
 

@@ -92,6 +92,29 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toHaveClass(/selected/);
   });
 
+  test('bulk-edits multiple selected tables and groups them in the sidebar', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.locator('.toolbar .btn-primary').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(2);
+
+    await page.locator('.table-item').first().click();
+    await page.locator('.table-item').nth(1).click({ modifiers: ['Control'] });
+    await expect(page.locator('.bulk-edit-btn')).toBeVisible();
+    await page.locator('.bulk-edit-btn').click();
+
+    const bulkModal = page.locator('.modal[role="dialog"]');
+    await expect(bulkModal).toBeVisible();
+    const groupToggle = bulkModal.locator('.field-toggle').filter({ hasText: /group/i });
+    await groupToggle.locator('input[type="checkbox"]').check();
+    await bulkModal.locator('input.text-input').fill('core');
+    await bulkModal.getByRole('button', { name: /apply/i }).click();
+
+    await page.locator('.search-bar .sort-btn').filter({ hasText: 'Group' }).click();
+    await expect(page.locator('.group-header')).toContainText('core');
+    await expect(page.locator('.table-item-grouped')).toHaveCount(2);
+  });
+
   test('adds a schema, switches to it, and creates a scoped table', async ({ page }) => {
     await openEmptyCanvas(page);
 
@@ -149,6 +172,37 @@ test.describe('canvas smoke flows', () => {
     await expect(popup.locator('.flags-row input[type="checkbox"]').nth(0)).toBeChecked();
     await expect(popup.locator('.flags-row input[type="checkbox"]').nth(1)).toBeChecked();
     await expect(popup.locator('#ce-default')).toHaveValue('0');
+  });
+
+  test('creates composite unique keys and unique indexes', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.getByTestId('add-column').click();
+    await page.getByTestId('column-name-input').fill('email');
+    await page.keyboard.press('Escape');
+
+    const editor = page.getByTestId('table-editor');
+    await editor.getByRole('button', { name: /add unique/i }).click();
+    const uniqueModal = page.locator('.modal[role="dialog"]').filter({ hasText: /unique/i });
+    await expect(uniqueModal).toBeVisible();
+    const uniqueTriggers = uniqueModal.locator('.ss-trigger');
+    await uniqueTriggers.nth(0).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'id' }).click();
+    await uniqueModal.locator('.btn-add-col').click();
+    await uniqueTriggers.nth(1).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'email' }).click();
+    await uniqueModal.getByRole('button', { name: /add/i }).last().click();
+    await expect(editor.locator('.uk-section .fk-row')).toHaveCount(1);
+
+    await editor.getByRole('button', { name: /add index/i }).click();
+    const indexModal = page.locator('.modal[role="dialog"]').filter({ hasText: /index/i });
+    await expect(indexModal).toBeVisible();
+    await indexModal.locator('.ss-trigger').click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'email' }).click();
+    await indexModal.locator('.unique-label input').check();
+    await indexModal.getByRole('button', { name: /add/i }).last().click();
+    await expect(editor.locator('.idx-section .fk-row')).toHaveCount(1);
+    await expect(editor.locator('.idx-section .idx-unique-badge')).toBeVisible();
   });
 
   test('creates a foreign-key relationship between two tables', async ({ page }) => {
@@ -323,6 +377,39 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.sp-panel')).toBeHidden();
   });
 
+  test('creates, links, unlinks, and deletes a domain', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: /domains/i }).click();
+    const domainDialog = page.locator('.backdrop[role="dialog"]');
+    await domainDialog.locator('.add-btn').click();
+
+    const editCard = domainDialog.locator('.edit-card');
+    await expect(editCard).toBeVisible();
+    await editCard.locator('input.edit-input').first().fill('email_address');
+    await editCard.locator('.edit-btn-save').click();
+
+    const domainRow = domainDialog.locator('tr.display-row').filter({ hasText: 'email_address' });
+    await expect(domainRow).toHaveCount(1);
+    await domainDialog.getByRole('button', { name: /close/i }).click();
+
+    await page.getByTestId('empty-add-table').click();
+    await page.getByTestId('column-row').first().click();
+    const columnPopup = page.getByTestId('column-edit-popup');
+    await columnPopup.locator('.ss-trigger').last().click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'email_address' }).click();
+    await expect(columnPopup.locator('.domain-badge')).toContainText('email_address');
+    await columnPopup.getByRole('button', { name: /unlink/i }).click();
+    await columnPopup.getByRole('button', { name: /close/i }).click();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: /domains/i }).click();
+    const deletableRow = page.locator('.backdrop[role="dialog"] tr.display-row').filter({ hasText: 'email_address' });
+    await deletableRow.getByRole('button', { name: /delete/i }).click();
+    await expect(deletableRow).toHaveCount(0);
+  });
+
   test('changes canvas display settings from the bottom bar', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -331,6 +418,61 @@ test.describe('canvas smoke flows', () => {
     await expect(gridToggle).toHaveClass(/bar-btn-active/);
     await gridToggle.click();
     await expect(gridToggle).not.toHaveClass(/bar-btn-active/);
+  });
+
+  test('creates, restores, and deletes a manual snapshot', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    const tableName = page.getByTestId('table-name-input');
+    await tableName.fill('users');
+    await tableName.press('Enter');
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'Snapshots', exact: true }).click();
+    const snapshotPanel = page.locator('.snapshot-panel');
+    await snapshotPanel.locator('.snapshot-input').first().fill('before rename');
+    await snapshotPanel.locator('.snapshot-save-btn').click();
+    const snapshotItem = snapshotPanel.locator('.snapshot-item').filter({ hasText: 'before rename' });
+    await expect(snapshotItem).toHaveCount(1);
+    await snapshotPanel.locator('.snapshot-close').click();
+
+    await tableName.fill('orders');
+    await tableName.press('Enter');
+    await expect(page.getByTestId('table-card')).toContainText('orders');
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'Snapshots', exact: true }).click();
+    const restoredSnapshot = page.locator('.snapshot-item').filter({ hasText: 'before rename' });
+    await restoredSnapshot.locator('.snap-restore').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: /restore/i }).click();
+    await expect(page.getByTestId('table-card')).toContainText('users');
+
+    await restoredSnapshot.locator('.snap-delete').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
+    await expect(restoredSnapshot).toHaveCount(0);
+  });
+
+  test('executes SQL and reports invalid SQL errors in the playground', async ({ page }) => {
+    test.setTimeout(60_000);
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'SQL Playground', exact: true }).click();
+    const playground = page.locator('.sp-panel');
+    await expect(playground.locator('.sp-loading')).toBeHidden({ timeout: 30_000 });
+    const editor = playground.locator('.cm-content');
+    await editor.fill('SELECT * FROM "table_1"');
+    await playground.getByRole('button', { name: /execute/i }).click();
+    await expect(playground.locator('.sp-result-msg')).toBeVisible();
+    await expect(playground.locator('.sp-result-msg')).toContainText(/0/);
+
+    await editor.fill('SELECT * FROM');
+    await playground.getByRole('button', { name: /execute/i }).click();
+    await expect(playground.locator('.sp-result-error')).toBeVisible();
   });
 
   test('imports a JSON schema from a file', async ({ page }) => {
@@ -366,6 +508,49 @@ test.describe('canvas smoke flows', () => {
 
     await expect(page.getByTestId('table-card')).toHaveCount(1);
     await expect(page.getByTestId('table-card')).toContainText('json_users');
+  });
+
+  test('merges JSON imports and handles duplicate table choices', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.getByTestId('table-name-input').fill('users');
+    await page.getByTestId('table-name-input').press('Enter');
+
+    const importedSchema = {
+      version: '1',
+      tables: [
+        {
+          id: 'import-users',
+          name: 'users',
+          columns: [{ id: 'import-users-id', name: 'id', type: 'INT', nullable: false, primaryKey: true }],
+          foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 100, y: 100 },
+        },
+        {
+          id: 'import-orders',
+          name: 'orders',
+          columns: [{ id: 'import-orders-id', name: 'id', type: 'INT', nullable: false, primaryKey: true }],
+          foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 420, y: 100 },
+        },
+      ],
+      domains: [], memos: [], groupColors: {}, createdAt: Date.now(), updatedAt: Date.now(),
+    };
+
+    await page.getByTestId('import-menu-toggle').click();
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: 'JSON' }).click(),
+    ]);
+    await fileChooser.setFiles({
+      name: 'merge.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(importedSchema)),
+    });
+    const mergeDialog = page.getByRole('alertdialog');
+    await expect(mergeDialog).toBeVisible();
+    await mergeDialog.getByRole('button', { name: /merge/i }).click();
+    const duplicateDialog = page.getByRole('alertdialog');
+    await expect(duplicateDialog).toBeVisible();
+    await duplicateDialog.getByRole('button', { name: /skip/i }).click();
+    await expect(page.getByTestId('table-card')).toHaveCount(2);
+    await expect(page.getByTestId('table-card').filter({ hasText: 'orders' })).toHaveCount(1);
   });
 
   test('imports a Prisma schema into the empty canvas', async ({ page }) => {
@@ -423,6 +608,23 @@ test.describe('canvas smoke flows', () => {
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toMatch(/^erdmini_.*\.json$/);
+  });
+
+  test('exports the diagram as SVG and a full backup', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.getByTestId('export-menu-toggle').click();
+    const svgDownloadPromise = page.waitForEvent('download');
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: /^SVG$/ }).click();
+    const svgDownload = await svgDownloadPromise;
+    expect(svgDownload.suggestedFilename()).toMatch(/^erdmini_.*\.svg$/);
+
+    await page.getByTestId('export-menu-toggle').click();
+    const backupDownloadPromise = page.waitForEvent('download');
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: /backup all/i }).click();
+    const backupDownload = await backupDownloadPromise;
+    expect(backupDownload.suggestedFilename()).toMatch(/^erdmini_backup_\d{4}-\d{2}-\d{2}\.json$/);
   });
 
   test('opens a copied share link in a fresh browser context', async ({ page, browser }) => {

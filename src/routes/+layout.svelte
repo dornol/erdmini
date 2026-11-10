@@ -5,6 +5,7 @@
 	import { authStore } from '$lib/store/auth.svelte';
 	import { themeStore } from '$lib/store/theme.svelte';
 	import Toast from '$lib/components/Toast.svelte';
+	import DialogModal from '$lib/components/DialogModal.svelte';
 
 	let { data, children } = $props();
 
@@ -142,3 +143,4 @@
   {@render children()}
 {/key}
 <Toast />
+<DialogModal />
