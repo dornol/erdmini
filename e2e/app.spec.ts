@@ -832,6 +832,31 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toContainText('json_users');
   });
 
+  test('reports malformed JSON schema and invalid all-project backup files', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('import-menu-toggle').click();
+    const [badJsonChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: 'JSON' }).click(),
+    ]);
+    await badJsonChooser.setFiles({ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{broken') });
+    await expect(page.getByRole('alertdialog')).toContainText(/invalid|parse|JSON/i);
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+
+    await page.getByTestId('import-menu-toggle').click();
+    const [badBackupChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: /restore all/i }).click(),
+    ]);
+    await badBackupChooser.setFiles({ name: 'not-a-backup.json', mimeType: 'application/json', buffer: Buffer.from('{"tables":[]}') });
+    const confirm = page.getByRole('alertdialog');
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole('button', { name: 'Restore', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toContainText(/invalid|failed/i);
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+  });
+
   test('merges JSON imports and handles duplicate table choices', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
