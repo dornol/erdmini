@@ -66,6 +66,29 @@ test.describe('canvas smoke flows', () => {
     await expect.poll(async () => memo.evaluate((node) => (node as HTMLElement).getBoundingClientRect().width)).toBeGreaterThan(initialWidth);
   });
 
+  test('restores an attached memo and detaches it from the pin', async ({ page }) => {
+    await openEmptyCanvas(page);
+    const schema = {
+      version: '1',
+      tables: [{ id: 'attached-table', name: 'notes', columns: [{ id: 'note-id', name: 'id', type: 'INT', nullable: false, primaryKey: true }], foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 300, y: 180 } }],
+      domains: [],
+      memos: [{ id: 'attached-memo', content: 'Table note', color: 'yellow', position: { x: 300, y: 300 }, width: 180, height: 120, attachedTableId: 'attached-table' }],
+      groupColors: {}, createdAt: Date.now(), updatedAt: Date.now(),
+    };
+    await page.getByTestId('import-menu-toggle').click();
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: 'JSON' }).click(),
+    ]);
+    await fileChooser.setFiles({ name: 'attached-memo.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(schema)) });
+    const table = page.getByTestId('table-card');
+    await expect(table.locator('.memo-chip')).toBeVisible();
+    await expect(table.locator('.memo-chip')).toContainText('Table note');
+
+    await table.locator('.memo-chip').click();
+    await expect(table.locator('.memo-chip')).toHaveCount(0);
+  });
+
   test('persists a created table after reload', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -271,7 +294,7 @@ test.describe('canvas smoke flows', () => {
     await expect(uniqueModal).toBeVisible();
     const uniqueTriggers = uniqueModal.locator('.ss-trigger');
     await uniqueTriggers.nth(0).click();
-    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'id' }).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: /^id$/ }).click();
     await uniqueModal.locator('.btn-add-col').click();
     await uniqueTriggers.nth(1).click();
     await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'email' }).click();
@@ -305,9 +328,9 @@ test.describe('canvas smoke flows', () => {
     await selects.nth(0).click();
     await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'table_1' }).click();
     await selects.nth(1).click();
-    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'id' }).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: /^id$/ }).click();
     await selects.nth(2).click();
-    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'id' }).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: /^id$/ }).click();
     await modal.getByTestId('fk-submit').click();
 
     await expect(modal).toBeHidden();
@@ -324,6 +347,36 @@ test.describe('canvas smoke flows', () => {
     await modal.getByRole('button', { name: /close/i }).click();
     await fkRow.locator('button.del').click();
     await expect(page.locator('.fk-section .fk-row')).toHaveCount(0);
+  });
+
+  test('creates a self-referencing foreign key and warns for SET NULL on a non-nullable column', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.getByTestId('add-column').click();
+    await page.getByTestId('column-name-input').fill('parent_id');
+    await page.keyboard.press('Escape');
+
+    await page.getByTestId('add-foreign-key').click();
+    const modal = page.getByTestId('fk-modal');
+    await expect(modal).toBeVisible();
+    const selects = modal.locator('.ss-trigger');
+    await selects.nth(0).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'table_1' }).click();
+    await selects.nth(1).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: /^id$/ }).click();
+    await selects.nth(2).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: /^id$/ }).click();
+
+    await selects.nth(3).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'SET NULL' }).click();
+    await expect(modal.locator('.set-null-warning')).toBeVisible();
+    await modal.locator('#fkm-label').fill('parent hierarchy');
+    await modal.getByTestId('fk-submit').click();
+
+    await expect(page.locator('.fk-section .fk-row')).toHaveCount(1);
+    await expect(page.locator('.fk-section .fk-row')).toContainText('table_1.id');
+    await page.locator('.fk-section .fk-row').locator('button[title="Edit"]').click();
+    await expect(modal.locator('#fkm-label')).toHaveValue('parent hierarchy');
   });
 
   test('deletes a table after confirmation', async ({ page }) => {
