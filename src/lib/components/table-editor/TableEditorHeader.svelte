@@ -91,6 +91,7 @@
   <label class="field-label" for="tbl-name">{m.editor_table_name()}</label>
   <input
     id="tbl-name"
+    data-testid="table-name-input"
     class="text-input"
     bind:value={tableNameInput}
     onblur={onTableNameBlur}

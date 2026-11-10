@@ -114,6 +114,7 @@
 <div class="dropdown-wrap project-wrap">
   <button
     class="btn-project"
+    data-testid="project-menu-toggle"
     onclick={() => { const wasOpen = open; ontoggle(); if (!wasOpen) loadSharedProjects(); }}
     aria-expanded={open}
     aria-haspopup="menu"
@@ -218,6 +219,7 @@
       {:else}
         <button
           class="dropdown-item project-new-btn"
+          data-testid="project-new"
           role="menuitem"
           onclick={() => (showNewProjectInput = true)}
           disabled={authStore.user != null && !authStore.user.canCreateProject}

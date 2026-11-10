@@ -52,6 +52,7 @@
 <div class="dropdown-wrap">
   <button
     class="btn-secondary"
+    data-testid="export-menu-toggle"
     onclick={ontoggle}
     aria-expanded={open}
     aria-haspopup="menu"
@@ -61,6 +62,7 @@
   {#if open}
     <div
       class="dropdown-menu"
+      data-testid="export-menu"
       role="menu"
       tabindex="-1"
       onmouseleave={onclose}

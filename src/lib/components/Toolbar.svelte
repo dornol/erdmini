@@ -247,6 +247,7 @@
 
       <button
         class="btn-dark-toggle"
+        data-testid="theme-toggle"
         onclick={() => themeStore.toggleDark()}
         title={themeStore.darkMode ? 'Light Mode' : 'Dark Mode'}
       >

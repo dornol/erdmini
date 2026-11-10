@@ -40,6 +40,7 @@
   tabindex="0"
   aria-selected="false"
   class="col-row"
+  data-testid="column-row"
   class:drag-over={dragOverIdx === idx}
   class:dragging={dragColId === col.id}
   draggable="true"

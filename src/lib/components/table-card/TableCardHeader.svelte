@@ -151,7 +151,7 @@
     <span class="schema-badge" title={table.schema}>{table.schema}</span>
   {/if}
   {#if !permissionStore.isReadOnly}
-    <button class="delete-btn" onclick={ondeleteclick} title={m.action_delete()}>✕</button>
+    <button class="delete-btn" data-testid="delete-table" onclick={ondeleteclick} title={m.action_delete()}>✕</button>
   {/if}
 </div>
 

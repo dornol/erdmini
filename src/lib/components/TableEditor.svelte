@@ -111,7 +111,7 @@
 </script>
 
 {#if selectedTable}
-  <aside class="editor" class:readonly={permissionStore.isReadOnly}>
+  <aside class="editor" data-testid="table-editor" class:readonly={permissionStore.isReadOnly}>
     {#if permissionStore.isReadOnly}
       <div class="readonly-notice">{m.label_read_only()}</div>
     {/if}
@@ -126,7 +126,7 @@
     <div class="section columns-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.editor_columns()}</span>
-        <button class="add-col-btn" bind:this={addBtnEl} onclick={addColumnAndEdit} disabled={permissionStore.isReadOnly}>
+        <button class="add-col-btn" data-testid="add-column" bind:this={addBtnEl} onclick={addColumnAndEdit} disabled={permissionStore.isReadOnly}>
           {m.action_add()}
         </button>
       </div>

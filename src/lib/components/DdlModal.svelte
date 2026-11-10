@@ -253,7 +253,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="backdrop" onmousedown={handleBackdrop}>
-  <div class="modal" role="dialog" aria-modal="true">
+  <div class="modal" data-testid="ddl-modal" role="dialog" aria-modal="true">
     <div class="modal-header">
       <div class="tabs">
         <button
@@ -427,6 +427,7 @@
         </div>
         <textarea
           class="code-area"
+          data-testid="ddl-import-input"
           bind:value={importText}
           placeholder={currentImportFormat.id === 'prisma' ? m.prisma_paste_placeholder() : currentImportFormat.id === 'dbml' ? m.dbml_paste_placeholder() : m.ddl_paste_placeholder()}
           spellcheck="false"

@@ -164,6 +164,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     class="popup"
+    data-testid="column-edit-popup"
     bind:this={popupEl}
     style="left: {anchorX + 14}px; top: {anchorY - 10}px;"
     role="dialog"
@@ -195,6 +196,7 @@
           <label for="ce-name" class="field-label">{m.column_name()}</label>
           <input
             id="ce-name"
+            data-testid="column-name-input"
             class="field-input"
             bind:this={nameInputEl}
             value={col.name}
