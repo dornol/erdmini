@@ -1,12 +1,24 @@
 import { expect, test, type Page } from 'playwright/test';
 
+let adminSessionCookie: { name: string; value: string; domain: string; path: string } | null = null;
+
 async function loginAsAdmin(page: Page) {
+  if (adminSessionCookie) {
+    await page.context().addCookies([adminSessionCookie]);
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('[data-testid="create-project"], [data-testid="project-menu-toggle"]')).toBeVisible({ timeout: 15_000 });
+    return;
+  }
   await page.goto('/login');
   await page.locator('#username').fill('e2e-admin');
   await page.locator('#password').fill('e2e-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator('[data-testid="create-project"], [data-testid="project-menu-toggle"]')).toBeVisible({ timeout: 15_000 });
+  const session = (await page.context().cookies()).find((cookie) => cookie.name === 'erdmini_session');
+  if (!session) throw new Error('Admin session cookie was not created');
+  adminSessionCookie = { name: session.name, value: session.value, domain: session.domain, path: session.path };
 }
 
 async function buildShareHash(page: Page) {
@@ -106,6 +118,31 @@ test.describe('server-mode authentication', () => {
     }
   });
 
+  test('creates, edits, and deletes a manual admin group', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/admin');
+    await page.getByRole('button', { name: /Groups/ }).click();
+    const groupsTab = page.locator('.admin-page .section').filter({ hasText: 'Create Group' });
+    const groupName = `e2e-group-${Date.now()}`;
+    await groupsTab.locator('input[placeholder="Name"]').fill(groupName);
+    await groupsTab.locator('input[placeholder="Description"]').fill('E2E group');
+    await groupsTab.getByRole('button', { name: 'Create Group', exact: true }).click();
+
+    const groupRow = groupsTab.locator('tbody tr').filter({ hasText: groupName }).first();
+    await expect(groupRow).toBeVisible();
+    await groupRow.getByRole('button', { name: 'Edit', exact: true }).click();
+    const editingRow = groupsTab.locator('tbody tr').first();
+    await editingRow.locator('input.inline-input').nth(1).fill('Edited E2E group');
+    await editingRow.getByRole('button', { name: 'Save', exact: true }).click();
+    const editedRow = groupsTab.locator('tbody tr').filter({ hasText: 'Edited E2E group' }).first();
+    await expect(editedRow).toBeVisible();
+
+    await editedRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await expect(groupsTab.locator('tbody tr').filter({ hasText: groupName })).toHaveCount(0);
+  });
+
   test('creates and deletes a dictionary word from the server dictionary', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/dictionary');
@@ -202,6 +239,7 @@ test.describe('server-mode authentication', () => {
     await page.getByTestId('logout').click();
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.locator('#username')).toBeVisible();
+    adminSessionCookie = null;
   });
 
   test('opens a shared schema as read-only', async ({ page }) => {
