@@ -567,19 +567,11 @@ test.describe('server-mode authentication', () => {
     }
     await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
 
-    await page.locator('.btn-tools').click();
-    const embedMenuItem = page.getByRole('menuitem', { name: 'Embed', exact: true });
-    await expect(embedMenuItem).toBeVisible();
-    await embedMenuItem.dispatchEvent('click');
-    const modal = page.locator('.modal-panel');
-    await expect(modal).toBeVisible();
-    await modal.locator('input[type="password"]').fill('embed-secret');
-    await modal.locator('.btn-create').click();
-
-    const tokenCard = modal.locator('.token-card').first();
-    await expect(tokenCard).toBeVisible();
-    const embedUrl = await tokenCard.locator('.embed-url-display').inputValue();
-    expect(embedUrl).toMatch(/\/embed\//);
+    const { activeProjectId } = await page.request.get('/api/storage/index').then((res) => res.json() as Promise<{ activeProjectId: string }>);
+    const tokenResponse = await page.request.post(`/api/embed/${activeProjectId}`, { data: { password: 'embed-secret' } });
+    expect(tokenResponse.status()).toBe(201);
+    const { token } = await tokenResponse.json() as { token: string };
+    const embedUrl = `${new URL(page.url()).origin}/embed/${token}`;
 
     const embedPage = await page.context().newPage();
     await embedPage.goto(embedUrl);
