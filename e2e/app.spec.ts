@@ -115,6 +115,53 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.table-item-grouped')).toHaveCount(2);
   });
 
+  test('supports sidebar attribute and prefix filters', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    const editor = page.getByTestId('table-editor');
+    await editor.locator('.cg-header').click();
+    await page.locator('#tbl-group').fill('auth');
+    await editor.locator('.lock-btn').click();
+
+    const search = page.locator('.search-input');
+    await search.fill('locked:');
+    await expect(page.locator('.table-item')).toHaveCount(1);
+    await search.fill('has:pk');
+    await expect(page.locator('.table-item')).toHaveCount(1);
+    await search.fill('no:fk');
+    await expect(page.locator('.table-item')).toHaveCount(1);
+    await search.fill('type:varchar');
+    await expect(page.locator('.table-item')).toHaveCount(0);
+    await search.fill('group:auth');
+    await expect(page.locator('.table-item')).toHaveCount(1);
+  });
+
+  test('creates and removes a database object from the Objects sidebar', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByRole('button', { name: /objects 0/i }).click();
+
+    await page.getByRole('button', { name: /add category/i }).click();
+    await page.locator('.category-input').fill('Views');
+    await page.locator('.category-input').press('Enter');
+    const category = page.locator('.category-group').filter({ hasText: 'Views' });
+    await expect(category).toBeVisible();
+
+    await category.locator('.cat-add-btn').click();
+    const objectEditor = page.locator('.db-object-editor');
+    await expect(objectEditor).toBeVisible();
+    await objectEditor.locator('#dbo-name').fill('active_users');
+    await objectEditor.locator('#dbo-comment').fill('Active users view');
+    await objectEditor.locator('.ddl-toggle input').check();
+    await expect(category.locator('.object-row')).toContainText('active_users');
+
+    const objectRow = category.locator('.object-row').filter({ hasText: 'active_users' });
+    await objectRow.hover();
+    await objectRow.locator('.object-delete-btn').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
+    await expect(category.locator('.object-row')).toHaveCount(0);
+  });
+
   test('adds a schema, switches to it, and creates a scoped table', async ({ page }) => {
     await openEmptyCanvas(page);
 
@@ -418,6 +465,49 @@ test.describe('canvas smoke flows', () => {
     await expect(gridToggle).toHaveClass(/bar-btn-active/);
     await gridToggle.click();
     await expect(gridToggle).not.toHaveClass(/bar-btn-active/);
+  });
+
+  test('switches column view, line style, theme, and presentation mode', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    const viewButton = page.locator('.canvas-bottom-bar button[title="Column View"]');
+    await viewButton.dispatchEvent('click');
+    await page.getByRole('menuitem', { name: /names only/i }).dispatchEvent('click');
+    await expect(viewButton).toContainText(/names only/i);
+
+    const lineButton = page.locator('.canvas-bottom-bar button').filter({ hasText: /Orthogonal|Bezier|Rounded/ }).first();
+    await lineButton.dispatchEvent('click');
+    await page.getByRole('menuitem', { name: /bezier/i }).dispatchEvent('click');
+    await expect(lineButton).toContainText(/bezier/i);
+
+    await page.locator('.canvas-bottom-bar button[title="Theme"]').dispatchEvent('click');
+    await page.getByRole('menuitem', { name: 'Blueprint', exact: true }).dispatchEvent('click');
+    await expect(page.locator('.canvas-viewport[data-theme="blueprint"]')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Present' }).dispatchEvent('click');
+    await expect(page.locator('.fullscreen-canvas')).toBeVisible();
+    await page.locator('.fullscreen-close-btn').click();
+    await expect(page.locator('.fullscreen-canvas')).toBeHidden();
+  });
+
+  test('selects all tables, clears selection, and resets canvas zoom', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.locator('.toolbar .btn-primary').click();
+
+    await page.locator('.canvas-viewport').click({ position: { x: 700, y: 500 } });
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', ctrlKey: true, bubbles: true })));
+    await expect(page.locator('[data-testid="table-card"].selected')).toHaveCount(2);
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true })));
+    await expect(page.locator('[data-testid="table-card"].selected')).toHaveCount(0);
+
+    const viewport = page.locator('.canvas-viewport');
+    await viewport.dispatchEvent('wheel', { deltaY: -100, clientX: 500, clientY: 300 });
+    await expect(page.locator('.zoom-pct')).not.toHaveText('100%');
+    await page.getByRole('button', { name: 'Reset' }).click();
+    await expect(page.locator('.zoom-pct')).toHaveText('100%');
   });
 
   test('creates, restores, and deletes a manual snapshot', async ({ page }) => {
