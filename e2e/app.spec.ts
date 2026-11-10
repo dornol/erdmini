@@ -660,6 +660,39 @@ test.describe('canvas smoke flows', () => {
     await expect(gridToggle).not.toHaveClass(/bar-btn-active/);
   });
 
+  test('applies auto-layout and aligns/distributes selected tables', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.locator('.toolbar .btn-primary').click();
+    await page.locator('.toolbar .btn-primary').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(3);
+
+    const positions = async () => page.getByTestId('table-card').evaluateAll((cards) =>
+      cards.map((card) => ({ left: parseFloat((card as HTMLElement).style.left), top: parseFloat((card as HTMLElement).style.top) }))
+    );
+    const before = await positions();
+    await page.locator('.canvas-bottom-bar button[title*="Auto Layout"]').click();
+    await page.getByRole('menuitem', { name: 'Grid', exact: true }).dispatchEvent('click');
+    await expect.poll(async () => JSON.stringify(await positions())).not.toBe(JSON.stringify(before));
+    const afterLayout = await positions();
+    expect(new Set(afterLayout.map((p) => `${p.left},${p.top}`)).size).toBeGreaterThan(1);
+
+    await page.locator('.table-item').first().click();
+    await page.locator('.table-item').nth(1).click({ modifiers: ['Control'] });
+    await page.locator('.table-item').nth(2).click({ modifiers: ['Control'] });
+    await page.locator('.canvas-bottom-bar button[title*="Align"]').dispatchEvent('click');
+    await page.getByRole('menuitem', { name: /align left/i }).dispatchEvent('click');
+    const aligned = await positions();
+    expect(new Set(aligned.map((p) => p.left)).size).toBe(1);
+
+    await page.locator('.canvas-bottom-bar button[title*="Auto Layout"]').dispatchEvent('click');
+    await page.getByRole('menuitem', { name: 'Grid', exact: true }).dispatchEvent('click');
+    await page.locator('.canvas-bottom-bar button[title*="Align"]').dispatchEvent('click');
+    await page.getByRole('menuitem', { name: 'Distribute H', exact: true }).dispatchEvent('click');
+    const distributed = await positions();
+    expect(new Set(distributed.map((p) => p.left)).size).toBe(3);
+  });
+
   test('switches column view, line style, theme, and presentation mode', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -1038,6 +1071,12 @@ test.describe('canvas smoke flows', () => {
     await page.getByTestId('export-menu').getByRole('menuitem', { name: /^SVG$/ }).click();
     const svgDownload = await svgDownloadPromise;
     expect(svgDownload.suggestedFilename()).toMatch(/^erdmini_.*\.svg$/);
+    const svgPath = await svgDownload.path();
+    if (!svgPath) throw new Error('SVG download path is unavailable');
+    const svgBytes = await readFile(svgPath);
+    const svgText = svgBytes.toString('utf8');
+    expect(svgText).toContain('<svg');
+    expect(svgText).toContain('table_1');
 
     await page.getByTestId('export-menu-toggle').click();
     const backupDownloadPromise = page.waitForEvent('download');
@@ -1055,12 +1094,19 @@ test.describe('canvas smoke flows', () => {
     await page.getByTestId('export-menu').getByRole('menuitem', { name: /PNG/i }).click();
     const pngDownload = await pngDownloadPromise;
     expect(pngDownload.suggestedFilename()).toMatch(/^erdmini_.*\.png$/);
+    const pngPath = await pngDownload.path();
+    if (!pngPath) throw new Error('PNG download path is unavailable');
+    const pngBytes = await readFile(pngPath);
+    expect(pngBytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBeTruthy();
 
     await page.getByTestId('export-menu-toggle').click();
     const pdfDownloadPromise = page.waitForEvent('download');
     await page.getByTestId('export-menu').getByRole('menuitem', { name: /PDF/i }).click();
     const pdfDownload = await pdfDownloadPromise;
     expect(pdfDownload.suggestedFilename()).toMatch(/^erdmini_.*\.pdf$/);
+    const pdfPath = await pdfDownload.path();
+    if (!pdfPath) throw new Error('PDF download path is unavailable');
+    expect((await readFile(pdfPath)).subarray(0, 5).toString('ascii')).toBe('%PDF-');
   });
 
   test('opens a copied share link in a fresh browser context', async ({ page, browser }) => {
