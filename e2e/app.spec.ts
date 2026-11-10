@@ -449,6 +449,32 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toContainText('users');
   });
 
+  test('imports a composite foreign key from DDL', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('import-menu-toggle').click();
+    await page.getByTestId('import-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+    await modal.getByTestId('ddl-import-input').fill(`
+      CREATE TABLE parent (
+        id_a INT NOT NULL,
+        id_b INT NOT NULL,
+        PRIMARY KEY (id_a, id_b)
+      );
+      CREATE TABLE child (
+        id INT PRIMARY KEY,
+        parent_a INT,
+        parent_b INT,
+        CONSTRAINT child_parent_fk FOREIGN KEY (parent_a, parent_b) REFERENCES parent (id_a, id_b)
+      );
+    `);
+    await modal.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(page.getByTestId('table-card')).toHaveCount(2);
+    await modal.locator('.close-btn').click();
+    await page.getByTestId('table-card').filter({ hasText: 'child' }).click();
+    await expect(page.locator('.fk-section .fk-row')).toHaveCount(1);
+    await expect(page.locator('.fk-section .fk-row')).toContainText('parent');
+  });
+
   test('imports a DBML schema into the empty canvas', async ({ page }) => {
     await openEmptyCanvas(page);
 
