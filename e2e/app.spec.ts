@@ -200,6 +200,20 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
   });
 
+  test('renames the active project and restores the name after reload', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.getByTestId('project-menu-toggle').click();
+    await page.getByTestId('project-rename').click();
+    const renameInput = page.locator('.project-item .project-rename-input');
+    await renameInput.fill('Renamed project');
+    await renameInput.press('Enter');
+
+    await expect(page.getByTestId('project-menu-toggle')).toContainText('Renamed project');
+    await page.reload();
+    await expect(page.getByTestId('project-menu-toggle')).toContainText('Renamed project');
+  });
+
   test('toggles dark mode and collapses the sidebar', async ({ page }) => {
     await openEmptyCanvas(page);
 

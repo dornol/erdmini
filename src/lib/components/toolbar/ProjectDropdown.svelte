@@ -155,6 +155,7 @@
             <div class="project-item-actions">
               <button
                 class="project-action-btn"
+                data-testid="project-rename"
                 title={m.project_rename()}
                 onclick={(e) => { e.stopPropagation(); startRename(proj.id, proj.name); }}
               >✎</button>
