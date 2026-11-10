@@ -325,7 +325,7 @@ test.describe('server-mode authentication', () => {
     await expect(wordRow).toContainText('E2E test word');
     await wordRow.locator('.btn-danger').click();
     await expect(page.getByRole('alertdialog')).toBeVisible();
-    await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
     await expect(page.locator('tr').filter({ hasText: 'e2e_word' })).toHaveCount(0);
   });
 
@@ -592,5 +592,45 @@ test.describe('server-mode authentication', () => {
     await expect(embedPage.locator('.embed-app')).toBeVisible({ timeout: 15_000 });
     await expect(embedPage.locator('.embed-badge')).toContainText(/view only/i);
     await embedPage.close();
+  });
+
+  test('lets admins list and revoke embed tokens and filter the audit trail', async ({ page }) => {
+    await loginAsAdmin(page);
+    const emptyCreate = page.getByTestId('create-project');
+    let projectName = `E2E Admin Embed ${Date.now()}`;
+    if (await emptyCreate.isVisible().catch(() => false)) {
+      await emptyCreate.click();
+      projectName = 'My Project';
+    } else {
+      await page.getByTestId('project-menu-toggle').click();
+      await page.getByTestId('project-new').click();
+      const projectInput = page.locator('.project-rename-input');
+      await projectInput.fill(projectName);
+      await projectInput.press('Enter');
+    }
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+
+    const { activeProjectId } = await page.request.get('/api/storage/index').then((res) => res.json() as Promise<{ activeProjectId: string }>);
+    const tokenResponse = await page.request.post(`/api/embed/${activeProjectId}`, { data: { password: 'admin-embed-secret' } });
+    expect(tokenResponse.status()).toBe(201);
+    const token = await tokenResponse.json() as { id: string; token: string };
+
+    await page.goto('/admin');
+    await page.getByRole('button', { name: /Embeds/ }).click();
+    const embedSection = page.locator('.admin-page .section').filter({ hasText: /embed tokens|Embed Tokens/i });
+    await expect(embedSection.locator('tbody tr').filter({ hasText: projectName })).toHaveCount(1);
+
+    const tokenRow = embedSection.locator('tbody tr').filter({ hasText: projectName });
+    await tokenRow.getByRole('button', { name: /delete/i }).click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await expect(embedSection.locator('tbody tr').filter({ hasText: projectName })).toHaveCount(0);
+    expect((await page.request.get(`/api/embed/view/${token.token}`)).status()).toBe(403);
+
+    await page.getByRole('button', { name: /Audit Log/ }).click();
+    const auditSection = page.locator('.admin-page .section').filter({ hasText: /Audit Log/i });
+    await auditSection.locator('input[type="text"]').fill('create_embed_token');
+    await auditSection.getByRole('button', { name: /search/i }).click();
+    await expect(auditSection.locator('tbody tr').filter({ hasText: 'create_embed_token' })).toHaveCount(1);
   });
 });
