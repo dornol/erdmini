@@ -6,7 +6,7 @@ async function loginAsAdmin(page: Page) {
   await page.locator('#password').fill('e2e-password');
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId('create-project')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('[data-testid="create-project"], [data-testid="project-menu-toggle"]')).toBeVisible({ timeout: 15_000 });
 }
 
 async function buildShareHash(page: Page) {
@@ -128,6 +128,68 @@ test.describe('server-mode authentication', () => {
     await expect(page.locator('tr').filter({ hasText: 'e2e_word' })).toHaveCount(0);
   });
 
+  test('creates, edits, and deletes a regular admin user', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/admin');
+    const username = `e2e-user-${Date.now()}`;
+    const usersTab = page.locator('.admin-page .section').filter({ hasText: 'Create User' });
+    await expect(usersTab).toBeVisible();
+    await usersTab.locator('input[placeholder="Username"]').fill(username);
+    await usersTab.locator('input[placeholder="Display Name"]').fill('E2E User');
+    await usersTab.locator('input[placeholder="Email"]').fill(`${username}@example.test`);
+    await usersTab.locator('input[type="password"]').fill('e2e-user-password');
+    await usersTab.getByRole('button', { name: 'Create', exact: true }).click();
+
+    const userRow = page.locator('.data-table tbody tr').filter({ hasText: username });
+    await expect(userRow).toBeVisible();
+    await userRow.getByRole('button', { name: 'Edit', exact: true }).click();
+    await userRow.locator('input.inline-input').first().fill('Edited E2E User');
+    await userRow.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(userRow).toContainText('Edited E2E User');
+
+    await userRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await expect(page.locator('.data-table tbody tr').filter({ hasText: username })).toHaveCount(0);
+  });
+
+  test('grants, changes, and revokes project permissions', async ({ page }) => {
+    await loginAsAdmin(page);
+    const username = `e2e-share-${Date.now()}`;
+    const userResponse = await page.request.post('/api/admin/users', {
+      data: { username, displayName: 'E2E Share User', email: `${username}@example.test`, password: 'share-password', role: 'user' },
+    });
+    expect(userResponse.status()).toBe(201);
+    const user = await userResponse.json() as { id: string };
+
+    await page.getByTestId('create-project').click();
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+    const projectIndexResponse = await page.request.get('/api/storage/index');
+    const projectIndex = await projectIndexResponse.json() as { activeProjectId: string };
+    const projectId = projectIndex.activeProjectId;
+    await page.getByRole('button', { name: 'Share', exact: true }).click();
+    const modal = page.locator('.modal[role="dialog"]');
+    await expect(modal).toBeVisible();
+    const search = modal.locator('input.search-input').first();
+    await search.fill(username);
+    await expect(modal.locator('.search-result-item')).toBeVisible({ timeout: 5_000 });
+    await modal.locator('.perm-select').first().selectOption('viewer');
+    await modal.locator('.search-result-item').click();
+
+    const permissionRow = modal.locator('.perm-row').filter({ hasText: username });
+    await expect(permissionRow).toContainText(/viewer/i);
+    await permissionRow.locator('select.perm-select-sm').selectOption('editor');
+    await expect(permissionRow).toContainText(/editor/i);
+    await permissionRow.locator('.remove-btn').click();
+    await expect(modal.locator('.perm-row').filter({ hasText: username })).toHaveCount(0);
+    await modal.locator('.close-btn').click();
+
+    const projectCleanup = await page.request.delete(`/api/storage/schemas/${projectId}`);
+    expect(projectCleanup.ok()).toBeTruthy();
+    const cleanup = await page.request.delete(`/api/admin/users/${user.id}`);
+    expect(cleanup.ok()).toBeTruthy();
+  });
+
   test('protects storage APIs and logs out an authenticated user', async ({ page }) => {
     const response = await page.request.get('/api/storage/index');
     expect(response.status()).toBe(401);
@@ -166,5 +228,44 @@ test.describe('server-mode authentication', () => {
 
     await expect(page.getByTestId('table-card')).toHaveCount(1, { timeout: 15_000 });
     await expect(page.getByTestId('table-card')).toContainText('table_1');
+  });
+
+  test('creates a password-protected embed and handles wrong and correct passwords', async ({ page }) => {
+    await loginAsAdmin(page);
+    const emptyCreate = page.getByTestId('create-project');
+    if (await emptyCreate.isVisible().catch(() => false)) {
+      await emptyCreate.click();
+    } else {
+      await page.getByTestId('project-menu-toggle').click();
+      await page.getByTestId('project-new').click();
+      const projectInput = page.locator('.project-rename-input');
+      await projectInput.fill(`E2E Embed ${Date.now()}`);
+      await projectInput.press('Enter');
+    }
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: /embed/i }).click();
+    const modal = page.locator('.modal-panel');
+    await expect(modal).toBeVisible();
+    await modal.locator('input[type="password"]').fill('embed-secret');
+    await modal.locator('.btn-create').click();
+
+    const tokenCard = modal.locator('.token-card').first();
+    await expect(tokenCard).toBeVisible();
+    const embedUrl = await tokenCard.locator('.embed-url-display').inputValue();
+    expect(embedUrl).toMatch(/\/embed\//);
+
+    const embedPage = await page.context().newPage();
+    await embedPage.goto(embedUrl);
+    await expect(embedPage.locator('.embed-password')).toBeVisible({ timeout: 15_000 });
+    await embedPage.locator('.embed-password input').fill('wrong-password');
+    await embedPage.locator('.embed-password button').click();
+    await expect(embedPage.locator('.embed-password .error-text')).toBeVisible();
+    await embedPage.locator('.embed-password input').fill('embed-secret');
+    await embedPage.locator('.embed-password button').click();
+    await expect(embedPage.locator('.embed-app')).toBeVisible({ timeout: 15_000 });
+    await expect(embedPage.locator('.embed-badge')).toContainText(/view only/i);
+    await embedPage.close();
   });
 });

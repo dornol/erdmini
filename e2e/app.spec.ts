@@ -44,6 +44,26 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
   });
 
+  test('changes memo color and resizes it from the canvas', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-memo').click();
+    const memo = page.getByTestId('memo-card');
+    await memo.locator('.memo-header').click();
+    await expect(memo).toHaveClass(/selected/);
+
+    await memo.getByRole('button', { name: 'blue' }).click();
+    await expect(memo).toHaveAttribute('style', /rgb\(219, 234, 254\)/);
+
+    const initialWidth = await memo.evaluate((node) => (node as HTMLElement).getBoundingClientRect().width);
+    const resize = memo.locator('.resize-handle');
+    const box = await resize.boundingBox();
+    if (!box) throw new Error('Memo resize handle is not measurable');
+    await resize.dispatchEvent('mousedown', { button: 0, clientX: box.x, clientY: box.y });
+    await page.mouse.move(box.x + 80, box.y + 40);
+    await page.mouse.up();
+    await expect.poll(async () => memo.evaluate((node) => (node as HTMLElement).getBoundingClientRect().width)).toBeGreaterThan(initialWidth);
+  });
+
   test('persists a created table after reload', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -276,6 +296,17 @@ test.describe('canvas smoke flows', () => {
     await expect(modal).toBeHidden();
     await expect(page.locator('.fk-section .fk-row')).toHaveCount(1);
     await expect(page.locator('.fk-section .fk-row')).toContainText('table_1.id');
+
+    const fkRow = page.locator('.fk-section .fk-row');
+    await fkRow.locator('button[title="Edit"]').click();
+    await expect(modal).toBeVisible();
+    await modal.locator('#fkm-label').fill('user ownership');
+    await modal.getByTestId('fk-submit').click();
+    await fkRow.locator('button[title="Edit"]').click();
+    await expect(modal.locator('#fkm-label')).toHaveValue('user ownership');
+    await modal.getByRole('button', { name: /close/i }).click();
+    await fkRow.locator('button.del').click();
+    await expect(page.locator('.fk-section .fk-row')).toHaveCount(0);
   });
 
   test('deletes a table after confirmation', async ({ page }) => {
@@ -424,6 +455,31 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.sp-panel')).toBeHidden();
   });
 
+  test('compares a historical schema and generates migration SQL', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    const tableName = page.getByTestId('table-name-input');
+    await tableName.fill('users');
+    await tableName.press('Enter');
+    await page.getByTestId('table-editor').getByRole('button', { name: /add/i }).first().click();
+    await page.getByRole('dialog', { name: 'Table Editor' }).getByRole('button', { name: 'Close' }).click();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'Schema Diff', exact: true }).click();
+    const modal = page.locator('.modal[role="dialog"]');
+    const historySelect = modal.locator('.history-select');
+    await expect(historySelect).toBeVisible();
+    await historySelect.selectOption({ index: 1 });
+    await modal.locator('.btn-compare').click();
+    await expect(modal.locator('.diff-summary-row')).toBeVisible();
+    await expect(modal.locator('.diff-results')).toBeVisible();
+    if (await modal.locator('.migration-controls').isVisible()) {
+      await modal.locator('.btn-migration').click();
+      await expect(modal.locator('.migration-preview')).toBeVisible();
+      await expect(modal.locator('.migration-preview')).toContainText(/ALTER|CREATE|DROP/i);
+    }
+  });
+
   test('creates, links, unlinks, and deletes a domain', async ({ page }) => {
     await openEmptyCanvas(page);
 
@@ -508,6 +564,23 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.zoom-pct')).not.toHaveText('100%');
     await page.getByRole('button', { name: 'Reset' }).click();
     await expect(page.locator('.zoom-pct')).toHaveText('100%');
+  });
+
+  test('selects tables with marquee and renders them in the minimap', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.locator('.toolbar .btn-primary').click();
+    await expect(page.locator('.minimap')).toBeVisible();
+    await expect(page.locator('.mini-table')).toHaveCount(2);
+
+    const viewport = page.locator('.canvas-viewport');
+    const box = await viewport.boundingBox();
+    if (!box) throw new Error('Canvas viewport is not measurable');
+    await page.mouse.move(box.x + 12, box.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 12, box.y + box.height - 12);
+    await page.mouse.up();
+    await expect(page.locator('[data-testid="table-card"].selected')).toHaveCount(2);
   });
 
   test('creates, restores, and deletes a manual snapshot', async ({ page }) => {
@@ -715,6 +788,23 @@ test.describe('canvas smoke flows', () => {
     await page.getByTestId('export-menu').getByRole('menuitem', { name: /backup all/i }).click();
     const backupDownload = await backupDownloadPromise;
     expect(backupDownload.suggestedFilename()).toMatch(/^erdmini_backup_\d{4}-\d{2}-\d{2}\.json$/);
+  });
+
+  test('exports the diagram as PNG and PDF', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.getByTestId('export-menu-toggle').click();
+    const pngDownloadPromise = page.waitForEvent('download');
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: /PNG/i }).click();
+    const pngDownload = await pngDownloadPromise;
+    expect(pngDownload.suggestedFilename()).toMatch(/^erdmini_.*\.png$/);
+
+    await page.getByTestId('export-menu-toggle').click();
+    const pdfDownloadPromise = page.waitForEvent('download');
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: /PDF/i }).click();
+    const pdfDownload = await pdfDownloadPromise;
+    expect(pdfDownload.suggestedFilename()).toMatch(/^erdmini_.*\.pdf$/);
   });
 
   test('opens a copied share link in a fresh browser context', async ({ page, browser }) => {
