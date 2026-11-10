@@ -25,6 +25,25 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('memo-card')).toHaveCount(1);
   });
 
+  test('edits and deletes a memo with confirmation', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-memo').click();
+
+    const memo = page.getByTestId('memo-card');
+    const textarea = memo.locator('.memo-textarea');
+    await expect(textarea).toBeVisible();
+    await textarea.fill('Review relationship naming');
+    await textarea.blur();
+    await expect(memo.locator('.memo-text')).toHaveText('Review relationship naming');
+
+    await memo.hover();
+    await memo.getByTestId('delete-memo').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
+    await expect(page.getByTestId('memo-card')).toHaveCount(0);
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+  });
+
   test('persists a created table after reload', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();

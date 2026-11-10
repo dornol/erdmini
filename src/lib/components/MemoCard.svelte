@@ -245,7 +245,7 @@
     {/if}
     <div class="header-spacer"></div>
     {#if !permissionStore.isReadOnly}
-      <button class="delete-btn" onclick={onDeleteClick} style="color:{colors.text}">✕</button>
+      <button class="delete-btn" data-testid="delete-memo" onclick={onDeleteClick} style="color:{colors.text}">✕</button>
     {/if}
   </div>
 
