@@ -182,6 +182,18 @@ test.describe('server-mode authentication', () => {
     await expect(apiKeysTab.locator('tbody tr').filter({ hasText: `${keyName}-edited` })).toHaveCount(0);
   });
 
+  test('downloads the admin database backup', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/admin');
+    await page.getByRole('button', { name: 'Backup' }).click();
+    const backupTab = page.locator('.admin-page .section');
+    await expect(backupTab).toBeVisible();
+    const downloadPromise = page.waitForEvent('download');
+    await backupTab.getByRole('button', { name: /download/i }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.db$/);
+  });
+
   test('creates and deletes a dictionary word from the server dictionary', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/dictionary');
