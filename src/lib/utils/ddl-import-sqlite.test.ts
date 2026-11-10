@@ -141,6 +141,19 @@ describe('importDDL — SQLite', () => {
     expect(emailCol.unique).toBe(true);
   });
 
+  it('parses named inline UNIQUE column constraint', async () => {
+    const sql = `
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY,
+        email TEXT CONSTRAINT uq_users_email UNIQUE NOT NULL
+      );
+    `;
+    const result = await importDDL(sql, 'sqlite');
+    expect(result.errors).toHaveLength(0);
+    const emailCol = result.tables[0].columns.find(c => c.name === 'email')!;
+    expect(emailCol.unique).toBe(true);
+  });
+
   it('parses table-level UNIQUE constraint', async () => {
     const sql = `
       CREATE TABLE test (

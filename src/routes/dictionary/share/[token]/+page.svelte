@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import * as m from '$lib/paraglide/messages';
+  import { appPath } from '$lib/utils/paths';
 
   interface WordRow {
     id: string;
@@ -38,7 +39,7 @@
 
   async function loadData() {
     viewState = 'loading';
-    const res = await fetch(`/api/dictionary/share/${token}`);
+    const res = await fetch(appPath(`/api/dictionary/share/${token}`));
     if (res.status === 401) {
       const data = await res.json();
       if (data.requiresPassword) { viewState = 'password'; return; }
@@ -56,7 +57,7 @@
 
   async function submitPassword() {
     errorMsg = '';
-    const res = await fetch(`/api/dictionary/share/${token}`, {
+    const res = await fetch(appPath(`/api/dictionary/share/${token}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),

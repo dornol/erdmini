@@ -144,6 +144,20 @@ describe('importDDL — MySQL', () => {
     expect(emailCol.unique).toBe(true);
   });
 
+  it('extracts named inline UNIQUE column constraint', async () => {
+    const sql = `
+      CREATE TABLE users (
+        id INT NOT NULL AUTO_INCREMENT,
+        email VARCHAR(255) CONSTRAINT uq_users_email UNIQUE,
+        PRIMARY KEY (id)
+      );
+    `;
+    const result = await importDDL(sql, 'mysql');
+    expect(result.errors).toHaveLength(0);
+    const emailCol = result.tables[0].columns.find((c) => c.name === 'email')!;
+    expect(emailCol.unique).toBe(true);
+  });
+
   it('handles table-level UNIQUE constraint', async () => {
     const sql = `
       CREATE TABLE users (
@@ -536,6 +550,19 @@ describe('importDDL — MariaDB', () => {
     expect(table.columns[0].autoIncrement).toBe(true);
     expect(table.columns[0].primaryKey).toBe(true);
     expect(table.columns[2].unique).toBe(true);
+  });
+
+  it('extracts named inline UNIQUE column constraint', async () => {
+    const sql = `
+      CREATE TABLE \`users\` (
+        \`id\` INT NOT NULL AUTO_INCREMENT,
+        \`email\` VARCHAR(255) CONSTRAINT \`uq_users_email\` UNIQUE,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB;
+    `;
+    const result = await importDDL(sql, 'mariadb');
+    expect(result.errors).toHaveLength(0);
+    expect(result.tables[0].columns.find((c) => c.name === 'email')!.unique).toBe(true);
   });
 
   it('parses inline FK with ON DELETE/UPDATE', async () => {

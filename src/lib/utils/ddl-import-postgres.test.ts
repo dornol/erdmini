@@ -98,6 +98,19 @@ describe('importDDL — PostgreSQL', () => {
     expect(amountCol.scale).toBe(4);
   });
 
+  it('extracts named inline UNIQUE column constraint', async () => {
+    const sql = `
+      CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) CONSTRAINT uq_users_email UNIQUE
+      );
+    `;
+    const result = await importDDL(sql, 'postgresql');
+    expect(result.errors).toHaveLength(0);
+    const emailCol = result.tables[0].columns.find((c) => c.name === 'email')!;
+    expect(emailCol.unique).toBe(true);
+  });
+
   // --- Schema ---
   it('extracts schema name from qualified table', async () => {
     const sql = `

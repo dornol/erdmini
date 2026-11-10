@@ -3,10 +3,11 @@ import { json } from '@sveltejs/kit';
 import db from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth/guards';
 import { importWords } from '$lib/server/dictionary';
+import type { WordStatus } from '$lib/server/dictionary';
 import { logAudit } from '$lib/server/audit';
 import { err } from '$lib/server/api-helpers';
 
-export const POST: RequestHandler = async ({ locals, request }) => {
+export const POST: RequestHandler = async ({ locals, request, url }) => {
   const adminErr = requireAdmin(locals);
   if (adminErr) return adminErr;
 
@@ -18,13 +19,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return err('Maximum 5000 words per import');
   }
 
-  const result = importWords(db, body, locals.user!.id);
+  const dictionaryId = url.searchParams.get('dictionaryId') || undefined;
+  const status = (url.searchParams.get('status') || 'approved') as WordStatus;
+  if (!['approved', 'pending', 'rejected'].includes(status)) {
+    return err('Invalid status');
+  }
+  const result = importWords(db, body, locals.user!.id, dictionaryId, status);
   logAudit({
     action: 'import_dictionary_words',
     category: 'system',
     userId: locals.user!.id,
     username: locals.user!.username,
-    detail: { created: result.created, updated: result.updated, errorCount: result.errors.length },
+    detail: { dictionaryId, status, created: result.created, updated: result.updated, errorCount: result.errors.length },
     source: 'web',
   });
   return json(result);

@@ -32,7 +32,9 @@ export function generateMigrationSQL(
 
   // Find the current table by tableDiff info
   function findCurrTable(td: TableDiff): Table | null {
-    return allTables.find((t) => t.id === td.tableId) ?? null;
+    return allTables.find((t) => t.id === td.tableId)
+      ?? allTables.find((t) => t.name === td.tableName)
+      ?? null;
   }
 
   // ── 1. Drop FK constraints ──
@@ -98,6 +100,19 @@ export function generateMigrationSQL(
         dropIdxLines.push(`${kw('ALTER TABLE', up)} ${tq} ${kw('DROP INDEX', up)} ${q(ukName, qs)};`);
       } else {
         dropIdxLines.push(`${kw('ALTER TABLE', up)} ${tq} ${kw('DROP CONSTRAINT', up)} ${q(ukName, qs)};`);
+      }
+    }
+
+    if (dialect !== 'sqlite') {
+      for (const cd of td.modifiedColumns) {
+        if (!cd.prev?.unique || cd.curr?.unique) continue;
+        const colName = cd.prev.name;
+        const ukName = uniqueConstraintName(tableName, [colName]);
+        if (dialect === 'mysql' || dialect === 'mariadb') {
+          dropIdxLines.push(`${kw('ALTER TABLE', up)} ${tq} ${kw('DROP INDEX', up)} ${q(ukName, qs)};`);
+        } else {
+          dropIdxLines.push(`${kw('ALTER TABLE', up)} ${tq} ${kw('DROP CONSTRAINT', up)} ${q(ukName, qs)};`);
+        }
       }
     }
   }
@@ -231,28 +246,33 @@ export function generateMigrationSQL(
     const tq = table ? qualifiedTableName(table, dialect, qs) : q(td.tableName, qs);
 
     for (const idx of td.addedIndexes) {
-      const colNames = idx.columnIds
-        .map((id) => table?.columns.find((c) => c.id === id))
-        .filter((c) => c != null)
-        .map((c) => q(c.name, qs));
+      const colNames = columnNamesForIds(table, idx.columnIds).map((name) => q(name, qs));
       if (colNames.length === 0) continue;
       const uniqueKw = idx.unique ? `${kw('UNIQUE', up)} ` : '';
-      const idxName = idx.name || `idx_${td.tableName}_${idx.columnIds.map((id) => table?.columns.find((c) => c.id === id)?.name ?? '').join('_')}`;
+      const idxName = idx.name || `idx_${td.tableName}_${columnNamesForIds(table, idx.columnIds).join('_')}`;
       addIdxLines.push(
         `${kw('CREATE', up)} ${uniqueKw}${kw('INDEX', up)} ${q(idxName, qs)} ${kw('ON', up)} ${tq} (${colNames.join(', ')});`,
       );
     }
 
     for (const uk of td.addedUniqueKeys) {
-      const colNames = uk.columnIds
-        .map((id) => table?.columns.find((c) => c.id === id))
-        .filter((c) => c != null)
-        .map((c) => q(c.name, qs));
+      const colNames = columnNamesForIds(table, uk.columnIds).map((name) => q(name, qs));
       if (colNames.length === 0) continue;
-      const ukName = uk.name || `uq_${td.tableName}_${uk.columnIds.join('_')}`;
+      const ukName = uk.name || uniqueConstraintName(td.tableName, columnNamesForIds(table, uk.columnIds));
       addIdxLines.push(
         `${kw('ALTER TABLE', up)} ${tq} ${kw('ADD CONSTRAINT', up)} ${q(ukName, qs)} ${kw('UNIQUE', up)} (${colNames.join(', ')});`,
       );
+    }
+
+    if (dialect !== 'sqlite') {
+      for (const cd of td.modifiedColumns) {
+        if (cd.prev?.unique || !cd.curr?.unique || cd.curr.primaryKey) continue;
+        const colName = cd.curr.name;
+        const ukName = uniqueConstraintName(td.tableName, [colName]);
+        addIdxLines.push(
+          `${kw('ALTER TABLE', up)} ${tq} ${kw('ADD CONSTRAINT', up)} ${q(ukName, qs)} ${kw('UNIQUE', up)} (${q(colName, qs)});`,
+        );
+      }
     }
   }
 
@@ -349,6 +369,16 @@ function columnDefInline(col: Column, dialect: Dialect, opts: DDLExportOptions, 
   }
 
   return parts.join(' ');
+}
+
+function columnNamesForIds(table: Table | null, ids: string[]): string[] {
+  return ids
+    .map((id) => table?.columns.find((c) => c.id === id || c.name === id)?.name ?? id)
+    .filter((name) => name !== '');
+}
+
+function uniqueConstraintName(tableName: string, columnNames: string[]): string {
+  return `uq_${tableName}_${columnNames.join('_')}`;
 }
 
 function alterColumnSql(

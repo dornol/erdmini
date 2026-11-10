@@ -22,6 +22,7 @@ import { registerExportTools } from './tools/export-tools';
 import { registerAnalysisTools } from './tools/analysis-tools';
 import { registerBulkTools } from './tools/bulk-tools';
 import { registerDbObjectTools } from './tools/db-object-tools';
+import { registerDictionaryTools } from './tools/dictionary-tools';
 
 export function createMcpServer(
   db: Database.Database,
@@ -106,6 +107,7 @@ export function createMcpServer(
 
   registerBulkTools(server, ctx);
   registerDbObjectTools(server, ctx);
+  registerDictionaryTools(server, ctx);
 
   return server;
 }

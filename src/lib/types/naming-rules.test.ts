@@ -25,11 +25,38 @@ describe('computeEffectiveRules', () => {
     expect(result.tableCase).toEqual({ value: 'PascalCase', source: 'project' });
   });
 
+  it('uses object project override values when allowed', () => {
+    const admin: SiteNamingRules = {
+      tableCase: { enabled: true, value: 'snake_case', allowOverride: true },
+    };
+    const project: ProjectNamingOverrides = { tableCase: { value: 'PascalCase' } };
+    const result = computeEffectiveRules(admin, project);
+    expect(result.tableCase).toEqual({ value: 'PascalCase', source: 'project' });
+  });
+
+  it('disables an enabled admin rule when project override disables it', () => {
+    const admin: SiteNamingRules = {
+      tableCase: { enabled: true, value: 'snake_case', allowOverride: true },
+    };
+    const project: ProjectNamingOverrides = { tableCase: { enabled: false } };
+    const result = computeEffectiveRules(admin, project);
+    expect(result.tableCase).toBeUndefined();
+  });
+
   it('ignores project override when not allowed', () => {
     const admin: SiteNamingRules = {
       tableCase: { enabled: true, value: 'snake_case', allowOverride: false },
     };
     const project: ProjectNamingOverrides = { tableCase: 'PascalCase' };
+    const result = computeEffectiveRules(admin, project);
+    expect(result.tableCase).toEqual({ value: 'snake_case', source: 'admin' });
+  });
+
+  it('ignores project disabled override when not allowed', () => {
+    const admin: SiteNamingRules = {
+      tableCase: { enabled: true, value: 'snake_case', allowOverride: false },
+    };
+    const project: ProjectNamingOverrides = { tableCase: { enabled: false } };
     const result = computeEffectiveRules(admin, project);
     expect(result.tableCase).toEqual({ value: 'snake_case', source: 'admin' });
   });

@@ -6,9 +6,33 @@ import { generateId } from '$lib/utils/common';
 // ─── Types ───────────────────────────────────────────────────────────
 
 export type WordStatus = 'approved' | 'pending' | 'rejected';
+export const DEFAULT_DICTIONARY_ID = 'default';
+
+export interface DictionaryRow {
+  id: string;
+  name: string;
+  description: string | null;
+  is_default: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DictionaryWithUsageRow extends DictionaryRow {
+  wordCount: number;
+  shareTokenCount: number;
+  projectCount: number;
+  projects: DictionaryProjectReference[];
+}
+
+export interface DictionaryProjectReference {
+  id: string;
+  name: string;
+}
 
 export interface WordRow {
   id: string;
+  dictionary_id: string;
   word: string;
   meaning: string;
   description: string | null;
@@ -22,6 +46,7 @@ export interface WordRow {
 
 export interface DictShareTokenRow {
   id: string;
+  dictionaryId: string;
   token: string;
   hasPassword: boolean;
   createdBy: string;
@@ -29,14 +54,193 @@ export interface DictShareTokenRow {
   expiresAt: string | null;
 }
 
+// ─── Dictionaries ────────────────────────────────────────────────────
+
+export function listDictionaries(db: Database.Database): DictionaryRow[] {
+  return db
+    .prepare('SELECT * FROM dictionaries ORDER BY is_default DESC, name COLLATE NOCASE ASC')
+    .all() as DictionaryRow[];
+}
+
+export function listDictionariesWithUsage(db: Database.Database): DictionaryWithUsageRow[] {
+  return listDictionaries(db).map((dictionary) => {
+    const usage = getDictionaryUsage(db, dictionary.id);
+    const projects = listProjectsUsingDictionary(db, dictionary.id);
+    return {
+      ...dictionary,
+      wordCount: usage.words,
+      shareTokenCount: usage.shareTokens,
+      projectCount: projects.length,
+      projects,
+    };
+  });
+}
+
+export function getDefaultDictionaryId(db: Database.Database): string {
+  const row = db.prepare('SELECT id FROM dictionaries WHERE is_default = 1 LIMIT 1').get() as { id: string } | undefined;
+  return row?.id ?? DEFAULT_DICTIONARY_ID;
+}
+
+export function createDictionary(
+  db: Database.Database,
+  data: { name: string; description?: string },
+  userId: string,
+): DictionaryRow {
+  const id = generateId();
+  const name = data.name.trim();
+  const description = data.description?.trim() || null;
+  db.prepare(
+    'INSERT INTO dictionaries (id, name, description, created_by) VALUES (?, ?, ?, ?)',
+  ).run(id, name, description, userId);
+  const row = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow | undefined;
+  if (!row) throw new Error('Dictionary not found');
+  return row;
+}
+
+export function cloneDictionary(
+  db: Database.Database,
+  sourceId: string,
+  data: { name: string; description?: string },
+  userId: string,
+): DictionaryRow {
+  const source = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(sourceId) as DictionaryRow | undefined;
+  if (!source) throw new Error('Source dictionary not found');
+
+  const tx = db.transaction(() => {
+    const dictionary = createDictionary(db, data, userId);
+    const words = db.prepare(
+      'SELECT word, meaning, description, category, status FROM word_dictionary WHERE dictionary_id = ? ORDER BY word COLLATE NOCASE',
+    ).all(sourceId) as Pick<WordRow, 'word' | 'meaning' | 'description' | 'category' | 'status'>[];
+    const insertWord = db.prepare(
+      'INSERT INTO word_dictionary (id, dictionary_id, word, meaning, description, category, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+
+    for (const word of words) {
+      insertWord.run(generateId(), dictionary.id, word.word, word.meaning, word.description, word.category, word.status, userId);
+    }
+
+    return dictionary;
+  });
+
+  return tx();
+}
+
+export function updateDictionary(
+  db: Database.Database,
+  id: string,
+  patch: { name?: string; description?: string | null },
+): DictionaryRow {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+
+  if (patch.name !== undefined) {
+    const name = patch.name.trim();
+    if (!name) throw new Error('name is required');
+    sets.push('name = ?');
+    params.push(name);
+  }
+  if (patch.description !== undefined) {
+    sets.push('description = ?');
+    params.push(patch.description?.trim() || null);
+  }
+
+  if (sets.length > 0) {
+    sets.push("updated_at = datetime('now')");
+    params.push(id);
+    db.prepare(`UPDATE dictionaries SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  }
+
+  const row = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow | undefined;
+  if (!row) throw new Error('Dictionary not found');
+  return row;
+}
+
+export function setDefaultDictionary(db: Database.Database, id: string): DictionaryRow {
+  const row = db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow | undefined;
+  if (!row) throw new Error('Dictionary not found');
+
+  const tx = db.transaction(() => {
+    db.prepare('UPDATE dictionaries SET is_default = 0').run();
+    db.prepare("UPDATE dictionaries SET is_default = 1, updated_at = datetime('now') WHERE id = ?").run(id);
+  });
+  tx();
+
+  return db.prepare('SELECT * FROM dictionaries WHERE id = ?').get(id) as DictionaryRow;
+}
+
+export function getDictionaryUsage(db: Database.Database, id: string): { words: number; shareTokens: number } {
+  const words = (db.prepare('SELECT COUNT(*) as cnt FROM word_dictionary WHERE dictionary_id = ?').get(id) as { cnt: number }).cnt;
+  const shareTokens = (db.prepare('SELECT COUNT(*) as cnt FROM dictionary_share_tokens WHERE dictionary_id = ?').get(id) as { cnt: number }).cnt;
+  return { words, shareTokens };
+}
+
+function listProjectNames(db: Database.Database): Map<string, string> {
+  const rows = db.prepare('SELECT data FROM project_index').all() as { data: string }[];
+  const names = new Map<string, string>();
+
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.data) as { projects?: { id: string; name?: string }[] };
+      for (const project of parsed.projects ?? []) {
+        if (project.id && project.name && !names.has(project.id)) names.set(project.id, project.name);
+      }
+    } catch {
+      // Ignore malformed index rows; schema references still fall back to project IDs.
+    }
+  }
+
+  return names;
+}
+
+export function listProjectsUsingDictionary(db: Database.Database, id: string): DictionaryProjectReference[] {
+  const rows = db.prepare('SELECT project_id, data FROM schemas').all() as { project_id: string; data: string }[];
+  const projectNames = listProjectNames(db);
+  const projects: DictionaryProjectReference[] = [];
+
+  function addProject(projectId: string) {
+    projects.push({ id: projectId, name: projectNames.get(projectId) ?? projectId });
+  }
+
+  for (const row of rows) {
+    try {
+      const schema = JSON.parse(row.data) as { dictionaryId?: string };
+      if (schema.dictionaryId === id) addProject(row.project_id);
+    } catch {
+      // Keep malformed schemas from allowing destructive dictionary cleanup.
+      addProject(row.project_id);
+    }
+  }
+
+  return projects;
+}
+
+export function deleteDictionary(db: Database.Database, id: string): void {
+  const row = db.prepare('SELECT is_default FROM dictionaries WHERE id = ?').get(id) as { is_default: number } | undefined;
+  if (!row) throw new Error('Dictionary not found');
+  if (row.is_default) throw new Error('Default dictionary cannot be deleted');
+
+  const usage = getDictionaryUsage(db, id);
+  if (usage.words > 0 || usage.shareTokens > 0) {
+    throw new Error('Dictionary is in use');
+  }
+  if (listProjectsUsingDictionary(db, id).length > 0) {
+    throw new Error('Dictionary is used by projects');
+  }
+
+  db.prepare('DELETE FROM dictionaries WHERE id = ?').run(id);
+}
+
 // ─── Word CRUD ───────────────────────────────────────────────────────
 
 export function listWords(
   db: Database.Database,
-  opts?: { search?: string; category?: string; status?: WordStatus; page?: number; limit?: number },
+  opts?: { dictionaryId?: string; search?: string; category?: string; status?: WordStatus; page?: number; limit?: number },
 ): { words: WordRow[]; total: number } {
   const conditions: string[] = [];
   const params: unknown[] = [];
+
+  conditions.push('w.dictionary_id = ?');
+  params.push(opts?.dictionaryId ?? DEFAULT_DICTIONARY_ID);
 
   // Default: approved only
   const status = opts?.status ?? 'approved';
@@ -71,15 +275,16 @@ export function listWords(
   return { words, total };
 }
 
-export function countPendingWords(db: Database.Database): number {
-  return (db.prepare("SELECT COUNT(*) as cnt FROM word_dictionary WHERE status = 'pending'").get() as { cnt: number }).cnt;
+export function countPendingWords(db: Database.Database, dictionaryId?: string): number {
+  return (db.prepare("SELECT COUNT(*) as cnt FROM word_dictionary WHERE dictionary_id = ? AND status = 'pending'").get(dictionaryId ?? DEFAULT_DICTIONARY_ID) as { cnt: number }).cnt;
 }
 
 export function createWord(
   db: Database.Database,
-  data: { word: string; meaning: string; description?: string; category?: string; status?: WordStatus },
+  data: { dictionaryId?: string; word: string; meaning: string; description?: string; category?: string; status?: WordStatus },
   userId: string,
 ): WordRow {
+  const dictionaryId = data.dictionaryId ?? DEFAULT_DICTIONARY_ID;
   const word = data.word.trim();
   const meaning = data.meaning.trim();
   const description = data.description?.trim() || null;
@@ -87,7 +292,7 @@ export function createWord(
   const status = data.status ?? 'approved';
 
   // If a rejected word exists with the same name, re-activate it as pending/approved
-  const existing = db.prepare('SELECT id, status FROM word_dictionary WHERE word = ? COLLATE NOCASE').get(word) as { id: string; status: string } | undefined;
+  const existing = db.prepare('SELECT id, status FROM word_dictionary WHERE dictionary_id = ? AND word = ? COLLATE NOCASE').get(dictionaryId, word) as { id: string; status: string } | undefined;
   if (existing && existing.status === 'rejected') {
     db.prepare(
       "UPDATE word_dictionary SET meaning = ?, description = ?, category = ?, status = ?, created_by = ?, updated_at = datetime('now') WHERE id = ?",
@@ -97,8 +302,8 @@ export function createWord(
 
   const id = generateId();
   db.prepare(
-    'INSERT INTO word_dictionary (id, word, meaning, description, category, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-  ).run(id, word, meaning, description, category, status, userId);
+    'INSERT INTO word_dictionary (id, dictionary_id, word, meaning, description, category, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(id, dictionaryId, word, meaning, description, category, status, userId);
 
   return db.prepare('SELECT * FROM word_dictionary WHERE id = ?').get(id) as WordRow;
 }
@@ -131,10 +336,10 @@ export function deleteWord(db: Database.Database, id: string): void {
   db.prepare('DELETE FROM word_dictionary WHERE id = ?').run(id);
 }
 
-export function listCategories(db: Database.Database): string[] {
+export function listCategories(db: Database.Database, dictionaryId = DEFAULT_DICTIONARY_ID): string[] {
   const rows = db
-    .prepare("SELECT DISTINCT category FROM word_dictionary WHERE category IS NOT NULL AND category != '' ORDER BY category COLLATE NOCASE")
-    .all() as { category: string }[];
+    .prepare("SELECT DISTINCT category FROM word_dictionary WHERE dictionary_id = ? AND category IS NOT NULL AND category != '' ORDER BY category COLLATE NOCASE")
+    .all(dictionaryId) as { category: string }[];
   return rows.map((r) => r.category);
 }
 
@@ -142,18 +347,20 @@ export function importWords(
   db: Database.Database,
   words: { word: string; meaning: string; description?: string; category?: string }[],
   userId: string,
+  dictionaryId = DEFAULT_DICTIONARY_ID,
+  status: WordStatus = 'approved',
 ): { created: number; updated: number; errors: string[] } {
   let created = 0;
   let updated = 0;
   const errors: string[] = [];
 
   const insertStmt = db.prepare(
-    'INSERT INTO word_dictionary (id, word, meaning, description, category, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO word_dictionary (id, dictionary_id, word, meaning, description, category, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const updateStmt = db.prepare(
-    "UPDATE word_dictionary SET meaning = ?, description = ?, category = ?, updated_at = datetime('now') WHERE word = ? COLLATE NOCASE",
+    "UPDATE word_dictionary SET meaning = ?, description = ?, category = ?, status = ?, updated_at = datetime('now') WHERE dictionary_id = ? AND word = ? COLLATE NOCASE",
   );
-  const findStmt = db.prepare('SELECT id FROM word_dictionary WHERE word = ? COLLATE NOCASE');
+  const findStmt = db.prepare('SELECT id FROM word_dictionary WHERE dictionary_id = ? AND word = ? COLLATE NOCASE');
 
   const tx = db.transaction(() => {
     for (const w of words) {
@@ -161,12 +368,12 @@ export function importWords(
         errors.push(`Skipped empty entry: ${JSON.stringify(w)}`);
         continue;
       }
-      const existing = findStmt.get(w.word.trim()) as { id: string } | undefined;
+      const existing = findStmt.get(dictionaryId, w.word.trim()) as { id: string } | undefined;
       if (existing) {
-        updateStmt.run(w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, w.word.trim());
+        updateStmt.run(w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, status, dictionaryId, w.word.trim());
         updated++;
       } else {
-        insertStmt.run(generateId(), w.word.trim(), w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, userId);
+        insertStmt.run(generateId(), dictionaryId, w.word.trim(), w.meaning.trim(), w.description?.trim() || null, w.category?.trim() || null, status, userId);
         created++;
       }
     }
@@ -181,9 +388,10 @@ export function importWords(
 export async function createDictShareToken(
   db: Database.Database,
   userId: string,
-  options?: { password?: string; expiresInDays?: number },
+  options?: { dictionaryId?: string; password?: string; expiresInDays?: number },
 ): Promise<{ id: string; token: string; expiresAt: string | null }> {
   const id = generateId();
+  const dictionaryId = options?.dictionaryId ?? DEFAULT_DICTIONARY_ID;
   const token = crypto.randomBytes(32).toString('hex');
   const passwordHash = options?.password ? await hashPassword(options.password) : null;
   const expiresAt =
@@ -192,8 +400,8 @@ export async function createDictShareToken(
       : null;
 
   db.prepare(
-    'INSERT INTO dictionary_share_tokens (id, token, password_hash, created_by, expires_at) VALUES (?, ?, ?, ?, ?)',
-  ).run(id, token, passwordHash, userId, expiresAt);
+    'INSERT INTO dictionary_share_tokens (id, dictionary_id, token, password_hash, created_by, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(id, dictionaryId, token, passwordHash, userId, expiresAt);
 
   return { id, token, expiresAt };
 }
@@ -201,15 +409,15 @@ export async function createDictShareToken(
 export function validateDictShareToken(
   db: Database.Database,
   token: string,
-): { id: string; hasPassword: boolean } | null {
+): { id: string; dictionaryId: string; hasPassword: boolean } | null {
   const row = db
-    .prepare('SELECT id, password_hash, expires_at FROM dictionary_share_tokens WHERE token = ?')
-    .get(token) as { id: string; password_hash: string | null; expires_at: string | null } | undefined;
+    .prepare('SELECT id, dictionary_id, password_hash, expires_at FROM dictionary_share_tokens WHERE token = ?')
+    .get(token) as { id: string; dictionary_id: string; password_hash: string | null; expires_at: string | null } | undefined;
 
   if (!row) return null;
   if (row.expires_at && new Date(row.expires_at) < new Date()) return null;
 
-  return { id: row.id, hasPassword: !!row.password_hash };
+  return { id: row.id, dictionaryId: row.dictionary_id, hasPassword: !!row.password_hash };
 }
 
 export async function verifyDictSharePassword(
@@ -227,9 +435,10 @@ export async function verifyDictSharePassword(
 
 export function listDictShareTokens(db: Database.Database): DictShareTokenRow[] {
   const rows = db
-    .prepare('SELECT id, token, password_hash, created_by, created_at, expires_at FROM dictionary_share_tokens ORDER BY created_at DESC')
+    .prepare('SELECT id, dictionary_id, token, password_hash, created_by, created_at, expires_at FROM dictionary_share_tokens ORDER BY created_at DESC')
     .all() as Array<{
     id: string;
+    dictionary_id: string;
     token: string;
     password_hash: string | null;
     created_by: string;
@@ -239,6 +448,7 @@ export function listDictShareTokens(db: Database.Database): DictShareTokenRow[] 
 
   return rows.map((r) => ({
     id: r.id,
+    dictionaryId: r.dictionary_id,
     token: r.token,
     hasPassword: !!r.password_hash,
     createdBy: r.created_by,

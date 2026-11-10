@@ -199,6 +199,20 @@ describe('importDDL — Oracle', () => {
     expect(emailCol.unique).toBe(true);
   });
 
+  it('handles named inline UNIQUE column constraint', async () => {
+    const sql = `
+      CREATE TABLE test (
+        id DECIMAL(10) NOT NULL,
+        email VARCHAR(255) CONSTRAINT uq_test_email UNIQUE,
+        PRIMARY KEY (id)
+      );
+    `;
+    const result = await importDDL(sql, 'oracle');
+    expect(result.errors).toHaveLength(0);
+    const emailCol = result.tables[0].columns.find(c => c.name === 'email')!;
+    expect(emailCol.unique).toBe(true);
+  });
+
   // --- DEFAULT ---
   it('handles DEFAULT values', async () => {
     const sql = `
@@ -462,6 +476,18 @@ describe('importDDL — H2', () => {
       );
     `;
     const result = await importDDL(sql, 'h2');
+    expect(result.tables[0].columns.find(c => c.name === 'email')!.unique).toBe(true);
+  });
+
+  it('handles named inline UNIQUE column constraint', async () => {
+    const sql = `
+      CREATE TABLE test (
+        id INT PRIMARY KEY,
+        email VARCHAR(255) CONSTRAINT uq_test_email UNIQUE
+      );
+    `;
+    const result = await importDDL(sql, 'h2');
+    expect(result.errors).toHaveLength(0);
     expect(result.tables[0].columns.find(c => c.name === 'email')!.unique).toBe(true);
   });
 

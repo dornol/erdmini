@@ -1,7 +1,13 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
   import { namingRuleStore } from '$lib/store/naming-rules.svelte';
-  import { NAMING_CONVENTIONS, NAMING_RULE_TYPES, type NamingRuleType } from '$lib/types/naming-rules';
+  import {
+    NAMING_CONVENTIONS,
+    NAMING_RULE_TYPES,
+    normalizeProjectNamingOverride,
+    type NamingRuleType,
+    type ProjectNamingOverrideEntry,
+  } from '$lib/types/naming-rules';
   import { permissionStore } from '$lib/store/permission.svelte';
   import * as m from '$lib/paraglide/messages';
 
@@ -27,21 +33,88 @@
     { value: 'both', label: () => m.naming_rule_both() },
   ];
 
-  let effectiveRules = $derived(namingRuleStore.effectiveRules);
-  let activeRuleTypes = $derived(
-    NAMING_RULE_TYPES.filter(t => namingRuleStore.siteRules[t]?.enabled)
-  );
+  type ProjectRuleMode = 'inherit' | 'override' | 'off';
 
-  function getProjectOverride(type: NamingRuleType): string | undefined {
-    return erdStore.schema.namingRules?.[type];
+  let effectiveRules = $derived(namingRuleStore.effectiveRules);
+  let dictionaries = $derived(namingRuleStore.dictionaries);
+  let selectedDictionaryId = $derived(erdStore.schema.dictionaryId ?? dictionaries[0]?.id ?? 'default');
+
+  function getProjectOverride(type: NamingRuleType): ProjectNamingOverrideEntry | undefined {
+    return normalizeProjectNamingOverride(erdStore.schema.namingRules?.[type]);
+  }
+
+  function isEnabled(type: NamingRuleType): boolean {
+    return namingRuleStore.siteRules[type]?.enabled === true;
+  }
+
+  function hasProjectOverride(type: NamingRuleType): boolean {
+    return getProjectOverride(type) !== undefined;
+  }
+
+  function isProjectDisabled(type: NamingRuleType): boolean {
+    return getProjectOverride(type)?.enabled === false;
+  }
+
+  function canEditRule(type: NamingRuleType): boolean {
+    return isEnabled(type) && namingRuleStore.canOverride(type) && !permissionStore.isReadOnly;
+  }
+
+  function canEditValue(type: NamingRuleType): boolean {
+    return canEditRule(type) && projectRuleMode(type) === 'override';
+  }
+
+  function currentValue(type: NamingRuleType): string {
+    return effectiveRules[type]?.value ?? namingRuleStore.siteRules[type]?.value ?? '';
+  }
+
+  function statusLabel(type: NamingRuleType): string {
+    if (!isEnabled(type)) return m.naming_rule_status_disabled();
+    if (!namingRuleStore.canOverride(type)) return m.naming_rule_status_locked();
+    if (namingRuleStore.canOverride(type) && isProjectDisabled(type)) return m.naming_rule_status_project_disabled();
+    if (hasProjectOverride(type)) return m.naming_rule_status_override();
+    if (namingRuleStore.canOverride(type)) return m.naming_rule_status_inherited();
+    return m.naming_rule_status_locked();
+  }
+
+  function isInherited(type: NamingRuleType): boolean {
+    return isEnabled(type) && namingRuleStore.canOverride(type) && !hasProjectOverride(type);
+  }
+
+  function isLocked(type: NamingRuleType): boolean {
+    return isEnabled(type) && !namingRuleStore.canOverride(type);
   }
 
   function setOverride(type: NamingRuleType, value: string) {
     erdStore.setNamingOverride(type, value);
   }
 
+  function projectRuleMode(type: NamingRuleType): ProjectRuleMode {
+    const override = getProjectOverride(type);
+    if (!override) return 'inherit';
+    if (override.enabled === false) return 'off';
+    return 'override';
+  }
+
+  function setProjectRuleMode(type: NamingRuleType, mode: ProjectRuleMode) {
+    if (mode === 'inherit') {
+      resetOverride(type);
+      return;
+    }
+    if (mode === 'off') {
+      erdStore.setNamingOverrideEnabled(type, false);
+      return;
+    }
+    erdStore.setNamingOverride(type, currentValue(type));
+    erdStore.setNamingOverrideEnabled(type, true);
+  }
+
   function resetOverride(type: NamingRuleType) {
     erdStore.setNamingOverride(type, undefined);
+  }
+
+  function setDictionaryId(value: string) {
+    erdStore.setDictionaryId(value || undefined);
+    namingRuleStore.fetchDictionaryWords(value || undefined);
   }
 
   function isCaseRule(type: NamingRuleType) { return CASE_RULES.includes(type); }
@@ -56,65 +129,103 @@
   </div>
 
   <div class="nr-body">
-    {#if activeRuleTypes.length === 0}
-      <div class="nr-empty">{m.naming_rule_no_rules()}</div>
-    {:else}
-      {#each activeRuleTypes as ruleType}
-        {@const effective = effectiveRules[ruleType]}
-        {@const canOverride = namingRuleStore.canOverride(ruleType)}
-        {@const hasOverride = getProjectOverride(ruleType) !== undefined}
-        <div class="nr-rule">
-          <div class="nr-rule-header">
-            <span class="nr-rule-name">{RULE_LABELS[ruleType]()}</span>
-            {#if effective}
-              <span class="nr-rule-source" class:nr-source-project={effective.source === 'project'}>
-                {effective.source === 'project' ? m.naming_rule_source_project() : m.naming_rule_source_admin()}
-              </span>
-            {/if}
-          </div>
-          <div class="nr-rule-value">
-            {#if canOverride && !permissionStore.isReadOnly}
-              {#if isCaseRule(ruleType)}
-                <select
-                  class="nr-select"
-                  value={effective?.value ?? ''}
-                  onchange={(e) => setOverride(ruleType, (e.target as HTMLSelectElement).value)}
-                >
-                  {#each NAMING_CONVENTIONS as conv}
-                    <option value={conv}>{conv}</option>
-                  {/each}
-                </select>
-              {:else if isAffixRule(ruleType)}
-                <input
-                  type="text"
-                  class="nr-input"
-                  value={effective?.value ?? ''}
-                  oninput={(e) => setOverride(ruleType, (e.target as HTMLInputElement).value)}
-                  maxlength="20"
-                />
-              {:else if isDictRule(ruleType)}
-                <select
-                  class="nr-select"
-                  value={effective?.value ?? 'both'}
-                  onchange={(e) => setOverride(ruleType, (e.target as HTMLSelectElement).value)}
-                >
-                  {#each DICT_TARGETS as t}
-                    <option value={t.value}>{t.label()}</option>
-                  {/each}
-                </select>
-              {/if}
-              {#if hasOverride}
-                <button class="nr-reset" onclick={() => resetOverride(ruleType)} title={m.naming_rule_reset()}>
-                  ↺
-                </button>
-              {/if}
-            {:else}
-              <span class="nr-value-readonly">{effective?.value ?? ''}</span>
-            {/if}
-          </div>
+    <p class="nr-desc">{m.naming_rule_project_desc()}</p>
+
+    {#if dictionaries.length > 0}
+      <div class="nr-rule">
+        <div class="nr-rule-header">
+          <span class="nr-rule-name">{m.dict_title()}</span>
+          <span class="nr-rule-source nr-source-project">{m.naming_rule_source_project()}</span>
         </div>
-      {/each}
+        <div class="nr-rule-value">
+          {#if !permissionStore.isReadOnly}
+            <select
+              class="nr-select"
+              value={selectedDictionaryId}
+              onchange={(e) => setDictionaryId((e.target as HTMLSelectElement).value)}
+            >
+              {#each dictionaries as dict}
+                <option value={dict.id}>{dict.name}{dict.is_default ? ` (${m.dict_default()})` : ''}</option>
+              {/each}
+            </select>
+          {:else}
+            <span class="nr-value-readonly">{dictionaries.find(d => d.id === selectedDictionaryId)?.name ?? selectedDictionaryId}</span>
+          {/if}
+        </div>
+      </div>
     {/if}
+
+    {#each NAMING_RULE_TYPES as ruleType}
+      {@const hasOverride = hasProjectOverride(ruleType)}
+      {@const value = currentValue(ruleType)}
+      {@const mode = projectRuleMode(ruleType)}
+      <div class="nr-rule">
+        <div class="nr-rule-header">
+          <span class="nr-rule-name">{RULE_LABELS[ruleType]()}</span>
+          <span
+            class="nr-rule-source"
+            class:nr-source-project={hasOverride}
+            class:nr-source-inherited={isInherited(ruleType)}
+            class:nr-source-locked={isLocked(ruleType)}
+            class:nr-source-disabled={!isEnabled(ruleType) || (namingRuleStore.canOverride(ruleType) && isProjectDisabled(ruleType))}
+          >
+            {statusLabel(ruleType)}
+          </span>
+        </div>
+        <div class="nr-rule-value">
+          {#if canEditRule(ruleType)}
+            <select
+              class="nr-mode"
+              value={mode}
+              onchange={(e) => setProjectRuleMode(ruleType, (e.target as HTMLSelectElement).value as ProjectRuleMode)}
+            >
+              <option value="inherit">{m.naming_rule_mode_inherit()}</option>
+              <option value="override">{m.naming_rule_mode_override()}</option>
+              <option value="off">{m.naming_rule_mode_off()}</option>
+            </select>
+            {#if isCaseRule(ruleType)}
+              <select
+                class="nr-select"
+                value={value}
+                disabled={!canEditValue(ruleType)}
+                onchange={(e) => setOverride(ruleType, (e.target as HTMLSelectElement).value)}
+              >
+                {#each NAMING_CONVENTIONS as conv}
+                  <option value={conv}>{conv}</option>
+                {/each}
+              </select>
+            {:else if isAffixRule(ruleType)}
+              <input
+                type="text"
+                class="nr-input"
+                value={value}
+                disabled={!canEditValue(ruleType)}
+                oninput={(e) => setOverride(ruleType, (e.target as HTMLInputElement).value)}
+                maxlength="20"
+              />
+            {:else if isDictRule(ruleType)}
+              <select
+                class="nr-select"
+                value={value || 'both'}
+                disabled={!canEditValue(ruleType)}
+                onchange={(e) => setOverride(ruleType, (e.target as HTMLSelectElement).value)}
+              >
+                {#each DICT_TARGETS as t}
+                  <option value={t.value}>{t.label()}</option>
+                {/each}
+              </select>
+            {/if}
+            {#if hasOverride && mode !== 'inherit'}
+              <button class="nr-reset" onclick={() => resetOverride(ruleType)} title={m.naming_rule_reset()}>
+                ↺
+              </button>
+            {/if}
+          {:else}
+            <span class="nr-value-readonly">{isEnabled(ruleType) ? value : m.naming_rule_status_disabled()}</span>
+          {/if}
+        </div>
+      </div>
+    {/each}
   </div>
 </div>
 
@@ -172,11 +283,12 @@
     padding: 8px 0;
   }
 
-  .nr-empty {
-    padding: 20px 14px;
+  .nr-desc {
+    margin: 0;
+    padding: 4px 14px 10px;
     color: var(--app-text-muted, #94a3b8);
-    font-size: 13px;
-    text-align: center;
+    font-size: 11px;
+    line-height: 1.45;
   }
 
   .nr-rule {
@@ -214,10 +326,36 @@
     color: #60a5fa;
   }
 
+  .nr-source-inherited {
+    background: #1f3a2f;
+    color: #86efac;
+  }
+
+  .nr-source-locked {
+    background: #3b2f1f;
+    color: #fbbf24;
+  }
+
+  .nr-source-disabled {
+    background: #2d3340;
+    color: #64748b;
+  }
+
   .nr-rule-value {
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+
+  .nr-mode {
+    background: var(--app-input-bg, #0f172a);
+    border: 1px solid var(--app-border, #334155);
+    border-radius: 4px;
+    color: var(--app-text, #e2e8f0);
+    font-size: 11px;
+    padding: 3px 4px;
+    width: 82px;
+    flex: 0 0 82px;
   }
 
   .nr-select {
@@ -238,6 +376,12 @@
     font-size: 11px;
     padding: 3px 6px;
     flex: 1;
+  }
+
+  .nr-select:disabled,
+  .nr-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .nr-value-readonly {

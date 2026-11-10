@@ -3,6 +3,7 @@
   import type { UserInfo } from './AdminUsersTab.svelte';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   type ProjectInfo = {
     id: string;
@@ -41,7 +42,7 @@
 
   async function loadProjects() {
     projectError = '';
-    const res = await fetch('/api/admin/projects');
+    const res = await fetch(appPath('/api/admin/projects'));
     if (res.ok) projects = await res.json();
   }
 
@@ -52,7 +53,7 @@
     }
     expandedProject = projectId;
     transferUserId = '';
-    const res = await fetch(`/api/admin/projects/${projectId}`);
+    const res = await fetch(appPath(`/api/admin/projects/${projectId}`));
     if (res.ok) projectMembers = await res.json();
   }
 
@@ -61,7 +62,7 @@
     const targetUser = users.find(u => u.id === transferUserId);
     const ok = await dialogStore.confirm(m.admin_projects_transfer_confirm({ name: projectName, user: targetUser?.display_name ?? transferUserId }), { variant: 'danger' }); if (!ok) return;
     projectError = '';
-    const res = await fetch(`/api/admin/projects/${projectId}`, {
+    const res = await fetch(appPath(`/api/admin/projects/${projectId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'transfer', newOwnerId: transferUserId }),
@@ -81,7 +82,7 @@
     const input = prompt(m.admin_projects_delete_confirm({ name: projectName }));
     if (input !== projectName) return;
     projectError = '';
-    const res = await fetch(`/api/admin/projects/${projectId}`, { method: 'DELETE' });
+    const res = await fetch(appPath(`/api/admin/projects/${projectId}`), { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
       projectError = data.error || 'Failed to delete project';

@@ -1,6 +1,7 @@
 import { projectStore } from '$lib/store/project.svelte';
 import { authStore } from '$lib/store/auth.svelte';
 import { permissionStore } from '$lib/store/permission.svelte';
+import { appPath } from '$lib/utils/paths';
 
 /**
  * Loads permission when active project changes (server mode only).
@@ -18,7 +19,7 @@ export function usePermission(): void {
 
   async function loadPermission(projectId: string) {
     try {
-      const res = await fetch(`/api/storage/projects/${projectId}/my-permission`);
+      const res = await fetch(appPath(`/api/storage/projects/${projectId}/my-permission`));
       if (res.ok) {
         const data = await res.json();
         permissionStore.set(data.permission);

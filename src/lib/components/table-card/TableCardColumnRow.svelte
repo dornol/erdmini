@@ -12,7 +12,6 @@
     refTableName: string | undefined;
     refColName: string | undefined;
     isFkSource: boolean;
-    isUniqueKeyCol: boolean;
     isFkHighlighted: boolean;
     isUkHighlighted: boolean;
     isIdxHighlighted: boolean;
@@ -32,7 +31,6 @@
     refTableName,
     refColName,
     isFkSource,
-    isUniqueKeyCol,
     isFkHighlighted,
     isUkHighlighted,
     isIdxHighlighted,
@@ -43,6 +41,29 @@
     onmouseleave,
     onfkdragstart,
   }: Props = $props();
+
+  type UniqueMembership = {
+    name?: string;
+    columnNames: string[];
+  };
+
+  let uniqueMemberships = $derived.by((): UniqueMembership[] =>
+    (table.uniqueKeys ?? [])
+      .filter((uk) => uk.columnIds.includes(col.id))
+      .map((uk) => ({
+        name: uk.name,
+        columnNames: uk.columnIds.map((id) => table.columns.find((c) => c.id === id)?.name ?? '?'),
+      })),
+  );
+
+  let singleUniqueMemberships = $derived(uniqueMemberships.filter((uk) => uk.columnNames.length === 1));
+  let compositeUniqueMemberships = $derived(uniqueMemberships.filter((uk) => uk.columnNames.length > 1));
+  let hasSingleUnique = $derived(col.unique || singleUniqueMemberships.length > 0);
+  let hasCompositeUnique = $derived(compositeUniqueMemberships.length > 0);
+  let hasAnyUnique = $derived((hasSingleUnique || hasCompositeUnique) && !col.primaryKey);
+  let uniqueBadgeTitle = $derived.by(() => {
+    return m.tt_unique();
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -77,10 +98,10 @@
     </span>
 
     <!-- Attribute badges: UQ / AI / CK -->
-    {#if ((col.unique || isUniqueKeyCol) && !col.primaryKey) || col.autoIncrement || col.check}
+    {#if hasAnyUnique || col.autoIncrement || col.check}
       <div class="col-attrs">
-        {#if (col.unique || isUniqueKeyCol) && !col.primaryKey}
-          <span class="attr uq" title={m.tt_unique()}>U</span>
+        {#if hasAnyUnique}
+          <span class="attr uq" title={uniqueBadgeTitle}>U</span>
         {/if}
         {#if col.autoIncrement}
           <span class="attr ai" title={m.tt_auto_increment()}>AI</span>
@@ -124,8 +145,22 @@
       {#if fk && refTableName && refColName}
         <span class="tt-badge fk">FK → {refTableName}.{refColName}</span>
       {/if}
-      {#if (col.unique || isUniqueKeyCol) && !col.primaryKey}
-        <span class="tt-badge uq">{m.tt_unique()}</span>
+      {#if hasAnyUnique}
+        <span class="tt-badge uq" class:with-details={hasCompositeUnique}>
+          <span>{m.tt_unique()}</span>
+          {#if hasCompositeUnique}
+            {#each compositeUniqueMemberships as uk}
+              <span class="tt-unique-detail">
+                {#if uk.name}
+                  <span class="tt-unique-name">{uk.name}</span>
+                {/if}
+                {#each uk.columnNames as name}
+                  <span>- {name}</span>
+                {/each}
+              </span>
+            {/each}
+          {/if}
+        </span>
       {/if}
       {#if col.autoIncrement}
         <span class="tt-badge ai">{m.tt_auto_increment()}</span>
@@ -366,6 +401,30 @@
   .tt-badge.fk  { background: var(--erd-tt-badge-fk); color: var(--erd-tt-badge-text); max-width: 240px; white-space: normal; word-break: break-all; }
   .tt-badge.uq  { background: var(--erd-tt-badge-uq); color: var(--erd-tt-badge-text); }
   .tt-badge.ai  { background: var(--erd-tt-badge-ai); color: var(--erd-tt-badge-text); }
+
+  .tt-badge.uq.with-details {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    max-width: 240px;
+    white-space: normal;
+  }
+
+  .tt-unique-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .tt-unique-name {
+    font-family: monospace;
+    font-size: 10px;
+    opacity: 0.9;
+    word-break: break-word;
+  }
 
   .tt-comment {
     font-style: italic;

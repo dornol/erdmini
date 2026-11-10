@@ -440,9 +440,6 @@ export function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
       }
       cleaned = cleaned.replace(uqPattern, '');
 
-      // Also strip any bare UNIQUE keyword left without parens
-      cleaned = cleaned.replace(/,?\s*\bunique\s*(?=\s*[,)])/gi, '');
-
       // Also strip any remaining inline references (now that FKs are extracted)
       cleaned = cleaned.replace(/\breferences\s+\w+\s*(\([^)]*\))?\s*/gi, '');
 
@@ -473,9 +470,6 @@ export function cleanMSSQLStatement(sql: string): string {
 
   // Remove table-level UNIQUE constraints (with or without content, parser misidentifies them)
   sql = sql.replace(/,?\s*\bunique\s*\([^)]*\)/gi, '');
-
-  // Remove bare UNIQUE keyword left as table-level entry (no parens)
-  sql = sql.replace(/,?\s*\bunique\s*(?=\s*[,)])/gi, '');
 
   // Fix trailing comma before closing paren
   sql = sql.replace(/,(\s*\n?\s*\))/g, '$1');

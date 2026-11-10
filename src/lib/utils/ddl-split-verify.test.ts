@@ -561,9 +561,9 @@ describe('cleanMSSQLStatement', () => {
   it('removes UNIQUE with column list', () => {
     expect(cleanMSSQLStatement('UNIQUE (email, org_id)')).not.toMatch(/unique/i);
   });
-  it('removes bare UNIQUE keyword', () => {
+  it('preserves inline UNIQUE keyword', () => {
     const result = cleanMSSQLStatement('col INT UNIQUE,)');
-    expect(result).not.toMatch(/\bunique\b/i);
+    expect(result).toMatch(/\bunique\b/i);
   });
   it('fixes trailing comma before closing paren', () => {
     const result = cleanMSSQLStatement('(a,\n)');

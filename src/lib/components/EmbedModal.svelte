@@ -4,6 +4,7 @@
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { toastStore } from '$lib/store/toast.svelte';
   import ModalBackdrop from './ModalBackdrop.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface Props {
     onclose: () => void;
@@ -40,7 +41,7 @@
   async function loadTokens() {
     loading = true;
     try {
-      const res = await fetch(`/api/embed/${projectId}`);
+      const res = await fetch(appPath(`/api/embed/${projectId}`));
       if (res.ok) {
         tokens = await res.json();
       }
@@ -58,7 +59,7 @@
     if (password.trim()) body.password = password.trim();
     if (days[expiresOption] != null) body.expiresInDays = days[expiresOption];
 
-    const res = await fetch(`/api/embed/${projectId}`, {
+    const res = await fetch(appPath(`/api/embed/${projectId}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -81,7 +82,7 @@
     });
     if (!ok) return;
 
-    const res = await fetch(`/api/embed/${projectId}`, {
+    const res = await fetch(appPath(`/api/embed/${projectId}`), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tokenId }),
@@ -93,7 +94,7 @@
   }
 
   function getEmbedUrl(token: string): string {
-    return `${window.location.origin}/embed/${token}`;
+    return `${window.location.origin}${appPath(`/embed/${token}`)}`;
   }
 
   function getIframeSnippet(token: string): string {

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   type BackupStats = {
     dbSizeBytes: number;
@@ -22,7 +23,7 @@
 
   async function loadBackupStats() {
     backupError = '';
-    const res = await fetch('/api/admin/backup?stats=1');
+    const res = await fetch(appPath('/api/admin/backup?stats=1'));
     if (res.ok) backupStats = await res.json();
   }
 
@@ -30,7 +31,7 @@
     backupLoading = true;
     backupError = '';
     try {
-      const res = await fetch('/api/admin/backup');
+      const res = await fetch(appPath('/api/admin/backup'));
       if (!res.ok) {
         backupError = 'Failed to download backup';
         return;
@@ -64,7 +65,7 @@
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/admin/backup', {
+      const res = await fetch(appPath('/api/admin/backup'), {
         method: 'POST',
         body: formData,
       });

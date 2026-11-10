@@ -1,3 +1,4 @@
+import { onMount } from 'svelte';
 import { erdStore } from '$lib/store/erd.svelte';
 import { projectStore } from '$lib/store/project.svelte';
 import { collabStore } from '$lib/store/collab.svelte';
@@ -9,13 +10,18 @@ import { snapshotStore, AUTO_SNAPSHOT_INTERVAL_MS } from '$lib/store/snapshot.sv
  * Must be called during component initialization.
  */
 export function useAutoSnapshot(): void {
-  let lastAutoSnapshotSnap = '';
-
-  $effect(() => {
-    const _projectId = projectStore.index.activeProjectId;
-    lastAutoSnapshotSnap = JSON.stringify($state.snapshot(erdStore.schema));
+  onMount(() => {
+    let lastProjectId = projectStore.index.activeProjectId;
+    let lastAutoSnapshotSnap = JSON.stringify($state.snapshot(erdStore.schema));
 
     const timer = setInterval(async () => {
+      const currentProjectId = projectStore.index.activeProjectId;
+      if (currentProjectId !== lastProjectId) {
+        lastProjectId = currentProjectId;
+        lastAutoSnapshotSnap = JSON.stringify($state.snapshot(erdStore.schema));
+        return;
+      }
+
       if (document.hidden || permissionStore.isReadOnly) return;
 
       // In collab mode, only the lexicographically first peer creates auto-snapshots

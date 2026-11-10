@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface GroupInfo {
     id: string;
@@ -47,7 +48,7 @@
     error = '';
     success = '';
     if (!newGroup.name.trim()) { error = m.admin_groups_name_required(); return; }
-    const res = await fetch('/api/admin/groups', {
+    const res = await fetch(appPath('/api/admin/groups'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newGroup),
@@ -69,7 +70,7 @@
       : m.admin_groups_delete_confirm({ name: group.name });
     const ok = await dialogStore.confirm(msg, { variant: 'danger' }); if (!ok) return;
     error = '';
-    const res = await fetch(`/api/admin/groups/${group.id}`, { method: 'DELETE' });
+    const res = await fetch(appPath(`/api/admin/groups/${group.id}`), { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
       error = data.error || 'Failed to delete';
@@ -87,7 +88,7 @@
   async function saveEdit() {
     if (!editingGroupId) return;
     error = '';
-    const res = await fetch(`/api/admin/groups/${editingGroupId}`, {
+    const res = await fetch(appPath(`/api/admin/groups/${editingGroupId}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editForm),
@@ -111,7 +112,7 @@
   }
 
   async function loadMembers(groupId: string) {
-    const res = await fetch(`/api/admin/groups/${groupId}/members`);
+    const res = await fetch(appPath(`/api/admin/groups/${groupId}/members`));
     if (res.ok) members = await res.json();
   }
 
@@ -120,7 +121,7 @@
     const q = memberSearchQuery.trim();
     if (q.length < 1) { memberSearchResults = []; return; }
     memberSearchTimer = setTimeout(async () => {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(appPath(`/api/users/search?q=${encodeURIComponent(q)}`));
       if (res.ok) memberSearchResults = await res.json();
     }, 300);
   }
@@ -128,7 +129,7 @@
   async function addMember(userId: string) {
     if (!expandedGroupId) return;
     error = '';
-    const res = await fetch(`/api/admin/groups/${expandedGroupId}/members`, {
+    const res = await fetch(appPath(`/api/admin/groups/${expandedGroupId}/members`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
@@ -147,7 +148,7 @@
   async function removeMember(userId: string) {
     if (!expandedGroupId) return;
     error = '';
-    const res = await fetch(`/api/admin/groups/${expandedGroupId}/members`, {
+    const res = await fetch(appPath(`/api/admin/groups/${expandedGroupId}/members`), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),

@@ -2,6 +2,7 @@
   import type { OIDCProviderRow } from '$lib/types/auth';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface Props {
     providers: OIDCProviderRow[];
@@ -60,7 +61,7 @@
 
   async function saveProvider() {
     if (!editingProvider) return;
-    await fetch(`/api/admin/oidc-providers/${editingProvider}`, {
+    await fetch(appPath(`/api/admin/oidc-providers/${editingProvider}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -83,14 +84,14 @@
 
   async function deleteProvider(id: string) {
     const ok = await dialogStore.confirm(m.admin_oidc_delete_confirm(), { variant: 'danger' }); if (!ok) return;
-    await fetch(`/api/admin/oidc-providers/${id}`, { method: 'DELETE' });
+    await fetch(appPath(`/api/admin/oidc-providers/${id}`), { method: 'DELETE' });
     await onreload();
   }
 
   async function createProvider() {
     providerError = '';
     providerSuccess = '';
-    const res = await fetch('/api/admin/oidc-providers', {
+    const res = await fetch(appPath('/api/admin/oidc-providers'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProvider),

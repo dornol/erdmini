@@ -1,6 +1,7 @@
 <script lang="ts">
   import { authStore } from '$lib/store/auth.svelte';
   import * as m from '$lib/paraglide/messages';
+  import { appPath } from '$lib/utils/paths';
 
   interface Props {
     open: boolean;
@@ -38,7 +39,7 @@
           <span class="dropdown-user-role">{authStore.user?.role}</span>
         </div>
         {#if authStore.isAdmin}
-          <a href="/admin" class="dropdown-item" role="menuitem" onclick={onclose}>
+          <a href={appPath('/admin')} class="dropdown-item" role="menuitem" onclick={onclose}>
             {m.nav_admin()}
           </a>
         {/if}

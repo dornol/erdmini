@@ -125,18 +125,6 @@ export function checkAccess(
 
   if (userRole === 'admin') return true;
 
-  // Check if user owns this project (via project_index)
-  const ownRow = db.prepare(
-    'SELECT data FROM project_index WHERE user_id = ?'
-  ).get(userId) as { data: string } | undefined;
-
-  if (ownRow) {
-    try {
-      const index: ProjectIndexData = JSON.parse(ownRow.data);
-      if (index.projects?.some(p => p.id === projectId)) return true;
-    } catch { /* skip */ }
-  }
-
   // Check direct permissions
   const perm = db.prepare(
     'SELECT permission FROM project_permissions WHERE project_id = ? AND user_id = ?'

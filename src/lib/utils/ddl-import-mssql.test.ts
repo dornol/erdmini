@@ -6,6 +6,23 @@ import { parseRefAction } from './ddl-import-types';
 // MSSQL
 // ═════════════════════════════════════════════
 describe('importDDL — MSSQL', () => {
+  it('preserves named inline UNIQUE constraints on columns', async () => {
+    const sql = `
+      CREATE TABLE [dbo].[Coupon] (
+        [Original_Coupon_No] INT NOT NULL
+          CONSTRAINT [UK_CLIENT_DETAIL_COMPANY_CODE]
+            UNIQUE,
+        [Name] NVARCHAR(100) NULL
+      )
+      GO
+    `;
+    const result = await importDDL(sql, 'mssql');
+    expect(result.errors).toHaveLength(0);
+    const table = result.tables[0];
+    expect(table.columns.map((c) => c.name)).toEqual(['Original_Coupon_No', 'Name']);
+    expect(table.columns.find((c) => c.name === 'Original_Coupon_No')!.unique).toBe(true);
+  });
+
   it('does not create spurious "unique" columns from table-level UNIQUE constraints', async () => {
     const sql = `
       CREATE TABLE [dbo].[Users] (

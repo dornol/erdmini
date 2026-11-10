@@ -98,8 +98,18 @@
     // Load naming rules in server mode
     if (authStore.user) {
       namingRuleStore.fetchSiteRules();
-      namingRuleStore.fetchDictionaryWords();
+      namingRuleStore.fetchDictionaries();
+      namingRuleStore.fetchDictionaryWords(erdStore.schema.dictionaryId);
     }
+  });
+
+  let loadedDictionaryId = $state<string | undefined>(undefined);
+  $effect(() => {
+    if (!authStore.user) return;
+    const dictionaryId = erdStore.schema.dictionaryId;
+    if (dictionaryId === loadedDictionaryId) return;
+    loadedDictionaryId = dictionaryId;
+    namingRuleStore.fetchDictionaryWords(dictionaryId);
   });
 
   // Persist canvas settings

@@ -7,6 +7,7 @@ import { validateHierarchy } from '$lib/utils/domain-hierarchy';
 const SNAKE_CASE_RE = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/;
 const CAMEL_CASE_RE = /^[a-z][a-zA-Z0-9]*$/;
 const PASCAL_CASE_RE = /^[A-Z][a-zA-Z0-9]*$/;
+const PASCAL_SNAKE_CASE_RE = /^[A-Z][a-zA-Z0-9]*(_[A-Z][a-zA-Z0-9]*)*$/;
 const UPPER_SNAKE_CASE_RE = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/;
 
 export function matchesNamingConvention(name: string, convention: NamingConvention): boolean {
@@ -14,6 +15,7 @@ export function matchesNamingConvention(name: string, convention: NamingConventi
     case 'snake_case': return SNAKE_CASE_RE.test(name);
     case 'camelCase': return CAMEL_CASE_RE.test(name);
     case 'PascalCase': return PASCAL_CASE_RE.test(name);
+    case 'Pascal_Snake_Case': return PASCAL_SNAKE_CASE_RE.test(name);
     case 'UPPER_SNAKE_CASE': return UPPER_SNAKE_CASE_RE.test(name);
     default: return true;
   }
@@ -27,6 +29,13 @@ export function splitNameToWords(name: string): string[] {
   }
   // Handle camelCase / PascalCase
   return name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').split('_').filter(Boolean).map(w => w.toLowerCase());
+}
+
+function stripAffixes(name: string, prefix?: string, suffix?: string): string {
+  let core = name;
+  if (prefix && core.startsWith(prefix)) core = core.slice(prefix.length);
+  if (suffix && core.endsWith(suffix)) core = core.slice(0, -suffix.length);
+  return core;
 }
 
 const TYPE_COMPAT_GROUP: Record<string, string> = {
@@ -348,11 +357,17 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
 
   // Naming convention rules (server mode, admin-configured)
   if (namingRules) {
+    const tablePrefix = namingRules.tablePrefix;
+    const tableSuffix = namingRules.tableSuffix;
+    const columnPrefix = namingRules.columnPrefix;
+    const columnSuffix = namingRules.columnSuffix;
+
     // Rule 14: naming-table-case — Table name violates case convention
     const tableCase = namingRules.tableCase;
     if (tableCase) {
       for (const table of schema.tables) {
-        if (!matchesNamingConvention(table.name, tableCase.value as NamingConvention)) {
+        const nameCore = stripAffixes(table.name, tablePrefix?.value, tableSuffix?.value);
+        if (!matchesNamingConvention(nameCore, tableCase.value as NamingConvention)) {
           issues.push({
             id: nextId(),
             severity: 'warning',
@@ -369,7 +384,8 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
     if (columnCase) {
       for (const table of schema.tables) {
         for (const col of table.columns) {
-          if (!matchesNamingConvention(col.name, columnCase.value as NamingConvention)) {
+          const nameCore = stripAffixes(col.name, columnPrefix?.value, columnSuffix?.value);
+          if (!matchesNamingConvention(nameCore, columnCase.value as NamingConvention)) {
             issues.push({
               id: nextId(),
               severity: 'warning',
@@ -384,7 +400,6 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
     }
 
     // Rule 16: naming-table-prefix — Table name missing required prefix
-    const tablePrefix = namingRules.tablePrefix;
     if (tablePrefix && tablePrefix.value) {
       for (const table of schema.tables) {
         if (!table.name.startsWith(tablePrefix.value)) {
@@ -400,7 +415,6 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
     }
 
     // Rule 17: naming-table-suffix — Table name missing required suffix
-    const tableSuffix = namingRules.tableSuffix;
     if (tableSuffix && tableSuffix.value) {
       for (const table of schema.tables) {
         if (!table.name.endsWith(tableSuffix.value)) {
@@ -416,7 +430,6 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
     }
 
     // Rule 18: naming-column-prefix — Column name missing required prefix
-    const columnPrefix = namingRules.columnPrefix;
     if (columnPrefix && columnPrefix.value) {
       for (const table of schema.tables) {
         for (const col of table.columns) {
@@ -435,7 +448,6 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
     }
 
     // Rule 19: naming-column-suffix — Column name missing required suffix
-    const columnSuffix = namingRules.columnSuffix;
     if (columnSuffix && columnSuffix.value) {
       for (const table of schema.tables) {
         for (const col of table.columns) {
@@ -459,7 +471,7 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
       const target = dictCheck.value as 'table' | 'column' | 'both';
       if (target === 'table' || target === 'both') {
         for (const table of schema.tables) {
-          const words = splitNameToWords(table.name);
+          const words = splitNameToWords(stripAffixes(table.name, tablePrefix?.value, tableSuffix?.value));
           const unknown = words.filter(w => !dictionaryWords.has(w));
           if (unknown.length > 0) {
             issues.push({
@@ -475,7 +487,7 @@ export function lintSchema(schema: ERDSchema, namingRules?: EffectiveNamingRules
       if (target === 'column' || target === 'both') {
         for (const table of schema.tables) {
           for (const col of table.columns) {
-            const words = splitNameToWords(col.name);
+            const words = splitNameToWords(stripAffixes(col.name, columnPrefix?.value, columnSuffix?.value));
             const unknown = words.filter(w => !dictionaryWords.has(w));
             if (unknown.length > 0) {
               issues.push({

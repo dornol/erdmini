@@ -65,7 +65,7 @@
     const savedOpts = loadDdlOptions();
     const ddlOpts: Partial<DDLExportOptions> = {
       ...savedOpts,
-      quoteStyle: savedOpts.quoteStyle ?? getDefaultQuoteStyle(migrationDialect),
+      quoteStyle: getDefaultQuoteStyle(migrationDialect),
     };
     migrationSql = generateMigrationSQL(
       diffResult,
@@ -574,8 +574,12 @@
   }
 
   .migration-section {
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--app-border, #e2e8f0);
     border-radius: 6px;
+    min-height: 160px;
+    background: var(--app-input-bg, white);
     overflow: hidden;
   }
 
@@ -622,10 +626,12 @@
   }
 
   .migration-preview {
+    flex: 1;
     font-size: 11px;
     font-family: 'Menlo', 'Consolas', monospace;
     padding: 10px 12px;
     margin: 0;
+    min-height: 96px;
     max-height: 240px;
     overflow: auto;
     white-space: pre-wrap;
@@ -635,6 +641,7 @@
   }
 
   .migration-empty {
+    flex: 1;
     font-size: 12px;
     color: var(--app-text-muted, #64748b);
     padding: 16px 12px;

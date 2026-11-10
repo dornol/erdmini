@@ -3,13 +3,14 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { deleteSession } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
+import { cookiePath } from '$lib/utils/paths';
 
 export const POST: RequestHandler = async ({ cookies, locals }) => {
   const user = (locals as any).user;
   const sessionId = cookies.get('erdmini_session');
   if (sessionId) {
     deleteSession(db, sessionId);
-    cookies.delete('erdmini_session', { path: '/' });
+    cookies.delete('erdmini_session', { path: cookiePath() });
   }
 
   if (user) {

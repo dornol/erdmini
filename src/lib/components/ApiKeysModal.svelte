@@ -4,6 +4,7 @@
   import { SNIPPET_TABS, getSnippet, getSnippetHint } from '$lib/utils/mcp-snippets';
   import type { ApiKeyScopeRow } from '$lib/types/auth';
   import ModalBackdrop from './ModalBackdrop.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface Props {
     onclose: () => void;
@@ -60,7 +61,7 @@
     loading = true;
     error = '';
     try {
-      const res = await fetch('/api/my/api-keys');
+      const res = await fetch(appPath('/api/my/api-keys'));
       if (res.ok) {
         apiKeys = await res.json();
       } else {
@@ -93,7 +94,7 @@
       body.scopes = selectedScopes;
     }
 
-    const res = await fetch('/api/my/api-keys', {
+    const res = await fetch(appPath('/api/my/api-keys'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -116,7 +117,7 @@
   async function deleteKey(id: string, name: string) {
     if (!confirm(`Delete API key "${name}"?`)) return;
     error = '';
-    const res = await fetch(`/api/my/api-keys/${id}`, { method: 'DELETE' });
+    const res = await fetch(appPath(`/api/my/api-keys/${id}`), { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
       error = data.error || 'Failed to delete key';
@@ -170,7 +171,7 @@
     if (!editingKeyId) return;
     error = '';
     const scopes = editScopeMode === 'scoped' ? editScopes : [];
-    const res = await fetch(`/api/my/api-keys/${editingKeyId}`, {
+    const res = await fetch(appPath(`/api/my/api-keys/${editingKeyId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scopes }),

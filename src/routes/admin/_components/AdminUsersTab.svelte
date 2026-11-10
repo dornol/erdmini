@@ -2,6 +2,7 @@
   import { authStore } from '$lib/store/auth.svelte';
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   export type UserInfo = {
     id: string;
@@ -74,7 +75,7 @@
       canCreateEmbed: editUserForm.canCreateEmbed,
     };
     if (editUserForm.password) body.password = editUserForm.password;
-    const res = await fetch(`/api/admin/users/${editingUser}`, {
+    const res = await fetch(appPath(`/api/admin/users/${editingUser}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -91,7 +92,7 @@
   async function deleteUser(id: string, username: string | null) {
     const ok = await dialogStore.confirm(m.admin_users_delete_confirm({ name: username ?? id }), { variant: 'danger' }); if (!ok) return;
     userError = '';
-    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+    const res = await fetch(appPath(`/api/admin/users/${id}`), { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
       userError = data.error || 'Failed to delete user';
@@ -103,7 +104,7 @@
 
   async function approveUser(id: string) {
     userError = '';
-    const res = await fetch(`/api/admin/users/${id}`, {
+    const res = await fetch(appPath(`/api/admin/users/${id}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'active' }),
@@ -119,7 +120,7 @@
   async function rejectUser(id: string, username: string | null) {
     const ok = await dialogStore.confirm(m.admin_users_reject_confirm({ name: username ?? id }), { variant: 'danger' }); if (!ok) return;
     userError = '';
-    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+    const res = await fetch(appPath(`/api/admin/users/${id}`), { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json();
       userError = data.error || 'Failed to reject user';
@@ -131,7 +132,7 @@
   async function createUser() {
     userError = '';
     userSuccess = '';
-    const res = await fetch('/api/admin/users', {
+    const res = await fetch(appPath('/api/admin/users'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newUser),

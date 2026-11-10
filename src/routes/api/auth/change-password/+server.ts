@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from '$lib/server/auth/password';
 import { createSession, deleteUserSessions, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
 import { unauthorized, err } from '$lib/server/api-helpers';
+import { cookiePath } from '$lib/utils/paths';
 import type { UserRow } from '$lib/types/auth';
 
 export const PUT: RequestHandler = async ({ locals, request, cookies, url }) => {
@@ -36,7 +37,7 @@ export const PUT: RequestHandler = async ({ locals, request, cookies, url }) => 
   deleteUserSessions(db, user.id);
   const session = createSession(db, user.id);
   cookies.set('erdmini_session', session.id, {
-    path: '/',
+    path: cookiePath(),
     httpOnly: true,
     sameSite: 'strict',
     secure: url.protocol === 'https:',

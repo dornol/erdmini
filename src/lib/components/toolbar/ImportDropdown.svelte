@@ -6,6 +6,7 @@
   import { now } from '$lib/utils/common';
   import { downloadBlob } from '$lib/utils/blob-download';
   import { runRestoreFlow } from '$lib/utils/restore-flow';
+  import { mergeImportedTables } from '$lib/utils/import-merge';
   import * as m from '$lib/paraglide/messages';
 
   interface Props {
@@ -78,53 +79,8 @@
             if (action === null) return;
           }
 
-          const duplicateSet = new Set(duplicateNames);
-          const nameToNewId = new Map<string, string>();
-          for (const t of schema.tables) {
-            nameToNewId.set(t.name, t.id);
-          }
-
-          if (action === 'overwrite') {
-            const oldIdsToRemove = new Set(
-              duplicateNames.map((n: string) => nameToExistingId.get(n)!),
-            );
-            const oldToNewId = new Map<string, string>();
-            for (const name of duplicateNames) {
-              oldToNewId.set(nameToExistingId.get(name)!, nameToNewId.get(name)!);
-            }
-
-            erdStore.schema.tables = erdStore.schema.tables
-              .filter((t) => !oldIdsToRemove.has(t.id))
-              .map((t) => ({
-                ...t,
-                foreignKeys: t.foreignKeys.map((fk) =>
-                  oldToNewId.has(fk.referencedTableId)
-                    ? { ...fk, referencedTableId: oldToNewId.get(fk.referencedTableId)! }
-                    : fk,
-                ),
-              }));
-
-            for (const t of schema.tables) {
-              erdStore.schema.tables = [...erdStore.schema.tables, t];
-            }
-          } else if (action === 'skip') {
-            for (const t of schema.tables) {
-              if (duplicateSet.has(t.name)) continue;
-              t.foreignKeys = (t.foreignKeys ?? []).map((fk: { referencedTableId: string }) => {
-                for (const [name, newId] of nameToNewId) {
-                  if (fk.referencedTableId === newId && duplicateSet.has(name)) {
-                    return { ...fk, referencedTableId: nameToExistingId.get(name)! };
-                  }
-                }
-                return fk;
-              });
-              erdStore.schema.tables = [...erdStore.schema.tables, t];
-            }
-          } else {
-            for (const t of schema.tables) {
-              erdStore.schema.tables = [...erdStore.schema.tables, t];
-            }
-          }
+          const merged = mergeImportedTables(erdStore.schema.tables, schema.tables, duplicateNames, action as 'overwrite' | 'skip' | null);
+          erdStore.schema.tables = merged.tables;
 
           // Merge domains by name
           const existingDomainNames = new Set(erdStore.schema.domains.map((d) => d.name));

@@ -2,6 +2,7 @@
   import type { ProjectPermission, ProjectPermissionLevel } from '$lib/types/auth';
   import * as m from '$lib/paraglide/messages';
   import ModalBackdrop from './ModalBackdrop.svelte';
+  import { appPath } from '$lib/utils/paths';
 
   interface GroupPermission {
     id: string;
@@ -47,7 +48,7 @@
   async function loadPermissions() {
     loading = true;
     try {
-      const res = await fetch(`/api/storage/projects/${projectId}/permissions`);
+      const res = await fetch(appPath(`/api/storage/projects/${projectId}/permissions`));
       if (res.ok) {
         const data = await res.json();
         permissions = data.permissions ?? data;
@@ -63,7 +64,7 @@
     const q = searchQuery.trim();
     if (q.length < 1) { searchResults = []; return; }
     searchTimer = setTimeout(async () => {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(appPath(`/api/users/search?q=${encodeURIComponent(q)}`));
       if (res.ok) searchResults = await res.json();
     }, 300);
   }
@@ -73,14 +74,14 @@
     const q = groupSearchQuery.trim();
     if (q.length < 1) { groupSearchResults = []; return; }
     groupSearchTimer = setTimeout(async () => {
-      const res = await fetch(`/api/groups/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(appPath(`/api/groups/search?q=${encodeURIComponent(q)}`));
       if (res.ok) groupSearchResults = await res.json();
     }, 300);
   }
 
   async function addShare(userId: string) {
     error = ''; success = '';
-    const res = await fetch(`/api/storage/projects/${projectId}/permissions`, {
+    const res = await fetch(appPath(`/api/storage/projects/${projectId}/permissions`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, permission: newPermission }),
@@ -98,7 +99,7 @@
 
   async function addGroupShare(groupId: string) {
     error = ''; success = '';
-    const res = await fetch(`/api/storage/projects/${projectId}/permissions/groups`, {
+    const res = await fetch(appPath(`/api/storage/projects/${projectId}/permissions/groups`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupId, permission: newGroupPermission }),
@@ -116,7 +117,7 @@
 
   async function updatePermission(userId: string, permission: ProjectPermissionLevel) {
     error = '';
-    await fetch(`/api/storage/projects/${projectId}/permissions`, {
+    await fetch(appPath(`/api/storage/projects/${projectId}/permissions`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, permission }),
@@ -126,7 +127,7 @@
 
   async function updateGroupPermission(groupId: string, permission: ProjectPermissionLevel) {
     error = '';
-    await fetch(`/api/storage/projects/${projectId}/permissions/groups`, {
+    await fetch(appPath(`/api/storage/projects/${projectId}/permissions/groups`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupId, permission }),
@@ -136,7 +137,7 @@
 
   async function removeShare(userId: string) {
     error = '';
-    await fetch(`/api/storage/projects/${projectId}/permissions`, {
+    await fetch(appPath(`/api/storage/projects/${projectId}/permissions`), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
@@ -146,7 +147,7 @@
 
   async function removeGroupShare(groupId: string) {
     error = '';
-    await fetch(`/api/storage/projects/${projectId}/permissions/groups`, {
+    await fetch(appPath(`/api/storage/projects/${projectId}/permissions/groups`), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ groupId }),

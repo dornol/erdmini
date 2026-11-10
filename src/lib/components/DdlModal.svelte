@@ -18,6 +18,7 @@
     type ImportMessageBag,
   } from '$lib/utils/format-registry';
   import { computeLayout } from '$lib/utils/auto-layout';
+  import { mergeImportedTables } from '$lib/utils/import-merge';
   import { sanitizeFilename, now } from '$lib/utils/common';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
@@ -209,72 +210,26 @@
           }
         }
 
-        const duplicateSet = new Set(duplicateNames);
-        // Build name→new id map for imported tables
-        const nameToNewId = new Map<string, string>();
-        for (const t of result.tables) {
-          nameToNewId.set(t.name, t.id);
-        }
-
-        if (action === 'overwrite') {
-          // Remove existing duplicate tables and add all imported tables
-          const oldIdsToRemove = new Set(
-            duplicateNames.map((n) => nameToExistingId.get(n)!),
-          );
-          // Build old→new id mapping for FK re-linking
-          const oldToNewId = new Map<string, string>();
-          for (const name of duplicateNames) {
-            oldToNewId.set(nameToExistingId.get(name)!, nameToNewId.get(name)!);
-          }
-
-          // Remove old duplicates and re-link FKs in remaining existing tables
-          erdStore.schema.tables = erdStore.schema.tables
-            .filter((t) => !oldIdsToRemove.has(t.id))
-            .map((t) => ({
-              ...t,
-              foreignKeys: t.foreignKeys.map((fk) =>
-                oldToNewId.has(fk.referencedTableId)
-                  ? { ...fk, referencedTableId: oldToNewId.get(fk.referencedTableId)! }
-                  : fk,
-              ),
-            }));
-
-          // Add all imported tables
-          for (const t of result.tables) {
-            erdStore.schema.tables = [...erdStore.schema.tables, t];
-          }
-        } else if (action === 'skip') {
-          // Only add non-duplicate tables; re-link their FKs to existing table ids
-          for (const t of result.tables) {
-            if (duplicateSet.has(t.name)) continue;
-            // Re-link FKs: if referencing a skipped table, point to existing id
-            t.foreignKeys = t.foreignKeys.map((fk) => {
-              // Find if referenced table was skipped
-              for (const [name, newId] of nameToNewId) {
-                if (fk.referencedTableId === newId && duplicateSet.has(name)) {
-                  return { ...fk, referencedTableId: nameToExistingId.get(name)! };
-                }
-              }
-              return fk;
-            });
-            erdStore.schema.tables = [...erdStore.schema.tables, t];
-          }
-        } else {
-          // No duplicates — add all
-          for (const t of result.tables) {
-            erdStore.schema.tables = [...erdStore.schema.tables, t];
-          }
-        }
+        const merged = mergeImportedTables(erdStore.schema.tables, result.tables, duplicateNames, action as 'overwrite' | 'skip' | null);
+        erdStore.schema.tables = merged.tables;
 
         // Auto-set dialect from import if not yet set (DDL only — other formats don't have dialect)
         if (!erdStore.schema.dialect && currentImportFormat.supportsDialect) {
           erdStore.setDialect(importDialect);
         }
         erdStore.schema.updatedAt = now();
-        // Auto-layout imported tables using hierarchical layout (FK-aware)
-        const layoutType = result.tables.some((t) => t.foreignKeys.length > 0) ? 'hierarchical' : 'grid';
-        const positions = computeLayout(erdStore.schema.tables, layoutType);
-        erdStore.applyLayout(positions);
+        // Auto-layout only newly added tables. Overwritten existing tables keep
+        // their canvas metadata: position, group, color, lock state, and id.
+        if (merged.layoutTableIds.length > 0) {
+          const layoutIds = new Set(merged.layoutTableIds);
+          const layoutType = result.tables.some((t) => t.foreignKeys.length > 0) ? 'hierarchical' : 'grid';
+          const positions = computeLayout(erdStore.schema.tables, layoutType);
+          erdStore.schema.tables = erdStore.schema.tables.map((table) => {
+            if (!layoutIds.has(table.id) || table.locked) return table;
+            const pos = positions.get(table.id);
+            return pos ? { ...table, position: { x: Math.round(pos.x), y: Math.round(pos.y) } } : table;
+          });
+        }
         importSuccess = buildImportSuccessMessage(currentImportFormat.id, result.tables.length);
         toastStore.success(importSuccess);
       }

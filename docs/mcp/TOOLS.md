@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-69 tools available. Read tools require `viewer` permission, write tools require `editor`.
+89 tools available. Project read tools require `viewer` permission, project write tools require `editor`.
 
 ---
 
@@ -91,6 +91,41 @@
 | `domain_coverage` | Get domain coverage statistics |
 | `export_domain_dictionary` | Export domain dictionary (markdown or HTML) |
 
+## Word Dictionary & Naming Rule Tools
+
+| Tool | Description |
+|---|---|
+| `list_dictionaries` | List word dictionaries; admin keys include usage details |
+| `create_dictionary` | Create or clone a word dictionary (admin key required) |
+| `update_dictionary` | Update dictionary metadata or set default (admin key required) |
+| `delete_dictionary` | Delete an unused non-default dictionary (admin key required) |
+| `list_dictionary_words` | List dictionary words with search/category/status filters |
+| `add_dictionary_word` | Add an approved word as admin or pending suggestion as user |
+| `update_dictionary_word` | Update/approve/reject a dictionary word (admin key required) |
+| `delete_dictionary_word` | Delete any word as admin, or own pending/rejected suggestion as user |
+| `import_dictionary_words` | Bulk import dictionary words (admin key required) |
+| `export_dictionary_words` | Export approved dictionary words as JSON |
+| `set_project_dictionary` | Set or clear the dictionary used by a project |
+| `set_project_naming_rules` | Set, disable, re-enable, or clear allowed project naming-rule overrides |
+| `get_naming_rules` | Get site rules, project rule status, and effective project naming rules |
+
+`set_project_naming_rules` accepts either a direct value, an object override, or `null` to reset a rule:
+
+```json
+{
+  "projectId": "project-id",
+  "overrides": {
+    "tableCase": { "value": "PascalCase" },
+    "dictionaryCheck": { "enabled": false },
+    "tablePrefix": null
+  }
+}
+```
+
+Only admin-enabled rules with `allowOverride=true` can be changed or disabled at project level. `null` clears a stale project override even if the admin later disables or locks that rule. `get_naming_rules` returns per-rule status values including `inherited`, `project_override`, `project_disabled`, `admin_locked`, and `disabled`.
+
+Supported case values are `snake_case`, `camelCase`, `PascalCase`, `Pascal_Snake_Case`, and `UPPER_SNAKE_CASE`. `Pascal_Snake_Case` covers names such as `Coupon_No` and `PAYT_User_Limit_Type`.
+
 ## Memo Tools
 
 | Tool | Description |
@@ -155,6 +190,8 @@ Most tools require a `projectId` parameter. Some tools accept alternative lookup
 | **admin** | All | All |
 
 Scoped API keys further restrict access to specific projects.
+
+Global dictionary administration (`create_dictionary`, `update_dictionary`, `delete_dictionary`, `import_dictionary_words`, `update_dictionary_word`) requires an admin API key. `set_project_dictionary` and `set_project_naming_rules` require editor access to the target project.
 
 ## Collab Integration
 
