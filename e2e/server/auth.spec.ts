@@ -143,9 +143,49 @@ test.describe('server-mode authentication', () => {
     await expect(groupsTab.locator('tbody tr').filter({ hasText: groupName })).toHaveCount(0);
   });
 
+  test('creates, edits, and deletes an admin API key', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/admin');
+    await page.getByRole('button', { name: /API Keys/ }).click();
+    const apiKeysTab = page.locator('.admin-page .section').filter({ hasText: 'Create API Key' });
+    const keyName = `e2e-key-${Date.now()}`;
+    await apiKeysTab.locator('input[placeholder="Key name (e.g. MCP Server)"]').fill(keyName);
+    await apiKeysTab.getByRole('button', { name: 'Create Key', exact: true }).click();
+    await expect(apiKeysTab.locator('.key-reveal')).toBeVisible();
+    await expect(apiKeysTab.locator('.key-value')).toContainText(/^erd_/);
+    const createdKey = await apiKeysTab.locator('.key-value').innerText();
+    expect((await page.request.post('/mcp', { data: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} } })).status()).toBe(401);
+    expect((await page.request.post('/mcp', { headers: { Authorization: 'Bearer invalid-key' }, data: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} } })).status()).toBe(403);
+    const mcpResponse = await page.request.post('/mcp', {
+      headers: { Authorization: `Bearer ${createdKey}`, Accept: 'application/json, text/event-stream' },
+      data: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'e2e', version: '1.0' } },
+      },
+    });
+    expect(mcpResponse.ok()).toBeTruthy();
+    expect((await mcpResponse.json()).result.serverInfo).toBeTruthy();
+
+    const keyRow = apiKeysTab.locator('tbody tr').filter({ hasText: keyName }).first();
+    await expect(keyRow).toBeVisible();
+    await keyRow.getByRole('button', { name: 'Edit', exact: true }).click();
+    const editRow = apiKeysTab.locator('tbody tr').first();
+    await editRow.locator('input[placeholder="Key name"]').fill(`${keyName}-edited`);
+    await editRow.getByRole('button', { name: 'Save', exact: true }).click();
+    const editedRow = apiKeysTab.locator('tbody tr').filter({ hasText: `${keyName}-edited` }).first();
+    await expect(editedRow).toBeVisible();
+    await editedRow.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await expect(apiKeysTab.locator('tbody tr').filter({ hasText: `${keyName}-edited` })).toHaveCount(0);
+  });
+
   test('creates and deletes a dictionary word from the server dictionary', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/dictionary');
+    await expect(page.locator('.dictionary-select')).toHaveValue(/.+/);
     await expect(page.locator('.dict-page')).toBeVisible();
 
     await expect(page.getByRole('button', { name: 'Add Word', exact: true })).toBeEnabled();
@@ -163,6 +203,64 @@ test.describe('server-mode authentication', () => {
     await expect(page.getByRole('alertdialog')).toBeVisible();
     await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
     await expect(page.locator('tr').filter({ hasText: 'e2e_word' })).toHaveCount(0);
+  });
+
+  test('shares a password-protected dictionary and filters the public view', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/dictionary');
+    const word = `e2e_share_${Date.now()}`;
+    await page.getByRole('button', { name: 'Add Word', exact: true }).click();
+    const addRow = page.locator('tr').filter({ has: page.locator('input[placeholder="seq"]') });
+    await addRow.locator('input.inline-input').nth(0).fill(word);
+    await addRow.locator('input.inline-input').nth(1).fill('Shared meaning');
+    await addRow.getByRole('button', { name: /save/i }).click();
+    await expect(page.locator('tr').filter({ hasText: word })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Share Dictionary', exact: true }).click();
+    const shareSection = page.locator('.form-section').filter({ hasText: /Share Dictionary|Dictionary Share/i });
+    await shareSection.locator('input[type="password"]').fill('dictionary-secret');
+    await shareSection.getByRole('button', { name: /create/i }).click();
+    await expect(shareSection.locator('tbody tr')).toHaveCount(1);
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await shareSection.getByRole('button', { name: 'Copy URL', exact: true }).click();
+    const shareUrl = await page.evaluate(() => navigator.clipboard.readText());
+    expect(shareUrl).toMatch(/\/dictionary\/share\//);
+
+    const publicPage = await page.context().newPage();
+    await publicPage.goto(shareUrl);
+    await expect(publicPage.locator('.password-card')).toBeVisible({ timeout: 15_000 });
+    await publicPage.locator('.password-input').fill('wrong-password');
+    await publicPage.getByRole('button', { name: /submit/i }).click();
+    await expect(publicPage.locator('.msg-error')).toBeVisible();
+    await publicPage.locator('.password-input').fill('dictionary-secret');
+    await publicPage.getByRole('button', { name: /submit/i }).click();
+    await expect(publicPage.locator('.dict-table')).toBeVisible({ timeout: 15_000 });
+    await publicPage.locator('.search-input').fill(word);
+    await expect(publicPage.locator('.dict-table tbody tr')).toContainText(word);
+    await publicPage.close();
+  });
+
+  test('exports dictionary files and imports a JSON word list', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/dictionary');
+    await expect(page.locator('.dictionary-select')).toHaveValue(/.+/);
+    const dictionaryId = await page.locator('.dictionary-select').inputValue();
+    const exportResponse = await page.request.get(`/api/dictionary/export?dictionaryId=${encodeURIComponent(dictionaryId)}`);
+    expect(exportResponse.ok()).toBeTruthy();
+    expect(await exportResponse.json()).toEqual(expect.any(Array));
+    await expect(page.getByRole('button', { name: 'Excel', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Template', exact: true })).toBeEnabled();
+
+    const word = `e2e_import_${Date.now()}`;
+    const chooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    const chooser = await chooserPromise;
+    await chooser.setFiles({
+      name: 'e2e-words.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify([{ word, meaning: 'Imported meaning', category: 'e2e' }])),
+    });
+    await expect(page.locator('tr').filter({ hasText: word })).toBeVisible({ timeout: 15_000 });
   });
 
   test('creates, edits, and deletes a regular admin user', async ({ page }) => {

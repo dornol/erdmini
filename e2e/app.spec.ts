@@ -839,6 +839,16 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
   });
 
+  test('duplicates the active project with its schema', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.getByTestId('project-menu-toggle').click();
+    await page.locator('.project-item').first().locator('[title="Duplicate project"]').click();
+
+    await expect(page.getByTestId('project-menu-toggle')).toContainText('(copy)');
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
+  });
+
   test('renames the active project and restores the name after reload', async ({ page }) => {
     await openEmptyCanvas(page);
 
