@@ -194,6 +194,28 @@ test.describe('server-mode authentication', () => {
     expect(download.suggestedFilename()).toMatch(/\.db$/);
   });
 
+  test('saves branding and naming-rule settings from the admin console', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto('/admin');
+
+    await page.getByRole('button', { name: 'Branding' }).click();
+    const branding = page.locator('.admin-page .section');
+    const siteName = branding.locator('input[placeholder="erdmini"]');
+    await siteName.fill('E2E Brand');
+    await branding.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(branding.locator('.msg-success')).toBeVisible();
+    await page.reload();
+    await page.getByRole('button', { name: 'Branding' }).click();
+    await expect(page.locator('.admin-page .section input[placeholder="erdmini"]')).toHaveValue('E2E Brand');
+    await page.locator('.admin-page .section input[placeholder="erdmini"]').fill('erdmini');
+    await page.locator('.admin-page .section').getByRole('button', { name: 'Save', exact: true }).click();
+
+    await page.getByRole('button', { name: 'Naming Rules' }).click();
+    const namingRules = page.locator('.admin-page .section');
+    await namingRules.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(namingRules.locator('.msg-success')).toBeVisible();
+  });
+
   test('creates and deletes a dictionary word from the server dictionary', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/dictionary');
