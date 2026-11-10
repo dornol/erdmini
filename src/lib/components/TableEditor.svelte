@@ -156,7 +156,7 @@
     <div class="section fk-section thin-scrollbar">
       <div class="section-header">
         <span class="field-label">{m.label_foreign_keys()}</span>
-        <button class="add-col-btn" onclick={() => { editingFkId = undefined; showFkModal = true; }} disabled={permissionStore.isReadOnly}>{m.fk_add()}</button>
+        <button class="add-col-btn" data-testid="add-foreign-key" onclick={() => { editingFkId = undefined; showFkModal = true; }} disabled={permissionStore.isReadOnly}>{m.fk_add()}</button>
       </div>
 
       {#each selectedTable.foreignKeys as fk (fk.id)}

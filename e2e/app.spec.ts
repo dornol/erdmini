@@ -68,6 +68,32 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('column-row').nth(1)).toContainText('email');
   });
 
+  test('creates a foreign-key relationship between two tables', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.locator('.toolbar .btn-primary').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(2);
+
+    // Select the second table as the FK source and open its relationship editor.
+    await page.getByTestId('table-card').nth(1).click();
+    await page.getByTestId('add-foreign-key').click();
+    const modal = page.getByTestId('fk-modal');
+    await expect(modal).toBeVisible();
+
+    const selects = modal.locator('.ss-trigger');
+    await selects.nth(0).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'table_1' }).click();
+    await selects.nth(1).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'id' }).click();
+    await selects.nth(2).click();
+    await page.locator('.ss-dropdown .ss-item').filter({ hasText: 'id' }).click();
+    await modal.getByTestId('fk-submit').click();
+
+    await expect(modal).toBeHidden();
+    await expect(page.locator('.fk-section .fk-row')).toHaveCount(1);
+    await expect(page.locator('.fk-section .fk-row')).toContainText('table_1.id');
+  });
+
   test('deletes a table after confirmation', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -113,6 +139,39 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('ddl-modal')).toContainText(/imported|success/i);
     await expect(page.getByTestId('table-card')).toHaveCount(1);
     await expect(page.getByTestId('table-card')).toContainText('users');
+  });
+
+  test('imports a DBML schema into the empty canvas', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.getByTestId('import-menu-toggle').click();
+    await page.getByTestId('import-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+    await modal.getByRole('button', { name: /Import DDL/i }).click();
+    await modal.getByRole('button', { name: 'DBML', exact: true }).click();
+    await modal.getByTestId('ddl-import-input').fill(`
+      Table orders {
+        id int [pk]
+        user_id int
+      }
+    `);
+    await modal.getByRole('button', { name: 'Import', exact: true }).click();
+
+    await expect(modal).toContainText(/imported|success/i);
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
+    await expect(page.getByTestId('table-card')).toContainText('orders');
+  });
+
+  test('renders DDL export text for the current schema', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.getByTestId('export-menu-toggle').click();
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.code-area')).toHaveValue(/CREATE TABLE/i);
+    await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
   });
 
   test('exports the current schema as JSON', async ({ page }) => {

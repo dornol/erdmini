@@ -93,7 +93,7 @@
 </script>
 
 <ModalBackdrop {onclose}>
-  <div class="modal" role="dialog" aria-modal="true" aria-label={m.fk_add()}>
+  <div class="modal" data-testid="fk-modal" role="dialog" aria-modal="true" aria-label={m.fk_add()}>
     <div class="modal-header">
       <span class="modal-title">{isEditMode ? m.fk_edit_title({ name: selectedTable?.name ?? '' }) : m.fk_modal_title({ name: selectedTable?.name ?? '' })}</span>
       <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
@@ -193,6 +193,7 @@
       <button class="btn-cancel" onclick={onclose}>{m.action_cancel()}</button>
       <button
         class="btn-submit"
+        data-testid="fk-submit"
         onclick={submit}
         disabled={!canSubmit}
       >
