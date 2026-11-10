@@ -88,18 +88,18 @@
     resizeStart = { mouseX: e.clientX, mouseY: e.clientY, width: memo.width, height: memo.height };
   }
 
-  let _lastEfpTime = 0;
-  let _lastEfpResult: string | null = null;
   function findTableAtPoint(clientX: number, clientY: number): string | null {
-    const now = performance.now();
-    if (now - _lastEfpTime < 50) return _lastEfpResult;
-    _lastEfpTime = now;
-    const elements = document.elementsFromPoint(clientX, clientY);
-    for (const el of elements) {
-      const tid = (el as HTMLElement).dataset?.tableId;
-      if (tid) { _lastEfpResult = tid; return tid; }
+    // The memo being dragged is rendered above the table, so elementsFromPoint
+    // can only see the memo card when it overlaps the drop target. Hit-test the
+    // rendered table rectangles instead; getBoundingClientRect already includes
+    // the canvas pan/zoom transform.
+    const tables = document.querySelectorAll<HTMLElement>('.table-card[data-table-id]');
+    for (const table of tables) {
+      const rect = table.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        return table.dataset.tableId ?? null;
+      }
     }
-    _lastEfpResult = null;
     return null;
   }
 

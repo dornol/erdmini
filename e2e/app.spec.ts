@@ -89,6 +89,41 @@ test.describe('canvas smoke flows', () => {
     await expect(table.locator('.memo-chip')).toHaveCount(0);
   });
 
+  test('attaches a memo when it is dragged over a table', async ({ page }) => {
+    await openEmptyCanvas(page);
+    const schema = {
+      version: '1',
+      tables: [{ id: 'drop-table', name: 'notes', columns: [{ id: 'drop-id', name: 'id', type: 'INT', nullable: false, primaryKey: true }], foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 420, y: 180 } }],
+      domains: [],
+      memos: [{ id: 'drop-memo', content: 'Drag me', color: 'yellow', position: { x: 80, y: 180 }, width: 180, height: 120 }],
+      groupColors: {}, createdAt: Date.now(), updatedAt: Date.now(),
+    };
+    await page.getByTestId('import-menu-toggle').click();
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: 'JSON' }).click(),
+    ]);
+    await fileChooser.setFiles({ name: 'memo-drag.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(schema)) });
+
+    const memo = page.getByTestId('memo-card');
+    const table = page.getByTestId('table-card');
+    await expect(memo).toBeVisible();
+    await expect(table).toBeVisible();
+    const memoHeader = memo.locator('.memo-header');
+    const memoBox = await memoHeader.boundingBox();
+    const tableBox = await table.boundingBox();
+    if (!memoBox || !tableBox) throw new Error('Memo or table is not measurable');
+
+    await page.mouse.move(memoBox.x + memoBox.width / 2, memoBox.y + memoBox.height / 2);
+    await memoHeader.dispatchEvent('mousedown', { button: 0, clientX: memoBox.x + memoBox.width / 2, clientY: memoBox.y + memoBox.height / 2 });
+    await page.mouse.move(tableBox.x + tableBox.width / 2, tableBox.y + tableBox.height / 2, { steps: 8 });
+    await page.waitForTimeout(80);
+    await page.mouse.up();
+
+    await expect(table.locator('.memo-chip')).toContainText('Drag me');
+    await expect(page.getByTestId('memo-card')).toHaveCount(0);
+  });
+
   test('persists a created table after reload', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -767,6 +802,38 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('[data-testid="table-card"].selected')).toHaveCount(2);
   });
 
+  test('fits distant objects to the window and pans from the minimap', async ({ page }) => {
+    await openEmptyCanvas(page);
+    const schema = {
+      version: '1',
+      tables: [
+        { id: 'near-table', name: 'near_table', columns: [], foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 0, y: 0 } },
+        { id: 'far-table', name: 'far_table', columns: [], foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 2200, y: 1500 } },
+      ],
+      domains: [], memos: [], groupColors: {}, createdAt: Date.now(), updatedAt: Date.now(),
+    };
+    await page.getByTestId('import-menu-toggle').click();
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: 'JSON' }).click(),
+    ]);
+    await fileChooser.setFiles({ name: 'distant.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(schema)) });
+
+    const world = page.locator('.canvas-world');
+    const beforeFit = await world.getAttribute('style');
+    await page.getByRole('button', { name: 'Fit' }).click();
+    await expect(page.locator('.zoom-pct')).not.toHaveText('100%');
+    await expect(world).not.toHaveAttribute('style', beforeFit ?? '');
+
+    await page.getByRole('button', { name: 'Reset' }).click();
+    const beforeMinimap = await world.getAttribute('style');
+    const minimap = page.locator('.minimap');
+    const minimapBox = await minimap.boundingBox();
+    if (!minimapBox) throw new Error('Minimap is not measurable');
+    await minimap.click({ position: { x: minimapBox.width * 0.85, y: minimapBox.height * 0.8 } });
+    await expect(world).not.toHaveAttribute('style', beforeMinimap ?? '');
+  });
+
   test('pans and pinches the canvas through touch events', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -990,6 +1057,40 @@ test.describe('canvas smoke flows', () => {
     await expect(modal).toBeVisible();
     await expect(modal.locator('.code-area')).toHaveValue(/CREATE TABLE/i);
     await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
+  });
+
+  test('exports DDL for every supported dialect and persists format options', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.getByTestId('export-menu-toggle').click();
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+    const dialects = [
+      'MySQL', 'PostgreSQL', 'MariaDB', 'MSSQL', 'SQLite', 'Oracle', 'H2',
+    ] as const;
+
+    for (const label of dialects) {
+      await modal.locator('.ss-trigger').first().click();
+      await modal.getByRole('option', { name: label, exact: true }).click();
+      await expect(modal.locator('.code-area')).toHaveValue(/CREATE TABLE/i);
+      await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
+    }
+
+    await modal.getByRole('button', { name: 'DDL options' }).click();
+    const options = modal.locator('.ddl-options');
+    await options.locator('select').nth(0).selectOption('4spaces');
+    await options.locator('select').nth(1).selectOption('none');
+    await options.locator('input[type="checkbox"]').nth(0).uncheck();
+    await modal.locator('.close-btn').click();
+
+    await page.getByTestId('export-menu-toggle').click();
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const reopened = page.getByTestId('ddl-modal');
+    await reopened.getByRole('button', { name: 'DDL options' }).click();
+    await expect(reopened.locator('.ddl-options select').nth(0)).toHaveValue('4spaces');
+    await expect(reopened.locator('.ddl-options select').nth(1)).toHaveValue('none');
+    await expect(reopened.locator('.ddl-options input[type="checkbox"]').nth(0)).not.toBeChecked();
   });
 
   test('renders DBML export text for the current schema', async ({ page }) => {
