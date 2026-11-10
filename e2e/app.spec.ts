@@ -137,6 +137,21 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.table-item-grouped')).toHaveCount(2);
   });
 
+  test('locks selected tables and exposes the locked state', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.locator('.toolbar .btn-primary').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(2);
+
+    await page.locator('.table-item').first().click();
+    await page.locator('.table-item').nth(1).click({ modifiers: ['Control'] });
+    const lockButton = page.locator('.bulk-lock-btn');
+    await expect(lockButton).toBeVisible();
+    await lockButton.click();
+    await expect(page.locator('[data-testid="table-card"].locked')).toHaveCount(2);
+    await expect(page.locator('.table-card.locked .lock-icon')).toHaveCount(2);
+  });
+
   test('supports sidebar attribute and prefix filters', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -609,6 +624,20 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.zoom-pct')).toHaveText('100%');
   });
 
+  test('zooms and pans with keyboard shortcuts', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    const world = page.locator('.canvas-world');
+    const initialTransform = await world.getAttribute('style');
+
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '+', code: 'Equal', bubbles: true })));
+    await expect(page.locator('.zoom-pct')).toHaveText('110%');
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', bubbles: true })));
+    await expect.poll(() => world.getAttribute('style')).not.toBe(initialTransform);
+    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '-', code: 'Minus', bubbles: true })));
+    await expect(page.locator('.zoom-pct')).toHaveText('99%');
+  });
+
   test('selects tables with marquee and renders them in the minimap', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -836,6 +865,26 @@ test.describe('canvas smoke flows', () => {
     await modal.getByRole('button', { name: 'DBML', exact: true }).click();
     await expect(modal.locator('.code-area')).toHaveValue(/Table/i);
     await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
+  });
+
+  test('renders Mermaid, PlantUML, and Prisma export text', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.getByTestId('export-menu-toggle').click();
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+
+    await modal.getByRole('button', { name: 'Mermaid', exact: true }).click();
+    await expect(modal.locator('.code-area')).toHaveValue(/erDiagram/);
+    await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
+
+    await modal.getByRole('button', { name: 'PlantUML', exact: true }).click();
+    await expect(modal.locator('.code-area')).toHaveValue(/@startuml/);
+    await expect(modal.locator('.code-area')).toHaveValue(/table_1/);
+
+    await modal.getByRole('button', { name: 'Prisma', exact: true }).click();
+    await expect(modal.locator('.code-area')).toHaveValue(/model Table1/);
+    await expect(modal.locator('.code-area')).toHaveValue(/@@map\("table_1"\)/);
   });
 
   test('exports the current schema as JSON', async ({ page }) => {
