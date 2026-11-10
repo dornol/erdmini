@@ -30,3 +30,19 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
