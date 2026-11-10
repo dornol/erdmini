@@ -14,6 +14,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     groupSearchBase, groupSearchFilter, adminGroupDn, allowedGroupDns,
     startTls, enabled, autoCreateUsers, syncGroups,
   } = await request.json();
+  const dbBool = (value: unknown) => typeof value === 'boolean' ? (value ? 1 : 0) : value ?? null;
 
   db.prepare(
     `UPDATE ldap_providers
@@ -47,10 +48,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     groupSearchFilter ?? null,
     adminGroupDn ?? null,
     allowedGroupDns ?? null,
-    startTls ?? null,
-    enabled ?? null,
-    autoCreateUsers ?? null,
-    syncGroups ?? null,
+    dbBool(startTls),
+    dbBool(enabled),
+    dbBool(autoCreateUsers),
+    dbBool(syncGroups),
     params.id,
   );
 

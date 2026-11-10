@@ -1,4 +1,5 @@
 import { expect, test, type Page } from 'playwright/test';
+import * as XLSX from 'xlsx';
 
 let adminSessionCookie: { name: string; value: string; domain: string; path: string } | null = null;
 
@@ -118,6 +119,56 @@ test.describe('server-mode authentication', () => {
     }
   });
 
+  test('validates and manages OIDC and LDAP provider configurations', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const missingOidc = await page.request.post('/api/admin/oidc-providers', { data: { displayName: 'Incomplete' } });
+    expect(missingOidc.status()).toBe(400);
+    const oidcIssuer = `https://oidc-${Date.now()}.example.test`;
+    const oidcPayload = {
+      displayName: 'E2E OIDC', issuerUrl: oidcIssuer, clientId: 'e2e-client', clientSecret: 'e2e-secret',
+      scopes: 'openid email', enabled: true, autoCreateUsers: false, syncGroups: true,
+      groupClaim: 'roles', allowedGroups: 'engineering', adminGroups: 'admins',
+    };
+    const createdOidc = await page.request.post('/api/admin/oidc-providers', { data: oidcPayload });
+    expect(createdOidc.status()).toBe(201);
+    const oidcId = (await createdOidc.json() as { id: string }).id;
+    expect((await (await page.request.get('/api/admin/oidc-providers')).json()).some((p: { client_secret?: string; display_name: string }) => p.display_name === 'E2E OIDC' && !('client_secret' in p))).toBeTruthy();
+    expect((await page.request.post('/api/admin/oidc-providers', { data: oidcPayload })).status()).toBe(409);
+    const updatedOidc = await page.request.put(`/api/admin/oidc-providers/${oidcId}`, {
+      data: {
+        displayName: 'E2E OIDC Edited', issuerUrl: oidcIssuer, clientId: 'e2e-client', clientSecret: 'e2e-secret',
+        scopes: 'openid email', enabled: true, autoCreateUsers: false, syncGroups: true,
+        groupClaim: 'roles', allowedGroups: 'engineering', adminGroups: 'admins',
+      },
+    });
+    expect(updatedOidc.ok()).toBeTruthy();
+    expect((await page.request.delete(`/api/admin/oidc-providers/${oidcId}`)).ok()).toBeTruthy();
+
+    const missingLdap = await page.request.post('/api/admin/ldap-providers', { data: { displayName: 'Incomplete' } });
+    expect(missingLdap.status()).toBe(400);
+    const ldapServer = `ldap://127.0.0.1:${30000 + Math.floor(Math.random() * 1000)}`;
+    const ldapPayload = {
+      displayName: 'E2E LDAP', serverUrl: ldapServer, bindDn: 'cn=admin,dc=e2e,dc=test', bindPassword: 'e2e-secret',
+      userSearchBase: 'ou=users,dc=e2e,dc=test', userSearchFilter: '(uid={{username}})',
+      emailAttribute: 'mail', displayNameAttribute: 'cn', enabled: true, autoCreateUsers: true, syncGroups: false,
+    };
+    const createdLdap = await page.request.post('/api/admin/ldap-providers', { data: ldapPayload });
+    expect(createdLdap.status()).toBe(201);
+    const ldapId = (await createdLdap.json() as { id: string }).id;
+    expect((await (await page.request.get('/api/admin/ldap-providers')).json()).some((p: { bind_password?: string; display_name: string }) => p.display_name === 'E2E LDAP' && !('bind_password' in p))).toBeTruthy();
+    expect((await page.request.post('/api/admin/ldap-providers', { data: ldapPayload })).status()).toBe(409);
+    const updatedLdap = await page.request.put(`/api/admin/ldap-providers/${ldapId}`, {
+      data: {
+        displayName: 'E2E LDAP Edited', serverUrl: ldapServer, bindDn: 'cn=admin,dc=e2e,dc=test',
+        userSearchBase: 'ou=users,dc=e2e,dc=test', userSearchFilter: '(uid={{username}})',
+        emailAttribute: 'mail', displayNameAttribute: 'cn', enabled: true, autoCreateUsers: true, syncGroups: false,
+      },
+    });
+    expect(updatedLdap.ok()).toBeTruthy();
+    expect((await page.request.delete(`/api/admin/ldap-providers/${ldapId}`)).ok()).toBeTruthy();
+  });
+
   test('creates, edits, and deletes a manual admin group', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/admin');
@@ -141,6 +192,27 @@ test.describe('server-mode authentication', () => {
     await expect(page.getByRole('alertdialog')).toBeVisible();
     await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
     await expect(groupsTab.locator('tbody tr').filter({ hasText: groupName })).toHaveCount(0);
+  });
+
+  test('adds and removes a user from an admin group', async ({ page }) => {
+    await loginAsAdmin(page);
+    const username = `e2e-member-${Date.now()}`;
+    const userResponse = await page.request.post('/api/admin/users', {
+      data: { username, displayName: 'E2E Member', email: `${username}@example.test`, password: 'member-password', role: 'user' },
+    });
+    expect(userResponse.status()).toBe(201);
+    const userId = (await userResponse.json() as { id: string }).id;
+    const groupResponse = await page.request.post('/api/admin/groups', { data: { name: `e2e-members-${Date.now()}`, description: 'Membership E2E' } });
+    expect(groupResponse.status()).toBe(201);
+    const groupId = (await groupResponse.json() as { id: string }).id;
+
+    const addResponse = await page.request.post(`/api/admin/groups/${groupId}/members`, { data: { userId } });
+    expect(addResponse.ok()).toBeTruthy();
+    const members = await (await page.request.get(`/api/admin/groups/${groupId}/members`)).json() as { id: string; username: string }[];
+    expect(members.some((member) => member.id === userId && member.username === username)).toBeTruthy();
+    expect((await page.request.delete(`/api/admin/groups/${groupId}/members`, { data: { userId } })).ok()).toBeTruthy();
+    expect((await page.request.delete(`/api/admin/groups/${groupId}`)).ok()).toBeTruthy();
+    expect((await page.request.delete(`/api/admin/users/${userId}`)).ok()).toBeTruthy();
   });
 
   test('creates, edits, and deletes an admin API key', async ({ page }) => {
@@ -180,6 +252,24 @@ test.describe('server-mode authentication', () => {
     await expect(page.getByRole('alertdialog')).toBeVisible();
     await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
     await expect(apiKeysTab.locator('tbody tr').filter({ hasText: `${keyName}-edited` })).toHaveCount(0);
+  });
+
+  test('creates and deletes a personal API key from the user menu', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.getByTestId('user-menu-toggle').click();
+    await page.getByRole('menuitem', { name: 'API Keys', exact: true }).click();
+    const modal = page.locator('.modal[role="dialog"]');
+    await expect(modal).toBeVisible();
+    const keyName = `e2e-personal-${Date.now()}`;
+    await modal.locator('input[placeholder="Name"]').fill(keyName);
+    await modal.getByRole('button', { name: /create/i }).click();
+    await expect(modal.locator('.key-reveal .key-value')).toContainText(/^erd_/);
+    await modal.getByRole('button', { name: 'Dismiss', exact: true }).click();
+    const keyRow = modal.locator('.key-row').filter({ hasText: keyName });
+    await expect(keyRow).toBeVisible();
+    page.once('dialog', (dialog) => dialog.accept());
+    await keyRow.getByRole('button', { name: /delete/i }).click();
+    await expect(keyRow).toHaveCount(0);
   });
 
   test('downloads the admin database backup', async ({ page }) => {
@@ -284,6 +374,12 @@ test.describe('server-mode authentication', () => {
     expect(await exportResponse.json()).toEqual(expect.any(Array));
     await expect(page.getByRole('button', { name: 'Excel', exact: true })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Template', exact: true })).toBeEnabled();
+    const excelDownload = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Excel', exact: true }).click();
+    expect((await excelDownload).suggestedFilename()).toBe('word-dictionary.xlsx');
+    const templateDownload = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Template', exact: true }).click();
+    expect((await templateDownload).suggestedFilename()).toBe('word-dictionary-template.xlsx');
 
     const word = `e2e_import_${Date.now()}`;
     const chooserPromise = page.waitForEvent('filechooser');
@@ -295,6 +391,19 @@ test.describe('server-mode authentication', () => {
       buffer: Buffer.from(JSON.stringify([{ word, meaning: 'Imported meaning', category: 'e2e' }])),
     });
     await expect(page.locator('tr').filter({ hasText: word })).toBeVisible({ timeout: 15_000 });
+
+    const xlsxWord = `e2e_xlsx_${Date.now()}`;
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ Word: xlsxWord, Meaning: 'XLSX meaning', Category: 'e2e' }]), 'Dictionary');
+    const xlsxChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    const xlsxChooser = await xlsxChooserPromise;
+    await xlsxChooser.setFiles({
+      name: 'e2e-words.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }),
+    });
+    await expect(page.locator('tr').filter({ hasText: xlsxWord })).toBeVisible({ timeout: 15_000 });
   });
 
   test('creates, edits, and deletes a regular admin user', async ({ page }) => {
@@ -459,7 +568,9 @@ test.describe('server-mode authentication', () => {
     await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
 
     await page.locator('.btn-tools').click();
-    await page.getByRole('menuitem', { name: /embed/i }).click();
+    const embedMenuItem = page.getByRole('menuitem', { name: 'Embed', exact: true });
+    await expect(embedMenuItem).toBeVisible();
+    await embedMenuItem.dispatchEvent('click');
     const modal = page.locator('.modal-panel');
     await expect(modal).toBeVisible();
     await modal.locator('input[type="password"]').fill('embed-secret');

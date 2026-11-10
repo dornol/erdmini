@@ -1,4 +1,5 @@
 import { expect, test, type Page } from 'playwright/test';
+import { readFile } from 'node:fs/promises';
 import * as XLSX from 'xlsx';
 
 async function openEmptyCanvas(page: Page) {
@@ -540,6 +541,21 @@ test.describe('canvas smoke flows', () => {
     await expect(row).toContainText('Identity');
   });
 
+  test('downloads domain XLSX data and a reusable template', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: /domains/i }).click();
+    const domainDialog = page.locator('.backdrop[role="dialog"]');
+
+    const dataDownload = page.waitForEvent('download');
+    await domainDialog.locator('button[title="Download Excel"]').click();
+    expect((await dataDownload).suggestedFilename()).toBe('domains.xlsx');
+
+    const templateDownload = page.waitForEvent('download');
+    await domainDialog.getByRole('button', { name: /download template/i }).click();
+    expect((await templateDownload).suggestedFilename()).toBe('domains_template.xlsx');
+  });
+
   test('changes canvas display settings from the bottom bar', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -832,6 +848,32 @@ test.describe('canvas smoke flows', () => {
     const download = await downloadPromise;
 
     expect(download.suggestedFilename()).toMatch(/^erdmini_.*\.json$/);
+  });
+
+  test('exports and restores an all-project backup with confirmation', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
+
+    await page.getByTestId('export-menu-toggle').click();
+    const backupDownload = page.waitForEvent('download');
+    await page.getByTestId('export-menu').getByRole('menuitem', { name: /backup all/i }).click();
+    const backup = await backupDownload;
+    const backupPath = await backup.path();
+    if (!backupPath) throw new Error('Backup download path is unavailable');
+    const backupBuffer = await readFile(backupPath);
+
+    await page.getByTestId('import-menu-toggle').click();
+    const restoreChooser = page.waitForEvent('filechooser');
+    await page.getByTestId('import-menu').getByRole('menuitem', { name: /restore all/i }).click();
+    const chooser = await restoreChooser;
+    await chooser.setFiles({ name: 'erdmini-backup.json', mimeType: 'application/json', buffer: backupBuffer });
+    const confirm = page.getByRole('alertdialog');
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole('button', { name: 'Restore', exact: true }).click();
+    await expect(page.getByRole('alertdialog')).toContainText(/backup restored/i);
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
   });
 
   test('exports the diagram as SVG and a full backup', async ({ page }) => {

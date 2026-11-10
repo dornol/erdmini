@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { downloadXlsx } from './xlsx-download';
 
 export interface DictWordEntry {
   word: string;
@@ -25,7 +26,7 @@ export function exportDictionaryXlsx(words: DictWordEntry[], filename = 'word-di
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Dictionary');
-  XLSX.writeFile(wb, filename);
+  downloadXlsx(wb, filename);
 }
 
 export function exportDictionaryTemplate() {

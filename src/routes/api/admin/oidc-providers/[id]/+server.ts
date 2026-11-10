@@ -11,6 +11,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
   const { displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers, syncGroups, groupClaim, allowedGroups, adminGroups } =
     await request.json();
+  const dbBool = (value: unknown) => typeof value === 'boolean' ? (value ? 1 : 0) : value ?? null;
 
   db.prepare(
     `UPDATE oidc_providers
@@ -32,9 +33,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     clientId ?? null,
     clientSecret ?? null,
     scopes ?? null,
-    enabled ?? null,
-    autoCreateUsers ?? null,
-    syncGroups ?? null,
+    dbBool(enabled),
+    dbBool(autoCreateUsers),
+    dbBool(syncGroups),
     groupClaim ?? null,
     allowedGroups ?? null,
     adminGroups ?? null,

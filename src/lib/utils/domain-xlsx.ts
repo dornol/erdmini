@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { ColumnDomain, ColumnType } from '$lib/types/erd';
 import { normalizeType } from '$lib/utils/ddl-import';
+import { downloadXlsx } from './xlsx-download';
 
 function boolToY(v: boolean): string {
   return v ? 'Y' : '';
@@ -40,7 +41,7 @@ export function exportDomainsToXlsx(domains: ColumnDomain[]) {
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Domains');
-  XLSX.writeFile(wb, 'domains.xlsx');
+  downloadXlsx(wb, 'domains.xlsx');
 }
 
 export function exportDomainTemplate() {
@@ -54,7 +55,7 @@ export function exportDomainTemplate() {
   const ws = XLSX.utils.json_to_sheet(example);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Domains');
-  XLSX.writeFile(wb, 'domains_template.xlsx');
+  downloadXlsx(wb, 'domains_template.xlsx');
 }
 
 export async function importDomainsFromXlsx(
