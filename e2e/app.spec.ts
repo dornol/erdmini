@@ -92,6 +92,27 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toHaveClass(/selected/);
   });
 
+  test('adds a schema, switches to it, and creates a scoped table', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.locator('.schema-tab-add').click();
+    const schemaInput = page.locator('.schema-tab-input');
+    await expect(schemaInput).toBeVisible();
+    await schemaInput.fill('analytics');
+    await schemaInput.press('Enter');
+
+    const analyticsTab = page.locator('button.schema-tab').filter({ hasText: 'analytics' });
+    await expect(analyticsTab).toHaveCount(1);
+    await analyticsTab.click();
+    await expect(analyticsTab).toHaveClass(/active/);
+
+    await page.getByTestId('empty-add-table').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
+
+    await page.getByTestId('table-editor').locator('.cg-header').click();
+    await expect(page.locator('#tbl-schema')).toHaveValue('analytics');
+  });
+
   test('adds and edits a column from the table editor', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -107,6 +128,27 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('column-edit-popup')).toBeHidden();
     await expect(page.getByTestId('column-row')).toHaveCount(2);
     await expect(page.getByTestId('column-row').nth(1)).toContainText('email');
+  });
+
+  test('edits column constraints and default values', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.getByTestId('column-row').first().click();
+    const popup = page.getByTestId('column-edit-popup');
+    await expect(popup).toBeVisible();
+
+    const flags = popup.locator('.flags-row input[type="checkbox"]');
+    await flags.nth(0).check();
+    await flags.nth(1).check();
+    await popup.locator('#ce-default').fill('0');
+    await popup.getByRole('button', { name: /close/i }).click();
+
+    await expect(page.getByTestId('column-row').first()).toContainText('PK');
+    await page.getByTestId('column-row').first().click();
+    await expect(popup.locator('.flags-row input[type="checkbox"]').nth(0)).toBeChecked();
+    await expect(popup.locator('.flags-row input[type="checkbox"]').nth(1)).toBeChecked();
+    await expect(popup.locator('#ce-default')).toHaveValue('0');
   });
 
   test('creates a foreign-key relationship between two tables', async ({ page }) => {
@@ -237,6 +279,33 @@ test.describe('canvas smoke flows', () => {
 
     await expect(modal.locator('.msg-errors')).toBeVisible();
     await expect(page.getByTestId('table-card')).toHaveCount(0);
+  });
+
+  test('opens tools panels from the toolbar', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: /domains/i }).click();
+    const domainDialog = page.locator('.backdrop[role="dialog"]');
+    await expect(domainDialog).toBeVisible();
+    await domainDialog.getByRole('button', { name: /close/i }).click();
+    await expect(domainDialog).toBeHidden();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: /validate/i }).click();
+    await expect(page.locator('.lint-panel')).toBeVisible();
+    await page.locator('.lint-panel .lint-close').click();
+    await expect(page.locator('.lint-panel')).toBeHidden();
+  });
+
+  test('changes canvas display settings from the bottom bar', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    const gridToggle = page.locator('.canvas-bottom-bar button[title*="grid" i]').first();
+    await expect(gridToggle).toHaveClass(/bar-btn-active/);
+    await gridToggle.click();
+    await expect(gridToggle).not.toHaveClass(/bar-btn-active/);
   });
 
   test('imports a JSON schema from a file', async ({ page }) => {
