@@ -26,7 +26,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       PUBLIC_STORAGE_MODE: 'server',
-      DB_PATH: 'data/playwright-e2e.db',
+      DB_PATH: `data/playwright-e2e-${process.pid}.db`,
       ADMIN_USERNAME: 'e2e-admin',
       ADMIN_PASSWORD: 'e2e-password',
     },

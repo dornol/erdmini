@@ -110,4 +110,18 @@ test.describe('server-mode authentication', () => {
     await expect(page.getByTestId('table-card')).toContainText('shared_users');
     await expect(page.locator('.toolbar .btn-primary')).toBeDisabled();
   });
+
+  test('persists a project schema through the server storage provider', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.getByTestId('create-project').click();
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
+
+    await page.getByTestId('empty-add-table').click();
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
+    await page.waitForTimeout(500);
+    await page.reload();
+
+    await expect(page.getByTestId('table-card')).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.getByTestId('table-card')).toContainText('table_1');
+  });
 });

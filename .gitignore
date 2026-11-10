@@ -43,4 +43,4 @@ project.inlang/cache/
 .agents
 test-results/
 playwright-report/
-data/playwright-e2e.db*
+data/playwright-e2e-*.db*
