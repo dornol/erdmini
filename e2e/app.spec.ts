@@ -140,6 +140,29 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toHaveCount(1);
   });
 
+  test('duplicates the selected table with the keyboard shortcut', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.getByTestId('table-card').click();
+    await page.keyboard.press('Control+d');
+
+    await expect(page.getByTestId('table-card')).toHaveCount(2);
+    await expect(page.getByTestId('table-card').nth(1)).toContainText('table_1_copy');
+  });
+
+  test('searches and navigates from the command palette', async ({ page }) => {
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+    await page.keyboard.press('Control+k');
+
+    const palette = page.locator('.cmd-backdrop');
+    await expect(palette).toBeVisible();
+    await palette.locator('.cmd-input').fill('table_1');
+    await expect(palette.locator('.cmd-item-label').first()).toContainText('table_1');
+    await palette.locator('.cmd-input').press('Enter');
+    await expect(palette).toBeHidden();
+  });
+
   test('imports a DDL schema into the empty canvas', async ({ page }) => {
     await openEmptyCanvas(page);
 
