@@ -41,3 +41,5 @@ project.inlang/cache/
 .claude
 .bkit
 .agents
+test-results/
+playwright-report/

@@ -249,6 +249,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="table-card"
+  data-testid="table-card"
   class:selected={isSelected}
   class:locked={table.locked}
   class:fk-dragging={fkDragStore.active}

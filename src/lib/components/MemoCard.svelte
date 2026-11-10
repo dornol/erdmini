@@ -216,6 +216,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="memo-card"
+  data-testid="memo-card"
   class:selected={isSelected}
   class:locked={memo.locked}
   class:editing={isEditing}

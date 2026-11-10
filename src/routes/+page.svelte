@@ -237,7 +237,7 @@
               <p class="no-project-desc">{m.no_project_loading_shared()}</p>
             {:else if canCreate}
               <p class="no-project-desc">{m.welcome_desc()}</p>
-              <button class="no-project-btn" onclick={async () => {
+              <button class="no-project-btn" data-testid="create-project" onclick={async () => {
                 await projectStore.createProject('My Project');
               }}>{m.project_new()}</button>
               {#if authStore.user}
@@ -284,7 +284,7 @@
             {/each}
           </Canvas>
           {#if visibleTables.length === 0 && visibleMemos.length === 0}
-            <div class="canvas-empty-state">
+            <div class="canvas-empty-state" data-testid="canvas-empty-state">
               <div class="canvas-empty-card">
                 <div class="canvas-empty-icon" aria-hidden="true">
                   <svg viewBox="0 0 48 48" fill="none">
@@ -297,10 +297,10 @@
                 <p class="canvas-empty-kicker">ERD canvas</p>
                 <p class="canvas-empty-desc">{m.welcome_desc()}</p>
                 <div class="canvas-empty-actions">
-                  <button class="canvas-empty-primary" onclick={addTableFromEmptyState}>
+                  <button class="canvas-empty-primary" data-testid="empty-add-table" onclick={addTableFromEmptyState}>
                     {m.toolbar_add_table()}
                   </button>
-                  <button class="canvas-empty-secondary" onclick={addMemoFromEmptyState}>
+                  <button class="canvas-empty-secondary" data-testid="empty-add-memo" onclick={addMemoFromEmptyState}>
                     {m.toolbar_add_memo()}
                   </button>
                 </div>
