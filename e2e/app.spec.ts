@@ -217,6 +217,41 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toHaveCount(0);
   });
 
+  test('imports a JSON schema from a file', async ({ page }) => {
+    await openEmptyCanvas(page);
+    const schema = {
+      version: '1',
+      tables: [{
+        id: 'json-table',
+        name: 'json_users',
+        columns: [{ id: 'json-id', name: 'id', type: 'INT', nullable: false, primaryKey: true, unique: true }],
+        foreignKeys: [],
+        uniqueKeys: [],
+        indexes: [],
+        position: { x: 100, y: 100 },
+      }],
+      domains: [],
+      memos: [],
+      groupColors: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    await page.getByTestId('import-menu-toggle').click();
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.getByTestId('import-menu').getByRole('menuitem', { name: 'JSON' }).click(),
+    ]);
+    await fileChooser.setFiles({
+      name: 'schema.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(schema)),
+    });
+
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
+    await expect(page.getByTestId('table-card')).toContainText('json_users');
+  });
+
   test('renders DDL export text for the current schema', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
