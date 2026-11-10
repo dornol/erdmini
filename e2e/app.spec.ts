@@ -252,6 +252,27 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toContainText('json_users');
   });
 
+  test('imports a Prisma schema into the empty canvas', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.getByTestId('import-menu-toggle').click();
+    await page.getByTestId('import-menu').getByRole('menuitem', { name: 'DDL' }).click();
+    const modal = page.getByTestId('ddl-modal');
+    await modal.getByRole('button', { name: /Import DDL/i }).click();
+    await modal.getByRole('button', { name: 'Prisma', exact: true }).click();
+    await modal.getByTestId('ddl-import-input').fill(`
+      model User {
+        id Int @id @default(autoincrement())
+        email String @unique
+      }
+    `);
+    await modal.getByRole('button', { name: 'Import', exact: true }).click();
+
+    await expect(modal).toContainText(/imported|success/i);
+    await expect(page.getByTestId('table-card')).toHaveCount(1);
+    await expect(page.getByTestId('table-card')).toContainText('User');
+  });
+
   test('renders DDL export text for the current schema', async ({ page }) => {
     await openEmptyCanvas(page);
     await page.getByTestId('empty-add-table').click();
@@ -320,6 +341,25 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('project-menu-toggle')).toContainText('Renamed project');
     await page.reload();
     await expect(page.getByTestId('project-menu-toggle')).toContainText('Renamed project');
+  });
+
+  test('deletes a project after confirmation', async ({ page }) => {
+    await openEmptyCanvas(page);
+
+    await page.getByTestId('project-menu-toggle').click();
+    await page.getByTestId('project-new').click();
+    const newProjectInput = page.locator('.project-new-row input');
+    await newProjectInput.fill('To delete');
+    await newProjectInput.press('Enter');
+    await expect(page.getByTestId('project-menu-toggle')).toContainText('To delete');
+
+    await page.getByTestId('project-menu-toggle').click();
+    await page.locator('.project-item').first().getByTestId('project-delete').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByRole('alertdialog').getByRole('button', { name: /delete/i }).click();
+
+    await expect(page.getByTestId('project-menu-toggle')).toContainText('To delete');
+    await expect(page.getByTestId('canvas-empty-state')).toBeVisible();
   });
 
   test('toggles dark mode and collapses the sidebar', async ({ page }) => {

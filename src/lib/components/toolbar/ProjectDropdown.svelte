@@ -169,6 +169,7 @@
               {#if projectStore.index.projects.length > 1}
                 <button
                   class="project-action-btn project-action-delete"
+                  data-testid="project-delete"
                   title={m.project_delete()}
                   onclick={(e) => { e.stopPropagation(); handleDeleteProject(proj.id, proj.name); }}
                 >✕</button>
