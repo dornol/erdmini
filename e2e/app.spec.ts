@@ -296,6 +296,31 @@ test.describe('canvas smoke flows', () => {
     await expect(page.locator('.lint-panel')).toBeVisible();
     await page.locator('.lint-panel .lint-close').click();
     await expect(page.locator('.lint-panel')).toBeHidden();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'History', exact: true }).click();
+    await expect(page.locator('.history-panel')).toBeVisible();
+    await page.locator('.history-panel .history-close').click();
+    await expect(page.locator('.history-panel')).toBeHidden();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'Snapshots', exact: true }).click();
+    await expect(page.locator('.snapshot-panel')).toBeVisible();
+    await page.locator('.snapshot-panel .snapshot-close').click();
+    await expect(page.locator('.snapshot-panel')).toBeHidden();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'Schema Diff', exact: true }).click();
+    const diffDialog = page.locator('.modal[role="dialog"]');
+    await expect(diffDialog).toBeVisible();
+    await diffDialog.locator('.close-btn').click();
+    await expect(diffDialog).toBeHidden();
+
+    await page.locator('.btn-tools').click();
+    await page.getByRole('menuitem', { name: 'SQL Playground', exact: true }).click();
+    await expect(page.locator('.sp-panel')).toBeVisible();
+    await page.locator('.sp-panel .close-btn').click();
+    await expect(page.locator('.sp-panel')).toBeHidden();
   });
 
   test('changes canvas display settings from the bottom bar', async ({ page }) => {
