@@ -186,6 +186,24 @@ test.describe('canvas smoke flows', () => {
     expect(download.suggestedFilename()).toMatch(/^erdmini_.*\.json$/);
   });
 
+  test('opens a copied share link in a fresh browser context', async ({ page, browser }) => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openEmptyCanvas(page);
+    await page.getByTestId('empty-add-table').click();
+
+    await page.getByTestId('copy-share-link').click();
+    await expect(page.getByTestId('copy-share-link')).toHaveClass(/copied/);
+    const shareUrl = await page.evaluate(() => navigator.clipboard.readText());
+    expect(shareUrl).toMatch(/#s=[A-Za-z0-9_-]+$/);
+
+    const sharedContext = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
+    const sharedPage = await sharedContext.newPage();
+    await sharedPage.goto(shareUrl);
+    await expect(sharedPage.getByTestId('table-card')).toHaveCount(1, { timeout: 15_000 });
+    await expect(sharedPage.getByTestId('table-card')).toContainText('table_1');
+    await sharedContext.close();
+  });
+
   test('creates a second project and switches to its empty canvas', async ({ page }) => {
     await openEmptyCanvas(page);
 

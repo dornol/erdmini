@@ -182,7 +182,7 @@
         <CollabIndicator />
       {/if}
       {#if permissionStore.isReadOnly}
-        <span class="readonly-badge">{m.label_read_only()}</span>
+        <span class="readonly-badge" data-testid="readonly-badge">{m.label_read_only()}</span>
       {/if}
       <button class="btn-primary" onclick={addTable} disabled={permissionStore.isReadOnly}>
         {m.toolbar_add_table()}
@@ -219,6 +219,7 @@
       {#if !isServerMode}
         <button
           class="btn-secondary btn-share"
+          data-testid="copy-share-link"
           class:copied={shareStatus === 'copied'}
           onclick={shareLink}
         >

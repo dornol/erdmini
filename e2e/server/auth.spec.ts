@@ -9,6 +9,59 @@ async function loginAsAdmin(page: Page) {
   await expect(page.getByTestId('create-project')).toBeVisible({ timeout: 15_000 });
 }
 
+async function buildShareHash(page: Page) {
+  return page.evaluate(async () => {
+    const schema = {
+      version: '1',
+      tables: [{
+        id: 'shared-table',
+        name: 'shared_users',
+        columns: [{
+          id: 'shared-id',
+          name: 'id',
+          type: 'INT',
+          nullable: false,
+          primaryKey: true,
+          unique: true,
+          autoIncrement: true,
+        }],
+        foreignKeys: [],
+        uniqueKeys: [],
+        indexes: [],
+        position: { x: 100, y: 100 },
+      }],
+      domains: [],
+      memos: [],
+      groupColors: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const json = JSON.stringify({ n: 'Shared schema', s: schema });
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(json));
+        controller.close();
+      },
+    }).pipeThrough(new CompressionStream('deflate'));
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.length, 0));
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  });
+}
+
 test.describe('server-mode authentication', () => {
   test('redirects unauthenticated users to the login page', async ({ page }) => {
     await page.goto('/');
@@ -44,5 +97,17 @@ test.describe('server-mode authentication', () => {
     await page.getByTestId('logout').click();
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.locator('#username')).toBeVisible();
+  });
+
+  test('opens a shared schema as read-only', async ({ page }) => {
+    await loginAsAdmin(page);
+    const shareHash = await buildShareHash(page);
+
+    await page.goto(`/#s=${shareHash}`);
+    await expect(page.getByRole('alertdialog')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('alertdialog').getByRole('button', { name: 'OK', exact: true }).click();
+    await expect(page.getByTestId('readonly-badge')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('table-card')).toContainText('shared_users');
+    await expect(page.locator('.toolbar .btn-primary')).toBeDisabled();
   });
 });

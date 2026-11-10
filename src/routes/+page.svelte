@@ -213,7 +213,7 @@
     {:else}
       <!-- Normal Mode -->
       <StorageBanner storageFull={projectStore.storageFull} />
-      {@const noProject = projectStore.index.projects.length === 0}
+      {@const noProject = projectStore.index.projects.length === 0 && permissionStore.current !== 'viewer'}
       {@const canCreate = !authStore.user || authStore.user.canCreateProject}
       <Toolbar minimal={noProject} />
       {#if noProject}
