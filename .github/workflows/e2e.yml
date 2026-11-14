@@ -1,0 +1,72 @@
+name: Manual E2E
+
+# Long browser/container suites run locally by default. Spend runner time only
+# when explicitly requested through Actions > Manual E2E > Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: E2E suite to run
+        required: true
+        type: choice
+        default: local
+        options:
+          - local
+          - server
+          - startup
+          - docker
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v5
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Compile paraglide messages
+        run: pnpm exec paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build SQLite native binding
+        run: pnpm rebuild better-sqlite3
+
+      - name: Run selected E2E suite
+        env:
+          E2E_SUITE: ${{ inputs.suite }}
+        run: |
+          case "$E2E_SUITE" in
+            local) pnpm exec playwright test --retries=0 ;;
+            server) pnpm exec playwright test --config=playwright.server.config.ts --retries=0 ;;
+            startup) pnpm exec playwright test --config=playwright.startup.config.ts --retries=0 ;;
+            docker) pnpm exec playwright test --config=playwright.docker.config.ts --retries=0 ;;
+            *) echo "Unknown E2E suite" >&2; exit 1 ;;
+          esac
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-${{ inputs.suite }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 3

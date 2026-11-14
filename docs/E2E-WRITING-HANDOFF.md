@@ -60,3 +60,12 @@ assertions. New cases and changed assertions remain unverified. Source-derived
 inventory estimates must be confirmed by later collection before treating counts
 as authoritative. Current estimate: 374 local, 477 server, 5 startup, 4 Docker;
 135 newly written cases plus strengthened existing assertions.
+
+## CI execution policy
+
+Routine CI (main pushes, PRs and reusable release/deployment checks) runs type
+checking and unit tests only. E2E suites are validated locally by default.
+For an explicit runner check, use Actions → Manual E2E → Run workflow and select
+local, server, startup or docker. This workflow has only workflow_dispatch;
+no push, PR, tag or reusable-workflow trigger starts it automatically. Automatic
+CI no longer installs Playwright browsers or uploads Playwright artifacts.
