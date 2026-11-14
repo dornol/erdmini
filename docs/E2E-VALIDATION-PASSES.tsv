@@ -1,0 +1,143 @@
+e2e/bulk-edit-lifecycle.spec.ts	Control multi-selection Backspace bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-validation-local-a-fixes.log
+e2e/bulk-edit-lifecycle.spec.ts	Control multi-selection Delete bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-validation-local-a-fixes.log
+e2e/bulk-edit-lifecycle.spec.ts	Meta multi-selection Backspace bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	Meta multi-selection Delete bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk color clear affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk color set affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk comment clear affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk comment set affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk edit cancel discards all enabled fields and leaves schema untouched through reload	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk group clear affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk group set affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk lock and unlock preserve unrelated metadata with single-step history and reload	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk schema clear affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	bulk schema set affects only selected tables and is a single undo step	/tmp/erdmini-validation-local-a.log
+e2e/bulk-edit-lifecycle.spec.ts	deleting every table retains detached documentation and can restore the complete graph in one undo	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	sidebar memo empty first line preview selects, deletes and restores the exact memo	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	sidebar memo empty memo preview selects, deletes and restores the exact memo	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	sidebar memo long Unicode preview selects, deletes and restores the exact memo	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	sidebar memo multiline preview selects, deletes and restores the exact memo	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table group change trims names, changes inherited color and can clear membership	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette amber overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette blue overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette brown overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette cyan overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette green overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette indigo overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette lime overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette orange overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette pink overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette purple overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette red overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette rose overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette slate overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/color-sidebar-lifecycle.spec.ts	table palette teal overrides group color and clears with undo redo and reload	/tmp/erdmini-validation-local-a.log
+e2e/column-lifecycle.spec.ts	ENUM popup clears optional values with metadata and history preserved	/tmp/erdmini-validation-local-c.log
+e2e/column-lifecycle.spec.ts	ENUM popup trims Unicode values and drops blank tokens with metadata and history preserved	/tmp/erdmini-validation-local-c.log
+e2e/column-lifecycle.spec.ts	column check set and clear preserve constraints with undo redo and reload	/tmp/erdmini-validation-local-c.log
+e2e/column-lifecycle.spec.ts	column comment set and clear preserve constraints with undo redo and reload	/tmp/erdmini-validation-local-c.log
+e2e/ddl-options-lifecycle.spec.ts	DDL include switches remove and restore comments indexes foreign keys and domain annotations independently	/tmp/erdmini-validation-local-a.log
+e2e/ddl-options-lifecycle.spec.ts	DDL indentation 2spaces changes actual column lines and persists after reload without schema edits	/tmp/erdmini-validation-local-a.log
+e2e/ddl-options-lifecycle.spec.ts	DDL indentation 4spaces changes actual column lines and persists after reload without schema edits	/tmp/erdmini-validation-local-a.log
+e2e/ddl-options-lifecycle.spec.ts	DDL indentation tab changes actual column lines and persists after reload without schema edits	/tmp/erdmini-validation-local-a.log
+e2e/ddl-options-lifecycle.spec.ts	DDL quoting backtick changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-validation-local-a.log
+e2e/ddl-options-lifecycle.spec.ts	DDL quoting bracket changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-validation-local-a.log
+e2e/ddl-options-lifecycle.spec.ts	DDL quoting double changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-validation-local-a.log
+e2e/ddl-options-lifecycle.spec.ts	DDL quoting none changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-validation-local-a.log
+e2e/diagram-export-lifecycle.spec.ts	Mermaid exports composite FK optional cardinality, constraints and exact download without writes	/tmp/erdmini-validation-local-a.log
+e2e/diagram-export-lifecycle.spec.ts	Mermaid exports composite FK required cardinality, constraints and exact download without writes	/tmp/erdmini-validation-local-a.log
+e2e/diagram-export-lifecycle.spec.ts	PlantUML exports composite FK optional cardinality, constraints and exact download without writes	/tmp/erdmini-validation-local-a.log
+e2e/diagram-export-lifecycle.spec.ts	PlantUML exports composite FK required cardinality, constraints and exact download without writes	/tmp/erdmini-validation-local-a.log
+e2e/diff-file-lifecycle.spec.ts	h2 uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	identical diff file has no changes or migration controls and never edits stored data	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	invalid diff upload missing tables leaves schema intact and permits corrected retry	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	invalid diff upload syntax leaves schema intact and permits corrected retry	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	mariadb uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	mssql uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	mysql uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	oracle uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	postgresql uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-validation-local-b.log
+e2e/diff-file-lifecycle.spec.ts	sqlite uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	Align Bottom arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	Align Left arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	Align Right arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	Align Top arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	Distribute H arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	Distribute V arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	Names Only renders the intended columns and types without changing schema or history	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	PK/FK Only renders the intended columns and types without changing schema or history	/tmp/erdmini-validation-local-b.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Align Bottom while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Align Left while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Align Right while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Align Top while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Distribute H while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Distribute V while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Grid while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Hierarchical while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Radial Tree while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Radial while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/display-alignment.spec.ts	locked table stays fixed during Smart (beta) while movable tables retain metadata and reload	/tmp/erdmini-validation-locked-layout.log
+e2e/docker/compose.spec.ts	Compose local profile starts the configured service and persists UI data after restart	/tmp/erdmini-validation-docker-3.log
+e2e/docker/compose.spec.ts	Compose server starts the configured service and persists UI data after restart	/tmp/erdmini-validation-docker-3.log
+e2e/docker/deployment.spec.ts	Docker local deployment serves the application and retains saved schema across container restart	/tmp/erdmini-validation-docker-3.log
+e2e/docker/deployment.spec.ts	Docker server deployment serves the application and retains saved schema across container restart	/tmp/erdmini-validation-docker-3.log
+e2e/foreign-key-edit.spec.ts	Bezier FK paths follow the moving table before mouse release and retain endpoints after undo redo reload	/tmp/erdmini-validation-local-c.log
+e2e/foreign-key-edit.spec.ts	Bezier composite FK changes nullable dash rendering through edit, undo, redo and reload	/tmp/erdmini-validation-local-c.log
+e2e/foreign-key-edit.spec.ts	Orthogonal FK paths follow the moving table before mouse release and retain endpoints after undo redo reload	/tmp/erdmini-validation-local-c.log
+e2e/foreign-key-edit.spec.ts	Orthogonal composite FK changes nullable dash rendering through edit, undo, redo and reload	/tmp/erdmini-validation-local-c.log
+e2e/foreign-key-edit.spec.ts	Rounded FK paths follow the moving table before mouse release and retain endpoints after undo redo reload	/tmp/erdmini-validation-local-c.log
+e2e/foreign-key-edit.spec.ts	Rounded composite FK changes nullable dash rendering through edit, undo, redo and reload	/tmp/erdmini-validation-local-c.log
+e2e/foreign-key-edit.spec.ts	viewport-only pan and zoom preserve relation world geometry and minimap objects while updating the visible viewport	/tmp/erdmini-validation-local-c.log
+e2e/import-export-roundtrip.spec.ts	copied share URL preserves rich schema in a fresh editable local copy without changing the source	/tmp/erdmini-validation-local-c-fixes.log
+e2e/import-export-roundtrip.spec.ts	rich all-project backup cancel preserves newer edits with IDs and relationships intact	/tmp/erdmini-validation-local-c.log
+e2e/import-export-roundtrip.spec.ts	rich all-project backup restores both project schemas with IDs and relationships intact	/tmp/erdmini-validation-local-c.log
+e2e/layout-lifecycle.spec.ts	Grid layout changes only positions and supports undo, redo and reload	/tmp/erdmini-validation-layout-minimap.log
+e2e/layout-lifecycle.spec.ts	Hierarchical layout changes only positions and supports undo, redo and reload	/tmp/erdmini-validation-layout-minimap.log
+e2e/layout-lifecycle.spec.ts	Radial Tree layout changes only positions and supports undo, redo and reload	/tmp/erdmini-validation-layout-minimap.log
+e2e/layout-lifecycle.spec.ts	Radial layout changes only positions and supports undo, redo and reload	/tmp/erdmini-validation-layout-minimap.log
+e2e/layout-lifecycle.spec.ts	Smart layout changes only positions and supports undo, redo and reload	/tmp/erdmini-validation-layout-minimap.log
+e2e/lint-rule-lifecycle.spec.ts	JSON import normalizes nullable primary keys and does not report an unreachable nullable-PK warning	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 10: Duplicate index displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 11: Circular FK reference displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 12: Empty table (no columns) displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 13: FK column count mismatch displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 14: FK references non-unique column displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 15: FK column type mismatch displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 1: Domain circular hierarchy reference displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 2: Domain circular hierarchy reference displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 3: Column type incompatible with DBMS displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 4: Table has no primary key displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 5: FK references missing table/column displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 6: FK references missing table/column displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 7: SET NULL on NOT NULL column displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 8: Duplicate column name displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/lint-rule-lifecycle.spec.ts	lint rule 9: Duplicate table name displays exact severity and detail without schema writes	/tmp/erdmini-validation-local-a-fixes.log
+e2e/memo-lifecycle.spec.ts	memo blur commits empty content and supports exact undo redo and reload	/tmp/erdmini-validation-local-c-fixes.log
+e2e/memo-lifecycle.spec.ts	memo blur commits multiline Unicode text and supports exact undo redo and reload	/tmp/erdmini-validation-local-c-fixes.log
+e2e/memo-lifecycle.spec.ts	memo resize clamps at minimum at 100% with history and reload	/tmp/erdmini-validation-local-c-fixes.log
+e2e/memo-lifecycle.spec.ts	memo resize clamps at minimum at 161% with history and reload	/tmp/erdmini-validation-local-c-rest.log
+e2e/memo-lifecycle.spec.ts	memo resize uses world dimensions at 100% with history and reload	/tmp/erdmini-validation-local-c-fixes.log
+e2e/memo-lifecycle.spec.ts	memo resize uses world dimensions at 161% with history and reload	/tmp/erdmini-validation-local-c-rest.log
+e2e/memo-lifecycle.spec.ts	minimap namespace filtering excludes attached memos and updates after detach, undo and reload	/tmp/erdmini-validation-local-c.log
+e2e/preferences-keyboard.spec.ts	Control palette handles empty results keyboard wrap Escape and hidden-namespace column navigation	/tmp/erdmini-validation-local-c-rest.log
+e2e/preferences-keyboard.spec.ts	Meta palette handles empty results keyboard wrap Escape and hidden-namespace column navigation	/tmp/erdmini-validation-local-c-rest.log
+e2e/preferences-keyboard.spec.ts	column input keeps text editing shortcuts from mutating or navigating the diagram	/tmp/erdmini-validation-local-c-rest.log
+e2e/project-viewport.spec.ts	minimap click 145,90 centers the corresponding world point at 100% and persists without edits	/tmp/erdmini-validation-layout-minimap.log
+e2e/project-viewport.spec.ts	minimap click 145,90 centers the corresponding world point at 161% and persists without edits	/tmp/erdmini-validation-layout-minimap.log
+e2e/project-viewport.spec.ts	minimap click 35,30 centers the corresponding world point at 100% and persists without edits	/tmp/erdmini-validation-layout-minimap.log
+e2e/project-viewport.spec.ts	minimap click 35,30 centers the corresponding world point at 161% and persists without edits	/tmp/erdmini-validation-layout-minimap.log
+e2e/server/security.spec.ts	admin API key persists only its SHA-256 hash, retains it on rename and removes scopes on revocation	/tmp/erdmini-validation-server-fixes.log
+e2e/server/security.spec.ts	configured initial administrator has one hashed identity and retains it across repeated login and page reload	/tmp/erdmini-validation-server-new.log
+e2e/server/security.spec.ts	editor presence shows transformed cursors and remote selection then clears on leave and rejoins without schema content changes	/tmp/erdmini-validation-server-fixes.log
+e2e/server/security.spec.ts	local login session cookie is HttpOnly Strict and expires after the configured default without leaking to page scripts	/tmp/erdmini-validation-server-new.log
+e2e/server/security.spec.ts	server naming lint columnCase reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-validation-server-new.log
+e2e/server/security.spec.ts	server naming lint columnPrefix reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-validation-server-new.log
+e2e/server/security.spec.ts	server naming lint columnSuffix reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-validation-server-new.log
+e2e/server/security.spec.ts	server naming lint tableSuffix reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-validation-server-new.log
+e2e/server/security.spec.ts	server storage uses WAL and a separate read connection observes committed API schema updates	/tmp/erdmini-validation-server-new.log
+e2e/server/security.spec.ts	viewer presence shows transformed cursors and remote selection then clears on leave and rejoins without schema content changes	/tmp/erdmini-validation-server-fixes.log
+e2e/startup/admin-bootstrap.spec.ts	empty administrator username configuration uses the default admin identity	/tmp/erdmini-validation-startup.log
+e2e/startup/admin-bootstrap.spec.ts	empty database configured administrator survives server restart without password replacement	/tmp/erdmini-validation-startup.log
+e2e/startup/admin-bootstrap.spec.ts	empty database generated administrator survives server restart without password replacement	/tmp/erdmini-validation-startup.log
+e2e/startup/admin-bootstrap.spec.ts	existing users prevent creation of an environment administrator and keep their password hash unchanged	/tmp/erdmini-validation-startup.log
+e2e/startup/admin-bootstrap.spec.ts	legacy singleton project ownership migrates to the initial administrator without changing saved content	/tmp/erdmini-validation-startup-fix.log

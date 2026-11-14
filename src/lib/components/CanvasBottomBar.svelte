@@ -72,7 +72,7 @@
 
   // Align / distribute selected tables
   function getSelectedTables() {
-    return erdStore.schema.tables.filter((t) => erdStore.selectedTableIds.has(t.id));
+    return erdStore.schema.tables.filter((t) => erdStore.selectedTableIds.has(t.id) && !t.locked);
   }
 
   function tableHeight(t: { columns: { length: number }; comment?: string }): number {
@@ -403,7 +403,7 @@
     bottom: max(16px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
-    z-index: 100;
+    z-index: 120;
     display: flex;
     align-items: center;
     gap: 3px;
@@ -415,6 +415,10 @@
     padding: 4px;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
     scrollbar-width: none;
+  }
+
+  .canvas-bottom-bar:has(.bar-dropdown-menu) {
+    overflow: visible;
   }
 
   .canvas-bottom-bar::-webkit-scrollbar {

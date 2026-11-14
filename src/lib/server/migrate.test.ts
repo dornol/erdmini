@@ -1,3 +1,5 @@
+import Database from 'better-sqlite3';
+import { getLatestMigrationVersion, runMigrations } from './migrate';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createHash } from 'crypto';
 
@@ -268,4 +270,20 @@ describe('schema_migrations table DDL', () => {
     expect(ddl).toContain('success');
     expect(ddl).toContain('INTEGER PRIMARY KEY');
   });
+});
+
+
+it('rejects a newer database before applying any migrations or changing its records', () => {
+  const db = new Database(':memory:');
+  try {
+    runMigrations(db);
+    const latest = getLatestMigrationVersion();
+    expect(latest).toBeGreaterThan(0);
+    db.prepare('INSERT INTO schema_migrations (version, description, checksum, success) VALUES (?, ?, ?, 1)').run(latest + 1, 'Future schema', 'future');
+    const before = db.prepare('SELECT * FROM schema_migrations ORDER BY version').all();
+    expect(() => runMigrations(db)).toThrow(/newer than supported/);
+    expect(db.prepare('SELECT * FROM schema_migrations ORDER BY version').all()).toEqual(before);
+  } finally {
+    db.close();
+  }
 });

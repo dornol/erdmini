@@ -1,4 +1,4 @@
-import { erdStore } from '$lib/store/erd.svelte';
+import { erdStore, canvasState } from '$lib/store/erd.svelte';
 import { projectStore } from '$lib/store/project.svelte';
 import { permissionStore } from '$lib/store/permission.svelte';
 import { deriveLabel } from '$lib/utils/history-labels';
@@ -13,6 +13,7 @@ export function useAutoSave(): () => void {
   let prevUpdatedAt = $state(erdStore.schema.updatedAt);
   let prevSchemaSnap: string = JSON.stringify($state.snapshot(erdStore.schema));
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  let canvasSaveTimer: ReturnType<typeof setTimeout> | undefined;
 
   $effect(() => {
     const cur = erdStore.schema.updatedAt;
@@ -28,8 +29,11 @@ export function useAutoSave(): () => void {
       if (!skip) {
         const prevSchema: ERDSchema = JSON.parse(prevSchemaSnap);
         const curSchema = $state.snapshot(erdStore.schema) as ERDSchema;
-        const result = deriveLabel(prevSchema, curSchema);
-        if (result) {
+        // Reimporting identical data can advance updatedAt without an edit.
+        const { updatedAt: _previousTime, ...previousContent } = prevSchema;
+        const { updatedAt: _currentTime, ...currentContent } = curSchema;
+        if (JSON.stringify(previousContent) !== JSON.stringify(currentContent)) {
+          const result = deriveLabel(prevSchema, curSchema);
           erdStore.pushSnapshotRaw(prevSchemaSnap, result.label, result.detail);
         }
       }
@@ -42,5 +46,23 @@ export function useAutoSave(): () => void {
     }
   });
 
-  return () => clearTimeout(saveTimer);
+  $effect(() => {
+    const projectId = projectStore.index.activeProjectId;
+    // Track viewport navigation without rewriting schema data or undo history.
+    void canvasState.x;
+    void canvasState.y;
+    void canvasState.scale;
+    clearTimeout(canvasSaveTimer);
+    if (!projectId || !projectStore.safeToSave || permissionStore.isReadOnly) return;
+    canvasSaveTimer = setTimeout(async () => {
+      if (projectStore.safeToSave && !permissionStore.isReadOnly && projectStore.index.activeProjectId === projectId) {
+        await projectStore.saveCurrentCanvas();
+      }
+    }, 300);
+  });
+
+  return () => {
+    clearTimeout(saveTimer);
+    clearTimeout(canvasSaveTimer);
+  };
 }

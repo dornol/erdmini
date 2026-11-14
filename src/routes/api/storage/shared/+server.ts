@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import type { ProjectPermissionRow } from '$lib/types/auth';
+import { getProjectPermission } from '$lib/server/auth/permissions';
 
 export const GET: RequestHandler = ({ locals }) => {
   if (!locals.user) {
@@ -31,14 +32,14 @@ export const GET: RequestHandler = ({ locals }) => {
     JOIN group_members gm ON gm.group_id = gpp.group_id
     WHERE gm.user_id = ?
     ORDER BY gpp.created_at DESC
-  `).all(locals.user.id) as { project_id: string; permission: string; created_at: string; owner_name: string }[];
+  `).all(locals.user.id) as typeof rows;
 
-  // Merge: direct permissions take precedence; add group-only projects
-  const directIds = new Set(rows.map(r => r.project_id));
-  const allRows = [
-    ...rows,
-    ...groupRows.filter(r => !directIds.has(r.project_id)),
-  ];
+  // List each project once, using the same effective access as storage APIs.
+  const byProject = new Map<string, (typeof rows)[number]>();
+  for (const row of [...rows, ...groupRows]) {
+    if (!byProject.has(row.project_id)) byProject.set(row.project_id, row);
+  }
+  const allRows = [...byProject.values()];
 
   // For each shared project, look up the project name from the owner's project_index
   const result = allRows.map(r => {
@@ -62,7 +63,7 @@ export const GET: RequestHandler = ({ locals }) => {
 
     return {
       projectId: r.project_id,
-      permission: r.permission,
+      permission: getProjectPermission(db, r.project_id, locals.user!.id, locals.user!.role),
       ownerName: r.owner_name,
       projectName,
       sharedAt: r.created_at,

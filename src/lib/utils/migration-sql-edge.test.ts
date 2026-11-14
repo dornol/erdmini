@@ -249,11 +249,11 @@ describe('generateMigrationSQL', () => {
       expect(sql).toContain('[users]');
     });
 
-    it('uses no quotes for SQLite', () => {
+    it('uses double quotes for SQLite', () => {
       const diff = emptyDiff();
       diff.removedTables = [table({ name: 'users', columns: [] })];
       const sql = generateMigrationSQL(diff, 'sqlite');
-      expect(sql).toContain('DROP TABLE users;');
+      expect(sql).toContain('DROP TABLE "users";');
     });
   });
 

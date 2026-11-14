@@ -237,7 +237,7 @@
       confirmText: m.action_delete(),
       variant: 'danger',
     });
-    if (ok) erdStore.deleteTables(ids);
+    if (ok && !permissionStore.isReadOnly) erdStore.deleteTables(ids);
   }
 
   let allSelectedLocked = $derived.by(() => {

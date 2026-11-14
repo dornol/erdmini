@@ -3,6 +3,7 @@
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { appPath } from '$lib/utils/paths';
+  import { saveProviderRequest } from '$lib/utils/provider-request';
 
   interface Props {
     providers: OIDCProviderRow[];
@@ -48,7 +49,7 @@
       displayName: p.display_name,
       issuerUrl: p.issuer_url,
       clientId: p.client_id,
-      clientSecret: p.client_secret,
+      clientSecret: '',
       scopes: p.scopes,
       enabled: p.enabled === 1,
       autoCreateUsers: p.auto_create_users === 1,
@@ -61,23 +62,21 @@
 
   async function saveProvider() {
     if (!editingProvider) return;
-    await fetch(appPath(`/api/admin/oidc-providers/${editingProvider}`), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        displayName: editForm.displayName,
-        issuerUrl: editForm.issuerUrl,
-        clientId: editForm.clientId,
-        clientSecret: editForm.clientSecret,
-        scopes: editForm.scopes,
-        enabled: editForm.enabled ? 1 : 0,
-        autoCreateUsers: editForm.autoCreateUsers ? 1 : 0,
-        syncGroups: editForm.syncGroups ? 1 : 0,
-        groupClaim: editForm.groupClaim,
-        allowedGroups: editForm.allowedGroups,
-        adminGroups: editForm.adminGroups,
-      }),
+    providerError = '';
+    const error = await saveProviderRequest(appPath(`/api/admin/oidc-providers/${editingProvider}`), 'PUT', {
+      displayName: editForm.displayName,
+      issuerUrl: editForm.issuerUrl,
+      clientId: editForm.clientId,
+      ...(editForm.clientSecret ? { clientSecret: editForm.clientSecret } : {}),
+      scopes: editForm.scopes,
+      enabled: editForm.enabled ? 1 : 0,
+      autoCreateUsers: editForm.autoCreateUsers ? 1 : 0,
+      syncGroups: editForm.syncGroups ? 1 : 0,
+      groupClaim: editForm.groupClaim,
+      allowedGroups: editForm.allowedGroups,
+      adminGroups: editForm.adminGroups,
     });
+    if (error) { providerError = error; return; }
     editingProvider = null;
     await onreload();
   }
@@ -91,16 +90,8 @@
   async function createProvider() {
     providerError = '';
     providerSuccess = '';
-    const res = await fetch(appPath('/api/admin/oidc-providers'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newProvider),
-    });
-    if (!res.ok) {
-      const body = await res.json();
-      providerError = body.error || 'Failed';
-      return;
-    }
+    const error = await saveProviderRequest(appPath('/api/admin/oidc-providers'), 'POST', newProvider);
+    if (error) { providerError = error; return; }
     providerSuccess = m.admin_oidc_created({ name: newProvider.displayName });
     newProvider = {
       displayName: '',
@@ -129,7 +120,7 @@
           <input placeholder={m.admin_oidc_display_name()} bind:value={editForm.displayName} />
           <input placeholder={m.admin_oidc_issuer_url()} bind:value={editForm.issuerUrl} />
           <input placeholder={m.admin_oidc_client_id()} bind:value={editForm.clientId} />
-          <input placeholder={m.admin_oidc_client_secret()} type="password" bind:value={editForm.clientSecret} />
+          <input aria-label={m.admin_oidc_client_secret()} placeholder={m.admin_oidc_client_secret_edit()} type="password" bind:value={editForm.clientSecret} />
           <input placeholder={m.admin_oidc_scopes()} bind:value={editForm.scopes} />
           <label class="checkbox-label">
             <input type="checkbox" bind:checked={editForm.enabled} /> {m.admin_oidc_enabled()}

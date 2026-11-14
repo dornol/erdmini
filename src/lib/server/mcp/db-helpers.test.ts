@@ -68,14 +68,31 @@ describe('listUserProjects', () => {
   });
 
   it('scoped API key only returns scoped projects', () => {
-    mockAll.mockReturnValue([
+    mockGet.mockReturnValue({ permission: 'editor' });
+    mockAll.mockReturnValueOnce([
       { data: makeProjectIndex([{ id: 'p1', name: 'A' }, { id: 'p2', name: 'B' }]) },
-    ]);
+    ]).mockReturnValue([]);
 
     const scopes = [{ projectId: 'p1', permission: 'editor' as const }];
     const result = listUserProjects(mockDb, 'user1', 'user', scopes);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('p1');
+  });
+
+  it('scoped API key cannot list metadata after user access is revoked', () => {
+    mockGet.mockReturnValue(undefined);
+    mockAll.mockReturnValueOnce([
+      { data: makeProjectIndex([{ id: 'p1', name: 'Private project' }]) },
+    ]).mockReturnValue([]);
+    expect(listUserProjects(mockDb, 'user1', 'user', [{ projectId: 'p1', permission: 'viewer' }])).toEqual([]);
+  });
+
+  it('scoped project metadata is not duplicated across owner and shared indexes', () => {
+    mockAll.mockReturnValue([
+      { data: makeProjectIndex([{ id: 'p1', name: 'Project' }]) },
+      { data: makeProjectIndex([{ id: 'p1', name: 'Project' }]) },
+    ]);
+    expect(listUserProjects(mockDb, 'admin1', 'admin', [{ projectId: 'p1', permission: 'viewer' }])).toHaveLength(1);
   });
 
   it('scoped API key with no matching projects returns empty', () => {

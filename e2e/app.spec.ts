@@ -179,7 +179,7 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toHaveCount(2);
 
     await page.locator('.table-item').first().click();
-    await page.locator('.table-item').nth(1).click({ modifiers: ['Control'] });
+    await page.locator('.table-item').nth(1).click({ modifiers: ['ControlOrMeta'] });
     await expect(page.locator('.bulk-edit-btn')).toBeVisible();
     await page.locator('.bulk-edit-btn').click();
 
@@ -202,7 +202,7 @@ test.describe('canvas smoke flows', () => {
     await expect(page.getByTestId('table-card')).toHaveCount(2);
 
     await page.locator('.table-item').first().click();
-    await page.locator('.table-item').nth(1).click({ modifiers: ['Control'] });
+    await page.locator('.table-item').nth(1).click({ modifiers: ['ControlOrMeta'] });
     const lockButton = page.locator('.bulk-lock-btn');
     await expect(lockButton).toBeVisible();
     await lockButton.click();
@@ -756,8 +756,8 @@ test.describe('canvas smoke flows', () => {
     expect(new Set(afterLayout.map((p) => `${p.left},${p.top}`)).size).toBeGreaterThan(1);
 
     await page.locator('.table-item').first().click();
-    await page.locator('.table-item').nth(1).click({ modifiers: ['Control'] });
-    await page.locator('.table-item').nth(2).click({ modifiers: ['Control'] });
+    await page.locator('.table-item').nth(1).click({ modifiers: ['ControlOrMeta'] });
+    await page.locator('.table-item').nth(2).click({ modifiers: ['ControlOrMeta'] });
     await page.locator('.canvas-bottom-bar button[title*="Align"]').dispatchEvent('click');
     await page.getByRole('menuitem', { name: /align left/i }).dispatchEvent('click');
     const aligned = await positions();

@@ -60,6 +60,10 @@ function parseMigrations(): MigrationFile[] {
 	return migrations;
 }
 
+export function getLatestMigrationVersion(): number {
+	return parseMigrations().at(-1)?.version ?? 0;
+}
+
 function detectBaseline(db: InstanceType<typeof Database>): number {
 	// Check if this is an existing DB by looking for known tables
 	const tables = db
@@ -109,6 +113,11 @@ export function runMigrations(db: InstanceType<typeof Database>): void {
 		.prepare('SELECT version, description, checksum, success FROM schema_migrations ORDER BY version')
 		.all() as AppliedMigration[];
 	const appliedMap = new Map(applied.map((a) => [a.version, a]));
+	const latestSupported = migrations[migrations.length - 1].version;
+	if (applied.some(record => record.version > latestSupported)) {
+		throw new Error(`Database schema is newer than supported version V${String(latestSupported).padStart(3, '0')}. Upgrade the application before opening this database.`);
+	}
+
 
 	// 4. Check for failed migrations that need manual intervention
 	for (const a of applied) {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
   import ModalBackdrop from './ModalBackdrop.svelte';
@@ -33,7 +34,7 @@
   );
 
   function submit() {
-    if (!canSubmit) return;
+    if (!canSubmit || permissionStore.isReadOnly) return;
     const ids = selectedColumnIds.filter((id) => id !== '');
     if (mode === 'unique-key') {
       erdStore.addUniqueKey(tableId, ids, constraintName.trim() || undefined);
@@ -115,7 +116,7 @@
       <button
         class="btn-submit"
         onclick={submit}
-        disabled={!canSubmit}
+        disabled={!canSubmit || permissionStore.isReadOnly}
       >
         {m.action_add_submit()}
       </button>

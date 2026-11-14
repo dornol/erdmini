@@ -1,5 +1,6 @@
 // Standalone WebSocket collaboration server
 // Works independently of SvelteKit's module system
+import Database from 'better-sqlite3';
 import { WebSocketServer } from 'ws';
 import { randomBytes } from 'node:crypto';
 import { createLogger, isBenignSocketError } from './logger.js';
@@ -17,7 +18,9 @@ const ALLOWED_OP_KINDS = new Set([
   'add-memo', 'delete-memo', 'delete-memos', 'move-memo', 'move-memos', 'update-memo',
   'attach-memo', 'detach-memo',
   'add-schema', 'delete-schema', 'rename-schema', 'reorder-schemas', 'update-table-schema',
-  'load-schema',
+  'add-db-object', 'update-db-object', 'delete-db-object',
+  'add-db-object-category', 'rename-db-object-category', 'delete-db-object-category', 'reorder-db-object-categories',
+  'set-dialect', 'load-schema',
 ]);
 
 const PEER_COLORS = [
@@ -28,7 +31,7 @@ const PEER_COLORS = [
 // ── Room Manager ──
 class RoomManager {
   constructor() {
-    /** @type {Map<string, {ws: import('ws').WebSocket, userId: string, displayName: string, color: string, projectId: string|null}>} */
+    /** @type {Map<string, {ws: import('ws').WebSocket, userId: string, userRole: string, sessionId: string, db: import('better-sqlite3').Database, displayName: string, color: string, projectId: string|null}>} */
     this.peers = new Map();
     /** @type {Map<string, Set<string>>} */
     this.rooms = new Map();
@@ -36,8 +39,8 @@ class RoomManager {
     this.colorCounters = new Map();
   }
 
-  register(peerId, ws, userId, displayName) {
-    this.peers.set(peerId, { ws, userId, displayName, color: '', projectId: null });
+  register(peerId, ws, userId, displayName, db, userRole, sessionId) {
+    this.peers.set(peerId, { ws, userId, userRole, sessionId, db, displayName, color: '', projectId: null });
   }
 
   unregister(peerId) {
@@ -97,7 +100,7 @@ class RoomManager {
     for (const peerId of room) {
       if (peerId === excludePeerId) continue;
       const peer = this.peers.get(peerId);
-      if (peer?.ws.readyState === 1) peer.ws.send(data);
+      if (peer?.ws.readyState === 1 && this.checkAccess(peerId)) peer.ws.send(data);
     }
   }
 
@@ -108,6 +111,29 @@ class RoomManager {
 
   getProjectId(peerId) {
     return this.peers.get(peerId)?.projectId ?? null;
+  }
+
+  checkAccess(peerId) {
+    if (!this.refreshSession(peerId)) return false;
+    const peer = this.peers.get(peerId);
+    if (!peer?.projectId) return false;
+    if (hasProjectAccess(peer.db, peer.projectId, peer.userId, peer.userRole, 'viewer')) return true;
+    this.sendTo(peerId, { type: 'error', message: 'No access to project' });
+    peer.ws.close(1008, 'Project access revoked');
+    return false;
+  }
+
+  refreshSession(peerId) {
+    const peer = this.peers.get(peerId);
+    if (!peer) return false;
+    const auth = validateSession(peer.db, peer.sessionId);
+    if (auth) {
+      peer.userRole = auth.user.role;
+      return true;
+    }
+    this.sendTo(peerId, { type: 'error', message: 'Invalid session' });
+    peer.ws.close(1008, 'Session invalidated');
+    return false;
   }
 }
 
@@ -144,6 +170,9 @@ function handleMessage(peerId, raw, db, userId, userRole) {
   }
 
   try {
+    const joinedProject = roomManager.getProjectId(peerId);
+    if (joinedProject ? !roomManager.checkAccess(peerId) : !roomManager.refreshSession(peerId)) return;
+    userRole = roomManager.peers.get(peerId)?.userRole ?? userRole;
     switch (msg.type) {
       case 'join': {
         if (typeof msg.projectId !== 'string' || !msg.projectId) {
@@ -175,6 +204,11 @@ function handleMessage(peerId, raw, db, userId, userRole) {
           roomManager.sendTo(peerId, { type: 'error', message: `Invalid operation kind: ${msg.op.kind}` });
           return;
         }
+        if (msg.op.kind === 'move-column' && msg.op.columnIds !== undefined
+          && (!Array.isArray(msg.op.columnIds) || !msg.op.columnIds.every(id => typeof id === 'string'))) {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Invalid column order' });
+          return;
+        }
         const opStr = JSON.stringify(msg.op);
         if (opStr.length > 512 * 1024) {
           roomManager.sendTo(peerId, { type: 'error', message: 'Operation payload too large' });
@@ -186,7 +220,12 @@ function handleMessage(peerId, raw, db, userId, userRole) {
           roomManager.sendTo(peerId, { type: 'error', message: 'Insufficient permission' });
           return;
         }
+        if (msg.operationId !== undefined && (typeof msg.operationId !== 'string' || !msg.operationId || msg.operationId.length > 128)) {
+          roomManager.sendTo(peerId, { type: 'error', message: 'Invalid operation ID' });
+          return;
+        }
         roomManager.broadcast(projectId, { type: 'operation', op: msg.op, fromPeerId: peerId }, peerId);
+        if (msg.operationId) roomManager.sendTo(peerId, { type: 'operation-ack', operationId: msg.operationId });
         break;
       }
       case 'presence': {
@@ -262,7 +301,7 @@ function validateSession(db, sessionId) {
     return null;
   }
   if (row.status !== 'active') return null;
-  return { user: { id: row.uid, displayName: row.display_name, role: row.role } };
+  return { user: { id: row.uid, displayName: row.display_name, role: row.role, sessionId } };
 }
 
 // ── Cookie parser ──
@@ -278,7 +317,7 @@ function parseCookies(cookieHeader) {
 // ── Shared: set up a WS connection after upgrade ──
 function setupConnection(ws, db, user) {
   const peerId = randomBytes(8).toString('hex');
-  roomManager.register(peerId, ws, user.id, user.displayName);
+  roomManager.register(peerId, ws, user.id, user.displayName, db, user.role, user.sessionId);
 
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
@@ -319,6 +358,21 @@ function authenticateUpgrade(request, db) {
  * @param {import('better-sqlite3').Database} db
  */
 export function createCollabHandler(db) {
+  const dbPath = db.name;
+
+  function suspendDatabase() {
+    // Terminate every socket before closing its captured database connection.
+    for (const ws of wss.clients) ws.terminate();
+    if (db.open) db.close();
+  }
+
+  function resumeDatabase() {
+    if (db.open) return;
+    db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+  }
+
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1 * 1024 * 1024 });
 
   // Ping/pong keepalive
@@ -333,7 +387,10 @@ export function createCollabHandler(db) {
     }
   }, 30000);
 
-  wss.on('close', () => clearInterval(pingInterval));
+  wss.on('close', () => {
+    clearInterval(pingInterval);
+    if (db.open) db.close();
+  });
 
   /**
    * Handle a WebSocket upgrade for /collab.
@@ -372,6 +429,11 @@ export function createCollabHandler(db) {
       }
     }
 
+    if (!db.open) {
+      socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
+      socket.destroy();
+      return true;
+    }
     const result = authenticateUpgrade(request, db);
     if (!result) {
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -386,7 +448,7 @@ export function createCollabHandler(db) {
     return true; // handled (accepted)
   }
 
-  return { wss, handleUpgrade, notifySchemaChange };
+  return { wss, handleUpgrade, notifySchemaChange, suspendDatabase, resumeDatabase };
 }
 
 /**
@@ -397,7 +459,7 @@ export function createCollabHandler(db) {
  * @param {import('better-sqlite3').Database} db
  */
 export function initCollabServer(server, db) {
-  const { wss, handleUpgrade, notifySchemaChange } = createCollabHandler(db);
+  const { wss, handleUpgrade, notifySchemaChange, suspendDatabase, resumeDatabase } = createCollabHandler(db);
 
   server.on('upgrade', (request, socket, head) => {
     // Add error handler for ALL upgrade sockets (including non-collab)
@@ -413,5 +475,5 @@ export function initCollabServer(server, db) {
     handleUpgrade(request, socket, head);
   });
 
-  return { wss, notifySchemaChange };
+  return { wss, notifySchemaChange, suspendDatabase, resumeDatabase };
 }

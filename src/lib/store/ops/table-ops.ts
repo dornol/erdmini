@@ -180,6 +180,7 @@ export function duplicateTableOp(schema: ERDSchema, id: string): Table | undefin
     uniqueKeys: [],
     indexes: [],
     position: { x: src.position.x + 30, y: src.position.y + 30 },
+    schema: src.schema,
     comment: src.comment,
     color: src.color,
     group: src.group,

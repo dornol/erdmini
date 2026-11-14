@@ -5,6 +5,7 @@ import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import type { LdapProviderRow } from '$lib/types/auth';
 import { requireAdmin } from '$lib/server/auth/guards';
+import { validateProviderInput } from '$lib/server/auth/provider-validation';
 
 export const GET: RequestHandler = ({ locals }) => {
   const err = requireAdmin(locals);
@@ -23,12 +24,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Invalid request body' }, { status: 400 }); }
+  const validationError = validateProviderInput(body, 'ldap', true);
+  if (validationError) return json({ error: validationError }, { status: 400 });
+  if (body.displayName !== undefined) body.displayName = body.displayName.trim();
+  if (body.serverUrl !== undefined) body.serverUrl = body.serverUrl.trim();
+  if (body.bindDn !== undefined) body.bindDn = body.bindDn.trim();
+  if (body.userSearchBase !== undefined) body.userSearchBase = body.userSearchBase.trim();
   const {
     displayName, serverUrl, bindDn, bindPassword,
     userSearchBase, userSearchFilter, emailAttribute, displayNameAttribute,
     groupSearchBase, groupSearchFilter, adminGroupDn, allowedGroupDns,
     startTls, enabled, autoCreateUsers, syncGroups,
-  } = await request.json();
+  } = body;
 
   if (!displayName || !serverUrl || !bindDn || !bindPassword || !userSearchBase) {
     return json({ error: 'displayName, serverUrl, bindDn, bindPassword, userSearchBase required' }, { status: 400 });
@@ -57,8 +67,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     adminGroupDn || null,
     allowedGroupDns || null,
     startTls ? 1 : 0,
-    enabled !== false ? 1 : 0,
-    autoCreateUsers !== false ? 1 : 0,
+    enabled !== false && enabled !== 0 ? 1 : 0,
+    autoCreateUsers !== false && autoCreateUsers !== 0 ? 1 : 0,
     syncGroups ? 1 : 0,
   );
 

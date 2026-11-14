@@ -76,7 +76,7 @@
   }
 
   function finishRenameCategory() {
-    if (renamingCategory && renameCategoryValue.trim() && renameCategoryValue.trim() !== renamingCategory) {
+    if (!permissionStore.isReadOnly && renamingCategory && renameCategoryValue.trim() && renameCategoryValue.trim() !== renamingCategory) {
       erdStore.renameDbObjectCategory(renamingCategory, renameCategoryValue.trim());
     }
     renamingCategory = null;
@@ -88,7 +88,7 @@
       confirmText: m.action_delete(),
       variant: 'danger',
     });
-    if (ok) erdStore.deleteDbObjectCategory(cat);
+    if (ok && !permissionStore.isReadOnly) erdStore.deleteDbObjectCategory(cat);
   }
 
   function addObject(category: string) {
@@ -105,7 +105,7 @@
       confirmText: m.action_delete(),
       variant: 'danger',
     });
-    if (ok) erdStore.deleteDbObject(objectId);
+    if (ok && !permissionStore.isReadOnly) erdStore.deleteDbObject(objectId);
   }
 
   function selectObject(objectId: string) {

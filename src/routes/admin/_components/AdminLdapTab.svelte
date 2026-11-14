@@ -3,6 +3,7 @@
   import * as m from '$lib/paraglide/messages';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { appPath } from '$lib/utils/paths';
+  import { saveProviderRequest } from '$lib/utils/provider-request';
 
   interface Props {
     providers: LdapProviderRow[];
@@ -79,6 +80,7 @@
 
   async function saveProvider() {
     if (!editingProvider) return;
+    providerError = '';
     const body: Record<string, unknown> = {
       displayName: editForm.displayName,
       serverUrl: editForm.serverUrl,
@@ -87,10 +89,10 @@
       userSearchFilter: editForm.userSearchFilter,
       emailAttribute: editForm.emailAttribute,
       displayNameAttribute: editForm.displayNameAttribute,
-      groupSearchBase: editForm.groupSearchBase || null,
-      groupSearchFilter: editForm.groupSearchFilter || null,
-      adminGroupDn: editForm.adminGroupDn || null,
-      allowedGroupDns: editForm.allowedGroupDns || null,
+      groupSearchBase: editForm.groupSearchBase,
+      groupSearchFilter: editForm.groupSearchFilter,
+      adminGroupDn: editForm.adminGroupDn,
+      allowedGroupDns: editForm.allowedGroupDns,
       startTls: editForm.startTls ? 1 : 0,
       enabled: editForm.enabled ? 1 : 0,
       autoCreateUsers: editForm.autoCreateUsers ? 1 : 0,
@@ -99,16 +101,8 @@
     if (editForm.bindPassword) {
       body.bindPassword = editForm.bindPassword;
     }
-    const res = await fetch(appPath(`/api/admin/ldap-providers/${editingProvider}`), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      providerError = data.error || 'Failed to update';
-      return;
-    }
+    const error = await saveProviderRequest(appPath(`/api/admin/ldap-providers/${editingProvider}`), 'PUT', body);
+    if (error) { providerError = error; return; }
     editingProvider = null;
     providerError = '';
     await onreload();
@@ -123,16 +117,8 @@
   async function createProvider() {
     providerError = '';
     providerSuccess = '';
-    const res = await fetch(appPath('/api/admin/ldap-providers'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newProvider),
-    });
-    if (!res.ok) {
-      const body = await res.json();
-      providerError = body.error || 'Failed';
-      return;
-    }
+    const error = await saveProviderRequest(appPath('/api/admin/ldap-providers'), 'POST', newProvider);
+    if (error) { providerError = error; return; }
     providerSuccess = m.admin_ldap_created({ name: newProvider.displayName });
     newProvider = {
       displayName: '',
@@ -254,7 +240,7 @@
             </div>
             <div class="ldap-form-group">
               <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}
-                <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={editForm.allowedGroupDns} />
+                <textarea rows="3" placeholder={m.admin_ldap_allowed_group_dns_hint()} bind:value={editForm.allowedGroupDns}></textarea>
               </label>
             </div>
           </div>
@@ -387,7 +373,7 @@
         </div>
         <div class="ldap-form-group">
           <label class="ldap-label">{m.admin_ldap_allowed_group_dns()}
-            <input placeholder={m.admin_ldap_allowed_group_dns()} bind:value={newProvider.allowedGroupDns} />
+            <textarea rows="3" placeholder={m.admin_ldap_allowed_group_dns_hint()} bind:value={newProvider.allowedGroupDns}></textarea>
           </label>
         </div>
       </div>
@@ -462,7 +448,8 @@
     color: var(--app-text-secondary);
   }
 
-  .ldap-form input:not([type="checkbox"]) {
+  .ldap-form input:not([type="checkbox"]),
+  .ldap-form textarea {
     padding: 8px 12px;
     background: var(--app-input-bg);
     border: 1px solid var(--app-input-border);
@@ -472,9 +459,14 @@
     width: 100%;
   }
 
-  .ldap-form input:not([type="checkbox"]):focus {
+  .ldap-form input:not([type="checkbox"]):focus,
+  .ldap-form textarea:focus {
     outline: none;
     border-color: var(--app-accent);
+  }
+
+  .ldap-form textarea {
+    resize: vertical;
   }
 
   .ldap-divider {

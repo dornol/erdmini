@@ -3,7 +3,7 @@ import type { ColumnDomain } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
 import type { RegisterFn } from './types';
 import { addDomain, updateDomain, deleteDomain, suggestDomains } from '../schema-ops';
-import { resolveEffectiveDomain } from '$lib/utils/domain-hierarchy';
+import { resolveEffectiveDomain, validateHierarchy } from '$lib/utils/domain-hierarchy';
 import { computeCoverageStats } from '$lib/utils/domain-analysis';
 import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
 
@@ -74,10 +74,10 @@ export const registerDomainTools: RegisterFn = (server, ctx) => {
     'Create a reusable column domain (template). Returns {domainId, name}. Domains define type, constraints, and metadata that propagate to linked columns. Set parentId for domain hierarchy.',
     {
       projectId: z.string().max(256).describe('Project ID'),
-      name: z.string().max(256).describe('Domain name'),
+      name: z.string().trim().min(1).max(256).describe('Domain name'),
       type: z.enum(COLUMN_TYPES as [string, ...string[]]).describe('Column type'),
-      length: z.number().optional().describe('Column length'),
-      scale: z.number().optional().describe('Decimal scale'),
+      length: z.number().int().min(0).max(65535).optional().describe('Column length'),
+      scale: z.number().int().min(0).max(30).optional().describe('Decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL (default: false)'),
       primaryKey: z.boolean().optional().describe('Primary key (default: false)'),
       unique: z.boolean().optional().describe('Unique constraint (default: false)'),
@@ -99,6 +99,9 @@ export const registerDomainTools: RegisterFn = (server, ctx) => {
     async ({ projectId, name, type, ...opts }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (opts.parentId && !(schema.domains ?? []).some(d => d.id === opts.parentId)) {
+        return { content: [{ type: 'text', text: 'Parent domain not found' }], isError: true };
+      }
       const domainFields: Omit<ColumnDomain, 'id'> = {
         name,
         type: type as any,
@@ -137,10 +140,10 @@ export const registerDomainTools: RegisterFn = (server, ctx) => {
     {
       projectId: z.string().max(256).describe('Project ID'),
       domainId: z.string().max(256).describe('Domain ID'),
-      name: z.string().max(256).optional().describe('New domain name'),
+      name: z.string().trim().min(1).max(256).optional().describe('New domain name'),
       type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('New column type'),
-      length: z.number().min(0).max(65535).optional().describe('New length'),
-      scale: z.number().min(0).max(30).optional().describe('New decimal scale'),
+      length: z.number().int().min(0).max(65535).optional().describe('New length'),
+      scale: z.number().int().min(0).max(30).optional().describe('New decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique'),
@@ -164,6 +167,10 @@ export const registerDomainTools: RegisterFn = (server, ctx) => {
       const schema = getSchemaOrFail(projectId);
       if (!(schema.domains ?? []).find(d => d.id === domainId)) {
         return { content: [{ type: 'text', text: `Domain ${domainId} not found` }], isError: true };
+      }
+      const proposedDomains = (schema.domains ?? []).map(d => d.id === domainId && patch.parentId !== undefined ? { ...d, parentId: patch.parentId } : d);
+      if (!validateHierarchy(proposedDomains).valid) {
+        return { content: [{ type: 'text', text: 'Invalid domain hierarchy: missing parent or cycle' }], isError: true };
       }
       const updated = updateDomain(schema, domainId, patch as any);
       mcpAudit('update_domain', projectId, { domainId });

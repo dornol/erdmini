@@ -152,7 +152,7 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
     'create_dictionary',
     'Create a new word dictionary. Requires an admin API key. Returns the created dictionary row.',
     {
-      name: z.string().min(1).max(256).describe('Dictionary name'),
+      name: z.string().trim().min(1).max(256).describe('Dictionary name'),
       description: z.string().max(1000).optional().describe('Optional description'),
       cloneFromDictionaryId: z.string().max(256).optional().describe('Optional source dictionary ID to clone words from'),
     },
@@ -175,7 +175,7 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
     'Update dictionary metadata or set it as the default dictionary. Requires an admin API key.',
     {
       dictionaryId: z.string().max(256).describe('Dictionary ID'),
-      name: z.string().min(1).max(256).optional().describe('New dictionary name'),
+      name: z.string().trim().min(1).max(256).optional().describe('New dictionary name'),
       description: z.string().max(1000).nullable().optional().describe('New description, or null to clear'),
       isDefault: z.boolean().optional().describe('Set this dictionary as the default'),
     },
@@ -238,8 +238,8 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
     'Add a word to a dictionary. Admin API keys create approved words by default; regular API keys create pending suggestions.',
     {
       dictionaryId: z.string().max(256).optional().describe('Dictionary ID, defaults to the site default dictionary'),
-      word: z.string().min(1).max(256).describe('Word or abbreviation'),
-      meaning: z.string().min(1).max(1000).describe('Meaning'),
+      word: z.string().trim().min(1).max(256).describe('Word or abbreviation'),
+      meaning: z.string().trim().min(1).max(1000).describe('Meaning'),
       description: z.string().max(2000).optional().describe('Optional description'),
       category: z.string().max(256).optional().describe('Optional category'),
       status: z.enum(['approved', 'pending', 'rejected']).optional().describe('Admin-only initial status'),
@@ -262,18 +262,23 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
     'Update a dictionary word or approve/reject it. Requires an admin API key.',
     {
       wordId: z.string().max(256).describe('Word row ID'),
-      word: z.string().min(1).max(256).optional().describe('New word'),
-      meaning: z.string().min(1).max(1000).optional().describe('New meaning'),
+      word: z.string().trim().min(1).max(256).optional().describe('New word'),
+      meaning: z.string().trim().min(1).max(1000).optional().describe('New meaning'),
       description: z.string().max(2000).nullable().optional().describe('New description, or null to clear'),
       category: z.string().max(256).nullable().optional().describe('New category, or null to clear'),
       status: z.enum(['approved', 'pending', 'rejected']).optional().describe('New status'),
     },
     async ({ wordId, word, meaning, description, category, status }) => {
       requireAdmin(ctx);
-      if (status) updateWordStatus(ctx.db, wordId, status);
-      if (word !== undefined || meaning !== undefined || description !== undefined || category !== undefined) {
-        updateWord(ctx.db, wordId, { word, meaning, description, category });
+      if (!getWordOwnerAndStatus(ctx, wordId)) {
+        return { content: [{ type: 'text' as const, text: 'Word not found' }], isError: true };
       }
+      ctx.db.transaction(() => {
+        if (status) updateWordStatus(ctx.db, wordId, status);
+        if (word !== undefined || meaning !== undefined || description !== undefined || category !== undefined) {
+          updateWord(ctx.db, wordId, { word, meaning, description, category });
+        }
+      })();
       auditDictionary(ctx, 'update_dictionary_word', { wordId, status });
       return { content: [{ type: 'text' as const, text: 'OK' }] };
     },
@@ -304,8 +309,8 @@ export const registerDictionaryTools: RegisterFn = (server, ctx) => {
       dictionaryId: z.string().max(256).optional().describe('Dictionary ID, defaults to the site default dictionary'),
       status: z.enum(['approved', 'pending', 'rejected']).optional().describe('Imported word status, default approved'),
       words: z.array(z.object({
-        word: z.string().min(1).max(256),
-        meaning: z.string().min(1).max(1000),
+        word: z.string().trim().min(1).max(256),
+        meaning: z.string().trim().min(1).max(1000),
         description: z.string().max(2000).optional(),
         category: z.string().max(256).optional(),
       })).max(MAX_IMPORT_WORDS).describe('Words to import'),

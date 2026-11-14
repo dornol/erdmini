@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { DOMAIN_LENGTH_RANGE, DOMAIN_SCALE_RANGE } from '$lib/utils/domain-dimensions';
   import { erdStore } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { COLUMN_TYPES, DOMAIN_FIELDS, getColumnTypesForDialect } from '$lib/types/erd';
   import type { Column } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import SearchableSelect from './SearchableSelect.svelte';
+  import { confirmColumnDeletion } from './confirm-column-deletion';
 
   interface Props {
     tableId: string;
@@ -25,6 +27,12 @@
     const patch: Partial<Column> = { [field]: value };
     if (col.domainId && DOMAIN_FIELDS.includes(field)) patch.domainId = undefined;
     erdStore.updateColumn(tableId, columnId, patch);
+  }
+
+  function onDimensionInput(field: 'length' | 'scale', event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.validity.valid) return;
+    onChange(field, input.value === '' ? undefined : input.valueAsNumber);
   }
 
   let hasLength = $derived(
@@ -184,7 +192,7 @@
           <button
             class="delete-col-btn"
             title={m.action_delete()}
-            onclick={() => { erdStore.deleteColumn(tableId, columnId); onclose(); }}
+            onclick={async () => { if (await confirmColumnDeletion(tableId, columnId)) onclose(); }}
           >🗑</button>
         {/if}
         <button class="close-btn" onclick={onclose} aria-label={m.action_close()}>✕</button>
@@ -223,9 +231,9 @@
                 class="field-input"
                 type="number"
                 value={col.length ?? ''}
-                oninput={(e) => onChange('length', Number((e.target as HTMLInputElement).value) || undefined)}
-                min="1"
-                max="65535"
+                oninput={(e) => onDimensionInput('length', e)}
+                min={DOMAIN_LENGTH_RANGE[0]}
+                max={DOMAIN_LENGTH_RANGE[1]}
               />
             </div>
           {/if}
@@ -237,9 +245,9 @@
                 class="field-input"
                 type="number"
                 value={col.scale ?? ''}
-                oninput={(e) => onChange('scale', Number((e.target as HTMLInputElement).value) || undefined)}
-                min="0"
-                max="30"
+                oninput={(e) => onDimensionInput('scale', e)}
+                min={DOMAIN_SCALE_RANGE[0]}
+                max={DOMAIN_SCALE_RANGE[1]}
               />
             </div>
           {/if}

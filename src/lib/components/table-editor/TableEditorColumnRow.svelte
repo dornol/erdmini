@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { erdStore } from '$lib/store/erd.svelte';
-  import { dialogStore } from '$lib/store/dialog.svelte';
+  import { confirmColumnDeletion } from '../confirm-column-deletion';
   import { permissionStore } from '$lib/store/permission.svelte';
   import type { Column, ForeignKey } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
@@ -69,22 +68,7 @@
     title={m.action_delete()}
     onclick={async (e) => {
       e.stopPropagation();
-      // Count FKs in this table that use this column
-      let fkCount = foreignKeys.filter((fk) => fk.columnIds.includes(col.id)).length;
-      // Count FKs in other tables that reference this column
-      fkCount += erdStore.schema.tables
-        .filter((t) => t.id !== tableId)
-        .reduce((sum, t) => sum + t.foreignKeys.filter(
-          (fk) => fk.referencedTableId === tableId && fk.referencedColumnIds.includes(col.id)
-        ).length, 0);
-      if (fkCount > 0) {
-        const ok = await dialogStore.confirm(
-          m.column_delete_fk_confirm({ count: fkCount }),
-          { title: m.action_delete(), confirmText: m.action_delete(), variant: 'danger' }
-        );
-        if (!ok) return;
-      }
-      erdStore.deleteColumn(tableId, col.id);
+      await confirmColumnDeletion(tableId, col.id);
     }}
   >✕</button>
   {/if}

@@ -107,6 +107,16 @@ describe('syncAdminRole', () => {
     mockLogAudit.mockClear();
   });
 
+  it('matches a whole LDAP admin DN without splitting its commas and audits LDAP removal', () => {
+    const dn = 'cn=admins,ou=groups,dc=example,dc=test';
+    mockGetReturn = { role: 'user' };
+    expect(syncAdminRole(mockDb, 'user1', [dn], [dn], 'Directory', 'ldap')).toBe('promoted');
+    expect(mockLogAudit.mock.calls[0][0].detail.reason).toBe('ldap_admin_group');
+    mockGetReturn = { role: 'admin' };
+    expect(syncAdminRole(mockDb, 'user1', [], [dn], 'Directory', 'ldap')).toBe('demoted');
+    expect(mockLogAudit.mock.calls[1][0].detail.reason).toBe('ldap_admin_group_removed');
+  });
+
   it('promotes user to admin when in admin group', () => {
     mockGetReturn = { role: 'user' };
 
@@ -230,6 +240,24 @@ describe('syncUserGroups', () => {
     mockLogAudit.mockClear();
   });
 
+  it.each([
+    ['manual', null],
+    ['oidc', 'different-provider'],
+    ['ldap', 'prov1'],
+  ])('does not acquire a colliding %s group from provider %s', (source, providerId) => {
+    mockGetReturns = [{ id: 'foreign-group', source, source_provider_id: providerId }, undefined];
+    syncUserGroups(mockDb, 'user1', ['collision', 'own-group'], 'oidc', 'prov1');
+    const inserts = getCallsByPattern('INSERT INTO groups', 'run');
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].args[1]).toBe('own-group');
+    const memberships = getCallsByPattern('INSERT OR IGNORE INTO group_members', 'run');
+    expect(memberships).toHaveLength(1);
+    expect(memberships[0].args[1]).not.toBe('foreign-group');
+    expect(mockLogAudit).toHaveBeenCalledWith(expect.objectContaining({
+      detail: expect.objectContaining({ current: ['own-group'], added: ['own-group'] }),
+    }));
+  });
+
   // ─── Group creation ──────────────────────────────────────────────
 
   it('creates new groups and adds memberships', () => {
@@ -248,7 +276,7 @@ describe('syncUserGroups', () => {
 
   it('reuses existing groups without creating duplicates', () => {
     mockGetReturns = [
-      { id: 'existing-group-id' },
+      { id: 'existing-group-id', source: 'oidc', source_provider_id: 'provider1' },
       undefined,
     ];
     mockAllReturn = [];
@@ -302,7 +330,7 @@ describe('syncUserGroups', () => {
   // ─── Membership add/remove ──────────────────────────────────────
 
   it('removes memberships for groups no longer in external list', () => {
-    mockGetReturns = [{ id: 'group1' }];
+    mockGetReturns = [{ id: 'group1', source: 'oidc', source_provider_id: 'provider1' }];
     mockAllReturn = [
       { group_id: 'group1' },
       { group_id: 'old-group-id' },
@@ -317,7 +345,7 @@ describe('syncUserGroups', () => {
   });
 
   it('does not re-add existing memberships', () => {
-    mockGetReturns = [{ id: 'group1' }];
+    mockGetReturns = [{ id: 'group1', source: 'oidc', source_provider_id: 'prov1' }];
     mockAllReturn = [{ group_id: 'group1' }];
 
     syncUserGroups(mockDb, 'user1', ['devs'], 'oidc', 'prov1');
@@ -345,8 +373,8 @@ describe('syncUserGroups', () => {
   it('correctly handles simultaneous add, keep, and remove', () => {
     // External: [A, C] → A: keep, B: remove, C: add
     mockGetReturns = [
-      { id: 'groupA' }, // A exists
-      { id: 'groupC' }, // C exists
+      { id: 'groupA', source: 'oidc', source_provider_id: 'prov1' }, // A exists
+      { id: 'groupC', source: 'oidc', source_provider_id: 'prov1' }, // C exists
     ];
     mockAllReturn = [
       { group_id: 'groupA' }, // currently member of A
@@ -384,7 +412,7 @@ describe('syncUserGroups', () => {
   // ─── Manual group isolation ─────────────────────────────────────
 
   it('only queries memberships from the same source and provider', () => {
-    mockGetReturns = [{ id: 'group1' }];
+    mockGetReturns = [{ id: 'group1', source: 'oidc', source_provider_id: 'prov1' }];
     mockAllReturn = [];
 
     syncUserGroups(mockDb, 'user1', ['devs'], 'oidc', 'prov1');
@@ -515,7 +543,7 @@ describe('syncUserGroups', () => {
   });
 
   it('no DB writes when external groups match current memberships exactly', () => {
-    mockGetReturns = [{ id: 'g1' }, { id: 'g2' }];
+    mockGetReturns = [{ id: 'g1', source: 'oidc', source_provider_id: 'prov1' }, { id: 'g2', source: 'oidc', source_provider_id: 'prov1' }];
     mockAllReturn = [{ group_id: 'g1' }, { group_id: 'g2' }];
 
     syncUserGroups(mockDb, 'user1', ['A', 'B'], 'oidc', 'prov1');
@@ -548,7 +576,7 @@ describe('syncUserGroups', () => {
   });
 
   it('reports added group names in audit', () => {
-    mockGetReturns = [{ id: 'g1' }, { id: 'g2' }];
+    mockGetReturns = [{ id: 'g1', source: 'oidc', source_provider_id: 'prov1' }, { id: 'g2', source: 'oidc', source_provider_id: 'prov1' }];
     mockAllReturn = [{ group_id: 'g1' }]; // already in g1
 
     syncUserGroups(mockDb, 'user1', ['A', 'B'], 'oidc', 'prov1');
@@ -559,7 +587,7 @@ describe('syncUserGroups', () => {
   });
 
   it('reports removed group names in audit', () => {
-    mockGetReturns = [{ id: 'g1' }];
+    mockGetReturns = [{ id: 'g1', source: 'oidc', source_provider_id: 'prov1' }];
     // Mock: when removing, lookup group name via SELECT name FROM groups
     // The mock returns { name: 'OldGroup' } for group name lookups
     mockAllReturn = [{ group_id: 'g1' }, { group_id: 'g2' }, { group_id: 'g3' }];
@@ -573,7 +601,7 @@ describe('syncUserGroups', () => {
   });
 
   it('reports both added and removed names in audit for mixed changes', () => {
-    mockGetReturns = [{ id: 'g1' }, { id: 'g3' }];
+    mockGetReturns = [{ id: 'g1', source: 'oidc', source_provider_id: 'prov1' }, { id: 'g3', source: 'oidc', source_provider_id: 'prov1' }];
     mockAllReturn = [{ group_id: 'g1' }, { group_id: 'g2' }]; // keep g1, remove g2, add g3
 
     syncUserGroups(mockDb, 'user1', ['A', 'C'], 'oidc', 'prov1');
@@ -594,7 +622,7 @@ describe('syncUserGroups', () => {
   });
 
   it('does not call logAudit when no changes are needed', () => {
-    mockGetReturns = [{ id: 'g1' }, { id: 'g2' }];
+    mockGetReturns = [{ id: 'g1', source: 'oidc', source_provider_id: 'prov1' }, { id: 'g2', source: 'oidc', source_provider_id: 'prov1' }];
     mockAllReturn = [{ group_id: 'g1' }, { group_id: 'g2' }];
 
     syncUserGroups(mockDb, 'user1', ['A', 'B'], 'oidc', 'prov1');
@@ -619,7 +647,7 @@ describe('syncUserGroups', () => {
     syncUserGroups(mockDb, 'user1', ['My Group'], 'oidc', 'prov1');
 
     const lookupCalls = calls.filter(c =>
-      c.method === 'get' && c.sql.includes('SELECT id FROM groups WHERE name = ?')
+      c.method === 'get' && c.sql.includes('SELECT id, source, source_provider_id FROM groups WHERE name = ?')
     );
     expect(lookupCalls.length).toBe(1);
     expect(lookupCalls[0].args[0]).toBe('My Group');

@@ -66,6 +66,10 @@
 
     const table = erdStore.schema.tables.find((t) => t.id === tableId);
     if (table) {
+      if (canvasState.activeSchema !== '(all)' && canvasState.activeSchema !== (table.schema ?? '')) {
+        canvasState.activeSchema = table.schema ?? '(all)';
+      }
+
       const vp = document.querySelector('.canvas-viewport')?.getBoundingClientRect();
       const cx = table.position.x + 110;
       const cy = table.position.y + 50;

@@ -38,7 +38,7 @@
 
   let adminCount = $derived(users.filter(u => u.role === 'admin').length);
   let pendingCount = $derived(users.filter(u => u.status === 'pending').length);
-  let filteredUsers = $derived(showPendingOnly ? users.filter(u => u.status === 'pending') : users);
+  let filteredUsers = $derived(showPendingOnly && pendingCount > 0 ? users.filter(u => u.status === 'pending') : users);
 
   function isLastAdmin(user: UserInfo): boolean {
     return user.role === 'admin' && adminCount <= 1;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { parseDomainDimension, DOMAIN_LENGTH_RANGE, DOMAIN_SCALE_RANGE } from '$lib/utils/domain-dimensions';
   import { erdStore } from '$lib/store/erd.svelte';
   import { dialogStore } from '$lib/store/dialog.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
@@ -23,12 +24,12 @@
   let formName = $state('');
   let formGroup = $state('');
   let formType = $state<ColumnType>('VARCHAR');
-  let formLength = $state<number | undefined>(255);
+  let formLength = $state<number | null | undefined>(255);
   let formNullable = $state(false);
   let formPrimaryKey = $state(false);
   let formUnique = $state(false);
   let formAutoIncrement = $state(false);
-  let formScale = $state<number | undefined>(undefined);
+  let formScale = $state<number | null | undefined>(undefined);
   let formCheck = $state('');
   let formEnumValues = $state('');
   let formDefaultValue = $state('');
@@ -45,9 +46,13 @@
   let formTags = $state('');
 
   let hasLength = $derived(
-    formType === 'VARCHAR' || formType === 'CHAR' || formType === 'DECIMAL',
+    ['VARCHAR', 'CHAR', 'DECIMAL', 'NUMERIC', 'NVARCHAR', 'NCHAR', 'BINARY', 'VARBINARY', 'TIME', 'DATETIMEOFFSET'].includes(formType),
   );
-  let hasScale = $derived(formType === 'DECIMAL');
+  let hasScale = $derived(formType === 'DECIMAL' || formType === 'NUMERIC');
+  let validDimensions = $derived(
+    (!hasLength || formLength == null || parseDomainDimension(formLength, DOMAIN_LENGTH_RANGE) === formLength)
+    && (!hasScale || formScale == null || parseDomainDimension(formScale, DOMAIN_SCALE_RANGE) === formScale)
+  );
   let hasEnum = $derived(formType === 'ENUM');
 
   export function resetForm() {
@@ -109,13 +114,13 @@
   }
 
   export async function saveEdit() {
-    if (!formName.trim() || permissionStore.isReadOnly) return;
+    if (!formName.trim() || !validDimensions || permissionStore.isReadOnly) return false;
     const fields = {
       name: formName.trim(),
       group: formGroup.trim() || undefined,
       type: formType,
-      length: hasLength ? formLength : undefined,
-      scale: hasScale ? formScale : undefined,
+      length: hasLength ? formLength ?? undefined : undefined,
+      scale: hasScale ? formScale ?? undefined : undefined,
       check: formCheck.trim() || undefined,
       enumValues: hasEnum ? parseEnumValues(formEnumValues) : undefined,
       nullable: formNullable,
@@ -149,14 +154,16 @@
           title: m.domain_impact_title(),
           confirmText: m.domain_impact_confirm(),
         });
-        if (!ok) return;
+        if (!ok) return false;
       }
+      if (permissionStore.isReadOnly) return false;
       erdStore.updateDomain(editingId, fields);
     } else if (addingNew) {
       erdStore.addDomain(fields);
     }
     resetForm();
     onreset();
+    return true;
   }
 
   function cancelEdit() {
@@ -211,13 +218,13 @@
     {#if hasLength}
       <label class="edit-field edit-field-sm">
         <span class="edit-label">{m.column_length()}</span>
-        <input class="edit-input edit-num" type="number" bind:value={formLength} min="1" max="65535" />
+        <input class="edit-input edit-num" type="number" bind:value={formLength} min={DOMAIN_LENGTH_RANGE[0]} max={DOMAIN_LENGTH_RANGE[1]} />
       </label>
     {/if}
     {#if hasScale}
       <label class="edit-field edit-field-sm">
         <span class="edit-label">Scale</span>
-        <input class="edit-input edit-num" type="number" bind:value={formScale} min="0" max="30" />
+        <input class="edit-input edit-num" type="number" bind:value={formScale} min={DOMAIN_SCALE_RANGE[0]} max={DOMAIN_SCALE_RANGE[1]} />
       </label>
     {/if}
   </div>
@@ -294,7 +301,7 @@
     </label>
     <div class="edit-card-actions">
       <button class="edit-btn-cancel" onclick={cancelEdit}>{m.action_cancel()}</button>
-      <button class="edit-btn-save" onclick={saveEdit} disabled={!formName.trim()}>{m.action_save()}</button>
+      <button class="edit-btn-save" onclick={saveEdit} disabled={!formName.trim() || !validDimensions}>{m.action_save()}</button>
     </div>
   </div>
 </div>

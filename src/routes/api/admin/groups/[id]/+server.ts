@@ -8,13 +8,23 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
-  const { name, description } = await request.json();
+  let body: unknown;
+  try { body = await request.json(); } catch {
+    return json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return json({ error: 'Invalid group data' }, { status: 400 });
+  }
+  const { name, description } = body as Record<string, unknown>;
+  if (description != null && typeof description !== 'string') {
+    return json({ error: 'Group description must be a string or null' }, { status: 400 });
+  }
 
   const group = db.prepare('SELECT id FROM groups WHERE id = ?').get(params.id);
   if (!group) return json({ error: 'Group not found' }, { status: 404 });
 
   if (name !== undefined) {
-    if (!name?.trim()) return json({ error: 'Group name required' }, { status: 400 });
+    if (typeof name !== 'string' || !name.trim()) return json({ error: 'Group name required' }, { status: 400 });
     const dup = db.prepare('SELECT id FROM groups WHERE name = ? AND id != ?').get(name.trim(), params.id);
     if (dup) return json({ error: 'Group name already exists' }, { status: 409 });
   }

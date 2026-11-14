@@ -145,7 +145,7 @@
       erdStore,
       canvasState,
       dialogStore,
-      isReadOnly: permissionStore.isReadOnly,
+      get isReadOnly() { return permissionStore.isReadOnly; },
       fullscreenMode: fullscreen.mode,
       commandPaletteOpen,
       setFullscreen: (v) => { if (v) fullscreen.enter(); else fullscreen.exit(); },

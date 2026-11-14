@@ -1,3 +1,4 @@
+import { hasForeignKeyReferences } from '$lib/collab/constraint-references';
 import { z } from 'zod';
 import type { ReferentialAction } from '$lib/types/erd';
 import type { RegisterFn } from './types';
@@ -37,6 +38,7 @@ export const registerFkTools: RegisterFn = (server, ctx) => {
           }
         }
       }
+      if (!hasForeignKeyReferences(schema.tables, tableId, { id: '', columnIds, referencedTableId, referencedColumnIds, onDelete: onDelete ?? 'RESTRICT', onUpdate: onUpdate ?? 'RESTRICT' })) return { content: [{ type: 'text', text: 'Invalid foreign key column mapping' }], isError: true };
       const result = addForeignKey(schema, tableId, {
         columnIds,
         referencedTableId,
@@ -72,6 +74,9 @@ export const registerFkTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tableId, fkId, ...patch }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      const existing = schema.tables.find(t => t.id === tableId)?.foreignKeys.find(fk => fk.id === fkId);
+      const mapping = existing && { ...existing, columnIds: patch.columnIds ?? existing.columnIds, referencedTableId: patch.referencedTableId ?? existing.referencedTableId, referencedColumnIds: patch.referencedColumnIds ?? existing.referencedColumnIds, onDelete: patch.onDelete ?? existing.onDelete, onUpdate: patch.onUpdate ?? existing.onUpdate };
+      if (!hasForeignKeyReferences(schema.tables, tableId, mapping)) return { content: [{ type: 'text', text: 'Invalid foreign key or column mapping' }], isError: true };
       const result = updateForeignKey(schema, tableId, fkId, patch as Parameters<typeof updateForeignKey>[3]);
       if (!result) {
         return { content: [{ type: 'text', text: 'Table or foreign key not found' }], isError: true };

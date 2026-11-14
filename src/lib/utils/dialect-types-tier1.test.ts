@@ -778,10 +778,9 @@ describe('Cross-dialect DDL import — tier-1 types', () => {
 describe('DATETIMEOFFSET precision boundary', () => {
   it('length 0 exports as DATETIMEOFFSET(0)', () => {
     const col = makeCol({ type: 'DATETIMEOFFSET', length: 0 });
-    // length=0 is falsy in JS — it should fall through to default (no precision)
-    // Document the actual behavior
+    // Explicit zero precision is distinct from an omitted precision.
     const result = columnTypeSql(col, 'mssql', true);
-    expect(result).toBe('DATETIMEOFFSET'); // falsy length drops to default
+    expect(result).toBe('DATETIMEOFFSET(0)');
   });
 
   it('length 3 exports as DATETIMEOFFSET(3)', () => {

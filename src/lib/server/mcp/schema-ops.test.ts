@@ -1330,3 +1330,26 @@ describe('addColumn — check & domainId', () => {
     expect(col.domainId).toBeUndefined();
   });
 });
+
+describe('MCP mutation integrity regressions', () => {
+  it('single-table deletion detaches only its own memos, preserves world coordinates and cleans incoming references without mutating input', () => {
+    const schema = emptySchema();
+    schema.tables = [makeTable('parent', { columns: [makeCol('id', 'id')] }), makeTable('child', { columns: [makeCol('parent_id', 'parent_id')], foreignKeys: [{ id: 'link', columnIds: ['parent_id'], referencedTableId: 'parent', referencedColumnIds: ['id'], onDelete: 'CASCADE', onUpdate: 'RESTRICT' }] })];
+    schema.memos = [{ id: 'attached', content: 'Retain metadata', position: { x: 75, y: 125 }, width: 180, height: 100, attachedTableId: 'parent', color: 'blue' }, { id: 'other', content: 'Keep other attachment', position: { x: 300, y: 400 }, width: 180, height: 100, attachedTableId: 'child' }];
+    const before = structuredClone(schema), result = deleteTable(schema, 'parent');
+    expect(result.tables).toEqual([{ ...before.tables[1], foreignKeys: [] }]);
+    expect(result.memos[0]).toEqual({ ...before.memos[0], attachedTableId: undefined });
+    expect(result.memos[1]).toEqual(before.memos[1]);
+    expect(schema).toEqual(before);
+  });
+  it('empty domain linkage clears the field while PK normalization preserves metadata and the caller patch', () => {
+    const schema = emptySchema();
+    schema.tables = [makeTable('t', { columns: [makeCol('c', 'label', { type: 'VARCHAR', length: 40, defaultValue: "'retained'", domainId: 'domain', comment: 'Keep metadata' }), makeCol('stable', 'stable')] })];
+    const before = structuredClone(schema), patch = { domainId: '', primaryKey: true, nullable: true };
+    const result = updateColumn(schema, 't', 'c', patch);
+    expect(result.tables[0].columns[0]).toEqual({ ...before.tables[0].columns[0], domainId: undefined, primaryKey: true, nullable: false });
+    expect(result.tables[0].columns[1]).toEqual(before.tables[0].columns[1]);
+    expect(patch).toEqual({ domainId: '', primaryKey: true, nullable: true });
+    expect(schema).toEqual(before);
+  });
+});

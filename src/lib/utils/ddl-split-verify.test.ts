@@ -216,8 +216,8 @@ describe('cleanMSSQLSyntax', () => {
   it('converts smalldatetime to datetime', () => {
     expect(cleanMSSQLSyntax('smalldatetime').trim()).toBe('datetime');
   });
-  it('converts time(7) to time', () => {
-    expect(cleanMSSQLSyntax('time(7)').trim()).toBe('time');
+  it('retains time(7) precision', () => {
+    expect(cleanMSSQLSyntax('time(7)').trim()).toBe('time(7)');
   });
   it('converts hierarchyid to varchar(900)', () => {
     expect(cleanMSSQLSyntax('hierarchyid').trim()).toBe('varchar(900)');
@@ -623,8 +623,8 @@ describe('cleanOracleSyntax', () => {
   it('converts BINARY_FLOAT → FLOAT', () => {
     expect(cleanOracleSyntax('BINARY_FLOAT')).toBe('FLOAT');
   });
-  it('converts RAW(16) → TEXT', () => {
-    expect(cleanOracleSyntax('RAW(16)')).toBe('TEXT');
+  it('preserves RAW(16) for the binary type adapter', () => {
+    expect(cleanOracleSyntax('RAW(16)')).toBe('RAW(16)');
   });
 
   // --- Oracle keyword stripping ---

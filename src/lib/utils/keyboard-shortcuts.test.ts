@@ -389,3 +389,32 @@ describe('handleKeydown', () => {
     expect(ctx.erdStore.pasteTablesFromClipboard).not.toHaveBeenCalled();
   });
 });
+
+describe('permission changes during asynchronous delete confirmation', () => {
+  for (const selection of ['table', 'tables', 'memo', 'memos', 'mixed'] as const) {
+    it(`does not mutate ${selection} after editing permission is revoked while confirmation is pending`, async () => {
+      const ctx = makeCtx();
+      ctx.erdStore.schema.tables = [{ id: 't', name: 'Table', columns: [], foreignKeys: [], uniqueKeys: [], indexes: [], position: { x: 0, y: 0 } }];
+      if (selection === 'table' || selection === 'tables' || selection === 'mixed') ctx.erdStore.selectedTableIds = new Set(selection === 'tables' ? ['t', 'other'] : ['t']);
+      if (selection === 'memo' || selection === 'memos' || selection === 'mixed') ctx.erdStore.selectedMemoIds = new Set(selection === 'memos' ? ['m', 'other'] : ['m']);
+      let resolve!: (result: boolean) => void;
+      vi.mocked(ctx.dialogStore.confirm).mockReturnValueOnce(new Promise<boolean>(done => { resolve = done; }));
+      const pending = handleKeydown(keyEvent('Delete'), ctx);
+      expect(ctx.dialogStore.confirm).toHaveBeenCalledTimes(1);
+      ctx.isReadOnly = true; resolve(true); await pending;
+      for (const name of ['deleteTable', 'deleteTables', 'deleteMemo', 'deleteMemos'] as const) expect(ctx.erdStore[name]).not.toHaveBeenCalled();
+      expect(ctx.dialogStore.confirm).toHaveBeenCalledTimes(1);
+    });
+  }
+  it('keeps the authorized table deletion but rejects a pending second mixed-selection memo deletion', async () => {
+    const ctx = makeCtx(); ctx.erdStore.selectedTableIds = new Set(['t']); ctx.erdStore.selectedMemoIds = new Set(['m']);
+    let resolve!: (result: boolean) => void;
+    vi.mocked(ctx.dialogStore.confirm).mockResolvedValueOnce(true).mockReturnValueOnce(new Promise<boolean>(done => { resolve = done; }));
+    const pending = handleKeydown(keyEvent('Delete'), ctx); await Promise.resolve();
+    expect(ctx.erdStore.deleteTables).toHaveBeenCalledWith(['t']);
+    expect(ctx.dialogStore.confirm).toHaveBeenCalledTimes(2);
+    ctx.isReadOnly = true; resolve(true); await pending;
+    expect(ctx.erdStore.deleteMemos).not.toHaveBeenCalled();
+    expect(ctx.erdStore.deleteTables).toHaveBeenCalledTimes(1);
+  });
+});

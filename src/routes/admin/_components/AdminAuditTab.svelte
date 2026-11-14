@@ -32,7 +32,10 @@
     loadAuditStats();
   });
 
+  let auditRequestId = 0;
+
   async function loadAuditLogs(reset = true) {
+    const requestId = ++auditRequestId;
     auditLoading = true;
     if (reset) auditLogs = [];
     const params = new URLSearchParams();
@@ -43,6 +46,7 @@
     const res = await fetch(appPath(`/api/admin/audit-logs?${params}`));
     if (res.ok) {
       const data = await res.json();
+      if (requestId !== auditRequestId) return;
       if (reset) {
         auditLogs = data.logs;
       } else {
@@ -50,7 +54,7 @@
       }
       auditTotal = data.total;
     }
-    auditLoading = false;
+    if (requestId === auditRequestId) auditLoading = false;
   }
 
   async function loadAuditStats() {

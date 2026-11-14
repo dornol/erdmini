@@ -140,14 +140,16 @@ export async function handleKeydown(e: KeyboardEvent, ctx: KeyboardContext) {
         confirmText: m.action_delete(),
         variant: 'danger',
       });
-      if (ok) ctx.erdStore.deleteTable(tableIds[0]);
+      if (!ok || ctx.isReadOnly) return;
+      ctx.erdStore.deleteTable(tableIds[0]);
     } else if (tableIds.length > 0) {
       const ok = await ctx.dialogStore.confirm(m.dialog_bulk_delete_confirm({ count: tableIds.length }), {
         title: m.dialog_delete_table_title(),
         confirmText: m.action_delete(),
         variant: 'danger',
       });
-      if (ok) ctx.erdStore.deleteTables(tableIds);
+      if (!ok || ctx.isReadOnly) return;
+      ctx.erdStore.deleteTables(tableIds);
     }
 
     if (memoIds.length === 1 && tableIds.length === 0) {
@@ -156,14 +158,16 @@ export async function handleKeydown(e: KeyboardEvent, ctx: KeyboardContext) {
         confirmText: m.action_delete(),
         variant: 'danger',
       });
-      if (ok) ctx.erdStore.deleteMemo(memoIds[0]);
+      if (!ok || ctx.isReadOnly) return;
+      ctx.erdStore.deleteMemo(memoIds[0]);
     } else if (memoIds.length > 0) {
       const ok = await ctx.dialogStore.confirm(m.dialog_delete_memos_confirm({ count: memoIds.length }), {
         title: m.action_delete(),
         confirmText: m.action_delete(),
         variant: 'danger',
       });
-      if (ok) ctx.erdStore.deleteMemos(memoIds);
+      if (!ok || ctx.isReadOnly) return;
+      ctx.erdStore.deleteMemos(memoIds);
     }
   }
 

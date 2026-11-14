@@ -5,6 +5,7 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { memoDragState } from '$lib/store/memo-drag.svelte';
   import { hasDragExceededThreshold } from '$lib/utils/memo-expand';
+  import { now } from '$lib/utils/common';
   import type { Memo } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
 
@@ -109,7 +110,7 @@
       const dy = (e.clientY - resizeStart.mouseY) / canvasState.scale;
       const newW = Math.max(120, resizeStart.width + dx);
       const newH = Math.max(80, resizeStart.height + dy);
-      erdStore.updateMemo(memo.id, { width: Math.round(newW), height: Math.round(newH) });
+      erdStore.resizeMemo(memo.id, Math.round(newW), Math.round(newH));
       return;
     }
     if (!isDragging) return;
@@ -118,7 +119,7 @@
     if (!hasDragged && hasDragExceededThreshold(e.clientX - dragStart.mouseX, e.clientY - dragStart.mouseY)) {
       hasDragged = true;
     }
-    if (groupDragStarts && groupDragStarts.size > 1) {
+    if (groupDragStarts) {
       const moves = [...groupDragStarts].map(([id, start]) => ({ id, x: start.x + dx, y: start.y + dy }));
       erdStore.moveMemos(moves);
     } else {
@@ -131,6 +132,19 @@
   }
 
   function onMouseUp() {
+    if (isResizing && (memo.width !== resizeStart.width || memo.height !== resizeStart.height)) {
+      erdStore.schema.updatedAt = now();
+    }
+
+    if (isDragging) {
+      const moved = groupDragStarts
+        ? [...groupDragStarts].some(([id, start]) => {
+            const current = erdStore.schema.memos.find((item) => item.id === id);
+            return current && (current.position.x !== start.x || current.position.y !== start.y);
+          })
+        : memo.position.x !== dragStart.memoX || memo.position.y !== dragStart.memoY;
+      if (moved) erdStore.schema.updatedAt = now();
+    }
     if (isSingleDrag && hasDragged && !permissionStore.isReadOnly) {
       const hoverTableId = memoDragState.hoverTableId;
       if (hoverTableId && hoverTableId !== memo.attachedTableId) {
@@ -166,7 +180,8 @@
   }
 
   function commitContent() {
-    if (editContent !== memo.content) {
+    if (!isEditing) return;
+    if (editContent !== memo.content && !permissionStore.isReadOnly && !memo.locked) {
       erdStore.updateMemo(memo.id, { content: editContent });
     }
     isEditing = false;
@@ -188,7 +203,7 @@
       confirmText: m.action_delete(),
       variant: 'danger',
     });
-    if (ok) erdStore.deleteMemo(memo.id);
+    if (ok && !permissionStore.isReadOnly) erdStore.deleteMemo(memo.id);
   }
 
   function onColorClick(e: MouseEvent, color: string) {
@@ -260,6 +275,7 @@
     {#if isEditing}
       <textarea
         class="memo-textarea"
+        readonly={permissionStore.isReadOnly || memo.locked}
         bind:this={textareaEl}
         bind:value={editContent}
         onblur={commitContent}

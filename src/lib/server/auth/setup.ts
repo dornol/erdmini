@@ -49,7 +49,7 @@ export async function setupAdmin(db: Database.Database): Promise<void> {
 
   if (singleton) {
     db.prepare(
-      "UPDATE project_index SET user_id = ? WHERE id = 'singleton'"
-    ).run(adminId);
+      "UPDATE project_index SET id = ?, user_id = ? WHERE id = 'singleton'"
+    ).run(`user_${adminId}`, adminId);
   }
 }

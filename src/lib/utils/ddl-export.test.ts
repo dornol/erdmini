@@ -721,10 +721,10 @@ describe('exportDDL — SQLite', () => {
       }),
     ]);
     const ddl = exportDDL(schema, 'sqlite');
-    expect(ddl).toContain('a INTEGER');
-    expect(ddl).toContain('b INTEGER');
-    expect(ddl).toContain('c INTEGER');
-    expect(ddl).toContain('d INTEGER');
+    expect(ddl).toContain('"a" INTEGER');
+    expect(ddl).toContain('"b" INTEGER');
+    expect(ddl).toContain('"c" INTEGER');
+    expect(ddl).toContain('"d" INTEGER');
   });
 
   it('maps VARCHAR/CHAR/TEXT/JSON/UUID/ENUM/DATE/DATETIME/TIMESTAMP to TEXT', () => {
@@ -773,11 +773,11 @@ describe('exportDDL — SQLite', () => {
     expect(ddl).not.toContain('ENGINE');
   });
 
-  it('defaults to no quoting', () => {
+  it('defaults to double quoting', () => {
     const ddl = exportDDL(usersOrdersSchema(), 'sqlite');
-    expect(ddl).toContain('CREATE TABLE users');
+    expect(ddl).toContain('CREATE TABLE "users"');
     expect(ddl).not.toContain('`users`');
-    expect(ddl).not.toContain('"users"');
+    expect(ddl).not.toContain('CREATE TABLE users');
   });
 
   it('skips CREATE SCHEMA even when tables have schema', () => {
@@ -790,7 +790,7 @@ describe('exportDDL — SQLite', () => {
     const ddl = exportDDL(schema, 'sqlite');
     expect(ddl).not.toContain('CREATE SCHEMA');
     // Table name should NOT have schema prefix
-    expect(ddl).toContain('CREATE TABLE test');
+    expect(ddl).toContain('CREATE TABLE "test"');
     expect(ddl).not.toContain('myschema');
   });
 

@@ -25,6 +25,7 @@ export const registerMemoTools: RegisterFn = (server, ctx) => {
         content: m.content.length > 100 ? m.content.slice(0, 100) + '...' : m.content,
         color: m.color ?? 'yellow',
         locked: m.locked ?? false,
+        attachedTableId: m.attachedTableId ?? null,
         position: m.position,
         width: m.width,
         height: m.height,
@@ -118,6 +119,7 @@ export const registerMemoTools: RegisterFn = (server, ctx) => {
     async ({ projectId, memoId, tableId }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (!(schema.memos ?? []).some(m => m.id === memoId) || !schema.tables.some(t => t.id === tableId)) return { content: [{ type: 'text', text: 'Memo or table not found' }], isError: true };
       const updated = attachMemo(schema, memoId, tableId);
       mcpAudit('attach_memo', projectId, { memoId, tableId });
       saveAndNotify(projectId, updated);
@@ -135,6 +137,7 @@ export const registerMemoTools: RegisterFn = (server, ctx) => {
     async ({ projectId, memoId }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (!(schema.memos ?? []).some(m => m.id === memoId)) return { content: [{ type: 'text', text: 'Memo not found' }], isError: true };
       const updated = detachMemo(schema, memoId);
       mcpAudit('detach_memo', projectId, { memoId });
       saveAndNotify(projectId, updated);

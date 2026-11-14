@@ -4,6 +4,9 @@ import type Database from 'better-sqlite3';
 import type { OIDCProviderRow, OIDCStateRow } from '$lib/types/auth';
 import { getDefaultPermissions } from '$lib/server/site-settings';
 
+export const OIDC_STATE_COOKIE = 'erdmini_oidc_state';
+export const OIDC_STATE_MAX_AGE = 10 * 60;
+
 // Cache discovered configs
 const configCache = new Map<string, client.Configuration>();
 
@@ -16,6 +19,13 @@ async function getConfig(provider: OIDCProviderRow): Promise<client.Configuratio
     provider.client_id,
     provider.client_secret,
   );
+  const metadata = config.serverMetadata();
+  for (const field of ['authorization_endpoint', 'token_endpoint', 'jwks_uri'] as const) {
+    if (typeof metadata[field] !== 'string' || !metadata[field]) {
+      throw new Error(`OIDC discovery is missing required ${field}`);
+    }
+  }
+  client.enableNonRepudiationChecks(config);
   configCache.set(provider.id, config);
   return config;
 }
@@ -37,7 +47,7 @@ export async function buildAuthorizationUrl(
   const codeVerifier = client.randomPKCECodeVerifier();
   const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
   const state = randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
+  const expiresAt = new Date(Date.now() + OIDC_STATE_MAX_AGE * 1000).toISOString(); // 10 min
 
   // Save state
   db.prepare(

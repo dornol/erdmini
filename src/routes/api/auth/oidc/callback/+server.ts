@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
-import { handleCallback, findOrCreateOIDCUser, cleanupExpiredStates } from '$lib/server/auth/oidc';
+import { handleCallback, findOrCreateOIDCUser, cleanupExpiredStates, clearConfigCache, OIDC_STATE_COOKIE } from '$lib/server/auth/oidc';
 import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
 import { syncUserGroups, syncAdminRole } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
@@ -13,11 +13,12 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
 
-  if (error) {
+  const browserState = cookies.get(OIDC_STATE_COOKIE);
+  if (!state || !browserState || state !== browserState) {
     throw redirect(303, appPath('/login?error=auth_failed'));
   }
-
-  if (!state) {
+  cookies.delete(OIDC_STATE_COOKIE, { path: cookiePath() });
+  if (error) {
     throw redirect(303, appPath('/login?error=auth_failed'));
   }
 
@@ -31,10 +32,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   }
 
   const provider = db.prepare(
-    'SELECT * FROM oidc_providers WHERE id = ?'
+    'SELECT * FROM oidc_providers WHERE id = ? AND enabled = 1'
   ).get(stateRow.provider_id) as OIDCProviderRow | undefined;
 
   if (!provider) {
+    db.prepare('DELETE FROM oidc_states WHERE state = ?').run(state);
     throw redirect(303, appPath('/login?error=auth_failed'));
   }
 
@@ -103,6 +105,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
         throw e;
       }
     }
+    // Retry discovery and signing keys on a fresh login after provider recovery.
+    clearConfigCache(provider.id);
     logger.error('auth', 'OIDC callback error', { error: e instanceof Error ? e.message : String(e) });
     logAudit({ action: 'oidc_login_failed', category: 'auth', detail: { provider: provider.display_name, error: String(e) } });
     throw redirect(303, appPath('/login?error=auth_failed'));

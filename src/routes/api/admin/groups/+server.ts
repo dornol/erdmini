@@ -26,8 +26,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
-  const { name, description } = await request.json();
-  if (!name?.trim()) {
+  let body: unknown;
+  try { body = await request.json(); } catch {
+    return json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return json({ error: 'Invalid group data' }, { status: 400 });
+  }
+  const { name, description } = body as Record<string, unknown>;
+  if (description != null && typeof description !== 'string') {
+    return json({ error: 'Group description must be a string or null' }, { status: 400 });
+  }
+  if (typeof name !== 'string' || !name.trim()) {
     return json({ error: 'Group name required' }, { status: 400 });
   }
 

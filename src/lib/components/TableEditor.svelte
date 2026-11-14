@@ -116,6 +116,7 @@
       <div class="readonly-notice">{m.label_read_only()}</div>
     {/if}
 
+    <fieldset class="editor-fields" disabled={permissionStore.isReadOnly}>
     <TableEditorHeader
       table={selectedTable}
       schema={erdStore.schema}
@@ -256,6 +257,7 @@
         <p class="no-cols">{m.idx_no_indexes()}</p>
       {/each}
     </div>
+    </fieldset>
   </aside>
 {:else}
   <aside class="editor editor-empty">
@@ -276,6 +278,10 @@
 {/if}
 
 <style>
+  .editor-fields {
+    display: contents;
+  }
+
   .editor {
     width: 320px;
     flex-shrink: 0;

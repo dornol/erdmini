@@ -14,7 +14,6 @@ export interface DDLExportOptions {
 export function getDefaultQuoteStyle(dialect: Dialect): DDLExportOptions['quoteStyle'] {
   if (dialect === 'mysql' || dialect === 'mariadb') return 'backtick';
   if (dialect === 'mssql') return 'bracket';
-  if (dialect === 'sqlite') return 'none';
   return 'double';
 }
 
@@ -36,9 +35,9 @@ export function getIndent(indent: DDLExportOptions['indent']): string {
 
 export function q(name: string, style: DDLExportOptions['quoteStyle']): string {
   if (style === 'none') return name;
-  if (style === 'backtick') return `\`${name}\``;
-  if (style === 'bracket') return `[${name}]`;
-  return `"${name}"`; // double
+  if (style === 'backtick') return `\`${name.replace(/`/g, '``')}\``;
+  if (style === 'bracket') return `[${name.replace(/\]/g, ']]')}]`;
+  return `"${name.replace(/"/g, '""')}"`; // double
 }
 
 export function kw(keyword: string, upper: boolean): string {
@@ -64,7 +63,7 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'UUID') return `${kw('CHAR', upper)}(36)`;
     if (col.type === 'REAL') return kw('FLOAT', upper);
     if (col.type === 'BIT') return kw('BIT', upper);
-    if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
+    if (col.type === 'TIME') return col.length != null ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
     if (col.type === 'YEAR') return kw('YEAR', upper);
     if (col.type === 'DATETIMEOFFSET') return kw('TIMESTAMP', upper);
     if (col.type === 'INTERVAL') return `${kw('VARCHAR', upper)}(64)`;
@@ -84,7 +83,7 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'NTEXT') return kw('TEXT', upper);
     if (col.type === 'VARCHAR' || col.type === 'CHAR') return `${kw(col.type, upper)}${len || '(255)'}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
-    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)} ${kw('WITH TIME ZONE', upper)}`;
+    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)}${col.length != null ? `(${col.length})` : ''} ${kw('WITH TIME ZONE', upper)}`;
     if (col.type === 'YEAR') return kw('SMALLINT', upper);
     if (col.type === 'INTERVAL') return kw('INTERVAL', upper);
     if (col.type === 'MONEY') return kw('MONEY', upper);
@@ -93,7 +92,7 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'REAL') return kw('REAL', upper);
     if (col.type === 'TINYINT' || col.type === 'MEDIUMINT') return kw('INTEGER', upper);
     if (col.type === 'BIT') return kw('BOOLEAN', upper);
-    if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
+    if (col.type === 'TIME') return col.length != null ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
     if (col.type === 'BINARY' || col.type === 'VARBINARY') return kw('BYTEA', upper);
     if (col.type === 'BLOB') return kw('BYTEA', upper);
     return kw(col.type, upper);
@@ -116,9 +115,9 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'CHAR' || col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
     if (col.type === 'TEXT' || col.type === 'NTEXT' || col.type === 'JSON' || col.type === 'JSONB') return kw('CLOB', upper);
     if (col.type === 'DATE') return kw('DATE', upper);
-    if (col.type === 'TIME') return kw('TIMESTAMP', upper);
+    if (col.type === 'TIME') return `${kw('TIMESTAMP', upper)}${col.length != null ? `(${col.length})` : ''}`;
     if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return kw('TIMESTAMP', upper);
-    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)} ${kw('WITH TIME ZONE', upper)}`;
+    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)}${col.length != null ? `(${col.length})` : ''} ${kw('WITH TIME ZONE', upper)}`;
     if (col.type === 'INTERVAL') return `${kw('INTERVAL DAY TO SECOND', upper)}`;
     if (col.type === 'MONEY') return `${kw('NUMBER', upper)}(19,4)`;
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('NUMBER', upper)}${decimalLen || '(10,2)'}`;
@@ -132,6 +131,7 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   }
 
   if (dialect === 'h2') {
+    if (col.type === 'TIME') return `${kw('TIME', upper)}${col.length != null ? `(${col.length})` : ''}`;
     if (col.type === 'TEXT' || col.type === 'NTEXT') return kw('CLOB', upper);
     if (col.type === 'NVARCHAR') return `${kw('VARCHAR', upper)}${len || '(255)'}`;
     if (col.type === 'NCHAR') return `${kw('CHAR', upper)}${len || '(255)'}`;
@@ -139,7 +139,7 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
     if (col.type === 'DECIMAL' || col.type === 'NUMERIC') return `${kw('DECIMAL', upper)}${decimalLen || '(10,2)'}`;
     if (col.type === 'ENUM') return `${kw('ENUM', upper)}${enumList || "('value')"}`;
     if (col.type === 'DATETIME') return kw('TIMESTAMP', upper);
-    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)} ${kw('WITH TIME ZONE', upper)}`;
+    if (col.type === 'DATETIMEOFFSET') return `${kw('TIMESTAMP', upper)}${col.length != null ? `(${col.length})` : ''} ${kw('WITH TIME ZONE', upper)}`;
     if (col.type === 'YEAR') return kw('SMALLINT', upper);
     if (col.type === 'INTERVAL') return kw('INTERVAL DAY TO SECOND', upper);
     if (col.type === 'MONEY') return `${kw('DECIMAL', upper)}(19,4)`;
@@ -159,9 +159,9 @@ export function columnTypeSql(col: Column, dialect: Dialect, upper: boolean, tab
   if (col.type === 'NVARCHAR') return `${kw('NVARCHAR', upper)}${len || '(255)'}`;
   if (col.type === 'CHAR') return `${kw('NCHAR', upper)}${len || '(255)'}`;
   if (col.type === 'NCHAR') return `${kw('NCHAR', upper)}${len || '(255)'}`;
-  if (col.type === 'TIME') return col.length ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
+  if (col.type === 'TIME') return col.length != null ? `${kw('TIME', upper)}(${col.length})` : kw('TIME', upper);
   if (col.type === 'DATETIME' || col.type === 'TIMESTAMP') return col.length ? `${kw('DATETIME2', upper)}(${col.length})` : kw('DATETIME2', upper);
-  if (col.type === 'DATETIMEOFFSET') return col.length ? `${kw('DATETIMEOFFSET', upper)}(${col.length})` : kw('DATETIMEOFFSET', upper);
+  if (col.type === 'DATETIMEOFFSET') return col.length != null ? `${kw('DATETIMEOFFSET', upper)}(${col.length})` : kw('DATETIMEOFFSET', upper);
   if (col.type === 'YEAR') return kw('SMALLINT', upper);
   if (col.type === 'INTERVAL') return `${kw('NVARCHAR', upper)}(64)`;
   if (col.type === 'MONEY') return kw('MONEY', upper);

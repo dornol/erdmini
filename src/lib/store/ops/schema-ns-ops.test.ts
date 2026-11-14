@@ -127,6 +127,17 @@ describe('renameSchemaOp', () => {
     expect(mm.schema).toBe('new');
   });
 
+  it('renames matching DB object namespaces and preserves unrelated objects and SQL', () => {
+    const s = makeSchema({ schemas: ['old', 'other'], dbObjects: [
+      { id: 'a', name: 'a', category: 'Views', sql: 'SELECT 1;', schema: 'old' },
+      { id: 'b', name: 'b', category: 'Views', sql: 'SELECT 2;', schema: 'other' },
+    ] });
+    renameSchemaOp(s, 'old', 'new');
+    expect(s.dbObjects?.map((o) => ({ schema: o.schema, sql: o.sql }))).toEqual([
+      { schema: 'new', sql: 'SELECT 1;' }, { schema: 'other', sql: 'SELECT 2;' },
+    ]);
+  });
+
   it('does not change memos with different schema', () => {
     const mm = makeMemo({ schema: 'other' });
     const s = makeSchema({ schemas: ['old', 'other'], memos: [mm] });
@@ -221,6 +232,18 @@ describe('deleteSchemaOp', () => {
     const s = makeSchema({ schemas: ['doomed'], memos: [mm] });
     deleteSchemaOp(s, 'doomed');
     expect(mm.schema).toBeUndefined();
+  });
+
+  it('unassigns matching DB objects without deleting their content or changing unrelated objects', () => {
+    const s = makeSchema({ schemas: ['old', 'other'], dbObjects: [
+      { id: 'a', name: 'a', category: 'Views', sql: 'SELECT 1;', schema: 'old' },
+      { id: 'b', name: 'b', category: 'Views', sql: 'SELECT 2;', schema: 'other' },
+    ] });
+    deleteSchemaOp(s, 'old');
+    expect(s.dbObjects).toEqual([
+      { id: 'a', name: 'a', category: 'Views', sql: 'SELECT 1;' },
+      { id: 'b', name: 'b', category: 'Views', sql: 'SELECT 2;', schema: 'other' },
+    ]);
   });
 
   it('does not affect tables/memos with different schema', () => {

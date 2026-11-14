@@ -921,5 +921,9 @@
   "db_object_category_placeholder": "카테고리명...",
   "db_object_default_categories": "Procedure,Function,View,Trigger",
   "memo_aria_label": "메모: {content}",
-  "memo_empty": "(비어 있음)"
+  "memo_empty": "(비어 있음)",
+  "naming_dictionary_load_failed": "사전 단어를 불러오지 못했습니다. 사전 검증이 완료되지 않았습니다.",
+  "action_retry": "다시 시도",
+  "admin_ldap_allowed_group_dns_hint": "한 줄에 전체 그룹 DN 하나씩 입력",
+  "admin_oidc_client_secret_edit": "클라이언트 시크릿 (비워두면 기존 값 유지)"
 }

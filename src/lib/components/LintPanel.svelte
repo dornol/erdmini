@@ -12,6 +12,8 @@
     namingRuleStore.dictionaryWords.size > 0 ? namingRuleStore.dictionaryWords : undefined,
   ));
 
+  let dictionaryIncomplete = $derived(Boolean(namingRuleStore.effectiveRules.dictionaryCheck) && (namingRuleStore.dictionaryLoading || namingRuleStore.dictionaryLoadError));
+
   const RULE_LABELS: Record<string, () => string> = {
     'no-pk': () => m.lint_no_pk(),
     'fk-target-missing': () => m.lint_fk_target_missing(),
@@ -56,6 +58,10 @@
     const table = erdStore.schema.tables.find((t) => t.id === tableId);
     if (!table) return;
 
+    if (canvasState.activeSchema !== '(all)' && canvasState.activeSchema !== table.schema) {
+      canvasState.activeSchema = table.schema ?? '(all)';
+    }
+
     erdStore.selectedTableId = tableId;
     erdStore.selectedTableIds = new Set([tableId]);
 
@@ -83,7 +89,17 @@
   </div>
 
   <div class="lint-body">
-    {#if sortedIssues.length === 0}
+    {#if namingRuleStore.effectiveRules.dictionaryCheck}
+      {#if namingRuleStore.dictionaryLoading}
+        <p class="lint-dictionary-status" role="status">{m.dict_share_loading()}</p>
+      {:else if namingRuleStore.dictionaryLoadError}
+        <div class="lint-dictionary-status lint-dictionary-error" role="alert">
+          <span>{m.naming_dictionary_load_failed()}</span>
+          <button onclick={() => namingRuleStore.fetchDictionaryWords(erdStore.schema.dictionaryId)}>{m.action_retry()}</button>
+        </div>
+      {/if}
+    {/if}
+    {#if sortedIssues.length === 0 && !dictionaryIncomplete}
       <div class="lint-empty">
         <span class="lint-empty-icon">✓</span>
         <span>{m.lint_no_issues()}</span>
@@ -107,6 +123,18 @@
 </div>
 
 <style>
+  .lint-dictionary-status {
+    margin: 8px;
+    font-size: 12px;
+    color: var(--app-text, #e2e8f0);
+  }
+
+  .lint-dictionary-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .lint-panel {
     position: fixed;
     top: 56px;

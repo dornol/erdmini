@@ -266,3 +266,31 @@ describe('deleteDomainOp', () => {
     expect(schema.tables[0].columns[0].domainId).toBeUndefined();
   });
 });
+
+describe('deleting hierarchical domains', () => {
+  it('clears lost inheritance throughout a root subtree while retaining metadata of directly unlinked columns', () => {
+    const root = makeDomain({ id: 'root', length: 80 });
+    const child = makeDomain({ id: 'child', parentId: 'root' });
+    const grandchild = makeDomain({ id: 'grandchild', parentId: 'child' });
+    const columns = [root, child, grandchild].map(d => ({ ...d, domainId: d.id, length: 80 }));
+    const schema = makeSchema({ domains: [root, child, grandchild], tables: [makeTable({ columns })] });
+    deleteDomainOp(schema, 'root');
+    expect(schema.domains.map(d => d.parentId)).toEqual([undefined, 'child']);
+    expect(schema.tables[0].columns.map(c => c.length)).toEqual([80, undefined, undefined]);
+    expect(schema.tables[0].columns.map(c => c.domainId)).toEqual([undefined, 'child', 'grandchild']);
+  });
+
+  it('recalculates only reparented subtrees and leaves unrelated siblings alone', () => {
+    const root = makeDomain({ id: 'root', length: 80 });
+    const middle = makeDomain({ id: 'middle', parentId: 'root', length: 120 });
+    const child = makeDomain({ id: 'child', parentId: 'middle' });
+    const sibling = makeDomain({ id: 'sibling', parentId: 'root', length: 50 });
+    const schema = makeSchema({ domains: [root, middle, child, sibling], tables: [makeTable({ columns: [
+      { ...child, domainId: 'child', length: 120 },
+      { ...sibling, domainId: 'sibling', length: 60 },
+    ] })] });
+    deleteDomainOp(schema, 'middle');
+    expect(schema.domains.find(d => d.id === 'child')?.parentId).toBe('root');
+    expect(schema.tables[0].columns.map(c => c.length)).toEqual([80, 60]);
+  });
+});

@@ -1,9 +1,27 @@
+import { connect as tlsConnect } from 'node:tls';
 import { Client } from 'ldapts';
 import { randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 import type { LdapProviderRow } from '$lib/types/auth';
 import { logger } from '$lib/server/logger';
 import { getDefaultPermissions } from '$lib/server/site-settings';
+
+// ldapts' StartTLS upgrade does not use its connection timeout after the LDAP
+// approval response. Bound the actual TLS handshake without changing verification.
+const connectLdapTls = ((...args: unknown[]) => {
+  const socket = Reflect.apply(tlsConnect, undefined, args) as ReturnType<typeof tlsConnect>;
+  const timer = setTimeout(() => socket.destroy(new Error('LDAP TLS handshake timed out')), 10_000);
+  const clear = () => clearTimeout(timer);
+  socket.once('secureConnect', clear);
+  socket.once('error', clear);
+  socket.once('close', clear);
+  return socket;
+}) as typeof tlsConnect;
+
+// Bound directory outages for login, group synchronization and admin connection tests.
+function createLdapClient(url: string): Client {
+  return new Client({ url, timeout: 10_000, connectTimeout: 10_000, createSecureConnection: connectLdapTls });
+}
 
 /**
  * Escape special characters in LDAP filter values per RFC 4515.
@@ -17,6 +35,11 @@ function escapeLdapFilter(value: string): string {
 }
 
 export { escapeLdapFilter as _escapeLdapFilter_for_testing };
+
+/** One complete DN per line; commas belong to the DN itself. */
+export function parseAllowedLdapGroupDns(value: string): string[] {
+  return value.split(/\r?\n/).map(dn => dn.trim()).filter(Boolean);
+}
 
 export interface LdapAuthResult {
   dn: string;
@@ -38,7 +61,7 @@ export async function authenticateLdap(
   username: string,
   password: string,
 ): Promise<LdapAuthResult | null> {
-  const client = new Client({ url: provider.server_url });
+  const client = createLdapClient(provider.server_url);
 
   try {
     if (provider.start_tls) {
@@ -66,7 +89,7 @@ export async function authenticateLdap(
     // Unbind service account, bind as user to verify password
     await client.unbind();
 
-    const userClient = new Client({ url: provider.server_url });
+    const userClient = createLdapClient(provider.server_url);
     try {
       if (provider.start_tls) {
         await userClient.startTLS({});
@@ -92,7 +115,7 @@ export async function authenticateLdap(
       (provider.admin_group_dn || provider.allowed_group_dns || (provider as LdapProviderRow & { sync_groups?: number }).sync_groups);
 
     if (needGroupCheck) {
-      const groupClient = new Client({ url: provider.server_url });
+      const groupClient = createLdapClient(provider.server_url);
       try {
         if (provider.start_tls) {
           await groupClient.startTLS({});
@@ -110,7 +133,7 @@ export async function authenticateLdap(
 
         // Check allowed groups restriction
         if (provider.allowed_group_dns) {
-          const allowedDns = provider.allowed_group_dns.split(',').map(s => s.trim()).filter(Boolean);
+          const allowedDns = parseAllowedLdapGroupDns(provider.allowed_group_dns);
           const isAllowed = userGroupDns.some(dn => allowedDns.includes(dn));
           if (!isAllowed) {
             logger.info('auth', 'LDAP user not in allowed groups', { userDn, allowedGroups: allowedDns.length });
@@ -202,7 +225,7 @@ export function findOrCreateLdapUser(
 export async function testLdapConnection(
   provider: Pick<LdapProviderRow, 'server_url' | 'bind_dn' | 'bind_password' | 'start_tls' | 'user_search_base'>,
 ): Promise<{ success: boolean; error?: string }> {
-  const client = new Client({ url: provider.server_url });
+  const client = createLdapClient(provider.server_url);
 
   try {
     if (provider.start_tls) {

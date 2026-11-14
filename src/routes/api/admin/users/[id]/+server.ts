@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { hashPassword } from '$lib/server/auth/password';
+import { deleteUserSessions } from '$lib/server/auth/session';
 import { logAudit } from '$lib/server/audit';
 import type { UserRow } from '$lib/types/auth';
 import { requireAdmin } from '$lib/server/auth/guards';
@@ -89,7 +90,10 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
   if (updates.length > 0) {
     updates.push("updated_at = datetime('now')");
     values.push(params.id);
-    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    db.transaction(() => {
+      db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+      if (password || status === 'pending') deleteUserSessions(db, params.id);
+    })();
 
     if (status !== undefined) {
       logAudit({ action: status === 'active' ? 'approve' : 'reject', category: 'user', userId: locals.user!.id, username: locals.user!.username, resourceType: 'user', resourceId: params.id });

@@ -5,6 +5,7 @@
   import { permissionStore } from '$lib/store/permission.svelte';
   import { collabStore } from '$lib/store/collab.svelte';
   import { memoDragState } from '$lib/store/memo-drag.svelte';
+  import { now } from '$lib/utils/common';
   import type { Table } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
   import { TABLE_COLORS } from '$lib/constants/table-colors';
@@ -136,7 +137,7 @@
     if (!isDragging) return;
     const dx = (clientX - dragStart.mouseX) / canvasState.scale;
     const dy = (clientY - dragStart.mouseY) / canvasState.scale;
-    if (groupDragStarts && groupDragStarts.size > 1) {
+    if (groupDragStarts) {
       const moves = [...groupDragStarts].map(([id, start]) => ({ id, x: start.x + dx, y: start.y + dy }));
       erdStore.moveTables(moves);
     } else {
@@ -145,6 +146,15 @@
   }
 
   function endDrag() {
+    if (isDragging) {
+      const moved = groupDragStarts
+        ? [...groupDragStarts].some(([id, start]) => {
+            const current = erdStore.schema.tables.find((item) => item.id === id);
+            return current && (current.position.x !== start.x || current.position.y !== start.y);
+          })
+        : table.position.x !== dragStart.tableX || table.position.y !== dragStart.tableY;
+      if (moved) erdStore.schema.updatedAt = now();
+    }
     isDragging = false;
     groupDragStarts = null;
   }
@@ -191,7 +201,7 @@
       confirmText: m.action_delete(),
       variant: 'danger',
     });
-    if (ok) erdStore.deleteTable(table.id);
+    if (ok && !permissionStore.isReadOnly) erdStore.deleteTable(table.id);
   }
 
   function onFkDragStart(e: MouseEvent, colId: string, colIdx: number) {

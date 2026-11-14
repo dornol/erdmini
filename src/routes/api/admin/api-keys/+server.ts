@@ -6,8 +6,7 @@ import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
 import { requireAdmin } from '$lib/server/auth/guards';
-
-const VALID_SCOPE_PERMISSIONS = new Set(['viewer', 'editor', 'owner']);
+import { validateAdminApiKeyInput } from '$lib/server/auth/admin-api-key-validation';
 
 export const GET: RequestHandler = ({ locals }) => {
   const err = requireAdmin(locals);
@@ -37,11 +36,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
-  const { name, userId, expiresAt, scopes } = await request.json();
-
-  if (!name) {
-    return json({ error: 'name is required' }, { status: 400 });
-  }
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Invalid request body' }, { status: 400 }); }
+  const validationError = validateAdminApiKeyInput(body, true);
+  if (validationError) return json({ error: validationError }, { status: 400 });
+  const { userId, expiresAt, scopes } = body;
+  const name = body.name.trim();
 
   const targetUserId = userId || locals.user!.id;
 
@@ -51,33 +52,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     return json({ error: 'User not found' }, { status: 404 });
   }
 
-  if (expiresAt) {
-    const d = new Date(expiresAt);
-    if (isNaN(d.getTime())) {
-      return json({ error: 'Invalid expiresAt date' }, { status: 400 });
-    }
-  }
-
   const id = randomUUID();
   const { key, hash } = generateApiKey();
 
-  db.prepare(
-    `INSERT INTO api_keys (id, user_id, key_hash, name, expires_at)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(id, targetUserId, hash, name, expiresAt || null);
+  db.transaction(() => {
+    db.prepare(
+      `INSERT INTO api_keys (id, user_id, key_hash, name, expires_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(id, targetUserId, hash, name, expiresAt || null);
 
-  // Insert scopes if provided
-  if (Array.isArray(scopes) && scopes.length > 0) {
-    const insertScope = db.prepare(
-      `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
-       VALUES (?, ?, ?, ?)`
-    );
-    for (const scope of scopes) {
-      if (scope.projectId && scope.permission && VALID_SCOPE_PERMISSIONS.has(scope.permission)) {
+    // Insert scopes if provided
+    if (Array.isArray(scopes) && scopes.length > 0) {
+      const insertScope = db.prepare(
+        `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
+         VALUES (?, ?, ?, ?)`
+      );
+      for (const scope of scopes) {
         insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
       }
     }
-  }
+  })();
 
   logAudit({ action: 'create', category: 'api-key', userId: locals.user!.id, username: locals.user!.username, resourceType: 'api-key', resourceId: id, detail: { name, targetUserId, scopes: scopes?.length ?? 0 } });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { _escapeLdapFilter_for_testing as escapeLdapFilter } from './ldap';
+import { _escapeLdapFilter_for_testing as escapeLdapFilter, parseAllowedLdapGroupDns } from './ldap';
 
 describe('escapeLdapFilter', () => {
   it('escapes backslash', () => {
@@ -33,5 +33,23 @@ describe('escapeLdapFilter', () => {
 
   it('handles empty string', () => {
     expect(escapeLdapFilter('')).toBe('');
+  });
+});
+
+
+describe('allowed LDAP group DN boundaries', () => {
+  it('preserves every comma in a complete distinguished name', () => {
+    expect(parseAllowedLdapGroupDns('cn=allowed,ou=groups,dc=example,dc=test')).toEqual(['cn=allowed,ou=groups,dc=example,dc=test']);
+  });
+  it('accepts separate complete DNs on lines with CRLF and surrounding whitespace', () => {
+    expect(parseAllowedLdapGroupDns(' cn=a,dc=example \r\n\r\n cn=b,dc=example \n')).toEqual(['cn=a,dc=example', 'cn=b,dc=example']);
+  });
+  it('preserves escaped commas and nested CN components instead of inventing group entries', () => {
+    const dn = String.raw`cn=team\, west,cn=parent,dc=example`;
+    expect(parseAllowedLdapGroupDns(dn)).toEqual([dn]);
+    expect(parseAllowedLdapGroupDns(dn)).not.toContain('cn=parent,dc=example');
+  });
+  it('does not turn a comma-separated DN suffix into an independently permitted group', () => {
+    expect(parseAllowedLdapGroupDns('cn=team,dc=example')).not.toContain('dc=example');
   });
 });

@@ -14,8 +14,8 @@ export const registerColumnTools: RegisterFn = (server, ctx) => {
       tableId: z.string().max(256).describe('Table ID'),
       name: z.string().max(256).optional().describe('Column name'),
       type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Column type'),
-      length: z.number().min(0).max(65535).optional().describe('Column length'),
-      scale: z.number().min(0).max(30).optional().describe('Decimal scale'),
+      length: z.number().int().min(0).max(65535).optional().describe('Column length'),
+      scale: z.number().int().min(0).max(30).optional().describe('Decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique constraint'),
@@ -29,6 +29,7 @@ export const registerColumnTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tableId, ...colOpts }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (colOpts.domainId && !(schema.domains ?? []).some(d => d.id === colOpts.domainId)) return { content: [{ type: 'text', text: 'Domain not found' }], isError: true };
       const result = addColumn(schema, tableId, colOpts as any);
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -50,8 +51,8 @@ export const registerColumnTools: RegisterFn = (server, ctx) => {
       columnId: z.string().max(256).describe('Column ID'),
       name: z.string().max(256).optional().describe('New column name'),
       type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('New column type'),
-      length: z.number().min(0).max(65535).optional().describe('New length'),
-      scale: z.number().min(0).max(30).optional().describe('New decimal scale'),
+      length: z.number().int().min(0).max(65535).optional().describe('New length'),
+      scale: z.number().int().min(0).max(30).optional().describe('New decimal scale'),
       nullable: z.boolean().optional().describe('Allow NULL'),
       primaryKey: z.boolean().optional().describe('Primary key'),
       unique: z.boolean().optional().describe('Unique'),
@@ -72,6 +73,7 @@ export const registerColumnTools: RegisterFn = (server, ctx) => {
       if (!table.columns.find(c => c.id === columnId)) {
         return { content: [{ type: 'text', text: `Column ${columnId} not found` }], isError: true };
       }
+      if (patch.domainId && !(schema.domains ?? []).some(d => d.id === patch.domainId)) return { content: [{ type: 'text', text: 'Domain not found' }], isError: true };
       const updated = updateColumn(schema, tableId, columnId, patch as any);
       mcpAudit('update_column', projectId, { tableId, columnId });
       saveAndNotify(projectId, updated);

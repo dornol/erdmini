@@ -141,3 +141,35 @@ describe('computeImpact', () => {
     expect(result).toBeNull();
   });
 });
+
+describe('hierarchical domain impact', () => {
+  it('includes inherited descendant changes and excludes explicit overrides without mutating data', () => {
+    const root = makeDomain({ id: 'root', name: 'base', length: 80 });
+    const child = makeDomain({ id: 'child', name: 'child', parentId: 'root' });
+    const override = makeDomain({ id: 'override', name: 'short', parentId: 'child', length: 40 });
+    const schema = makeSchema([makeTable({ name: 'items', columns: [
+      makeColumn({ name: 'inherited', domainId: 'child', length: 80 }),
+      makeColumn({ name: 'overridden', domainId: 'override', length: 40 }),
+    ] })], [root, child, override]);
+    const original = JSON.stringify(schema);
+    const impact = computeImpact(schema, 'root', { length: 160 });
+    expect(impact?.columnCount).toBe(1);
+    expect(impact?.entries[0]).toMatchObject({ columnName: 'inherited', changes: [{ field: 'length', before: 80, after: 160 }] });
+    expect(JSON.stringify(schema)).toBe(original);
+  });
+
+  it('previews effective changes when the parent changes without a local propagation-field edit', () => {
+    const first = makeDomain({ id: 'first', name: 'first', length: 80 });
+    const second = makeDomain({ id: 'second', name: 'second', length: 120 });
+    const child = makeDomain({ id: 'child', name: 'child', parentId: 'first' });
+    const schema = makeSchema([makeTable({ name: 'items', columns: [makeColumn({ name: 'label', domainId: 'child', length: 80 })] })], [first, second, child]);
+    expect(computeImpact(schema, 'child', { parentId: 'second' })?.entries[0].changes).toEqual([{ field: 'length', before: 80, after: 120 }]);
+  });
+
+  it('does not report a change when descendant overrides keep all linked values unchanged', () => {
+    const root = makeDomain({ id: 'root', name: 'base', length: 80 });
+    const child = makeDomain({ id: 'child', name: 'child', parentId: 'root', length: 40 });
+    const schema = makeSchema([makeTable({ name: 'items', columns: [makeColumn({ name: 'label', domainId: 'child', length: 40 })] })], [root, child]);
+    expect(computeImpact(schema, 'root', { length: 160 })).toBeNull();
+  });
+});

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import * as m from '$lib/paraglide/messages';
@@ -8,6 +9,18 @@
   let categories = $derived(erdStore.schema.dbObjectCategories ?? []);
 
   let sqlDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let pendingSql: { objectId: string; sql: string; schema: typeof erdStore.schema } | undefined;
+
+  function flushSql() {
+    clearTimeout(sqlDebounceTimer);
+    const pending = pendingSql;
+    pendingSql = undefined;
+    if (pending && pending.schema === erdStore.schema) {
+      erdStore.updateDbObject(pending.objectId, { sql: pending.sql });
+    }
+  }
+
+  onDestroy(flushSql);
 
   function updateField(field: 'name' | 'comment' | 'category' | 'schema' | 'includeInDdl', value: any) {
     if (!obj) return;
@@ -16,10 +29,10 @@
 
   function handleSqlChange(sql: string) {
     if (!obj) return;
+    if (pendingSql && pendingSql.objectId !== obj.id) flushSql();
     clearTimeout(sqlDebounceTimer);
-    sqlDebounceTimer = setTimeout(() => {
-      erdStore.updateDbObject(obj!.id, { sql });
-    }, 500);
+    pendingSql = { objectId: obj.id, sql, schema: erdStore.schema };
+    sqlDebounceTimer = setTimeout(flushSql, 500);
   }
 
   let panelWidth = $state(
@@ -48,6 +61,7 @@
   }
 
   function closeEditor() {
+    flushSql();
     erdStore.selectedDbObjectId = null;
   }
 </script>
@@ -120,7 +134,7 @@
       </div>
 
       <!-- SQL Editor -->
-      <div class="sql-section">
+      <div class="sql-section" onfocusout={flushSql}>
         <div class="field-label">{m.db_object_sql()}</div>
         <SqlEditor
           value={obj.sql}

@@ -74,8 +74,8 @@ export function cleanOracleSyntax(sql: string): string {
   sql = sql.replace(/\bBINARY_DOUBLE\b/gi, 'DOUBLE PRECISION');
   // BINARY_FLOAT → FLOAT
   sql = sql.replace(/\bBINARY_FLOAT\b/gi, 'FLOAT');
-  // RAW(...) → TEXT
-  sql = sql.replace(/\bRAW\s*\(\s*\d+\s*\)/gi, 'TEXT');
+  // RAW(...) retains its binary semantics
+  // Dimensioned RAW is preserved by the native-type adapter before parsing.
   // Remove Oracle keywords: ENABLE, NOVALIDATE, TABLESPACE, PCTFREE, INITRANS, etc.
   sql = sql.replace(/\bENABLE\b/gi, '');
   sql = sql.replace(/\bNOVALIDATE\b/gi, '');

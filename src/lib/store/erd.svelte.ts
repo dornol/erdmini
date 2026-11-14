@@ -1,3 +1,4 @@
+import { DOMAIN_FIELDS } from '$lib/types/erd';
 import type { Column, ColumnDomain, Dialect, ERDSchema, ForeignKey, Memo, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import type { NamingRuleType, ProjectNamingOverrideEntry } from '$lib/types/naming-rules';
 import { normalizeProjectNamingOverride } from '$lib/types/naming-rules';
@@ -60,6 +61,7 @@ class ERDStore {
   _isLoadingSchema = false;
   _lastOperation = $state<import('$lib/types/collab').CollabOperation | null>(null);
   _opVersion = $state(0);
+  private _pendingOperations: import('$lib/types/collab').CollabOperation[] = [];
 
   get canUndo(): boolean { void this._undoVersion; return this._undoStack.length > 0; }
   get canRedo(): boolean { void this._undoVersion; return this._redoStack.length > 0; }
@@ -107,11 +109,13 @@ class ERDStore {
   jumpToHistory(index: number) {
     if (index < 0 || index >= this._undoStack.length) return;
     const current = JSON.stringify($state.snapshot(this.schema));
-    for (let i = this._undoStack.length - 1; i > index; i--) {
-      this._redoStack.push(this._undoStack[i]);
+    // Match repeated undo: each redo entry contains the state after its edit.
+    for (let i = this._undoStack.length - 1; i >= index; i--) {
+      const entry = this._undoStack[i];
+      const snap = i === this._undoStack.length - 1 ? current : this._undoStack[i + 1].snap;
+      this._redoStack.push({ snap, label: entry.label, detail: entry.detail, time: Date.now() });
     }
     const target = this._undoStack[index];
-    this._redoStack.push({ snap: current, label: target.label, detail: target.detail, time: Date.now() });
     this._undoStack = this._undoStack.slice(0, index);
     this._isUndoRedoing = true;
     this.schema = JSON.parse(target.snap);
@@ -122,8 +126,16 @@ class ERDStore {
   private _emitOp(op: import('$lib/types/collab').CollabOperation) {
     if (!this._isRemoteOp) {
       this._lastOperation = op;
+      // Freeze event values before later mutations in the same Svelte batch.
+      this._pendingOperations.push(structuredClone($state.snapshot(op)));
       this._opVersion++;
     }
+  }
+
+  drainOperations(): import('$lib/types/collab').CollabOperation[] {
+    const operations = this._pendingOperations;
+    this._pendingOperations = [];
+    return operations;
   }
 
   private _t(id: string): Table | undefined {
@@ -302,7 +314,7 @@ class ERDStore {
       if (table.locked) continue;
       const pos = positions.get(table.id);
       if (pos) {
-        table.position = { x: Math.round(pos.x), y: Math.round(pos.y) };
+        moveTableOp(this.schema, table.id, Math.round(pos.x), Math.round(pos.y));
         moves.push({ tableId: table.id, x: table.position.x, y: table.position.y });
       }
     }
@@ -328,8 +340,12 @@ class ERDStore {
   }
 
   updateColumn(tableId: string, columnId: string, patch: Partial<Column>) {
+    const previous = this.schema.tables.find(t => t.id === tableId)?.columns.find(c => c.id === columnId);
+    const domainSnapshot = previous?.domainId && Object.hasOwn(patch, 'domainId') && patch.domainId === undefined
+      ? { ...Object.fromEntries(DOMAIN_FIELDS.map(field => [field, previous[field]])), domainId: previous.domainId } as Partial<Column>
+      : undefined;
     updateColumnOp(this.schema, tableId, columnId, patch);
-    this._emitOp({ kind: 'update-column', tableId, columnId, patch });
+    this._emitOp({ kind: 'update-column', tableId, columnId, patch, ...(domainSnapshot ? { domainSnapshot } : {}) });
   }
 
   deleteColumn(tableId: string, columnId: string) {
@@ -337,19 +353,24 @@ class ERDStore {
     this._emitOp({ kind: 'delete-column', tableId, columnId });
   }
 
+  private _emitColumnMove(tableId: string, columnId: string, toIndex: number) {
+    const columnIds = this.schema.tables.find(table => table.id === tableId)?.columns.map(column => column.id) ?? [];
+    this._emitOp({ kind: 'move-column', tableId, columnId, toIndex, columnIds });
+  }
+
   moveColumnUp(tableId: string, columnId: string) {
     const toIndex = moveColumnUpOp(this.schema, tableId, columnId);
-    if (toIndex !== undefined) this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
+    if (toIndex !== undefined) this._emitColumnMove(tableId, columnId, toIndex);
   }
 
   moveColumnDown(tableId: string, columnId: string) {
     const toIndex = moveColumnDownOp(this.schema, tableId, columnId);
-    if (toIndex !== undefined) this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
+    if (toIndex !== undefined) this._emitColumnMove(tableId, columnId, toIndex);
   }
 
   moveColumnToIndex(tableId: string, columnId: string, toIndex: number) {
     if (moveColumnToIndexOp(this.schema, tableId, columnId, toIndex)) {
-      this._emitOp({ kind: 'move-column', tableId, columnId, toIndex });
+      this._emitColumnMove(tableId, columnId, toIndex);
     }
   }
 
@@ -504,6 +525,14 @@ class ERDStore {
     }
   }
 
+  resizeMemo(id: string, width: number, height: number) {
+    const memo = this.schema.memos.find((item) => item.id === id);
+    if (!memo) return;
+    memo.width = width;
+    memo.height = height;
+    this._emitOp({ kind: 'update-memo', memoId: id, patch: { width, height } });
+  }
+
   updateMemo(id: string, patch: Partial<Omit<Memo, 'id'>>) {
     updateMemoOp(this.schema, id, patch);
     this._emitOp({ kind: 'update-memo', memoId: id, patch });
@@ -516,7 +545,8 @@ class ERDStore {
 
   detachMemo(memoId: string) {
     detachMemoOp(this.schema, memoId);
-    this._emitOp({ kind: 'detach-memo', memoId });
+    const memo = this.schema.memos.find(item => item.id === memoId);
+    this._emitOp({ kind: 'detach-memo', memoId, ...(memo ? { position: { ...memo.position } } : {}) });
   }
 
   // ── Schema Namespace Operations ──
@@ -530,7 +560,9 @@ class ERDStore {
   renameSchema(oldName: string, newName: string) {
     if (renameSchemaOp(this.schema, oldName, newName)) {
       this._emitOp({ kind: 'rename-schema', oldName, newName });
+      return true;
     }
+    return false;
   }
 
   reorderSchemas(schemas: string[]) {
@@ -559,7 +591,11 @@ class ERDStore {
   // ── Schema Loading ──
 
   loadSchema(schema: ERDSchema, options: { suppressHistory?: boolean } = {}) {
+    this._pendingOperations = [];
     normalizeSchema(schema);
+    if (canvasState.activeSchema !== '(all)' && !schema.schemas?.includes(canvasState.activeSchema)) {
+      canvasState.activeSchema = '(all)';
+    }
     if (options.suppressHistory !== false) {
       this._isLoadingSchema = true;
     }

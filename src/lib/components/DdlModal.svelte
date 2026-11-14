@@ -289,7 +289,10 @@
               <SearchableSelect
                 options={DIALECT_OPTIONS}
                 value={exportDialect}
-                onchange={(v) => (exportDialect = v as Dialect)}
+                onchange={(v) => {
+                  exportDialect = v as Dialect;
+                  if (ddlOptions.quoteStyle !== 'none') ddlOptions.quoteStyle = getDefaultQuoteStyle(exportDialect);
+                }}
                 size="md"
               />
             </div>

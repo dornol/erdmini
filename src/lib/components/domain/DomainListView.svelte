@@ -171,6 +171,7 @@
                           );
                           if (!ok) return;
                         }
+                        if (permissionStore.isReadOnly) return;
                         erdStore.deleteDomain(domain.id);
                       }}
                       aria-label={m.domain_delete()}
@@ -237,6 +238,7 @@
 <style>
   /* ── Domain table ── */
   .table-wrapper {
+    flex-shrink: 0;
     overflow-x: auto;
   }
 

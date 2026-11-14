@@ -19,6 +19,9 @@ export function renameSchemaOp(schema: ERDSchema, oldName: string, newName: stri
   for (const mm of schema.memos) {
     if (mm.schema === oldName) mm.schema = newName;
   }
+  for (const object of schema.dbObjects ?? []) {
+    if (object.schema === oldName) object.schema = newName;
+  }
   schema.updatedAt = now();
   return true;
 }
@@ -35,6 +38,9 @@ export function deleteSchemaOp(schema: ERDSchema, name: string): void {
   }
   for (const mm of schema.memos) {
     if (mm.schema === name) delete mm.schema;
+  }
+  for (const object of schema.dbObjects ?? []) {
+    if (object.schema === name) delete object.schema;
   }
   schema.updatedAt = now();
 }

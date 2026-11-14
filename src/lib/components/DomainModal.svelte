@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { erdStore } from '$lib/store/erd.svelte';
   import type { ColumnDomain } from '$lib/types/erd';
   import { buildDomainTree, type DomainTreeNode } from '$lib/utils/domain-hierarchy';
@@ -122,11 +123,13 @@
     collapsedGroups = next;
   }
 
-  function startEdit(domain: ColumnDomain) {
+  async function startEdit(domain: ColumnDomain) {
     if (permissionStore.isReadOnly) return;
     editingId = domain.id;
     addingNew = false;
-    editFormRef?.loadDomain(domain);
+    // The form is conditional, so its ref is available only after mounting.
+    await tick();
+    if (editingId === domain.id) editFormRef?.loadDomain(domain);
   }
 
   function startAdd() {
@@ -141,18 +144,20 @@
     addingNew = false;
   }
 
-  function handleRowClick(domain: ColumnDomain) {
+  async function handleRowClick(domain: ColumnDomain) {
     if (editingId === domain.id) return;
     if (editingId || addingNew) {
-      editFormRef?.saveEdit();
+      const saved = await editFormRef?.saveEdit();
+      if (!saved) return;
     }
-    startEdit(domain);
+    await startEdit(domain);
   }
 
   function handleTableClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
     if (
       (editingId || addingNew) &&
+      !target.closest('.edit-card') &&
       !target.closest('.editing-row') &&
       !target.closest('.add-row') &&
       !target.closest('.display-row') &&

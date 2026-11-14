@@ -1,3 +1,4 @@
+import { hasConstraintColumns } from '$lib/collab/constraint-references';
 import { z } from 'zod';
 import type { RegisterFn } from './types';
 import { addUniqueKey, deleteUniqueKey, addIndex, deleteIndex } from '../schema-ops';
@@ -17,6 +18,7 @@ export const registerConstraintTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tableId, columnIds, name }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (!hasConstraintColumns(schema.tables.find(t => t.id === tableId), columnIds)) return { content: [{ type: 'text', text: 'Invalid table or column references' }], isError: true };
       const result = addUniqueKey(schema, tableId, columnIds, name);
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -38,6 +40,7 @@ export const registerConstraintTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tableId, uniqueKeyId }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (!schema.tables.find(t => t.id === tableId)?.uniqueKeys?.some(item => item.id === uniqueKeyId)) return { content: [{ type: 'text', text: 'Constraint not found' }], isError: true };
       const updated = deleteUniqueKey(schema, tableId, uniqueKeyId);
       mcpAudit('delete_unique_key', projectId, { tableId, uniqueKeyId });
       saveAndNotify(projectId, updated);
@@ -58,6 +61,7 @@ export const registerConstraintTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tableId, columnIds, unique, name }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (!hasConstraintColumns(schema.tables.find(t => t.id === tableId), columnIds)) return { content: [{ type: 'text', text: 'Invalid table or column references' }], isError: true };
       const result = addIndex(schema, tableId, columnIds, unique ?? false, name);
       if (!result) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
@@ -79,6 +83,7 @@ export const registerConstraintTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tableId, indexId }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (!schema.tables.find(t => t.id === tableId)?.indexes?.some(item => item.id === indexId)) return { content: [{ type: 'text', text: 'Constraint not found' }], isError: true };
       const updated = deleteIndex(schema, tableId, indexId);
       mcpAudit('delete_index', projectId, { tableId, indexId });
       saveAndNotify(projectId, updated);

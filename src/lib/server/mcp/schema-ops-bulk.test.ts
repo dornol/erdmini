@@ -398,6 +398,23 @@ describe('bulkAssignDomainByPattern', () => {
 // ═══════════════════════════════════════════
 
 describe('bulkAssignDomainByList', () => {
+  it('counts repeated references once while keeping pairs from different tables distinct', () => {
+    const s = emptySchema();
+    s.tables = [
+      makeTable('t1', { columns: [makeCol('c1', 'a')] }),
+      makeTable('t2', { columns: [makeCol('c1', 'b')] }),
+    ];
+    const result = bulkAssignDomainByList(s, 'dom1', [
+      { tableId: 't1', columnId: 'c1' },
+      { tableId: 't1', columnId: 'c1' },
+      { tableId: 't2', columnId: 'c1' },
+      { tableId: 't2', columnId: 'missing' },
+    ]);
+    expect(result.updated).toBe(2);
+    expect(result.schema.tables.map(t => t.columns[0].domainId)).toEqual(['dom1', 'dom1']);
+    expect(s.tables.map(t => t.columns[0].domainId)).toEqual([undefined, undefined]);
+  });
+
   it('assigns domain to explicit column list', () => {
     const s = emptySchema();
     s.tables = [

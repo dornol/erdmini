@@ -3,17 +3,30 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { logAudit } from '$lib/server/audit';
 import { requireAdmin } from '$lib/server/auth/guards';
+import { validateProviderInput } from '$lib/server/auth/provider-validation';
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Invalid request body' }, { status: 400 }); }
+  const validationError = validateProviderInput(body, 'ldap', false);
+  if (validationError) return json({ error: validationError }, { status: 400 });
+  if (body.displayName !== undefined) body.displayName = body.displayName.trim();
+  if (body.serverUrl !== undefined) body.serverUrl = body.serverUrl.trim();
+  if (body.bindDn !== undefined) body.bindDn = body.bindDn.trim();
+  if (body.userSearchBase !== undefined) body.userSearchBase = body.userSearchBase.trim();
   const {
     displayName, serverUrl, bindDn, bindPassword,
     userSearchBase, userSearchFilter, emailAttribute, displayNameAttribute,
     groupSearchBase, groupSearchFilter, adminGroupDn, allowedGroupDns,
     startTls, enabled, autoCreateUsers, syncGroups,
-  } = await request.json();
+  } = body;
+  if (serverUrl !== undefined && db.prepare('SELECT id FROM ldap_providers WHERE server_url = ? AND id != ?').get(serverUrl, params.id)) {
+    return json({ error: 'A provider with this server URL already exists' }, { status: 409 });
+  }
   const dbBool = (value: unknown) => typeof value === 'boolean' ? (value ? 1 : 0) : value ?? null;
 
   db.prepare(
@@ -39,7 +52,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     displayName ?? null,
     serverUrl ?? null,
     bindDn ?? null,
-    bindPassword ?? null,
+    bindPassword === '' ? null : bindPassword ?? null,
     userSearchBase ?? null,
     userSearchFilter ?? null,
     emailAttribute ?? null,
@@ -55,8 +68,8 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
     params.id,
   );
 
-  const body = { displayName, serverUrl, bindDn, bindPassword, userSearchBase, userSearchFilter, emailAttribute, displayNameAttribute, groupSearchBase, groupSearchFilter, adminGroupDn, allowedGroupDns, startTls, enabled, autoCreateUsers, syncGroups };
-  const fields = Object.keys(body).filter(k => (body as Record<string, unknown>)[k] != null);
+  const auditBody = { displayName, serverUrl, bindDn, bindPassword, userSearchBase, userSearchFilter, emailAttribute, displayNameAttribute, groupSearchBase, groupSearchFilter, adminGroupDn, allowedGroupDns, startTls, enabled, autoCreateUsers, syncGroups };
+  const fields = Object.keys(auditBody).filter(k => (auditBody as Record<string, unknown>)[k] != null);
   logAudit({ action: 'update', category: 'ldap-provider', userId: locals.user!.id, username: locals.user!.username, resourceType: 'provider', resourceId: params.id, detail: { fields } });
 
   return json({ ok: true });

@@ -43,8 +43,7 @@ export function useCollab(): () => void {
 
   $effect(() => {
     void erdStore._opVersion;
-    const op = erdStore._lastOperation;
-    if (op) sendOperation(op);
+    for (const op of erdStore.drainOperations()) sendOperation(op);
   });
 
   return () => {

@@ -82,7 +82,8 @@ export const registerTableTools: RegisterFn = (server, ctx) => {
       projectId: z.string().max(256).describe('Project ID'),
       tableIds: z.array(z.string().max(256)).min(1).max(500).describe('Array of table IDs to delete'),
     },
-    async ({ projectId, tableIds }) => {
+    async ({ projectId, tableIds: requestedIds }) => {
+      const tableIds = [...new Set(requestedIds)];
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
       const existing = new Set(schema.tables.map(t => t.id));
@@ -131,7 +132,11 @@ export const registerTableTools: RegisterFn = (server, ctx) => {
     async ({ projectId, oldName, newName }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
-      const updated = renameGroup(schema, oldName, newName);
+      const normalized = newName.trim();
+      if (!normalized || (!schema.tables.some(t => t.group === oldName) && !Object.hasOwn(schema.groupColors ?? {}, oldName))) {
+        return { content: [{ type: 'text', text: 'Group not found or new name is blank' }], isError: true };
+      }
+      const updated = renameGroup(schema, oldName, normalized);
       mcpAudit('rename_group', projectId, { oldName, newName });
       saveAndNotify(projectId, updated);
       return { content: [{ type: 'text', text: `Group renamed: "${oldName}" → "${newName}"` }] };

@@ -249,6 +249,18 @@ describe('deleteColumnOp', () => {
     expect(table2.foreignKeys).toHaveLength(1);
   });
 
+  it('removes incoming self-references but preserves unrelated self-references', () => {
+    const table = makeTable('t1', [makeCol('id', 'id'), makeCol('code', 'code'), makeCol('ref', 'ref')], [
+      makeFk('removed', ['ref'], 't1', ['id']),
+      makeFk('kept', ['ref'], 't1', ['code']),
+    ]);
+    const schema = makeSchema([table]);
+
+    deleteColumnOp(schema, 't1', 'id');
+
+    expect(table.foreignKeys.map((fk) => fk.id)).toEqual(['kept']);
+  });
+
   it('removes from uniqueKeys', () => {
     const col1 = makeCol('c1', 'id');
     const col2 = makeCol('c2', 'name');

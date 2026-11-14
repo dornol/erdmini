@@ -66,16 +66,24 @@ export const POST: RequestHandler = async ({ params, request, getClientAddress }
     return json({ error: 'This embed does not require a password' }, { status: 400 });
   }
 
-  let body: { password?: string };
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { password } = body;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  const { password } = body as { password?: unknown };
   if (!password) {
     return json({ error: 'Password required', requiresPassword: true }, { status: 401 });
+  }
+
+  if (typeof password !== 'string') {
+    return json({ error: 'Password must be a string' }, { status: 400 });
   }
 
   const valid = await verifyEmbedPassword(db, result.id, password);

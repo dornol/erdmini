@@ -22,12 +22,17 @@ export function listUserProjects(
     ).all() as { data: string }[];
 
     const result: ProjectMeta[] = [];
+    const included = new Set<string>();
     for (const row of allRows) {
       try {
         const index: ProjectIndexData = JSON.parse(row.data);
         if (index.projects) {
           for (const p of index.projects) {
-            if (scopedIds.has(p.id)) result.push(p);
+            if (scopedIds.has(p.id) && !included.has(p.id)
+              && checkAccess(db, p.id, userId, userRole, 'viewer', keyScopes)) {
+              result.push(p);
+              included.add(p.id);
+            }
           }
         }
       } catch { /* skip */ }

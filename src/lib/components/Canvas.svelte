@@ -755,7 +755,7 @@
 
   .zoom-indicator {
     position: absolute;
-    bottom: 16px;
+    top: 16px;
     right: 16px;
     z-index: 100;
     display: flex;

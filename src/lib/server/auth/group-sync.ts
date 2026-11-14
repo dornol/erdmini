@@ -21,10 +21,11 @@ export function syncAdminRole(
   db: Database.Database,
   userId: string,
   userGroups: string[],
-  adminGroupsStr: string,
+  adminGroups: string | string[],
   providerName: string,
+  source: 'oidc' | 'ldap' = 'oidc',
 ): 'promoted' | 'demoted' | null {
-  const adminGroupList = adminGroupsStr.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const adminGroupList = (Array.isArray(adminGroups) ? adminGroups : adminGroups.split(',')).map(s => s.trim().toLowerCase()).filter(Boolean);
   if (adminGroupList.length === 0) return null;
 
   const isAdmin = userGroups.some(g => adminGroupList.includes(g.toLowerCase()));
@@ -32,11 +33,11 @@ export function syncAdminRole(
 
   if (isAdmin && currentRole !== 'admin') {
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run('admin', userId);
-    logAudit({ action: 'role_change', category: 'auth', userId, detail: { provider: providerName, from: currentRole, to: 'admin', reason: 'oidc_admin_group' } });
+    logAudit({ action: 'role_change', category: 'auth', userId, detail: { provider: providerName, from: currentRole, to: 'admin', reason: `${source}_admin_group` } });
     return 'promoted';
   } else if (!isAdmin && currentRole === 'admin') {
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run('user', userId);
-    logAudit({ action: 'role_change', category: 'auth', userId, detail: { provider: providerName, from: 'admin', to: 'user', reason: 'oidc_admin_group_removed' } });
+    logAudit({ action: 'role_change', category: 'auth', userId, detail: { provider: providerName, from: 'admin', to: 'user', reason: `${source}_admin_group_removed` } });
     return 'demoted';
   }
 
@@ -68,19 +69,24 @@ export function syncUserGroups(
 
   // Ensure all groups exist in DB
   const groupIds: string[] = [];
+  const groupNameById = new Map<string, string>();
   for (const groupName of groups) {
     const existing = db.prepare(
-      'SELECT id FROM groups WHERE name = ?'
-    ).get(groupName) as { id: string } | undefined;
+      'SELECT id, source, source_provider_id FROM groups WHERE name = ?'
+    ).get(groupName) as { id: string; source: string; source_provider_id: string | null } | undefined;
 
     if (existing) {
+      // A matching name does not authorize membership in another group's trust domain.
+      if (existing.source !== source || existing.source_provider_id !== providerId) continue;
       groupIds.push(existing.id);
+      groupNameById.set(existing.id, groupName);
     } else {
       const id = generateId();
       db.prepare(
         'INSERT INTO groups (id, name, description, created_by, source, source_provider_id) VALUES (?, ?, ?, ?, ?, ?)'
       ).run(id, groupName, null, userId, source, providerId);
       groupIds.push(id);
+      groupNameById.set(id, groupName);
     }
   }
 
@@ -93,12 +99,6 @@ export function syncUserGroups(
 
   const currentGroupIds = new Set(currentMemberships.map(m => m.group_id));
   const targetGroupIds = new Set(groupIds);
-
-  // Build group name lookup for audit logging
-  const groupNameById = new Map<string, string>();
-  for (let i = 0; i < groups.length; i++) {
-    groupNameById.set(groupIds[i], groups[i]);
-  }
 
   // Add to new groups
   const addedNames: string[] = [];
@@ -132,7 +132,7 @@ export function syncUserGroups(
       userId,
       detail: {
         source, providerId,
-        current: groups,
+        current: [...groupNameById.values()],
         added: addedNames.length > 0 ? addedNames : undefined,
         removed: removedNames.length > 0 ? removedNames : undefined,
       },

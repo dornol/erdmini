@@ -288,7 +288,9 @@ test.describe('server-mode authentication', () => {
     await loginAsAdmin(page);
     await page.goto('/admin');
 
+    const settingsLoaded = page.waitForResponse((response) => response.url().endsWith('/api/admin/site-settings') && response.request().method() === 'GET');
     await page.getByRole('button', { name: 'Branding' }).click();
+    await (await settingsLoaded).finished();
     const branding = page.locator('.admin-page .section');
     const siteName = branding.locator('input[placeholder="erdmini"]');
     await siteName.fill('E2E Brand');
@@ -466,12 +468,26 @@ test.describe('server-mode authentication', () => {
     await expect(viewerPage).toHaveURL(/\/$/);
     await expect(viewerPage.getByTestId('readonly-badge')).toBeVisible({ timeout: 15_000 });
     await expect(viewerPage.locator('.toolbar .btn-primary')).toBeDisabled();
-    await viewerContext.close();
+    const schemaUrl = `/api/storage/schemas/${projectId}`;
+    const sharedSchema = await viewerPage.request.get(schemaUrl);
+    expect(sharedSchema.ok()).toBeTruthy();
+    const schema = await sharedSchema.json();
+    expect((await viewerPage.request.put(schemaUrl, { data: schema })).status()).toBe(403);
+    expect((await viewerPage.request.delete(schemaUrl)).status()).toBe(403);
+    expect((await viewerPage.request.get('/api/admin/users')).status()).toBe(403);
 
     await permissionRow.locator('select.perm-select-sm').selectOption('editor');
     await expect(permissionRow).toContainText(/editor/i);
+    await viewerPage.reload();
+    await expect(viewerPage.getByTestId('readonly-badge')).toBeHidden();
+    await expect(viewerPage.locator('.toolbar .btn-primary')).toBeEnabled();
+    expect((await viewerPage.request.put(schemaUrl, { data: schema })).ok()).toBeTruthy();
+    expect((await viewerPage.request.delete(schemaUrl)).status()).toBe(403);
     await permissionRow.locator('.remove-btn').click();
     await expect(modal.locator('.perm-row').filter({ hasText: username })).toHaveCount(0);
+    expect((await viewerPage.request.get(schemaUrl)).status()).toBe(403);
+    expect((await viewerPage.request.put(schemaUrl, { data: schema })).status()).toBe(403);
+    await viewerContext.close();
     await modal.locator('.close-btn').click();
 
     const projectCleanup = await page.request.delete(`/api/storage/schemas/${projectId}`);
@@ -633,6 +649,11 @@ test.describe('server-mode authentication', () => {
     const auditSection = page.locator('.admin-page .section').filter({ hasText: /Audit Log/i });
     await auditSection.locator('input[type="text"]').fill('create_embed_token');
     await auditSection.getByRole('button', { name: /search/i }).click();
-    await expect(auditSection.locator('tbody tr').filter({ hasText: 'create_embed_token' })).toHaveCount(1);
+    const auditRows = auditSection.locator('tbody tr');
+    await expect(auditRows.filter({ hasText: token.id })).toHaveCount(1);
+    await expect.poll(async () => {
+      const actions = await auditRows.locator('td:nth-child(3)').allTextContents();
+      return actions.length > 0 && actions.every((action) => action.trim() === 'create_embed_token');
+    }).toBe(true);
   });
 });

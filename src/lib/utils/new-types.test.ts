@@ -456,9 +456,9 @@ describe('DDL import round-trip', () => {
 
     expect(cols.find(c => c.name === 'a')?.type).toBe('NUMERIC');
     expect(cols.find(c => c.name === 'b')?.type).toBe('REAL');
-    // BYTEA is not in COLUMN_TYPES, so normalizeType falls back to VARCHAR
+    // PostgreSQL binary values have canonical BLOB semantics.
     const cType = cols.find(c => c.name === 'c')?.type;
-    expect(cType).toBe('VARCHAR');
+    expect(cType).toBe('BLOB');
     expect(cols.find(c => c.name === 'd')?.type).toBe('TIME');
   });
 

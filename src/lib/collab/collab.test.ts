@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 
 /**
@@ -10,22 +11,17 @@ import { describe, it, expect } from 'vitest';
 
 // ─── Operation kind whitelist ───
 
-const ALLOWED_OP_KINDS = new Set([
-  'add-table', 'delete-table', 'delete-tables', 'update-table-name', 'update-table-comment',
-  'update-table-color', 'update-table-group', 'move-table', 'move-tables',
-  'add-column', 'update-column', 'delete-column', 'move-column',
-  'add-fk', 'update-fk', 'delete-fk', 'add-uk', 'delete-uk', 'add-index', 'delete-index',
-  'add-domain', 'update-domain', 'delete-domain',
-  'duplicate-table', 'update-group-color', 'rename-group', 'apply-layout',
-  'add-memo', 'delete-memo', 'delete-memos', 'move-memo', 'move-memos', 'update-memo',
-  'attach-memo', 'detach-memo',
-  'add-schema', 'delete-schema', 'rename-schema', 'reorder-schemas', 'update-table-schema',
-  'load-schema',
-]);
+const relaySource = readFileSync(new URL('../../../collab-server.js', import.meta.url), 'utf8');
+const relayList = relaySource.match(/const ALLOWED_OP_KINDS = new Set\(\[([\s\S]*?)\]\);/);
+if (!relayList) throw new Error('Could not locate the actual relay operation whitelist');
+const relayKinds = [...relayList[1].matchAll(/'([^']+)'/g)].map(match => match[1]);
+const ALLOWED_OP_KINDS = new Set(relayKinds);
+const typeSource = readFileSync(new URL('../types/collab.ts', import.meta.url), 'utf8');
+const declaredKinds = [...typeSource.matchAll(/kind: '([^']+)'/g)].map(match => match[1]);
 
 describe('operation kind whitelist', () => {
-  it('contains exactly 41 allowed kinds', () => {
-    expect(ALLOWED_OP_KINDS.size).toBe(41);
+  it('has no duplicate operation entries in the actual relay source', () => {
+    expect(ALLOWED_OP_KINDS.size).toBe(relayKinds.length);
   });
 
   it('rejects unknown operation kinds', () => {
@@ -35,24 +31,8 @@ describe('operation kind whitelist', () => {
     }
   });
 
-  it('allows all valid CollabOperation kinds', () => {
-    // These are the actual kinds from src/lib/types/collab.ts
-    const expected = [
-      'add-table', 'delete-table', 'delete-tables', 'update-table-name',
-      'update-table-comment', 'update-table-color', 'update-table-group',
-      'move-table', 'move-tables', 'add-column', 'update-column', 'delete-column',
-      'move-column', 'add-fk', 'update-fk', 'delete-fk', 'add-uk', 'delete-uk',
-      'add-index', 'delete-index', 'add-domain', 'update-domain', 'delete-domain',
-      'duplicate-table', 'update-group-color', 'rename-group', 'apply-layout',
-      'add-memo', 'delete-memo', 'delete-memos', 'move-memo', 'move-memos',
-      'update-memo', 'attach-memo', 'detach-memo',
-      'add-schema', 'delete-schema', 'rename-schema', 'reorder-schemas',
-      'update-table-schema', 'load-schema',
-    ];
-    for (const kind of expected) {
-      expect(ALLOWED_OP_KINDS.has(kind)).toBe(true);
-    }
-    expect(expected.length).toBe(ALLOWED_OP_KINDS.size);
+  it('matches every declared CollabOperation kind without allowing extra kinds', () => {
+    expect([...ALLOWED_OP_KINDS].sort()).toEqual([...new Set(declaredKinds)].sort());
   });
 });
 

@@ -9,6 +9,10 @@ import { tmpdir } from 'os';
 import Database from 'better-sqlite3';
 import { requireAdmin } from '$lib/server/auth/guards';
 import { logger } from '$lib/server/logger';
+import { invalidateSiteSettingsCaches } from '$lib/server/site-settings';
+import { clearConfigCache } from '$lib/server/auth/oidc';
+import '$lib/server/collab-notify';
+import { getLatestMigrationVersion } from '$lib/server/migrate';
 
 // GET /api/admin/backup — download DB backup or stats
 export const GET: RequestHandler = ({ locals, url }) => {
@@ -74,10 +78,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
-  const formData = await request.formData();
-  const file = formData.get('file') as File | null;
+  let formData: FormData;
+  try { formData = await request.formData(); }
+  catch { return json({ error: 'Invalid multipart upload' }, { status: 400 }); }
+  const file = formData.get('file');
 
-  if (!file) {
+  if (!file || typeof file === 'string') {
     return json({ error: 'No file uploaded' }, { status: 400 });
   }
 
@@ -86,6 +92,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
 
   const tempPath = join(tmpdir(), `erdmini-restore-${randomUUID()}.db`);
+  let collabDatabase: typeof globalThis.__erdmini_collabDatabase;
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -95,6 +102,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     let testDb: InstanceType<typeof Database> | null = null;
     try {
       testDb = new Database(tempPath, { readonly: true });
+      if (testDb.pragma('quick_check', { simple: true }) !== 'ok') {
+        return json({ error: 'Invalid backup: database integrity check failed' }, { status: 400 });
+      }
 
       const tables = testDb.prepare(
         "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('schema_migrations', 'users', 'project_index')"
@@ -107,6 +117,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       if (!tableNames.includes('users')) {
         return json({ error: 'Invalid backup: missing users table' }, { status: 400 });
       }
+      if (!tableNames.includes('project_index')) {
+        return json({ error: 'Invalid backup: missing project_index table' }, { status: 400 });
+      }
+      const version = testDb.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number | null };
+      if (version.version != null && version.version > getLatestMigrationVersion()) {
+        return json({ error: 'Unsupported backup: database schema is newer than this application' }, { status: 400 });
+      }
     } catch (e) {
       return json({ error: `Invalid database file: ${e instanceof Error ? e.message : 'unknown error'}` }, { status: 400 });
     } finally {
@@ -115,6 +132,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const dbPath = getDbPath();
     const bakPath = dbPath + '.pre-restore';
+
+    collabDatabase = globalThis.__erdmini_collabDatabase;
+    collabDatabase?.suspendDatabase();
 
     // 1. Close current DB (flushes WAL, releases locks)
     closeDb();
@@ -162,6 +182,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }, { status: 500 });
     }
 
+    invalidateSiteSettingsCaches();
+    clearConfigCache();
+
     // 6. Success — clean up safety backup
     try { if (existsSync(bakPath)) unlinkSync(bakPath); } catch { /* ignore */ }
 
@@ -169,6 +192,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     return json({ success: true });
   } finally {
-    try { unlinkSync(tempPath); } catch { /* ignore */ }
+    try { collabDatabase?.resumeDatabase(); }
+    finally {
+      try { unlinkSync(tempPath); } catch { /* ignore */ }
+    }
   }
 };

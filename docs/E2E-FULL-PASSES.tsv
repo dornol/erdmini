@@ -1,0 +1,861 @@
+scope	file	case	log
+local	e2e/additive-selection.spec.ts	Control marquee adds tables and memos while ordinary marquee replaces selection without saving edits	/tmp/erdmini-full-local.log
+local	e2e/additive-selection.spec.ts	Meta marquee adds tables and memos while ordinary marquee replaces selection without saving edits	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates a table from the empty canvas state	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates a memo from the empty canvas state	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › edits and deletes a memo with confirmation	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › changes memo color and resizes it from the canvas	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › restores an attached memo and detaches it from the pin	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › attaches a memo when it is dragged over a table	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › persists a created table after reload	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › renames the selected table from the table editor	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › filters tables in the sidebar and selects a matching table	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › bulk-edits multiple selected tables and groups them in the sidebar	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › locks selected tables and exposes the locked state	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › supports sidebar attribute and prefix filters	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates and removes a database object from the Objects sidebar	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › adds a schema, switches to it, and creates a scoped table	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › adds and edits a column from the table editor	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › edits column constraints and default values	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates composite unique keys and unique indexes	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates a foreign-key relationship between two tables	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates a foreign key by dragging a column handle to a target column	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates a self-referencing foreign key and warns for SET NULL on a non-nullable column	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › deletes a table after confirmation	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › undoes and redoes a table creation	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › duplicates the selected table with the keyboard shortcut	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › searches and navigates from the command palette	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › imports a DDL schema into the empty canvas	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › imports a composite foreign key from DDL	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › imports a DBML schema into the empty canvas	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › shows an error for invalid DDL import input	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › opens tools panels from the toolbar	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › compares a historical schema and generates migration SQL	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates, links, unlinks, and deletes a domain	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › imports domains from an XLSX file and applies typed metadata	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › downloads domain XLSX data and a reusable template	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › changes canvas display settings from the bottom bar	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › applies auto-layout and aligns/distributes selected tables	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › switches column view, line style, theme, and presentation mode	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › selects all tables, clears selection, and resets canvas zoom	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › zooms and pans with keyboard shortcuts	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › selects tables with marquee and renders them in the minimap	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › fits distant objects to the window and pans from the minimap	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › pans and pinches the canvas through touch events	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates, restores, and deletes a manual snapshot	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › executes SQL and reports invalid SQL errors in the playground	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › imports a JSON schema from a file	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › reports malformed JSON schema and invalid all-project backup files	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › merges JSON imports and handles duplicate table choices	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › imports a Prisma schema into the empty canvas	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › renders DDL export text for the current schema	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › exports DDL for every supported dialect and persists format options	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › renders DBML export text for the current schema	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › renders Mermaid, PlantUML, and Prisma export text	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › exports the current schema as JSON	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › exports and restores an all-project backup with confirmation	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › exports the diagram as SVG and a full backup	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › exports the diagram as PNG and PDF	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › opens a copied share link in a fresh browser context	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › creates a second project and switches to its empty canvas	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › duplicates the active project with its schema	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › renames the active project and restores the name after reload	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › deletes a project after confirmation	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	canvas smoke flows › toggles dark mode and collapses the sidebar	/tmp/erdmini-full-local.log
+local	e2e/app.spec.ts	responsive layout › shows the mobile notice and allows continuing to the canvas	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk color set affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk color clear affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk group set affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk group clear affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk comment set affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk comment clear affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk schema set affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk schema clear affects only selected tables and is a single undo step	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk edit cancel discards all enabled fields and leaves schema untouched through reload	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	bulk lock and unlock preserve unrelated metadata with single-step history and reload	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	Control multi-selection Delete bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	Control multi-selection Backspace bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	Meta multi-selection Delete bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	Meta multi-selection Backspace bulk deletion cancels safely and restores exact tables and attached memo	/tmp/erdmini-full-local.log
+local	e2e/bulk-edit-lifecycle.spec.ts	deleting every table retains detached documentation and can restore the complete graph in one undo	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette red overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette orange overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette amber overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette green overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette teal overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette blue overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette purple overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette pink overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette lime overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette cyan overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette indigo overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette rose overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette slate overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table palette brown overrides group color and clears with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	table group change trims names, changes inherited color and can clear membership	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	sidebar memo multiline preview selects, deletes and restores the exact memo	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	sidebar memo long Unicode preview selects, deletes and restores the exact memo	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	sidebar memo empty first line preview selects, deletes and restores the exact memo	/tmp/erdmini-full-local.log
+local	e2e/color-sidebar-lifecycle.spec.ts	sidebar memo empty memo preview selects, deletes and restores the exact memo	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	deleting parent composite-FK column cancels safely, cleans dependencies and supports undo/redo	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	deleting child composite-FK column cancels safely, cleans dependencies and supports undo/redo	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	reorders columns by dragging and preserves constraint identities after reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	deleting the target of a self-reference from the row confirms and removes its FK	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	deleting the target of a self-reference from the popup confirms and removes its FK	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	DECIMAL column zero dimensions preserve metadata, domain links and undo history through reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	DECIMAL column invalid dimensions preserve metadata, domain links and undo history through reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	NUMERIC column zero dimensions preserve metadata, domain links and undo history through reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	NUMERIC column invalid dimensions preserve metadata, domain links and undo history through reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	column tooltips do not block selecting an adjacent table	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	PK column flag enables and clears with undo, redo, metadata preservation and reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	NN column flag enables and clears with undo, redo, metadata preservation and reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	UQ column flag enables and clears with undo, redo, metadata preservation and reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	AI column flag enables and clears with undo, redo, metadata preservation and reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	new column name and type edits persist and independent deletion restores metadata on undo and reloads cleanly	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	ENUM popup trims Unicode values and drops blank tokens with metadata and history preserved	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	ENUM popup clears optional values with metadata and history preserved	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	column check set and clear preserve constraints with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/column-lifecycle.spec.ts	column comment set and clear preserve constraints with undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/constraints.spec.ts	unique: validates columns, excludes duplicates, cancels and persists deletion	/tmp/erdmini-full-local.log
+local	e2e/constraints.spec.ts	index: validates columns, excludes duplicates, cancels and persists deletion	/tmp/erdmini-full-local.log
+local	e2e/constraints.spec.ts	cancelling table deletion preserves its columns after reload	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL indentation 2spaces changes actual column lines and persists after reload without schema edits	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL indentation 4spaces changes actual column lines and persists after reload without schema edits	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL indentation tab changes actual column lines and persists after reload without schema edits	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL quoting none changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL quoting backtick changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL quoting double changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL quoting bracket changes table identifiers and lowercase keywords preserve literal comments	/tmp/erdmini-full-local.log
+local	e2e/ddl-options-lifecycle.spec.ts	DDL include switches remove and restore comments indexes foreign keys and domain annotations independently	/tmp/erdmini-full-local.log
+local	e2e/diagram-export-lifecycle.spec.ts	Mermaid exports composite FK required cardinality, constraints and exact download without writes	/tmp/erdmini-full-local.log
+local	e2e/diagram-export-lifecycle.spec.ts	Mermaid exports composite FK optional cardinality, constraints and exact download without writes	/tmp/erdmini-full-local.log
+local	e2e/diagram-export-lifecycle.spec.ts	PlantUML exports composite FK required cardinality, constraints and exact download without writes	/tmp/erdmini-full-local.log
+local	e2e/diagram-export-lifecycle.spec.ts	PlantUML exports composite FK optional cardinality, constraints and exact download without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	mysql uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	postgresql uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	mariadb uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	mssql uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	sqlite uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	oracle uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	h2 uploaded diff identifies added removed and changed tables and downloads exact migration without writes	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	invalid diff upload syntax leaves schema intact and permits corrected retry	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	invalid diff upload missing tables leaves schema intact and permits corrected retry	/tmp/erdmini-full-local.log
+local	e2e/diff-file-lifecycle.spec.ts	identical diff file has no changes or migration controls and never edits stored data	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	PK/FK Only renders the intended columns and types without changing schema or history	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	Names Only renders the intended columns and types without changing schema or history	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	Align Left arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	Align Right arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	Align Top arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	Align Bottom arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	Distribute H arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	Distribute V arranges selected tables and attached memo with metadata-preserving undo and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Smart (beta) while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Grid while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Hierarchical while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Radial while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Radial Tree while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Align Left while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Align Right while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Align Top while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Align Bottom while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Distribute H while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/display-alignment.spec.ts	locked table stays fixed during Distribute V while movable tables retain metadata and reload	/tmp/erdmini-full-local.log
+local	e2e/domain-hierarchy.spec.ts	parent selection excludes self and descendants and cancelling keeps the hierarchy intact	/tmp/erdmini-full-local.log
+local	e2e/domain-hierarchy.spec.ts	parent edits preview inherited descendant changes and preserve explicit child overrides after confirmation	/tmp/erdmini-full-local.log
+local	e2e/domain-hierarchy.spec.ts	changing a parent previews effective inherited values and cancellation preserves the old parent	/tmp/erdmini-full-local.log
+local	e2e/domain-hierarchy.spec.ts	middle domain deletion reparents descendants, recomputes inherited fields and supports cancel/undo/redo/reload	/tmp/erdmini-full-local.log
+local	e2e/domain-hierarchy.spec.ts	root domain deletion reparents descendants, recomputes inherited fields and supports cancel/undo/redo/reload	/tmp/erdmini-full-local.log
+local	e2e/domain-hierarchy.spec.ts	xlsx workbook reimport preserves hierarchy identities and inherited column overrides through undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/domain-hierarchy.spec.ts	xls workbook reimport preserves hierarchy identities and inherited column overrides through undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain impact cancellation preserves linked columns and confirmation propagates only to linked columns	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain coverage, unused filter and metadata search reflect actual usage without changing schema	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	deleting a used domain cancels safely then unlinks columns without losing their metadata	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	failed XLSX import preserves domains and allows retrying the same file input	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	switching domain rows respects impact cancellation and saves confirmed edits to the original domain	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	a domain workbook finishing after project navigation cannot modify either project	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	a newer domain upload wins over an older delayed workbook without adding obsolete domains	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain XLSX preserves zero and false cells plus documentation through import, export and reload	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	xlsx duplicate domain rows update stable identities in row order as one undoable import	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	xls duplicate domain rows update stable identities in row order as one undoable import	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain import empty-sheet leaves schema and undo history intact and permits a valid retry	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain import headers-only leaves schema and undo history intact and permits a valid retry	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain import missing-name-header leaves schema and undo history intact and permits a valid retry	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	xlsx domain dimensions discard invalid cells and preserve valid numeric strings and zero scale after reload	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	xls domain dimensions discard invalid cells and preserve valid numeric strings and zero scale after reload	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain create DECIMAL rejects invalid dimension drafts through Save, Enter and row navigation and recovers after cancellation	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain create NUMERIC rejects invalid dimension drafts through Save, Enter and row navigation and recovers after cancellation	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain edit DECIMAL rejects invalid dimension drafts through Save, Enter and row navigation and recovers after cancellation	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain edit NUMERIC rejects invalid dimension drafts through Save, Enter and row navigation and recovers after cancellation	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain NVARCHAR preserves imported dimensions during metadata edits and propagates explicit dimension changes	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain NCHAR preserves imported dimensions during metadata edits and propagates explicit dimension changes	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain BINARY preserves imported dimensions during metadata edits and propagates explicit dimension changes	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain VARBINARY preserves imported dimensions during metadata edits and propagates explicit dimension changes	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain TIME preserves imported dimensions during metadata edits and propagates explicit dimension changes	/tmp/erdmini-full-local.log
+local	e2e/domain-lifecycle.spec.ts	domain DATETIMEOFFSET preserves imported dimensions during metadata edits and propagates explicit dimension changes	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	composite FK edit cancels draft changes, excludes duplicate columns and persists confirmed pairs and actions	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	changing the referenced table clears stale target columns and requires complete new pairs	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	new FK validates incomplete pairs, removes a draft pair and clears cancelled creation	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	Orthogonal composite FK changes nullable dash rendering through edit, undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	Bezier composite FK changes nullable dash rendering through edit, undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	Rounded composite FK changes nullable dash rendering through edit, undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	FK line mouse popover cancels and deletes the whole composite relationship with undo and reload	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	FK line keyboard popover cancels and deletes the whole composite relationship with undo and reload	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	viewport-only pan and zoom preserve relation world geometry and minimap objects while updating the visible viewport	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	Orthogonal FK paths follow the moving table before mouse release and retain endpoints after undo redo reload	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	Bezier FK paths follow the moving table before mouse release and retain endpoints after undo redo reload	/tmp/erdmini-full-local.log
+local	e2e/foreign-key-edit.spec.ts	Rounded FK paths follow the moving table before mouse release and retain endpoints after undo redo reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	JSON download and reimport preserve schema metadata, IDs, constraints, objects and attached memos	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	cancelled JSON replacement and duplicate merge preserve the original saved schema	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DBML invalid input leaves existing schema intact and supports corrected retry	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Prisma invalid input leaves existing schema intact and supports corrected retry	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL MySQL export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL PostgreSQL export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL MariaDB export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL MSSQL export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL SQLite export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL Oracle export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL H2 export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DBML  export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Prisma  export reimports table and column semantics with resolved foreign keys in a new project	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MySQL composite constraints retain column order and FK actions through export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	PostgreSQL composite constraints retain column order and FK actions through export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MariaDB composite constraints retain column order and FK actions through export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MSSQL composite constraints retain column order and FK actions through export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	SQLite composite constraints retain column order and FK actions through export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Oracle composite constraints retain column order and FK actions through export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	H2 composite constraints retain column order and FK actions through export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DBML composite keys, indexes and FK pairs preserve semantics through export and reimport	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Prisma composite keys, indexes and FK pairs preserve semantics through export and reimport	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MySQL quoted names, Unicode, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MySQL escaped delimiter identifiers, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	PostgreSQL quoted names, Unicode, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	PostgreSQL escaped delimiter identifiers, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MariaDB quoted names, Unicode, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MariaDB escaped delimiter identifiers, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MSSQL quoted names, Unicode, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MSSQL escaped delimiter identifiers, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	SQLite quoted names, Unicode, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	SQLite escaped delimiter identifiers, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Oracle quoted names, Unicode, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Oracle escaped delimiter identifiers, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	H2 quoted names, Unicode, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	H2 escaped delimiter identifiers, decimal scale zero and defaults survive DDL round trip and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MySQL native ENUM preserves ordered escaped, comma, Unicode and empty values through DDL and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MariaDB native ENUM preserves ordered escaped, comma, Unicode and empty values through DDL and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	PostgreSQL native ENUM preserves ordered escaped, comma, Unicode and empty values through DDL and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	H2 native ENUM preserves ordered escaped, comma, Unicode and empty values through DDL and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MySQL native temporal dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MySQL native binary dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MariaDB native temporal dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MariaDB native binary dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	PostgreSQL native temporal dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	PostgreSQL native binary dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MSSQL native temporal dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MSSQL native binary dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Oracle native binary dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	SQLite native binary dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	H2 native binary dimensions preserve explicit boundaries through DDL export, import and reload	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Oracle additional temporal conversion follows native representation and persists canonical imported semantics	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	Oracle additional enum-fallback conversion follows native representation and persists canonical imported semantics	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	SQLite additional temporal conversion follows native representation and persists canonical imported semantics	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	SQLite additional enum-fallback conversion follows native representation and persists canonical imported semantics	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	H2 additional temporal conversion follows native representation and persists canonical imported semantics	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MSSQL additional enum-fallback conversion follows native representation and persists canonical imported semantics	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	MySQL schema-qualified DDL preserves table and column comments and resolves ALTER TABLE foreign keys	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	PostgreSQL schema-qualified DDL preserves table and column comments and resolves ALTER TABLE foreign keys	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL import independent tables with Skip keeps existing canvas metadata and saves new placement	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL import independent tables with Overwrite keeps existing canvas metadata and saves new placement	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL import related tables with Skip keeps existing canvas metadata and saves new placement	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	DDL import related tables with Overwrite keeps existing canvas metadata and saves new placement	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	copied share URL preserves rich schema in a fresh editable local copy without changing the source	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	rich all-project backup cancel preserves newer edits with IDs and relationships intact	/tmp/erdmini-full-local.log
+local	e2e/import-export-roundtrip.spec.ts	rich all-project backup restores both project schemas with IDs and relationships intact	/tmp/erdmini-full-local.log
+local	e2e/layout-lifecycle.spec.ts	Smart layout changes only positions and supports undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/layout-lifecycle.spec.ts	Grid layout changes only positions and supports undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/layout-lifecycle.spec.ts	Hierarchical layout changes only positions and supports undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/layout-lifecycle.spec.ts	Radial layout changes only positions and supports undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/layout-lifecycle.spec.ts	Radial Tree layout changes only positions and supports undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 1: Domain circular hierarchy reference displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 2: Domain circular hierarchy reference displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 3: Column type incompatible with DBMS displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 4: Table has no primary key displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 5: FK references missing table/column displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 6: FK references missing table/column displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 7: SET NULL on NOT NULL column displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 8: Duplicate column name displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 9: Duplicate table name displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 10: Duplicate index displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 11: Circular FK reference displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 12: Empty table (no columns) displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 13: FK column count mismatch displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 14: FK references non-unique column displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	lint rule 15: FK column type mismatch displays exact severity and detail without schema writes	/tmp/erdmini-full-local.log
+local	e2e/lint-rule-lifecycle.spec.ts	JSON import normalizes nullable primary keys and does not report an unreachable nullable-PK warning	/tmp/erdmini-full-local.log
+local	e2e/local-durability.spec.ts	closing every tab and restarting the browser retains independent projects, native metadata, snapshots and viewport, then persists another edit	/tmp/erdmini-full-local.log
+local	e2e/memo-export.spec.ts	SVG export includes memo content and preserves the live schema and viewport	/tmp/erdmini-full-local.log
+local	e2e/memo-export.spec.ts	PNG export includes memo content and preserves the live schema and viewport	/tmp/erdmini-full-local.log
+local	e2e/memo-export.spec.ts	PDF export includes memo content and preserves the live schema and viewport	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo button deletion can be cancelled, undone and redone without losing content	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo keyboard deletion can be cancelled, undone and redone without losing content	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	single table drag moves its attached memo and persists the final position before detaching	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	group table drag moves its attached memo and persists the final position before detaching	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	table deletion preserves its memo, removes incoming FKs and restores both on undo	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	locked tables and memos remain selectable but cannot be moved or edited	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	free memo drag saves its final position and is undone as one gesture	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	group memo drag preserves relative positions and saves one undoable gesture	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	table grid snap rounds around half a cell and ignores a no-op drag	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo grid snap rounds around half a cell and ignores a no-op drag	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	table group drag skips locked members without jumping the unlocked member	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo group drag skips locked members without jumping the unlocked member	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	yellow memo color updates minimap and survives undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	blue memo color updates minimap and survives undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	green memo color updates minimap and survives undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	pink memo color updates minimap and survives undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	purple memo color updates minimap and survives undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	orange memo color updates minimap and survives undo, redo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	minimap namespace filtering excludes attached memos and updates after detach, undo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo resize uses world dimensions at 100% with history and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo resize clamps at minimum at 100% with history and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo resize uses world dimensions at 161% with history and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo resize clamps at minimum at 161% with history and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo blur commits multiline Unicode text and supports exact undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/memo-lifecycle.spec.ts	memo blur commits empty content and supports exact undo redo and reload	/tmp/erdmini-full-local.log
+local	e2e/object-categories.spec.ts	category rename validates duplicate and blank names, cancels safely and updates all member objects	/tmp/erdmini-full-local.log
+local	e2e/object-categories.spec.ts	category deletion cancels, removes only its members and restores them with undo before redo/reload	/tmp/erdmini-full-local.log
+local	e2e/object-categories.spec.ts	category drag reorder persists while search and collapse leave membership unchanged	/tmp/erdmini-full-local.log
+local	e2e/object-categories.spec.ts	an empty namespace clears hidden selections and creates scoped content without changing existing objects	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	한국어 selection updates the UI and survives reload without losing pending edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	English selection updates the UI and survives reload without losing pending edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	日本語 selection updates the UI and survives reload without losing pending edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	中文 selection updates the UI and survives reload without losing pending edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	input keeps text editing shortcuts from mutating or navigating the diagram	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	column input keeps text editing shortcuts from mutating or navigating the diagram	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	textarea keeps text editing shortcuts from mutating or navigating the diagram	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	SQL editor keeps text editing shortcuts from mutating or navigating the diagram	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	Modern theme and dark mode preserve canvas and panel colors and survive reload without schema edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	Classic theme and dark mode preserve canvas and panel colors and survive reload without schema edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	Blueprint theme and dark mode preserve canvas and panel colors and survive reload without schema edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	Minimal theme and dark mode preserve canvas and panel colors and survive reload without schema edits	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	Control palette handles empty results keyboard wrap Escape and hidden-namespace column navigation	/tmp/erdmini-full-local.log
+local	e2e/preferences-keyboard.spec.ts	Meta palette handles empty results keyboard wrap Escape and hidden-namespace column navigation	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	namespace filters tables, memos and only relationships with both endpoints visible	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	namespace rename cancels safely and updates scoped data after reload	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	duplicate or blank namespace rename leaves the active namespace and its data intact	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	namespace deletion cancels, unassigns scoped data without deleting it, and supports undo/redo	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	project switching saves pending edits and isolates schemas, selection and undo history	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	cancelling project deletion preserves the active project and its saved schema	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	edits database object SQL, category and export metadata and preserves a cancelled deletion	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	quick SQL edits on two objects are saved to their own objects	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	leaving SQL editing by close preserves the pending edit in the original project	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	leaving SQL editing by project preserves the pending edit in the original project	/tmp/erdmini-full-local.log
+local	e2e/project-namespaces.spec.ts	namespace drag reorder persists without changing memberships	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	the final project has no delete action and survives reload with its schema	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	deleting the active project falls back to the survivor and removes its schema, canvas and snapshots	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	pan and zoom are saved and restored without requiring a schema edit	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	new projects start at the default viewport and project switching restores each viewport	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	namespace switching restores separate pan and zoom values across reload	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	Space plus left drag pans without moving or selecting objects and persists the viewport	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	mouse-wheel zoom preserves the world point under the cursor and persists without schema edits	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	minimap click 35,30 centers the corresponding world point at 100% and persists without edits	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	minimap click 145,90 centers the corresponding world point at 100% and persists without edits	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	minimap click 35,30 centers the corresponding world point at 161% and persists without edits	/tmp/erdmini-full-local.log
+local	e2e/project-viewport.spec.ts	minimap click 145,90 centers the corresponding world point at 161% and persists without edits	/tmp/erdmini-full-local.log
+local	e2e/sidebar-navigation.spec.ts	sidebar name sorting and group collapse change visible rows without changing table data	/tmp/erdmini-full-local.log
+local	e2e/sidebar-navigation.spec.ts	sidebar column and comment search resolves the matching table and clearing restores all rows	/tmp/erdmini-full-local.log
+local	e2e/sidebar-navigation.spec.ts	sidebar width clamps at both limits and restores the final width without schema changes	/tmp/erdmini-full-local.log
+local	e2e/storage-recovery.spec.ts	quota failure preserves persisted schema and emergency backup, then recovers with banner visible	/tmp/erdmini-full-local.log
+local	e2e/storage-recovery.spec.ts	quota failure preserves persisted schema and emergency backup, then recovers with banner dismissed	/tmp/erdmini-full-local.log
+local	e2e/table-duplication.spec.ts	Control duplicate preserves namespace and column metadata with fresh IDs and independent edits	/tmp/erdmini-full-local.log
+local	e2e/table-duplication.spec.ts	Meta duplicate preserves namespace and column metadata with fresh IDs and independent edits	/tmp/erdmini-full-local.log
+local	e2e/tools-history.spec.ts	validation navigates to a hidden namespace and updating its column clears the live issue and persists	/tmp/erdmini-full-local.log
+local	e2e/tools-history.spec.ts	jumping to the oldest history entry redoes intermediate edits in their original order	/tmp/erdmini-full-local.log
+local	e2e/tools-history.spec.ts	editing after undo discards the abandoned future and reload retains the new branch	/tmp/erdmini-full-local.log
+local	e2e/tools-history.spec.ts	lint sorts errors before warnings and info and column navigation highlights only the offending hidden column	/tmp/erdmini-full-local.log
+local	e2e/tools-history.spec.ts	history future entries jump through intermediate redo steps and allow returning to an earlier saved state	/tmp/erdmini-full-local.log
+local	e2e/tools-history.spec.ts	history retains exactly 200 edits after overflow and replays every retained state in order	/tmp/erdmini-full-local.log
+server	e2e/server/auth.spec.ts	server-mode authentication › redirects unauthenticated users to the login page	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › redirects unauthenticated users away from the admin console	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › shows an error for invalid credentials	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › logs in with the configured admin account	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › navigates across the admin console tabs	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › validates and manages OIDC and LDAP provider configurations	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › creates, edits, and deletes a manual admin group	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › adds and removes a user from an admin group	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › creates, edits, and deletes an admin API key	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › creates and deletes a personal API key from the user menu	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › downloads the admin database backup	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › saves branding and naming-rule settings from the admin console	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › creates and deletes a dictionary word from the server dictionary	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › shares a password-protected dictionary and filters the public view	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › exports dictionary files and imports a JSON word list	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › creates, edits, and deletes a regular admin user	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › grants, changes, and revokes project permissions	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › protects storage APIs and logs out an authenticated user	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › opens a shared schema as read-only	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › persists a project schema through the server storage provider	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › joins a collaboration room and propagates a table operation to a second tab	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › creates a password-protected embed and handles wrong and correct passwords	/tmp/erdmini-full-server.log
+server	e2e/server/auth.spec.ts	server-mode authentication › lets admins list and revoke embed tokens and filter the audit trail	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	password UI validates input, rotates the current session and revokes other sessions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	administrator password reset revokes all existing user sessions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending accounts cannot log in and reapproval does not revive their old sessions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	group membership controls viewer/editor access and direct shares use the highest effective permission	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	overlapping group shares appear once with the highest effective permission	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP API key scopes restrict reads and writes, update immediately and cannot outlive project access	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	locale changes wait for an in-flight save and persist the latest editor changes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	failed locale saves preserve edits and the current language until a successful retry	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pan and zoom persist only canvas state without rewriting the shared schema	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	deleting a project waits for pending saves so delayed writes cannot recreate deleted data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	invalid personal key scopes are rejected atomically instead of creating or widening unrestricted keys	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	ownership handover preserves data, revokes former owner administration and protects the last owner	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	unknown embed tokens return a public error without exposing schema data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	expired plain and password-protected embeds deny API and browser access	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	public embed is read-only and its token cannot authorize storage or embed administration writes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	embed password validation rejects malformed input and successful viewing does not create a login session	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	viewer UI blocks keyboard and pointer mutations of tables, memos, SQL objects and domains without schema writes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin key creation rejects malformed fields and duplicate scopes without leaving partial keys	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin key failed edits preserve name, expiry and restrictions while valid updates commit together	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	project naming modes update validation, persist through reload and stay isolated between projects	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin-locked naming rules ignore stored overrides and viewers can inspect without editing or saving	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	independent collaborators propagate edits, ordered undo/redo and deletion then rejoin with the saved schema	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a disconnected collaborator resynchronizes missed changes on automatic WebSocket reconnect	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	revoked collaborators cannot receive schema through sync-request on an already-open socket	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	revoked collaborators cannot receive schema through broadcast on an already-open socket	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a live editor downgraded to viewer cannot broadcast writes but continues receiving allowed updates	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	logout invalidates an already-open collaboration socket before it can receive more schema data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	deactivate invalidates an already-open collaboration socket before it can receive more schema data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	global admin demotion applies to an open socket without removing legitimate viewer access	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	cancelled and invalid admin restores preserve the database and authenticated session	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin restore rejects a backup missing project_index before replacing live data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a downloaded database backup restores project data while keeping its captured admin session usable	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	database restore reloads cached site settings and naming rules from the backup	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	connected collaborators reconnect to the restored database and continue editing its schema	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restore rolls back a checksum backup and preserves existing collaboration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restore rolls back a failed-migration backup and preserves existing collaboration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restore rejects a future-version backup and preserves existing collaboration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restoring a version 17 backup migrates legacy dictionary words and share tokens without losing project data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	audit search paginates without duplicates, expands details and resets pagination for new filters	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a slow previous audit search cannot overwrite the currently selected category	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	duplicate and invalid admin user creation preserves existing accounts and the failed form	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	table and column affix warnings clear after edits while case validation ignores configured affixes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	dictionary validation loads words past the first page and follows dictionary and target overrides after reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a delayed dictionary page 1 cannot replace words from a newer dictionary selection	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a delayed dictionary page 2 cannot replace words from a newer dictionary selection	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	dictionary page 1 http failure reports incomplete validation and retry loads the complete dictionary	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	dictionary page 1 network failure reports incomplete validation and retry loads the complete dictionary	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	dictionary page 1 json failure reports incomplete validation and retry loads the complete dictionary	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	dictionary page 2 http failure reports incomplete validation and retry loads the complete dictionary	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	dictionary page 2 network failure reports incomplete validation and retry loads the complete dictionary	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	dictionary page 2 json failure reports incomplete validation and retry loads the complete dictionary	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	project switching ignores a previous project's delayed dictionary success and retains independent selections	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	project switching ignores a previous project's delayed dictionary failure and retains independent selections	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP bulk domain assignment supports names, patterns and explicit references, rejects invalid requests and enforces key scope	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP bulk domain limits count unique references, keep empty selections empty and cap pattern matches at 1000	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC browser login exchanges an S256 code for a verified identity, reuses the user and rejects callback replay	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC jwks-unavailable cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC jwks-empty cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC authorization-denied cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC invalid-grant cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC unavailable cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC missing-id-token cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC invalid-signature cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC expired-token cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC wrong-issuer cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC wrong-audience cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC not-yet-valid-token cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC pending cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC disabled-provider cannot create an authenticated session and a fresh authorized login can recover	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC group and admin claims synchronize on relogin, revoke old-session privileges and preserve manual memberships	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC custom scalar group claim takes precedence over default groups and empty claims remove synchronized membership	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP browser login rejects incorrect credentials, binds over TLS and reuses its directory identity on relogin	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP removed directory groups revoke synchronized membership and mapped administrator privileges on relogin	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP allowed group DN is matched as a whole and group-search failure or lost membership denies login	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	clearing optional LDAP group settings in the admin form persists removal while keeping the stored bind password	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP registration, provider activation and account approval policies deny sessions without creating duplicate users	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP StartTLS encrypts service and user binds before creating a session	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP StartTLS rejection denies login without plaintext bind	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC admin edits preserve an empty secret field and rotated secrets take effect on the next login	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	database restore invalidates a warm OIDC configuration so restored credentials can authenticate again	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC callback cannot log a different browser with missing state into the initiating identity	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC callback cannot log a different browser with mismatch state into the initiating identity	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP service-bind failure creates no identity or session and recovers after directory repair	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP user-search failure creates no identity or session and recovers after directory repair	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP disconnect failure creates no identity or session and recovers after directory repair	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an open editor refreshes downgraded and restored project permissions through focus	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an open editor refreshes downgraded and restored project permissions through periodic	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	permission refresh http cannot grant local-mode editing and a valid retry recovers	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	permission refresh network cannot grant local-mode editing and a valid retry recovers	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	permission refresh no-access cannot grant local-mode editing and a valid retry recovers	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a delayed older permission response cannot restore editing after a newer downgrade	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	a pending domain upload cannot apply after editor downgrade and the same file can be retried after permission recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	invalid and duplicate group writes are atomic and preserve membership and shared project access	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	group duplicate create and rename errors preserve form values and recover through a corrected browser edit	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC group claims cannot acquire a manual group's project permission through a name collision	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC group claims cannot acquire a other-provider group's project permission through a name collision	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP LDAPS rejects untrusted certificates before sending credentials and recovers after replacement	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP StartTLS rejects untrusted certificates before sending credentials and recovers after replacement	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP LDAPS rejects hostname-mismatch certificates before sending credentials and recovers after replacement	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP StartTLS rejects hostname-mismatch certificates before sending credentials and recovers after replacement	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP service-bind-timeout is bounded without creating a session and recovers when the directory responds again	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP user-bind-timeout is bounded without creating a session and recovers when the directory responds again	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP user-search-timeout is bounded without creating a session and recovers when the directory responds again	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP group-search-timeout is bounded without creating a session and recovers when the directory responds again	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	the admin LDAP connection check times out without hanging and succeeds after directory repair	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC discovery unavailable returns to login without identity or state and retries after provider recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC discovery malformed-json returns to login without identity or state and retries after provider recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC discovery wrong-issuer returns to login without identity or state and retries after provider recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC discovery missing-authorization-endpoint returns to login without identity or state and retries after provider recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC discovery missing-token-endpoint returns to login without identity or state and retries after provider recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC discovery missing-jwks-uri returns to login without identity or state and retries after provider recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC expired-state rejects callback and replay without token exchange and permits fresh login	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	OIDC missing-code rejects callback and replay without token exchange and permits fresh login	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	revoked open project becomes readonly and reload prunes it with surviving-project fallback	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	revoked open project becomes readonly and reload prunes it with no-projects fallback	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent independent-fields edits converge and persist with owner-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent independent-fields edits converge and persist with collaborator-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent delete-vs-rename edits converge and persist with owner-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent delete-vs-rename edits converge and persist with collaborator-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent same-field table-name converge to the last server operation with owner-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent same-field table-name converge to the last server operation with collaborator-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent same-field column-name converge to the last server operation with owner-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent same-field column-name converge to the last server operation with collaborator-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent same-field rapid-table-name converge to the last server operation with owner-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent same-field rapid-table-name converge to the last server operation with collaborator-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent single table movement converges with attached memos in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent single table movement converges with attached memos in collaborator-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent group table movement converges with attached memos in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent group table movement converges with attached memos in collaborator-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent single memo movement converges and persists in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent single memo movement converges and persists in collaborator-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent group memo movement converges and persists in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent group memo movement converges and persists in collaborator-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent column reorder converges to the accepted full order with owner-first delivery without losing constraints	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent column reorder converges to the accepted full order with collaborator-first delivery without losing constraints	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent namespace reorder converges without changing membership with owner-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent namespace reorder converges without changing membership with collaborator-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent category reorder converges without changing membership with owner-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent category reorder converges without changing membership with collaborator-first delivery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborators create, edit, move and delete DB objects and categories with undo, redo and persisted reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborators propagate target DBMS changes and clearing without losing schema data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	multi-row domain import propagates every update and addition with linked columns, undo, redo and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP LDAPS stalled TLS handshake bounds login before credentials and recovers on the same listener	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP LDAPS stalled TLS handshake bounds admin-check before credentials and recovers on the same listener	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP StartTLS stalled TLS handshake bounds login before credentials and recovers on the same listener	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	LDAP StartTLS stalled TLS handshake bounds admin-check before credentials and recovers on the same listener	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	column reorder versus concurrent add preserves current columns and constraints in reorder-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	column reorder versus concurrent add preserves current columns and constraints in change-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	column reorder versus concurrent delete preserves current columns and constraints in reorder-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	column reorder versus concurrent delete preserves current columns and constraints in change-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	live collaborator FK, UK and index creation and FK self-retarget preserve valid composite references in both directions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-column deletion versus constraint creation converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-column deletion versus constraint creation converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-column deletion versus constraint creation converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-column deletion versus constraint creation converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-table deletion versus constraint creation converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-table deletion versus constraint creation converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-table deletion versus constraint creation converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-table deletion versus constraint creation converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent uk-column deletion versus constraint creation converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent uk-column deletion versus constraint creation converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent index-column deletion versus constraint creation converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent index-column deletion versus constraint creation converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-column deletion versus constraint retarget converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-column deletion versus constraint retarget converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-column deletion versus constraint retarget converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-column deletion versus constraint retarget converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-table deletion versus constraint retarget converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-source-table deletion versus constraint retarget converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-table deletion versus constraint retarget converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-target-table deletion versus constraint retarget converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-record deletion versus constraint retarget converges without dangling references in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent fk-record deletion versus constraint retarget converges without dangling references in constraint-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach versus single table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach versus single table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach versus group table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach versus group table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	live memo attach preserves content, position and linkage across browsers	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo detach versus single table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo detach versus single table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo detach versus group table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo detach versus group table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	live memo detach preserves content, position and linkage across browsers	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo reattach versus single table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo reattach versus single table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo reattach versus group table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo reattach versus group table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	live memo reattach preserves content, position and linkage across browsers	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo create-attach versus single table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo create-attach versus single table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo create-attach versus group table deletion preserves content, position and linkage in delete-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo create-attach versus group table deletion preserves content, position and linkage in memo-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	live memo create-attach preserves content, position and linkage across browsers	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent single memo movement versus detachment converges to the accepted position in mover-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent single memo movement versus detachment converges to the accepted position in detacher-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent group memo movement versus detachment converges to the accepted position in mover-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent group memo movement versus detachment converges to the accepted position in detacher-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach-attach converges to the accepted attachment and position in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach-attach converges to the accepted attachment and position in peer-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach-detach converges to the accepted attachment and position in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent memo attach-detach converges to the accepted attachment and position in peer-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin pending-user filter updates after approval and restores the complete list when no pending users remain	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restoring a genuine version 2 schema migrates accounts, sessions and projects to the current version	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restoring a genuine version 4 schema migrates accounts, sessions and projects to the current version	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restoring a genuine version 8 schema migrates accounts, sessions and projects to the current version	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restoring a genuine version 12 schema migrates accounts, sessions and projects to the current version	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restoring a genuine version 16 schema migrates accounts, sessions and projects to the current version	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	restore filesystem preparation failure preserves live data, sessions and subsequent collaborator edits	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin API-key owner search filters by username, display name and email and clearing selection assigns the corrected owner	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent domain unlink-update preserves explicit links and inherited fields in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent domain unlink-update preserves explicit links and inherited fields in peer-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent domain parent-delete-reparent preserves explicit links and inherited fields in owner-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	concurrent domain parent-delete-reparent preserves explicit links and inherited fields in peer-first order	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects malformed JSON without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects null body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects array body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects blank display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects numeric display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects object optional field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects nonboolean enabled flag without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects blank required connection field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects malformed JSON without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects null body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects array body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects blank display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects numeric display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects object optional field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects nonboolean enabled flag without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects blank required connection field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider create rejects a duplicate connection URL atomically and accepts a corrected retry	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap provider update rejects a duplicate connection URL atomically and accepts a corrected retry	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects malformed JSON without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects null body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects array body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects blank display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects numeric display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects object optional field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects nonboolean enabled flag without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects blank required connection field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects malformed JSON without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects null body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects array body without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects blank display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects numeric display name without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects object optional field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects nonboolean enabled flag without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects blank required connection field without changing stored configuration	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider create rejects a duplicate connection URL atomically and accepts a corrected retry	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc provider update rejects a duplicate connection URL atomically and accepts a corrected retry	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	populated version 11 restore preserves provider credentials, identities, group access and scoped API keys	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	populated version 12 restore preserves provider credentials, identities, group access and scoped API keys	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	populated version 16 restore preserves provider credentials, identities, group access and scoped API keys	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap browser duplicate-create retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap browser failed-edit retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap browser network-create retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap browser network-edit retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap browser non-json-create retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin ldap browser non-json-edit retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc browser duplicate-create retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc browser failed-edit retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc browser network-create retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc browser network-edit retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc browser non-json-create retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin oidc browser non-json-edit retains the failed draft and recovers on corrected retry and reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an already open foreign-key draft cannot change live or stored schema after permission downgrade and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an already open unique draft cannot change live or stored schema after permission downgrade and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an already open index draft cannot change live or stored schema after permission downgrade and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an open column-popup ignores edits after downgrade and permits a fresh edit after permission recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an open domain-draft ignores edits after downgrade and permits a fresh edit after permission recovery	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	an open DB-object editor disables metadata and SQL after downgrade and restores editing after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	version 11 restore permits fresh ldap login with the same identity, group access and no duplicate user	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	version 11 restore permits fresh oidc login with the same identity, group access and no duplicate user	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	version 12 restore permits fresh ldap login with the same identity, group access and no duplicate user	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	version 12 restore permits fresh oidc login with the same identity, group access and no duplicate user	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	version 16 restore permits fresh ldap login with the same identity, group access and no duplicate user	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	version 16 restore permits fresh oidc login with the same identity, group access and no duplicate user	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open memo work cannot mutate live or stored data after viewer access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open memo work cannot mutate live or stored data after revoked access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open bulk work cannot mutate live or stored data after viewer access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open bulk work cannot mutate live or stored data after revoked access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open namespace work cannot mutate live or stored data after viewer access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open namespace work cannot mutate live or stored data after revoked access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open category work cannot mutate live or stored data after viewer access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	open category work cannot mutate live or stored data after revoked access and recovers after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative length clearing versus same-field edit converges in clear-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative length clearing versus same-field edit converges in edit-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative length clearing versus independent-field edit converges in clear-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative length clearing versus independent-field edit converges in edit-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative scale clearing versus same-field edit converges in clear-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative scale clearing versus same-field edit converges in edit-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative scale clearing versus independent-field edit converges in clear-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative scale clearing versus independent-field edit converges in edit-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative defaultValue clearing versus same-field edit converges in clear-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative defaultValue clearing versus same-field edit converges in edit-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative defaultValue clearing versus independent-field edit converges in clear-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	collaborative defaultValue clearing versus independent-field edit converges in edit-first order without losing metadata	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending fk-line confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending fk-line confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending table confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending table confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending memo confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending memo confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending column-editor confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending column-editor confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending column-popup confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending column-popup confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending namespace confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending namespace confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending category confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending category confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending object confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending object confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending domain confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending domain confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending domain-propagation confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending domain-propagation confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending bulk-delete confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending bulk-delete confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-table confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-table confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-memo confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-memo confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-memos confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-memos confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-mixed confirmation rechecks viewer permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	pending keyboard-mixed confirmation rechecks revoked permission before mutation and allows cancel or retry after regrant	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP discovery returns the complete public tool contract without exposing secrets or mutating project data	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP get_schema_summary returns its read contract, validates selectors and denies out-of-scope data without writes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP list_tables returns its read contract, validates selectors and denies out-of-scope data without writes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP list_schemas returns its read contract, validates selectors and denies out-of-scope data without writes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP get_table returns its read contract, validates selectors and denies out-of-scope data without writes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP list_groups returns its read contract, validates selectors and denies out-of-scope data without writes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business get_schema enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl merge-existing enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_prisma merge-existing enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_dbml merge-existing enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business rename_schema assigned-object enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_schema assigned-object enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_db_object move-category enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business set_project_dictionary enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business set_project_naming_rules enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business get_naming_rules enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business list_domains enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business get_domain enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_domain enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_domain enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_domain enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business suggest_domains enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business domain_coverage enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_domain_dictionary markdown enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_domain_dictionary html enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl mysql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl postgresql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl mariadb enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl mssql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl sqlite enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl oracle enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_ddl h2 enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_prisma enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business import_dbml enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business bulk_add_tables enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business bulk_add_columns enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business bulk_update_tables enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business bulk_update_columns enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business list_snapshots enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business create_snapshot enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business restore_snapshot enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_snapshot enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business compare_snapshots enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_migration_sql mysql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_migration_sql postgresql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_migration_sql mariadb enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_migration_sql mssql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_migration_sql sqlite enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_migration_sql oracle enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_migration_sql h2 enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_ddl mysql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_ddl postgresql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_ddl mariadb enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_ddl mssql enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_ddl sqlite enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_ddl oracle enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_ddl h2 enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_diagram mermaid enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_diagram plantuml enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_prisma enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business export_dbml enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business auto_layout grid enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business auto_layout hierarchical enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business auto_layout radial enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business auto_layout radial-tree enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business get_table_by_name enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business search_columns enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business find_orphan_tables enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business lint_schema enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business list_db_objects enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business list_db_object_categories enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business get_db_object enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_db_object enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_db_object enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_db_object enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_db_object_category enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business rename_db_object_category enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_db_object_category enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_schema enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business rename_schema enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_schema enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business bulk_update_table_schema enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_table enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_table enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_table enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_tables partial enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_tables duplicate enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business duplicate_table enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business rename_group enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_group_color enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_column enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_column enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_column enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business move_column enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_unique_key enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_unique_key enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_index enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_index enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_foreign_key enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_foreign_key enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_foreign_key enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business list_memos enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business add_memo enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business update_memo enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business delete_memo enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business attach_memo enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP business detach_memo enforces scope, rejects invalid mutations and persists live browser state	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP project name lookup filters by scoped visibility and case without exposing unscoped projects	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary business list_dictionary_words respects roles, status visibility and atomic validation	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary business add_dictionary_word respects roles, status visibility and atomic validation	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary business update_dictionary_word respects roles, status visibility and atomic validation	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary business delete_dictionary_word respects roles, status visibility and atomic validation	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary business import_dictionary_words respects roles, status visibility and atomic validation	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary business export_dictionary_words respects roles, status visibility and atomic validation	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary management list_dictionaries preserves metadata and enforces admin and usage restrictions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary management create_dictionary preserves metadata and enforces admin and usage restrictions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary management update_dictionary preserves metadata and enforces admin and usage restrictions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	MCP dictionary management delete_dictionary preserves metadata and enforces admin and usage restrictions	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	viewer presence shows transformed cursors and remote selection then clears on leave and rejoins without schema content changes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	editor presence shows transformed cursors and remote selection then clears on leave and rejoins without schema content changes	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	local login session cookie is HttpOnly Strict and expires after the configured default without leaking to page scripts	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	server naming lint columnCase reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	server naming lint columnPrefix reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	server naming lint columnSuffix reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	server naming lint tableSuffix reports the exact target and clears only after a compliant saved rename	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	server storage uses WAL and a separate read connection observes committed API schema updates	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	configured initial administrator has one hashed identity and retains it across repeated login and page reload	/tmp/erdmini-full-server.log
+server	e2e/server/security.spec.ts	admin API key persists only its SHA-256 hash, retains it on rename and removes scopes on revocation	/tmp/erdmini-full-server.log
+startup	e2e/startup/admin-bootstrap.spec.ts	empty database configured administrator survives server restart without password replacement	/tmp/erdmini-full-startup.log
+startup	e2e/startup/admin-bootstrap.spec.ts	empty database generated administrator survives server restart without password replacement	/tmp/erdmini-full-startup.log
+startup	e2e/startup/admin-bootstrap.spec.ts	legacy singleton project ownership migrates to the initial administrator without changing saved content	/tmp/erdmini-full-startup.log
+startup	e2e/startup/admin-bootstrap.spec.ts	existing users prevent creation of an environment administrator and keep their password hash unchanged	/tmp/erdmini-full-startup.log
+startup	e2e/startup/admin-bootstrap.spec.ts	empty administrator username configuration uses the default admin identity	/tmp/erdmini-full-startup.log
+docker	e2e/docker/compose.spec.ts	Compose server starts the configured service and persists UI data after restart	/tmp/erdmini-full-docker.log
+docker	e2e/docker/compose.spec.ts	Compose local profile starts the configured service and persists UI data after restart	/tmp/erdmini-full-docker.log
+docker	e2e/docker/deployment.spec.ts	Docker local deployment serves the application and retains saved schema across container restart	/tmp/erdmini-full-docker.log
+docker	e2e/docker/deployment.spec.ts	Docker server deployment serves the application and retains saved schema across container restart	/tmp/erdmini-full-docker.log

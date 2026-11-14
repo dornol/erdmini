@@ -101,16 +101,7 @@ export function updateTable(
 }
 
 export function deleteTable(schema: ERDSchema, tableId: string): ERDSchema {
-  return {
-    ...schema,
-    tables: schema.tables
-      .filter(t => t.id !== tableId)
-      .map(t => ({
-        ...t,
-        foreignKeys: t.foreignKeys.filter(fk => fk.referencedTableId !== tableId),
-      })),
-    updatedAt: now(),
-  };
+  return deleteTables(schema, [tableId]);
 }
 
 export function addColumn(
@@ -150,7 +141,7 @@ export function addColumn(
     comment: column?.comment,
     enumValues: column?.enumValues,
     check: column?.check,
-    domainId: column?.domainId,
+    domainId: column?.domainId || undefined,
   };
 
   // PK implies NOT NULL
@@ -174,8 +165,9 @@ export function updateColumn(
   columnId: string,
   patch: Partial<Omit<Column, 'id'>>,
 ): ERDSchema {
-  // PK implies NOT NULL
-  if (patch.primaryKey) patch.nullable = false;
+  const fields = { ...patch, ...(patch.domainId === '' ? { domainId: undefined } : {}) };
+  // PK implies NOT NULL without mutating the caller's patch.
+  if (fields.primaryKey) fields.nullable = false;
 
   return {
     ...schema,
@@ -184,7 +176,7 @@ export function updateColumn(
       return {
         ...t,
         columns: t.columns.map(c =>
-          c.id === columnId ? { ...c, ...patch } : c
+          c.id === columnId ? { ...c, ...fields } : c
         ),
       };
     }),
@@ -772,7 +764,11 @@ export function bulkAssignDomainByList(
   let s = schema;
   let updated = 0;
 
+  const visited = new Set<string>();
   for (const { tableId, columnId } of columns) {
+    const key = JSON.stringify([tableId, columnId]);
+    if (visited.has(key)) continue;
+    visited.add(key);
     const table = s.tables.find(t => t.id === tableId);
     if (!table || !table.columns.find(c => c.id === columnId)) continue;
     s = updateColumn(s, tableId, columnId, patch);
@@ -825,7 +821,9 @@ export function deleteSchemaNamespace(
   const memos = (schema.memos ?? []).map(m =>
     m.schema === name ? { ...m, schema: undefined } : m
   );
-  return { ...schema, schemas, tables, memos, updatedAt: now() };
+  return { ...schema, schemas, tables, memos,
+    ...(schema.dbObjects ? { dbObjects: schema.dbObjects.map(o => o.schema === name ? { ...o, schema: undefined } : o) } : {}),
+    updatedAt: now() };
 }
 
 // ---- Rename schema namespace ----
@@ -851,7 +849,9 @@ export function renameSchema(
 
   const newSchemas = schemas.map(s => s === oldName ? newName : s);
 
-  return { ...schema, tables, memos, schemas: newSchemas, updatedAt: now() };
+  return { ...schema, tables, memos, schemas: newSchemas,
+    ...(schema.dbObjects ? { dbObjects: schema.dbObjects.map(o => o.schema === oldName ? { ...o, schema: newName } : o) } : {}),
+    updatedAt: now() };
 }
 
 // ── DB Object operations ──
@@ -889,7 +889,11 @@ export function updateDbObject(
   const dbObjects = (schema.dbObjects ?? []).map(o =>
     o.id === objectId ? { ...o, ...patch } : o,
   );
-  return { ...schema, dbObjects, updatedAt: now() };
+  const categories = schema.dbObjectCategories ?? [];
+  const categoryAdded = patch.category && dbObjects.some(o => o.id === objectId) && !categories.includes(patch.category);
+  return { ...schema, dbObjects,
+    ...(categoryAdded ? { dbObjectCategories: [...categories, patch.category!] } : {}),
+    updatedAt: now() };
 }
 
 export function deleteDbObject(schema: ERDSchema, objectId: string): ERDSchema {

@@ -23,6 +23,7 @@ try {
   const collab = initCollabServer(server, collabDb);
   wss = collab.wss;
   globalThis.__erdmini_notifySchemaChange = collab.notifySchemaChange;
+  globalThis.__erdmini_collabDatabase = collab;
   collabLog.info('WebSocket server initialized');
 } catch (e) {
   collabLog.warn('Could not initialize WebSocket server', { error: e.message });

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { erdStore } from '$lib/store/erd.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
   import { REFERENTIAL_ACTIONS } from '$lib/types/erd';
   import type { ReferentialAction } from '$lib/types/erd';
   import * as m from '$lib/paraglide/messages';
@@ -56,6 +57,12 @@
     columnPairs = columnPairs.filter((_, i) => i !== idx);
   }
 
+  function changeReferencedTable(id: string) {
+    if (id === fkRefTableId) return;
+    fkRefTableId = id;
+    columnPairs = columnPairs.map((pair) => ({ ...pair, refColId: '' }));
+  }
+
   let setNullWarning = $derived.by(() => {
     if (fkOnDelete !== 'SET NULL' && fkOnUpdate !== 'SET NULL') return false;
     if (!selectedTable) return false;
@@ -68,11 +75,16 @@
   let canSubmit = $derived(
     fkRefTableId !== '' &&
     columnPairs.length > 0 &&
-    columnPairs.every((p) => p.srcColId !== '' && p.refColId !== ''),
+    columnPairs.every((p) =>
+      selectedTable?.columns.some((c) => c.id === p.srcColId) &&
+      refTableColumns.some((c) => c.id === p.refColId),
+    ) &&
+    new Set(columnPairs.map((p) => p.srcColId)).size === columnPairs.length &&
+    new Set(columnPairs.map((p) => p.refColId)).size === columnPairs.length,
   );
 
   function submit() {
-    if (!canSubmit) return;
+    if (!canSubmit || permissionStore.isReadOnly) return;
     const columnIds = columnPairs.map((p) => p.srcColId);
     const referencedColumnIds = columnPairs.map((p) => p.refColId);
     if (isEditMode && editFkId) {
@@ -105,7 +117,7 @@
         <SearchableSelect
           options={allTables.map((t) => ({ value: t.id, label: t.name }))}
           value={fkRefTableId}
-          onchange={(v) => (fkRefTableId = v)}
+          onchange={changeReferencedTable}
           placeholder={m.select_placeholder()}
           size="md"
         />
@@ -195,7 +207,7 @@
         class="btn-submit"
         data-testid="fk-submit"
         onclick={submit}
-        disabled={!canSubmit}
+        disabled={!canSubmit || permissionStore.isReadOnly}
       >
         {isEditMode ? m.action_confirm() : m.action_add_submit()}
       </button>

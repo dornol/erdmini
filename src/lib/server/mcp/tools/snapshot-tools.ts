@@ -83,7 +83,10 @@ export const registerSnapshotTools: RegisterFn = (server, ctx) => {
     },
     async ({ projectId, snapshotId }) => {
       requireAccess(projectId, 'editor');
-      db.prepare('DELETE FROM schema_snapshots WHERE project_id = ? AND id = ?').run(projectId, snapshotId);
+      const deleted = db.prepare('DELETE FROM schema_snapshots WHERE project_id = ? AND id = ?').run(projectId, snapshotId);
+      if (deleted.changes === 0) {
+        return { content: [{ type: 'text', text: 'Snapshot not found' }], isError: true };
+      }
       mcpAudit('delete_snapshot', projectId, { snapshotId });
       return { content: [{ type: 'text', text: 'Snapshot deleted' }] };
     },

@@ -335,7 +335,7 @@
       confirmText: m.action_delete(),
       variant: 'danger',
     });
-    if (ok) erdStore.deleteForeignKey(line.tableId, line.fk.id);
+    if (ok && !isReadOnly) erdStore.deleteForeignKey(line.tableId, line.fk.id);
   }
 </script>
 

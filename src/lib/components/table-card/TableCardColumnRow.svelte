@@ -328,6 +328,7 @@
 
   /* ── Tooltip ── */
   .col-tooltip {
+    pointer-events: none;
     display: none;
     position: absolute;
     left: calc(100% + 10px);

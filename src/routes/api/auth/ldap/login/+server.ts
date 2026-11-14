@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { authenticateLdap, findOrCreateLdapUser } from '$lib/server/auth/ldap';
 import { createSession, SESSION_MAX_AGE_DAYS } from '$lib/server/auth/session';
-import { syncUserGroups, extractCN } from '$lib/server/auth/group-sync';
+import { syncUserGroups, syncAdminRole, extractCN } from '$lib/server/auth/group-sync';
 import { logAudit } from '$lib/server/audit';
 import { RateLimiter } from '$lib/server/auth/rate-limiter';
 import { cookiePath } from '$lib/utils/paths';
@@ -64,8 +64,12 @@ export const POST: RequestHandler = async ({ request, cookies, url, getClientAdd
     return json({ error: 'pending_approval' }, { status: 403 });
   }
 
+  if (provider.admin_group_dn) {
+    syncAdminRole(db, result.userId, authResult.groups, [provider.admin_group_dn], provider.display_name, 'ldap');
+  }
+
   // Sync groups from LDAP
-  if (provider.sync_groups && authResult.groups.length > 0) {
+  if (provider.sync_groups) {
     const groupNames = authResult.groups.map(dn => extractCN(dn));
     syncUserGroups(db, result.userId, groupNames, 'ldap', provider.id);
   }

@@ -10,7 +10,7 @@ export const registerSchemaNsTools: RegisterFn = (server, ctx) => {
     'Add a new schema namespace (e.g. "public", "auth", "billing"). Use update_table to assign tables to it. Use list_schemas to see existing namespaces.',
     {
       projectId: z.string().max(256).describe('Project ID'),
-      name: z.string().max(256).describe('Schema namespace name'),
+      name: z.string().trim().min(1).max(256).describe('Schema namespace name'),
     },
     async ({ projectId, name }) => {
       requireAccess(projectId, 'editor');
@@ -51,11 +51,14 @@ export const registerSchemaNsTools: RegisterFn = (server, ctx) => {
     {
       projectId: z.string().max(256).describe('Project ID'),
       oldName: z.string().max(256).describe('Current schema namespace name'),
-      newName: z.string().max(256).describe('New schema namespace name'),
+      newName: z.string().trim().min(1).max(256).describe('New schema namespace name'),
     },
     async ({ projectId, oldName, newName }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (!(schema.schemas ?? []).includes(oldName)) {
+        return { content: [{ type: 'text', text: `Schema namespace '${oldName}' not found` }], isError: true };
+      }
       const result = renameSchema(schema, oldName, newName);
       if (!result) {
         return { content: [{ type: 'text', text: 'Invalid or duplicate schema name' }], isError: true };
@@ -79,7 +82,7 @@ export const registerSchemaNsTools: RegisterFn = (server, ctx) => {
       const schema = getSchemaOrFail(projectId);
       const updated: string[] = [];
 
-      for (const tableId of tableIds) {
+      for (const tableId of new Set(tableIds)) {
         const table = schema.tables.find(t => t.id === tableId);
         if (table) {
           table.schema = schemaName || undefined;

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { languageStore, LOCALE_LABELS, type Locale } from '$lib/store/language.svelte';
+  import { projectStore } from '$lib/store/project.svelte';
+  import { permissionStore } from '$lib/store/permission.svelte';
 
   interface Props {
     open: boolean;
@@ -8,6 +10,15 @@
   }
 
   let { open, ontoggle, onclose }: Props = $props();
+
+  async function changeLocale(locale: Locale) {
+    if (!permissionStore.isReadOnly) {
+      await projectStore.saveCurrentSchema();
+      if (projectStore.storageFull) return;
+    }
+    languageStore.set(locale);
+    onclose();
+  }
 </script>
 
 <div class="dropdown-wrap">
@@ -32,7 +43,7 @@
           class="dropdown-item"
           class:active={languageStore.current === locale}
           role="menuitem"
-          onclick={() => { languageStore.set(locale as Locale); onclose(); }}
+          onclick={() => changeLocale(locale as Locale)}
         >
           {label}
         </button>

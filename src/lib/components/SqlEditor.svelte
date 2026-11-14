@@ -27,7 +27,18 @@
   }
 
   // Cached module references (loaded once)
-  let cmModules: { EditorView: any; basicSetup: any; sql: any; oneDark: any; keymap: any; indentWithTab: any } | null = null;
+  let cmModules: { EditorView: any; EditorState: any; basicSetup: any; sql: any; oneDark: any; keymap: any; indentWithTab: any; Compartment: any } | null = null;
+
+  let readonlyCompartment: any;
+
+  function readonlyExtensions() {
+    if (!cmModules) return [];
+    return [
+      cmModules.EditorView.editable.of(!readonly),
+      cmModules.EditorState.readOnly.of(readonly),
+      ...(readonly ? [cmModules.EditorView.contentAttributes.of({ tabindex: '0' })] : []),
+    ];
+  }
 
   function createEditor(dark: boolean) {
     if (!cmModules || !containerEl) return;
@@ -37,9 +48,11 @@
     const currentDoc = editorView ? editorView.state.doc.toString() : value;
     editorView?.destroy();
 
+    readonlyCompartment = new cmModules.Compartment();
     const extensions: any[] = [
+      readonlyCompartment.of(readonlyExtensions()),
       keymap.of([
-        ...extraKeys.map(k => ({ key: k.key, run: () => k.run() })),
+        ...extraKeys.map(k => ({ key: k.key, run: () => !readonly && k.run() })),
         indentWithTab,
       ]),
       basicSetup,
@@ -52,14 +65,10 @@
       }),
     ];
 
-    if (readonly) {
-      extensions.push(EditorView.editable.of(false));
-    }
-
     if (onchange) {
       extensions.push(
         EditorView.updateListener.of((update: any) => {
-          if (update.docChanged && !suppressUpdate) {
+          if (update.docChanged && !suppressUpdate && !readonly) {
             onchange!(update.state.doc.toString());
           }
         }),
@@ -74,15 +83,18 @@
   }
 
   onMount(async () => {
-    const [cm, langSql, themeMod, cmView, cmCmds] = await Promise.all([
+    const [cm, langSql, themeMod, cmView, cmCmds, cmState] = await Promise.all([
       import('codemirror'),
       import('@codemirror/lang-sql'),
       import('@codemirror/theme-one-dark'),
       import('@codemirror/view'),
       import('@codemirror/commands'),
+      import('@codemirror/state'),
     ]);
     cmModules = {
       EditorView: cm.EditorView,
+      EditorState: cmState.EditorState,
+      Compartment: cmState.Compartment,
       basicSetup: cm.basicSetup,
       sql: langSql.sql,
       oneDark: themeMod.oneDark,
@@ -103,6 +115,14 @@
     if (cmModules && dark !== prevDark) {
       prevDark = dark;
       createEditor(dark);
+    }
+  });
+
+  // Update permissions in place, preserving selection, focus and undo history.
+  $effect(() => {
+    const extensions = readonlyExtensions();
+    if (editorView && readonlyCompartment) {
+      editorView.dispatch({ effects: readonlyCompartment.reconfigure(extensions) });
     }
   });
 

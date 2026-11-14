@@ -5,6 +5,7 @@ import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import type { OIDCProviderRow } from '$lib/types/auth';
 import { requireAdmin } from '$lib/server/auth/guards';
+import { validateProviderInput } from '$lib/server/auth/provider-validation';
 
 export const GET: RequestHandler = ({ locals }) => {
   const err = requireAdmin(locals);
@@ -22,8 +23,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const err = requireAdmin(locals);
   if (err) return err;
 
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Invalid request body' }, { status: 400 }); }
+  const validationError = validateProviderInput(body, 'oidc', true);
+  if (validationError) return json({ error: validationError }, { status: 400 });
+  if (body.displayName !== undefined) body.displayName = body.displayName.trim();
+  if (body.issuerUrl !== undefined) body.issuerUrl = body.issuerUrl.trim();
+  if (body.clientId !== undefined) body.clientId = body.clientId.trim();
   const { displayName, issuerUrl, clientId, clientSecret, scopes, enabled, autoCreateUsers, syncGroups, groupClaim, allowedGroups, adminGroups } =
-    await request.json();
+    body;
 
   if (!displayName || !issuerUrl || !clientId || !clientSecret) {
     return json({ error: 'displayName, issuerUrl, clientId, clientSecret required' }, { status: 400 });

@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
 import { generateApiKey } from '$lib/server/auth/api-key';
 import { requirePermission } from '$lib/server/auth/guards';
-import { canGrantUserApiKeyScope } from '$lib/server/auth/api-key-scope';
+import { validateUserApiKeyScopes } from '$lib/server/auth/api-key-scope';
 import { randomUUID } from 'crypto';
 import type { ApiKeyRow, ApiKeyScopeRow } from '$lib/types/auth';
 
@@ -45,6 +45,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
   const { name, expiresAt, scopes } = await request.json();
 
+  if (!validateUserApiKeyScopes(db, locals.user!, scopes)) {
+    return json({ error: 'Invalid or ungrantable API key scopes' }, { status: 400 });
+  }
+
   if (!name) {
     return json({ error: 'name is required' }, { status: 400 });
   }
@@ -71,9 +75,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
          VALUES (?, ?, ?, ?)`
       );
       for (const scope of scopes) {
-        if (canGrantUserApiKeyScope(db, locals.user!, scope)) {
-          insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
-        }
+        insertScope.run(randomUUID(), id, scope.projectId, scope.permission);
       }
     }
   });

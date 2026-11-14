@@ -7,6 +7,7 @@ import { checkAccess, getSchema, saveSchema, listUserProjects } from './db-helpe
 import { notifyCollabSchemaChange } from '$lib/server/collab-notify';
 import type { ERDSchema, Table } from '$lib/types/erd';
 import type { McpToolContext } from './tools/types';
+import { mergeImportTables } from './merge-import-tables';
 
 import { registerReadTools } from './tools/read-tools';
 import { registerTableTools } from './tools/table-tools';
@@ -75,10 +76,16 @@ export function createMcpServer(
       const existing = getSchema(db, projectId);
       if (!existing || replace) {
         return {
+          ...existing,
           version: '1',
           tables: importedTables,
           domains: existing?.domains ?? [],
-          memos: existing?.memos ?? [],
+          memos: (existing?.memos ?? []).map(memo => {
+            if (!memo.attachedTableId || importedTables.some(table => table.id === memo.attachedTableId)) return memo;
+            const detached = { ...memo };
+            delete detached.attachedTableId;
+            return detached;
+          }),
           groupColors: existing?.groupColors ?? {},
           schemas: existing?.schemas,
           namingRules: existing?.namingRules,
@@ -86,9 +93,7 @@ export function createMcpServer(
           updatedAt: new Date().toISOString(),
         };
       }
-      const existingNames = new Set(existing.tables.map(t => t.name.toLowerCase()));
-      const newTables = importedTables.filter(t => !existingNames.has(t.name.toLowerCase()));
-      return { ...existing, tables: [...existing.tables, ...newTables], updatedAt: new Date().toISOString() };
+      return { ...existing, tables: mergeImportTables(existing.tables, importedTables), updatedAt: new Date().toISOString() };
     },
   };
 

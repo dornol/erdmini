@@ -125,3 +125,9 @@ export function updateNamingRules(rules: SiteNamingRules): SiteNamingRules {
   _namingRulesCache = null;
   return getNamingRules();
 }
+
+/** Clear values read from the previous database after a restore. */
+export function invalidateSiteSettingsCaches(): void {
+  _cache = null;
+  _namingRulesCache = null;
+}

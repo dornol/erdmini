@@ -17,7 +17,7 @@ class ProjectStore {
   private _initialized = $state(false);
   private _loading = $state(false);
   private provider!: StorageProvider;
-  private _saving = false;
+  private _saving: Promise<void> | null = null;
 
   get initialized(): boolean {
     return this._initialized;
@@ -148,9 +148,42 @@ class ProjectStore {
   }
 
   async saveCurrentSchema() {
-    const id = this.index.activeProjectId;
-    if (!id || this._saving || this._loading) return;
-    this._saving = true;
+    await this.queueSave(async () => {
+      const id = this.index.activeProjectId;
+      if (id) await this.saveProjectState(id);
+    });
+  }
+
+  async saveCurrentCanvas() {
+    await this.queueSave(async () => {
+      const id = this.index.activeProjectId;
+      if (!id) return;
+      try {
+        await this.provider.saveCanvasState(id, {
+          x: canvasState.x, y: canvasState.y, scale: canvasState.scale,
+        });
+        // A successful viewport write must not hide a failed schema save.
+      } catch {
+        this.storageFull = true;
+      }
+    });
+  }
+
+  private async queueSave(save: () => Promise<void>) {
+    // A caller switching projects/locales must flush its latest edits, even if
+    // an older autosave is still in flight. Serialize instead of dropping it.
+    while (this._saving) await this._saving;
+    if (this._loading) return;
+    const saving = save();
+    this._saving = saving;
+    try {
+      await saving;
+    } finally {
+      this._saving = null;
+    }
+  }
+
+  private async saveProjectState(id: string) {
     try {
       const schema = $state.snapshot(erdStore.schema) as ERDSchema;
       await this.provider.saveSchema(id, schema);
@@ -165,8 +198,6 @@ class ProjectStore {
       }
     } catch {
       this.storageFull = true;
-    } finally {
-      this._saving = false;
     }
   }
 
@@ -211,6 +242,9 @@ class ProjectStore {
       await this.provider.saveSchema(id, schema);
       erdStore.clearHistory();
       erdStore.loadSchema(schema);
+      canvasState.x = 0;
+      canvasState.y = 0;
+      canvasState.scale = 1;
       await snapshotStore.init(this.provider, id);
     } finally {
       this._loading = false;
@@ -226,6 +260,9 @@ class ProjectStore {
   }
 
   async deleteProject(id: string) {
+    if (this.index.projects.length <= 1 || this._loading) return;
+    // Finish outstanding schema/canvas writes before removing their records.
+    while (this._saving) await this._saving;
     if (this.index.projects.length <= 1 || this._loading) return;
     this._loading = true;
     try {

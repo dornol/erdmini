@@ -112,7 +112,7 @@ export function cleanMSSQLSyntax(sql: string): string {
   // Strip [bracket] identifiers → bare names (preserve reserved words as double-quoted)
   // Excludes SQL structural keywords (PRIMARY, UNIQUE, etc.) that appear in constraint/filegroup contexts
   const mssqlReserved = /^(explain|show|key|call|read|write|end|insert|update|delete|drop|table|create|alter|into|set|truncate|desc|asc|order|group|by|from|where|join|add|rename|values|limit|between|in|exists|not|null|is|cross|outer|pivot|unpivot|else|case|when|then|session|left|json|select|like|grant|revoke|lock|use|open|close|return|begin|if|replace|get|right|option|rank|row|rows|range|over|partition|cursor|fetch|function|procedure|trigger|signal|condition|loop|repeat|leave|iterate|declare|continue|offset)$/i;
-  sql = sql.replace(/\[([^\]]+)\]/g, (_m, name) => mssqlReserved.test(name) ? `"${name}"` : name);
+  sql = sql.replace(/\[([^\]]+)\]/g, (_m, name) => mssqlReserved.test(name) || !/^\w+$/.test(name) ? `"${name.replace(/"/g, '""')}"` : name);
 
   // Strip schema prefixes: dbo. / schema.
   sql = sql.replace(/\bdbo\./gi, '');
@@ -140,7 +140,7 @@ export function cleanMSSQLSyntax(sql: string): string {
   // MSSQL-specific types the parser doesn't understand → standard equivalents
   sql = sql.replace(/\bdatetime2\s*\(\s*\d+\s*\)/gi, 'datetime');
   sql = sql.replace(/\bdatetimeoffset\s*\(\s*\d+\s*\)/gi, 'datetime');
-  sql = sql.replace(/\btime\s*\(\s*\d+\s*\)/gi, 'time');
+  // TIME(N) is supported by the parser; retain explicit fractional precision.
   sql = sql.replace(/\bdatetime2\b/gi, 'datetime');
   sql = sql.replace(/\bdatetimeoffset\b/gi, 'datetime');
   sql = sql.replace(/\bsmalldatetime\b/gi, 'datetime');
@@ -309,14 +309,18 @@ export function preprocessMSSQL(sql: string): MSSQLPreprocessResult {
 
     // Extract ALTER TABLE FK via regex (parser struggles with MSSQL ALTER TABLE syntax)
     const alterFKMatch = trimmed.match(
-      /alter\s+table\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?\s+add\s+(?:constraint\s+\S+\s+)?foreign\s+key\s*\(([^)]+)\)\s*references\s+(?:\[?dbo\]?\.)?\[?(\w+)\]?\s*\(([^)]+)\)/i,
+      /alter\s+table\s+(?:\[?dbo\]?\.)?(\[[^\]]+\]|\w+)\s+add\s+(?:constraint\s+(?:\[[^\]]+\]|\S+)\s+)?foreign\s+key\s*\(([^)]+)\)\s*references\s+(?:\[?dbo\]?\.)?(\[[^\]]+\]|\w+)\s*\(([^)]+)\)/i,
     );
     if (alterFKMatch) {
+      const onDelete = trimmed.match(/\bON\s+DELETE\s+(CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION)/i);
+      const onUpdate = trimmed.match(/\bON\s+UPDATE\s+(CASCADE|SET\s+NULL|SET\s+DEFAULT|RESTRICT|NO\s+ACTION)/i);
       alterFKs.push({
-        tableName: alterFKMatch[1],
+        tableName: alterFKMatch[1].replace(/^\[|\]$/g, ''),
         columns: alterFKMatch[2].split(',').map((s: string) => s.replace(/[\[\]]/g, '').trim()),
-        refTable: alterFKMatch[3],
+        refTable: alterFKMatch[3].replace(/^\[|\]$/g, ''),
         refColumns: alterFKMatch[4].split(',').map((s: string) => s.replace(/[\[\]]/g, '').trim()),
+        onDelete: onDelete ? parseRefAction(onDelete[1]) : undefined,
+        onUpdate: onUpdate ? parseRefAction(onUpdate[1]) : undefined,
       });
       continue;
     }

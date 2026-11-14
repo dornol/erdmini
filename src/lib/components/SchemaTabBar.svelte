@@ -69,11 +69,13 @@
   }
 
   function commitRename() {
+    if (permissionStore.isReadOnly) { renamingSchema = null; return; }
     const newName = renameValue.trim();
     if (newName && renamingSchema) {
       const old = renamingSchema;
-      erdStore.renameSchema(old, newName);
-      if (canvasState.activeSchema === old) canvasState.activeSchema = newName;
+      if (erdStore.renameSchema(old, newName) && canvasState.activeSchema === old) {
+        canvasState.activeSchema = newName;
+      }
     }
     renamingSchema = null;
   }
@@ -99,6 +101,7 @@
       });
       if (!ok) return;
     }
+    if (permissionStore.isReadOnly) return;
     erdStore.deleteSchema(name);
     if (canvasState.activeSchema === name) {
       switchSchema('(all)');

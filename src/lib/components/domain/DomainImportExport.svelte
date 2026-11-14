@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { projectStore } from '$lib/store/project.svelte';
   import { erdStore } from '$lib/store/erd.svelte';
   import { permissionStore } from '$lib/store/permission.svelte';
   import { exportDictionaryMarkdown, exportDictionaryHtml } from '$lib/utils/domain-dictionary';
@@ -14,6 +16,13 @@
 
   let showDictDropdown = $state(false);
   let fileInput: HTMLInputElement | undefined = $state();
+  let disposed = false;
+  let uploadSequence = 0;
+  onDestroy(() => {
+    disposed = true;
+    if (uploadMessageTimer) clearTimeout(uploadMessageTimer);
+  });
+
   let uploadMessageTimer: ReturnType<typeof setTimeout> | undefined;
 
   function handleDictExport(format: 'html' | 'markdown') {
@@ -39,11 +48,16 @@
   async function handleUpload(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file) return;
+    if (!file || !permissionStore.canEdit) return;
+    const projectId = projectStore.index.activeProjectId;
+    const sequence = ++uploadSequence;
+    const canApply = () => !disposed && sequence === uploadSequence
+      && projectStore.index.activeProjectId === projectId && permissionStore.canEdit;
 
     try {
       const { importDomainsFromXlsx } = await import('$lib/utils/domain-xlsx');
       const items = await importDomainsFromXlsx(file);
+      if (!canApply()) return;
       const result = erdStore.upsertDomains(items);
       onUploadMessageChange(m.domain_upload_result({
         added: String(result.added),
@@ -54,13 +68,15 @@
         onUploadMessageChange('');
       }, 4000);
     } catch {
+      if (!canApply()) return;
       onUploadMessageChange('Error reading file');
       if (uploadMessageTimer) clearTimeout(uploadMessageTimer);
       uploadMessageTimer = setTimeout(() => {
         onUploadMessageChange('');
       }, 4000);
+    } finally {
+      if (sequence === uploadSequence) input.value = '';
     }
-    input.value = '';
   }
 </script>
 

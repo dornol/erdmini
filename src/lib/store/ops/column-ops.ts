@@ -42,9 +42,8 @@ export function deleteColumnOp(schema: ERDSchema, tableId: string, columnId: str
   if (table.indexes) {
     table.indexes = table.indexes.filter((idx) => !idx.columnIds.includes(columnId));
   }
-  // Remove FKs in other tables that reference this column
+  // Remove incoming references, including self-references whose source survives.
   for (const t of schema.tables) {
-    if (t.id === tableId) continue;
     t.foreignKeys = t.foreignKeys.filter(
       (fk) => !(fk.referencedTableId === tableId && fk.referencedColumnIds.includes(columnId))
     );

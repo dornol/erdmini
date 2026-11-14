@@ -1,5 +1,6 @@
 import type { ColumnDomain, ERDSchema } from '$lib/types/erd';
 import { DOMAIN_FIELDS } from '$lib/types/erd';
+import { getDescendantIds, resolveEffectiveDomain } from './domain-hierarchy';
 
 export interface GroupCoverage {
   group: string;
@@ -84,23 +85,35 @@ export function computeImpact(
     }
   }
 
-  if (changedFields.length === 0) return null;
+  const parentChanged = 'parentId' in patch && patch.parentId !== domain.parentId;
+  if (changedFields.length === 0 && !parentChanged) return null;
+
+  const domains = schema.domains.map(d => d.id === domainId ? { ...d, ...patch } : d);
+  const affectedIds = new Set([domainId, ...getDescendantIds(domainId, domains)]);
+  const fields = parentChanged ? DOMAIN_FIELDS : changedFields;
 
   const entries: ImpactEntry[] = [];
   const tableSet = new Set<string>();
 
   for (const table of schema.tables) {
     for (const col of table.columns) {
-      if (col.domainId !== domainId) continue;
+      if (!col.domainId || !affectedIds.has(col.domainId)) continue;
+      const effective = resolveEffectiveDomain(col.domainId, domains);
+      if (!effective) continue;
 
       const changes: { field: string; before: unknown; after: unknown }[] = [];
-      for (const field of changedFields) {
+      for (const field of fields) {
+        const before = (col as any)[field];
+        const after = (effective as any)[field];
+        if (JSON.stringify(before) === JSON.stringify(after)) continue;
         changes.push({
           field,
-          before: (col as any)[field],
-          after: (patch as any)[field],
+          before,
+          after,
         });
       }
+
+      if (changes.length === 0) continue;
 
       entries.push({
         tableName: table.name,

@@ -921,5 +921,9 @@
   "db_object_category_placeholder": "分类名...",
   "db_object_default_categories": "Procedure,Function,View,Trigger",
   "memo_aria_label": "备忘录: {content}",
-  "memo_empty": "(空)"
+  "memo_empty": "(空)",
+  "naming_dictionary_load_failed": "无法加载词典词条。词典验证尚未完成。",
+  "action_retry": "重试",
+  "admin_ldap_allowed_group_dns_hint": "每行输入一个完整的群组 DN",
+  "admin_oidc_client_secret_edit": "客户端密钥（留空以保留当前值）"
 }

@@ -1,3 +1,5 @@
+import { protectNativeBinaryTypes } from './ddl-native-types';
+import { protectEscapedSqlIdentifiers } from './sql-identifiers';
 import type { Column, ColumnType, Dialect, ForeignKey, ReferentialAction, Table, TableIndex, UniqueKey } from '$lib/types/erd';
 import { COLUMN_TYPES } from '$lib/types/erd';
 import { generateId } from '$lib/utils/common';
@@ -43,7 +45,7 @@ function normalizeTypeInternal(raw: string): { type: ColumnType; warning?: { ori
   if (base === 'MONEY' || base === 'SMALLMONEY') return { type: 'MONEY' };
   if (base === 'DOUBLE PRECISION') return { type: 'DOUBLE' };
   if (base === 'JSONB') return { type: 'JSONB' };
-  if (base === 'IMAGE') return { type: 'BLOB' };
+  if (base === 'IMAGE' || base === 'BYTEA') return { type: 'BLOB' };
   if (base === 'CHARACTER VARYING' || base === 'NVARCHAR2') return { type: 'VARCHAR' };
   if (base === 'VARCHAR2') return { type: 'VARCHAR' };
   if (base === 'NVARCHAR') return { type: 'NVARCHAR' };
@@ -380,12 +382,19 @@ interface ParsedIndex {
  */
 function extractIndexStatements(sql: string): ParsedIndex[] {
   const results: ParsedIndex[] = [];
-  const pattern = /create\s+(unique\s+)?(?:nonclustered\s+)?index\s+(?:if\s+not\s+exists\s+)?(?:\[?(\w+)\]?)\s+on\s+(?:\[?\w+\]?\.)?[\[`"]?(\w+)[\]`"]?\s*\(([^)]+)\)/gi;
+  const identifier = String.raw`(?:\[(?:[^\]]|\]\])+\]|"(?:[^"]|"")+"|\x60(?:[^\x60]|\x60\x60)+\x60|[\w$]+)`;
+  const pattern = new RegExp(String.raw`create\s+(unique\s+)?(?:nonclustered\s+)?index\s+(?:if\s+not\s+exists\s+)?(?:${identifier}\s*\.\s*)?(${identifier})\s+on\s+(?:${identifier}\s*\.\s*)?(${identifier})\s*\(([^)]+)\)`, 'gi');
+  const unquote = (value: string): string => {
+    const quote = value[0];
+    if (quote === '[') return value.slice(1, -1).replace(/\]\]/g, ']');
+    if (quote === '"' || quote === '\x60') return value.slice(1, -1).split(quote + quote).join(quote);
+    return value;
+  };
   let m: RegExpExecArray | null;
   while ((m = pattern.exec(sql)) !== null) {
     const unique = !!m[1];
-    const name = m[2];
-    const tableName = m[3];
+    const name = unquote(m[2]);
+    const tableName = unquote(m[3]);
     const cols = m[4].split(',').map((s) => s.replace(/[\[\]`"]/g, '').replace(/\s+(ASC|DESC)/gi, '').trim()).filter(Boolean);
     results.push({ tableName, columnNames: cols, name, unique });
   }
@@ -512,7 +521,10 @@ async function parseSqlToAst(sql: string, dialect: Dialect, errors: string[]): P
         if (!trimmed) continue;
         try {
           const quoted = quoteReservedColumnNames(stripNamedColumnConstraintPrefixes(trimmed), dialect);
-          const parsed = parser.astify(quoted);
+          // MariaDB's parser omits ADD CONSTRAINT FOREIGN KEY; its MySQL syntax is compatible.
+          const statementParser = dialect === 'mariadb' && /^alter\s+table\b/i.test(trimmed)
+            ? await getParser('mysql') : parser;
+          const parsed = statementParser.astify(quoted);
           const arr = Array.isArray(parsed) ? parsed : [parsed];
           stmts.push(...arr);
         } catch (e) {
@@ -629,7 +641,10 @@ function buildTableFromCreateStmt(
       const rawType = def.definition?.dataType ?? 'VARCHAR';
       const length = def.definition?.length ?? undefined;
       const scale = def.definition?.scale ?? undefined;
-      const { type, warning } = normalizeTypeInternal(rawType);
+      const normalized = normalizeTypeInternal(rawType);
+      const withTimeZone = rawType.toUpperCase() === 'TIMESTAMP' && def.definition?.suffix?.join(' ').toUpperCase() === 'WITH TIME ZONE';
+      const { warning } = normalized;
+      const type = withTimeZone ? 'DATETIMEOFFSET' : normalized.type;
       if (warning) {
         warnings.push(`Type: ${warning.original} → ${warning.normalized} (${tableName}.${colName})`);
       }
@@ -658,6 +673,9 @@ function buildTableFromCreateStmt(
         unique: isUnique,
         autoIncrement: autoInc,
       };
+      if (type === 'ENUM') {
+        col.enumValues = def.definition?.expr?.value?.map((entry: { value: string }) => entry.value.replace(/''/g, "'"));
+      }
       if (length !== undefined) col.length = length;
       if (scale !== undefined) col.scale = scale;
       if (defaultValue !== undefined) col.defaultValue = defaultValue;
@@ -955,7 +973,7 @@ function normalizeSqliteTypes(sql: string): string {
   // Replace unknown column types inside CREATE TABLE definitions.
   // Match column defs that start after '(' or ',' at the beginning of a logical column line.
   return sql.replace(
-    /([,(]\s*)([\[`"]?\w+[\]`"]?)\s+([A-Za-z]\w*)/g,
+    /([,(]\s*)("(?:[^"]|"")*"|`(?:[^`]|``)*`|\[(?:[^\]]|\]\])*\]|[\p{L}_][\p{L}\p{N}_$]*)\s+([A-Za-z]\w*)/gu,
     (m, prefix: string, colName: string, type: string) => {
       const name = colName.replace(/[\[`"]/g, '').toLowerCase();
       // Skip table-level constraints
@@ -974,6 +992,9 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   const warnings: string[] = [];
   const tables: Table[] = [];
   const existingNames: string[] = [];
+
+  const identifiers = protectEscapedSqlIdentifiers(sql, dialect);
+  sql = identifiers.sql;
 
   // Strip bracket identifiers (MSSQL preprocessor handles this separately)
   if (dialect !== 'mssql') {
@@ -999,20 +1020,34 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   const checkConstraints = extractCheckConstraints(sql);
   const parsedIndexes = extractIndexStatements(sql);
 
+  const nativeBinary = protectNativeBinaryTypes(dialect === 'oracle' || dialect === 'h2' ? sql : '');
+  if (dialect === 'oracle' || dialect === 'h2') sql = nativeBinary.sql;
+
   // Step 1: Parse SQL to AST
   const parseResult = await parseSqlToAst(sql, dialect, errors);
   if (!parseResult) {
-    return { tables, errors, warnings };
+    return { tables, errors: errors.map(identifiers.restoreName), warnings: warnings.map(identifiers.restoreName) };
   }
   const { stmts, preprocessed } = parseResult;
 
   if (stmts.length === 0 && errors.length === 0) {
     errors.push(msg.noCreateTable());
-    return { tables, errors, warnings };
+    return { tables, errors: errors.map(identifiers.restoreName), warnings: warnings.map(identifiers.restoreName) };
   }
 
   // Step 2: Collect ALTER TABLE FK/UQ and COMMENT ON
   const alterConstraints = collectAlterConstraints(stmts);
+
+  const enumTypes = new Map(stmts.filter(stmt => stmt.type === 'create' && stmt.keyword === 'type' && stmt.resource === 'enum').map(stmt => [stmt.name.name, stmt.create_definitions]));
+  for (const stmt of stmts) {
+    if (stmt.type !== 'create' || stmt.keyword !== 'table') continue;
+    for (const def of stmt.create_definitions ?? []) {
+      const enumValues = enumTypes.get(def.definition?.dataType);
+      if (enumValues) def.definition = { dataType: 'ENUM', expr: enumValues };
+      const native = nativeBinary.types.get(def.definition?.length);
+      if (native) def.definition = { ...def.definition, dataType: native.type, length: native.length };
+    }
+  }
 
   // Step 3: Process CREATE TABLE statements
   let tableIdx = 0;
@@ -1029,7 +1064,7 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
 
   if (tables.length === 0) {
     errors.push(msg.noCreateTable());
-    return { tables, errors, warnings };
+    return { tables, errors: errors.map(identifiers.restoreName), warnings: warnings.map(identifiers.restoreName) };
   }
 
   // Step 4: Resolve foreign keys (second pass)
@@ -1086,5 +1121,17 @@ export async function importDDL(sql: string, dialect: Dialect = 'mysql', message
   // Apply Oracle/H2 preprocessed comments and identity columns
   applyPreprocessedComments(tables, preprocessed.preprocessedComments, preprocessed.preprocessedIdentity);
 
-  return { tables, errors, warnings };
+  for (const table of tables) {
+    table.name = identifiers.restoreName(table.name);
+    if (table.schema) table.schema = identifiers.restoreName(table.schema);
+    for (const column of table.columns) {
+      column.name = identifiers.restoreName(column.name);
+      if (column.check) column.check = identifiers.restoreSql(column.check);
+      if (column.defaultValue) column.defaultValue = identifiers.restoreSql(column.defaultValue);
+    }
+    for (const key of [...table.uniqueKeys, ...table.indexes]) {
+      if (key.name) key.name = identifiers.restoreName(key.name);
+    }
+  }
+  return { tables, errors: errors.map(identifiers.restoreName), warnings: warnings.map(identifiers.restoreName) };
 }

@@ -1,9 +1,30 @@
+import { DomainOperationState } from './domain-operation-state';
+import { orderByIds } from './order-by-ids';
+import { hasConstraintColumns, hasForeignKeyReferences } from './constraint-references';
+import { OperationAcknowledgements } from './operation-acknowledgements';
+import { generateId } from '$lib/utils/common';
 import { erdStore } from '$lib/store/erd.svelte';
 import { collabStore } from '$lib/store/collab.svelte';
 import { collabClient } from './collab-client';
 import { applyMemoPatch } from './memo-patch';
+import { applyMemoState } from './memo-state';
 import type { CollabOperation, ServerMessage } from '$lib/types/collab';
 import type { ERDSchema } from '$lib/types/erd';
+
+const acknowledgements = new OperationAcknowledgements();
+const domainOperations = new DomainOperationState();
+let operationSequence = 0;
+function sendTrackedOperation(op: CollabOperation) {
+  const operationId = `${generateId()}-${++operationSequence}`;
+  const tracked = acknowledgements.register(operationId, op);
+  domainOperations.register(operationId, op, erdStore.schema);
+  if (op.kind === 'update-column') {
+    const patch = op.patch;
+    const unsetFields = Object.keys(patch).filter(field => patch[field as keyof typeof patch] === undefined) as (keyof typeof patch)[];
+    if (unsetFields.length) op = { ...op, unsetFields };
+  }
+  collabClient.send({ type: 'operation', op, ...(tracked ? { operationId } : {}) });
+}
 
 // ── Outbound: send a local operation to peers ──
 let moveThrottleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -19,7 +40,7 @@ export function sendOperation(op: CollabOperation) {
       moveThrottleTimer = setTimeout(() => {
         moveThrottleTimer = null;
         if (pendingMoveOp) {
-          collabClient.send({ type: 'operation', op: pendingMoveOp });
+          sendTrackedOperation(pendingMoveOp);
           pendingMoveOp = null;
         }
       }, 50);
@@ -27,7 +48,7 @@ export function sendOperation(op: CollabOperation) {
     return;
   }
 
-  collabClient.send({ type: 'operation', op });
+  sendTrackedOperation(op);
 }
 
 // ── Inbound: apply a remote operation to erdStore ──
@@ -72,6 +93,7 @@ export function applyRemoteOperation(op: CollabOperation) {
         const dx = op.x - table.position.x;
         const dy = op.y - table.position.y;
         table.position = { x: op.x, y: op.y };
+        erdStore.schema.updatedAt = new Date().toISOString();
         // Move attached memos by the same delta
         for (const memo of erdStore.schema.memos) {
           if (memo.attachedTableId === op.tableId) {
@@ -88,6 +110,7 @@ export function applyRemoteOperation(op: CollabOperation) {
           const dx = move.x - table.position.x;
           const dy = move.y - table.position.y;
           table.position = { x: move.x, y: move.y };
+          erdStore.schema.updatedAt = new Date().toISOString();
           // Move attached memos by the same delta
           for (const memo of erdStore.schema.memos) {
             if (memo.attachedTableId === move.tableId) {
@@ -107,7 +130,7 @@ export function applyRemoteOperation(op: CollabOperation) {
       break;
     }
     case 'update-column': {
-      erdStore.updateColumn(op.tableId, op.columnId, op.patch);
+      erdStore.updateColumn(op.tableId, op.columnId, domainOperations.columnPatch(op));
       break;
     }
     case 'delete-column': {
@@ -115,12 +138,18 @@ export function applyRemoteOperation(op: CollabOperation) {
       break;
     }
     case 'move-column': {
-      erdStore.moveColumnToIndex(op.tableId, op.columnId, op.toIndex);
+      if (op.columnIds) {
+        const table = erdStore.schema.tables.find(table => table.id === op.tableId);
+        if (table) {
+          table.columns = orderByIds(table.columns, op.columnIds);
+          erdStore.schema.updatedAt = new Date().toISOString();
+        }
+      } else erdStore.moveColumnToIndex(op.tableId, op.columnId, op.toIndex);
       break;
     }
     case 'add-fk': {
       const table = erdStore.schema.tables.find((t) => t.id === op.tableId);
-      if (table) {
+      if (table && hasForeignKeyReferences(erdStore.schema.tables, op.tableId, op.fk)) {
         table.foreignKeys = [...table.foreignKeys, op.fk];
         erdStore.schema.updatedAt = new Date().toISOString();
       }
@@ -128,10 +157,11 @@ export function applyRemoteOperation(op: CollabOperation) {
     }
     case 'update-fk': {
       const table = erdStore.schema.tables.find((t) => t.id === op.tableId);
-      if (table) {
-        table.foreignKeys = table.foreignKeys.map((fk) =>
-          fk.id === op.fk.id ? op.fk : fk
-        );
+      if (table && op.fk) {
+        // Remove the edited FK when one of its endpoints was deleted.
+        table.foreignKeys = hasForeignKeyReferences(erdStore.schema.tables, op.tableId, op.fk)
+          ? table.foreignKeys.map(fk => fk.id === op.fk.id ? op.fk : fk)
+          : table.foreignKeys.filter(fk => fk.id !== op.fk.id);
         erdStore.schema.updatedAt = new Date().toISOString();
       }
       break;
@@ -142,7 +172,7 @@ export function applyRemoteOperation(op: CollabOperation) {
     }
     case 'add-uk': {
       const table = erdStore.schema.tables.find((t) => t.id === op.tableId);
-      if (table) {
+      if (table && hasConstraintColumns(table, op.uk?.columnIds)) {
         table.uniqueKeys = [...table.uniqueKeys, op.uk];
         erdStore.schema.updatedAt = new Date().toISOString();
       }
@@ -154,7 +184,7 @@ export function applyRemoteOperation(op: CollabOperation) {
     }
     case 'add-index': {
       const table = erdStore.schema.tables.find((t) => t.id === op.tableId);
-      if (table) {
+      if (table && hasConstraintColumns(table, op.index?.columnIds)) {
         table.indexes = [...(table.indexes ?? []), op.index];
         erdStore.schema.updatedAt = new Date().toISOString();
       }
@@ -170,7 +200,7 @@ export function applyRemoteOperation(op: CollabOperation) {
       break;
     }
     case 'update-domain': {
-      erdStore.updateDomain(op.domainId, op.patch);
+      domainOperations.applyDomainUpdate(erdStore.schema, () => erdStore.updateDomain(op.domainId, op.patch));
       break;
     }
     case 'delete-domain': {
@@ -207,6 +237,7 @@ export function applyRemoteOperation(op: CollabOperation) {
       const memo = erdStore.schema.memos.find((m) => m.id === op.memoId);
       if (memo) {
         memo.position = { x: op.x, y: op.y };
+        erdStore.schema.updatedAt = new Date().toISOString();
       }
       break;
     }
@@ -215,6 +246,7 @@ export function applyRemoteOperation(op: CollabOperation) {
         const memo = erdStore.schema.memos.find((m) => m.id === move.memoId);
         if (memo) {
           memo.position = { x: move.x, y: move.y };
+          erdStore.schema.updatedAt = new Date().toISOString();
         }
       }
       break;
@@ -228,11 +260,17 @@ export function applyRemoteOperation(op: CollabOperation) {
       break;
     }
     case 'attach-memo': {
-      erdStore.attachMemo(op.memoId, op.tableId);
+      const memo = erdStore.schema.memos.find(item => item.id === op.memoId);
+      if (memo) applyMemoState(memo, { attachedTableId: op.tableId }, erdStore.schema.tables);
       break;
     }
     case 'detach-memo': {
       erdStore.detachMemo(op.memoId);
+      const memo = erdStore.schema.memos.find(item => item.id === op.memoId);
+      if (memo && op.position && Number.isFinite(op.position.x) && Number.isFinite(op.position.y)) {
+        // The table may already be gone on this peer, so use the sender's final position.
+        memo.position = { x: op.position.x, y: op.position.y };
+      }
       break;
     }
     case 'add-schema': {
@@ -248,7 +286,8 @@ export function applyRemoteOperation(op: CollabOperation) {
       break;
     }
     case 'reorder-schemas': {
-      erdStore.reorderSchemas(op.schemas);
+      const current = (erdStore.schema.schemas ?? []).map(id => ({ id }));
+      erdStore.reorderSchemas(orderByIds(current, op.schemas).map(item => item.id));
       break;
     }
     case 'update-table-schema': {
@@ -309,7 +348,9 @@ export function applyRemoteOperation(op: CollabOperation) {
     }
     case 'reorder-db-object-categories': {
       if (erdStore.schema.dbObjectCategories) {
-        erdStore.schema.dbObjectCategories = [...op.categories];
+        const current = erdStore.schema.dbObjectCategories.map(id => ({ id }));
+        erdStore.schema.dbObjectCategories = orderByIds(current, op.categories).map(item => item.id);
+        erdStore.schema.updatedAt = new Date().toISOString();
       }
       break;
     }
@@ -318,12 +359,21 @@ export function applyRemoteOperation(op: CollabOperation) {
       break;
     }
   }
+  touchRemoteSchema();
+}
+
+// Trigger autosave and clear remote-op suppression even for same-millisecond acknowledgements.
+function touchRemoteSchema() {
+  const previous = Date.parse(erdStore.schema.updatedAt);
+  erdStore.schema.updatedAt = new Date(Math.max(Date.now(), Number.isFinite(previous) ? previous + 1 : 0)).toISOString();
 }
 
 // ── Handle incoming server messages ──
 export function handleServerMessage(msg: ServerMessage) {
   switch (msg.type) {
     case 'joined':
+      acknowledgements.reset();
+      domainOperations.reset();
       collabStore.setJoined(msg.peerId, msg.peers);
       break;
     case 'peer-joined':
@@ -335,6 +385,17 @@ export function handleServerMessage(msg: ServerMessage) {
     case 'operation':
       applyRemoteOperation(msg.op);
       break;
+    case 'operation-ack': {
+      domainOperations.acknowledge(msg.operationId);
+      const op = acknowledgements.acknowledge(msg.operationId);
+      if (op?.kind === 'memo-state') {
+        erdStore._isRemoteOp = true;
+        const memo = erdStore.schema.memos.find(item => item.id === op.memoId);
+        if (memo) applyMemoState(memo, op.patch, erdStore.schema.tables);
+        touchRemoteSchema();
+      } else if (op) applyRemoteOperation(op);
+      break;
+    }
     case 'presence':
       collabStore.updatePresence(msg.fromPeerId, msg.data);
       break;
@@ -346,6 +407,8 @@ export function handleServerMessage(msg: ServerMessage) {
       break;
     case 'error':
       if (msg.message === '__disconnected__') {
+        acknowledgements.reset();
+      domainOperations.reset();
         collabStore.setConnected(false);
       } else {
         console.warn('[collab] Server error:', msg.message);

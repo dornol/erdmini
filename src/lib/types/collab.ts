@@ -26,9 +26,9 @@ export type CollabOperation =
   | { kind: 'move-table'; tableId: string; x: number; y: number }
   | { kind: 'move-tables'; moves: { tableId: string; x: number; y: number }[] }
   | { kind: 'add-column'; tableId: string; column: Column }
-  | { kind: 'update-column'; tableId: string; columnId: string; patch: Partial<Column> }
+  | { kind: 'update-column'; tableId: string; columnId: string; patch: Partial<Column>; unsetFields?: (keyof Column)[]; domainSnapshot?: Partial<Column> }
   | { kind: 'delete-column'; tableId: string; columnId: string }
-  | { kind: 'move-column'; tableId: string; columnId: string; toIndex: number }
+  | { kind: 'move-column'; tableId: string; columnId: string; toIndex: number; columnIds?: string[] }
   | { kind: 'add-fk'; tableId: string; fk: ForeignKey }
   | { kind: 'update-fk'; tableId: string; fk: ForeignKey }
   | { kind: 'delete-fk'; tableId: string; fkId: string }
@@ -50,7 +50,7 @@ export type CollabOperation =
   | { kind: 'move-memos'; moves: { memoId: string; x: number; y: number }[] }
   | { kind: 'update-memo'; memoId: string; patch: Partial<Omit<Memo, 'id'>> }
   | { kind: 'attach-memo'; memoId: string; tableId: string }
-  | { kind: 'detach-memo'; memoId: string }
+  | { kind: 'detach-memo'; memoId: string; position?: { x: number; y: number } }
   | { kind: 'add-schema'; name: string }
   | { kind: 'delete-schema'; name: string }
   | { kind: 'rename-schema'; oldName: string; newName: string }
@@ -70,7 +70,7 @@ export type CollabOperation =
 export type ClientMessage =
   | { type: 'join'; projectId: string }
   | { type: 'leave' }
-  | { type: 'operation'; op: CollabOperation }
+  | { type: 'operation'; op: CollabOperation; operationId?: string }
   | { type: 'presence'; data: PresenceData }
   | { type: 'request-sync' };
 
@@ -80,6 +80,7 @@ export type ServerMessage =
   | { type: 'peer-joined'; peer: PeerInfo }
   | { type: 'peer-left'; peerId: string }
   | { type: 'operation'; op: CollabOperation; fromPeerId: string }
+  | { type: 'operation-ack'; operationId: string }
   | { type: 'presence'; data: PresenceData; fromPeerId: string }
   | { type: 'sync'; schema: ERDSchema }
   | { type: 'mcp-sync'; schema: ERDSchema }

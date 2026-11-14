@@ -19,6 +19,7 @@ export function updateDomainOp(schema: ERDSchema, id: string, patch: Partial<Omi
 export function deleteDomainOp(schema: ERDSchema, id: string): void {
   const deleted = schema.domains?.find((d) => d.id === id);
   const parentIdOfDeleted = deleted?.parentId;
+  const childIds = schema.domains.filter(d => d.parentId === id).map(d => d.id);
 
   schema.domains = schema.domains
     .filter((d) => d.id !== id)
@@ -30,14 +31,9 @@ export function deleteDomainOp(schema: ERDSchema, id: string): void {
     );
   }
 
-  if (parentIdOfDeleted) {
-    const childIds = schema.domains
-      .filter(d => d.parentId === parentIdOfDeleted)
-      .map(d => d.id);
-    for (const childId of childIds) {
-      const result = propagateWithHierarchy(schema, childId, {});
-      schema.tables = result.tables;
-    }
+  for (const childId of childIds) {
+    const result = propagateWithHierarchy(schema, childId, {});
+    schema.tables = result.tables;
   }
 
   schema.updatedAt = now();

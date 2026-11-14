@@ -1,10 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import db from '$lib/server/db';
-import { hasProjectAccess } from '$lib/server/auth/permissions';
+import { validateUserApiKeyScopes } from '$lib/server/auth/api-key-scope';
 import { randomUUID } from 'crypto';
-
-const VALID_SCOPE_PERMISSIONS = new Set(['viewer', 'editor']);
 
 function requireUser(locals: App.Locals) {
   if (!locals.user) {
@@ -43,24 +41,26 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
   const { scopes } = await request.json();
 
-  if (Array.isArray(scopes)) {
-    // Replace all scopes
-    db.prepare('DELETE FROM api_key_scopes WHERE api_key_id = ?').run(params.id);
+  if (!validateUserApiKeyScopes(db, locals.user!, scopes)) {
+    return json({ error: 'Invalid or ungrantable API key scopes' }, { status: 400 });
+  }
 
-    if (scopes.length > 0) {
-      const insertScope = db.prepare(
-        `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
-         VALUES (?, ?, ?, ?)`
-      );
-      for (const scope of scopes) {
-        if (scope.projectId && scope.permission && VALID_SCOPE_PERMISSIONS.has(scope.permission)) {
-          if (hasProjectAccess(db, scope.projectId, locals.user!.id, locals.user!.role, 'viewer')) {
-            insertScope.run(randomUUID(), params.id, scope.projectId, scope.permission);
-          }
+  db.transaction(() => {
+    if (Array.isArray(scopes)) {
+      // Replace all scopes
+      db.prepare('DELETE FROM api_key_scopes WHERE api_key_id = ?').run(params.id);
+
+      if (scopes.length > 0) {
+        const insertScope = db.prepare(
+          `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
+           VALUES (?, ?, ?, ?)`
+        );
+        for (const scope of scopes) {
+          insertScope.run(randomUUID(), params.id, scope.projectId, scope.permission);
         }
       }
     }
-  }
+  })();
 
   return json({ success: true });
 };

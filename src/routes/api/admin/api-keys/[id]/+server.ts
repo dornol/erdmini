@@ -4,8 +4,7 @@ import db from '$lib/server/db';
 import { logAudit } from '$lib/server/audit';
 import { randomUUID } from 'crypto';
 import { requireAdmin } from '$lib/server/auth/guards';
-
-const VALID_SCOPE_PERMISSIONS = new Set(['viewer', 'editor', 'owner']);
+import { validateAdminApiKeyInput } from '$lib/server/auth/admin-api-key-validation';
 
 export const DELETE: RequestHandler = ({ params, locals }) => {
   const err = requireAdmin(locals);
@@ -32,37 +31,39 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
     return json({ error: 'API key not found' }, { status: 404 });
   }
 
-  const { name, scopes, expiresAt } = await request.json();
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'Invalid request body' }, { status: 400 }); }
+  const validationError = validateAdminApiKeyInput(body, false);
+  if (validationError) return json({ error: validationError }, { status: 400 });
+  const { name, scopes, expiresAt } = body;
 
-  // Update name if provided
-  if (typeof name === 'string' && name.trim()) {
-    db.prepare('UPDATE api_keys SET name = ? WHERE id = ?').run(name.trim(), params.id);
-  }
-
-  // Update expiresAt if provided (null to remove expiry)
-  if (expiresAt !== undefined) {
-    if (expiresAt !== null && isNaN(new Date(expiresAt).getTime())) {
-      return json({ error: 'Invalid expiresAt date' }, { status: 400 });
+  db.transaction(() => {
+    // Update name if provided
+    if (typeof name === 'string' && name.trim()) {
+      db.prepare('UPDATE api_keys SET name = ? WHERE id = ?').run(name.trim(), params.id);
     }
-    db.prepare('UPDATE api_keys SET expires_at = ? WHERE id = ?').run(expiresAt, params.id);
-  }
 
-  // Update scopes if provided
-  if (Array.isArray(scopes)) {
-    db.prepare('DELETE FROM api_key_scopes WHERE api_key_id = ?').run(params.id);
+    // Update expiresAt if provided (null to remove expiry)
+    if (expiresAt !== undefined) {
+      db.prepare('UPDATE api_keys SET expires_at = ? WHERE id = ?').run(expiresAt, params.id);
+    }
 
-    if (scopes.length > 0) {
-      const insertScope = db.prepare(
-        `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
-         VALUES (?, ?, ?, ?)`
-      );
-      for (const scope of scopes) {
-        if (scope.projectId && scope.permission && VALID_SCOPE_PERMISSIONS.has(scope.permission)) {
+    // Update scopes if provided
+    if (Array.isArray(scopes)) {
+      db.prepare('DELETE FROM api_key_scopes WHERE api_key_id = ?').run(params.id);
+
+      if (scopes.length > 0) {
+        const insertScope = db.prepare(
+          `INSERT INTO api_key_scopes (id, api_key_id, project_id, permission)
+           VALUES (?, ?, ?, ?)`
+        );
+        for (const scope of scopes) {
           insertScope.run(randomUUID(), params.id, scope.projectId, scope.permission);
         }
       }
     }
-  }
+  })();
 
   const fields = Object.keys({ name, scopes, expiresAt }).filter(k => ({ name, scopes, expiresAt } as Record<string, unknown>)[k] !== undefined);
   logAudit({ action: 'update', category: 'api-key', userId: locals.user!.id, username: locals.user!.username, resourceType: 'api-key', resourceId: params.id, detail: { fields } });

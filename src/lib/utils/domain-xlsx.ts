@@ -1,3 +1,4 @@
+import { parseDomainDimension, DOMAIN_LENGTH_RANGE, DOMAIN_SCALE_RANGE } from './domain-dimensions';
 import * as XLSX from 'xlsx';
 import type { ColumnDomain, ColumnType } from '$lib/types/erd';
 import { normalizeType } from '$lib/utils/ddl-import';
@@ -12,6 +13,12 @@ function yToBool(v: unknown): boolean {
   if (typeof v === 'number') return v === 1;
   const s = String(v ?? '').trim().toLowerCase();
   return s === 'y' || s === '1' || s === 'true';
+}
+
+function cellText(value: unknown, trim = false): string | undefined {
+  if (value == null) return undefined;
+  const text = trim ? String(value).trim() : String(value);
+  return text || undefined;
 }
 
 export function exportDomainsToXlsx(domains: ColumnDomain[]) {
@@ -74,37 +81,37 @@ export async function importDomainsFromXlsx(
 
     const rawType = String(row.Type ?? 'VARCHAR').trim();
     const type: ColumnType = normalizeType(rawType);
-    const length = row.Length !== undefined && row.Length !== '' ? Number(row.Length) : undefined;
-    const scale = row.Scale !== undefined && row.Scale !== '' ? Number(row.Scale) : undefined;
+    const length = parseDomainDimension(row.Length, DOMAIN_LENGTH_RANGE);
+    const scale = parseDomainDimension(row.Scale, DOMAIN_SCALE_RANGE);
 
-    const group = row.Group ? String(row.Group).trim() : undefined;
+    const group = cellText(row.Group, true);
 
-    const enumValuesRaw = row.EnumValues ? String(row.EnumValues).trim() : '';
+    const enumValuesRaw = cellText(row.EnumValues, true) ?? '';
     const enumValues = enumValuesRaw ? enumValuesRaw.split(',').map((v: string) => v.trim()).filter(Boolean) : undefined;
 
-    const tagsRaw = row.Tags ? String(row.Tags).trim() : '';
+    const tagsRaw = cellText(row.Tags, true) ?? '';
     const tags = tagsRaw ? tagsRaw.split(',').map((v: string) => v.trim()).filter(Boolean) : undefined;
 
     results.push({
       name,
       group: group || undefined,
       type,
-      length: length && !isNaN(length) ? length : undefined,
-      scale: scale != null && !isNaN(scale) ? scale : undefined,
+      length,
+      scale,
       nullable: yToBool(row.Nullable),
       primaryKey: yToBool(row.PrimaryKey),
       unique: yToBool(row.Unique),
       autoIncrement: yToBool(row.AutoIncrement),
-      defaultValue: row.Default ? String(row.Default) : undefined,
-      check: row.Check ? String(row.Check).trim() : undefined,
+      defaultValue: cellText(row.Default),
+      check: cellText(row.Check, true),
       enumValues,
-      comment: row.Comment ? String(row.Comment) : undefined,
-      description: row.Description ? String(row.Description).trim() : undefined,
-      alias: row.Alias ? String(row.Alias).trim() : undefined,
-      dataStandard: row.DataStandard ? String(row.DataStandard).trim() : undefined,
-      example: row.Example ? String(row.Example).trim() : undefined,
-      validRange: row.ValidRange ? String(row.ValidRange).trim() : undefined,
-      owner: row.Owner ? String(row.Owner).trim() : undefined,
+      comment: cellText(row.Comment),
+      description: cellText(row.Description, true),
+      alias: cellText(row.Alias, true),
+      dataStandard: cellText(row.DataStandard, true),
+      example: cellText(row.Example, true),
+      validRange: cellText(row.ValidRange, true),
+      owner: cellText(row.Owner, true),
       tags,
     });
   }

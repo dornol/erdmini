@@ -69,7 +69,7 @@ export const registerDbObjectTools: RegisterFn = (server, ctx) => {
     'Add a new DB object (procedure, function, view, trigger, etc.). Category is auto-created if it does not exist. Returns {objectId}.',
     {
       projectId: z.string().max(256).describe('Project ID'),
-      category: z.string().max(256).describe('Category name (e.g., Procedure, Function, View, Trigger)'),
+      category: z.string().trim().min(1).max(256).describe('Category name (e.g., Procedure, Function, View, Trigger)'),
       name: z.string().max(256).optional().describe('Object name'),
       sql: z.string().max(100000).optional().describe('SQL content'),
       comment: z.string().max(1000).optional().describe('Description'),
@@ -95,7 +95,7 @@ export const registerDbObjectTools: RegisterFn = (server, ctx) => {
       name: z.string().max(256).optional().describe('New name'),
       sql: z.string().max(100000).optional().describe('New SQL content'),
       comment: z.string().max(1000).optional().describe('New description'),
-      category: z.string().max(256).optional().describe('Move to different category'),
+      category: z.string().trim().min(1).max(256).optional().describe('Move to different category'),
       schema: z.string().max(256).optional().describe('Schema namespace'),
       includeInDdl: z.boolean().optional().describe('Include in DDL export'),
     },
@@ -137,7 +137,7 @@ export const registerDbObjectTools: RegisterFn = (server, ctx) => {
     'Add a new DB object category.',
     {
       projectId: z.string().max(256).describe('Project ID'),
-      category: z.string().max(256).describe('Category name'),
+      category: z.string().trim().min(1).max(256).describe('Category name'),
     },
     async ({ projectId, category }) => {
       requireAccess(projectId, 'editor');
@@ -158,7 +158,7 @@ export const registerDbObjectTools: RegisterFn = (server, ctx) => {
     {
       projectId: z.string().max(256).describe('Project ID'),
       oldName: z.string().max(256).describe('Current category name'),
-      newName: z.string().max(256).describe('New category name'),
+      newName: z.string().trim().min(1).max(256).describe('New category name'),
     },
     async ({ projectId, oldName, newName }) => {
       requireAccess(projectId, 'editor');
@@ -181,7 +181,7 @@ export const registerDbObjectTools: RegisterFn = (server, ctx) => {
     'Delete a DB object category and all its objects.',
     {
       projectId: z.string().max(256).describe('Project ID'),
-      category: z.string().max(256).describe('Category name'),
+      category: z.string().trim().min(1).max(256).describe('Category name'),
     },
     async ({ projectId, category }) => {
       requireAccess(projectId, 'editor');

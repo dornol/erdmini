@@ -18,6 +18,8 @@ class NamingRuleStore {
   /** Dictionary words for validation */
   dictionaryWords = $state<Set<string>>(new Set());
   dictionaries = $state<DictionarySummary[]>([]);
+  dictionaryLoading = $state(false);
+  dictionaryLoadError = $state(false);
 
   /** Effective rules = merged admin + project overrides */
   get effectiveRules(): EffectiveNamingRules {
@@ -59,14 +61,21 @@ class NamingRuleStore {
     }
   }
 
+  private dictionaryRequestId = 0;
+
   async fetchDictionaryWords(dictionaryId?: string) {
+    const requestId = ++this.dictionaryRequestId;
+    this.dictionaryLoading = true;
+    this.dictionaryLoadError = false;
+    this.dictionaryWords = new Set();
     try {
-      // Fetch all approved words (up to 10000) for naming validation
+      // Publish words only after every page has loaded successfully.
       const params = new URLSearchParams({ limit: '200', status: 'approved' });
       if (dictionaryId) params.set('dictionaryId', dictionaryId);
       const res = await fetch(appPath(`/api/dictionary?${params}`));
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('Dictionary request failed');
       const data = await res.json();
+      if (requestId !== this.dictionaryRequestId) return;
       const words: Set<string> = new Set();
       // API returns { words: WordRow[], total }
       const rows: { word: string }[] = data.words ?? [];
@@ -79,16 +88,19 @@ class NamingRuleStore {
       while (words.size < total) {
         params.set('page', String(page));
         const nextRes = await fetch(appPath(`/api/dictionary?${params}`));
-        if (!nextRes.ok) break;
+        if (!nextRes.ok) throw new Error('Dictionary page request failed');
         const nextData = await nextRes.json();
+        if (requestId !== this.dictionaryRequestId) return;
         const nextRows: { word: string }[] = nextData.words ?? [];
-        if (nextRows.length === 0) break;
+        if (nextRows.length === 0) throw new Error('Incomplete dictionary response');
         for (const r of nextRows) words.add(r.word.toLowerCase());
         page++;
       }
-      this.dictionaryWords = words;
+      if (requestId === this.dictionaryRequestId) this.dictionaryWords = words;
     } catch {
-      // ignore
+      if (requestId === this.dictionaryRequestId) this.dictionaryLoadError = true;
+    } finally {
+      if (requestId === this.dictionaryRequestId) this.dictionaryLoading = false;
     }
   }
 }

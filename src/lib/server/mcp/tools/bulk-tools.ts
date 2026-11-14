@@ -27,8 +27,8 @@ export const registerBulkTools: RegisterFn = (server, ctx) => {
         columns: z.array(z.object({
           name: z.string().max(256).describe('Column name'),
           type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Column type'),
-          length: z.number().optional().describe('Column length'),
-          scale: z.number().optional().describe('Decimal scale'),
+          length: z.number().int().min(0).max(65535).optional().describe('Column length'),
+          scale: z.number().int().min(0).max(30).optional().describe('Decimal scale'),
           nullable: z.boolean().optional().describe('Allow NULL'),
           primaryKey: z.boolean().optional().describe('Primary key'),
           unique: z.boolean().optional().describe('Unique'),
@@ -44,6 +44,9 @@ export const registerBulkTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tables: tableDefs }) => {
       requireAccess(projectId, 'editor');
       let schema = getSchemaOrFail(projectId);
+      if (tableDefs.flatMap(def => def.columns ?? []).some(col => col.domainId && !(schema.domains ?? []).some(d => d.id === col.domainId))) {
+        return { content: [{ type: 'text', text: 'Domain not found' }], isError: true };
+      }
       const created: { name: string; tableId: string }[] = [];
 
       for (const def of tableDefs) {
@@ -83,8 +86,8 @@ export const registerBulkTools: RegisterFn = (server, ctx) => {
       columns: z.array(z.object({
         name: z.string().max(256).optional().describe('Column name'),
         type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('Column type'),
-        length: z.number().optional().describe('Column length'),
-        scale: z.number().optional().describe('Decimal scale'),
+        length: z.number().int().min(0).max(65535).optional().describe('Column length'),
+        scale: z.number().int().min(0).max(30).optional().describe('Decimal scale'),
         nullable: z.boolean().optional().describe('Allow NULL'),
         primaryKey: z.boolean().optional().describe('Primary key'),
         unique: z.boolean().optional().describe('Unique'),
@@ -99,6 +102,9 @@ export const registerBulkTools: RegisterFn = (server, ctx) => {
     async ({ projectId, tableId, columns }) => {
       requireAccess(projectId, 'editor');
       let schema = getSchemaOrFail(projectId);
+      if (columns.some(col => col.domainId && !(schema.domains ?? []).some(d => d.id === col.domainId))) {
+        return { content: [{ type: 'text', text: 'Domain not found' }], isError: true };
+      }
       if (!schema.tables.find(t => t.id === tableId)) {
         return { content: [{ type: 'text', text: `Table ${tableId} not found` }], isError: true };
       }
@@ -158,8 +164,8 @@ export const registerBulkTools: RegisterFn = (server, ctx) => {
         columnId: z.string().max(256).describe('Column ID'),
         name: z.string().max(256).optional().describe('New column name'),
         type: z.enum(COLUMN_TYPES as [string, ...string[]]).optional().describe('New column type'),
-        length: z.number().min(0).max(65535).optional().describe('New length'),
-        scale: z.number().min(0).max(30).optional().describe('New decimal scale'),
+        length: z.number().int().min(0).max(65535).optional().describe('New length'),
+        scale: z.number().int().min(0).max(30).optional().describe('New decimal scale'),
         nullable: z.boolean().optional().describe('Allow NULL'),
         primaryKey: z.boolean().optional().describe('Primary key'),
         unique: z.boolean().optional().describe('Unique'),
@@ -172,6 +178,9 @@ export const registerBulkTools: RegisterFn = (server, ctx) => {
     async ({ projectId, updates }) => {
       requireAccess(projectId, 'editor');
       const schema = getSchemaOrFail(projectId);
+      if (updates.some(col => col.domainId && !(schema.domains ?? []).some(d => d.id === col.domainId))) {
+        return { content: [{ type: 'text', text: 'Domain not found' }], isError: true };
+      }
       const result = bulkUpdateColumns(schema, updates);
 
       if (result.updated === 0) {
@@ -209,7 +218,7 @@ export const registerBulkTools: RegisterFn = (server, ctx) => {
 
       let result: { schema: ERDSchema; updated: number };
 
-      if (explicitColumns && explicitColumns.length > 0) {
+      if (explicitColumns !== undefined) {
         result = bulkAssignDomainByList(schema, domainId, explicitColumns);
       } else if (columnName) {
         result = bulkAssignDomainByName(schema, domainId, columnName);
