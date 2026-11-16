@@ -51,8 +51,8 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1
       ldapts:
-        specifier: ^8.1.7
-        version: 8.2.0
+        specifier: ^9.2.0
+        version: 9.2.0
       node-sql-parser:
         specifier: ^5.4.0
         version: 5.4.0
@@ -1826,9 +1826,9 @@ packages:
     resolution: {integrity: sha512-sXoKWuQjtorwxDLiws0ZSPGGne/hs+fGHIII7vXquSBFgHwLXgFIHN9tTv3kNdVkJ5d3xtXC84GjjWMYLqdFWg==}
     engines: {node: '>=20.0.0'}
 
-  ldapts@8.2.0:
-    resolution: {integrity: sha512-XfKocadpoHc1kNgtbTBBhD+pSh1U9KVTzxcKwDS4ulFFyC7rJkLC3TwIfbQ4rt3my9KHz8qsw9qFXVjcPOGebw==}
-    engines: {node: '>=20'}
+  ldapts@9.2.0:
+    resolution: {integrity: sha512-5mDg3OT5fDP9DUXga9dCLW8cMW24OTOKT4pv/Qj+f2zCV3qxb+gkZLCzMAqzVTOANoycidKkYpPvkclUQU2aXw==}
+    engines: {node: '>=22'}
 
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
@@ -4210,7 +4210,7 @@ snapshots:
 
   kysely@0.28.19: {}
 
-  ldapts@8.2.0:
+  ldapts@9.2.0:
     dependencies:
       strict-event-emitter-types: 2.0.0
 
